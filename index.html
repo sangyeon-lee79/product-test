@@ -11,66 +11,60 @@
     <header>
         <div class="logo">방울아놀자</div>
         <div class="header-actions">
-            <select id="lang-selector">
-                <option value="ko">한국어</option>
-                <option value="en">English</option>
-                <option value="ja">日本語</option>
-                <option value="zh">中文</option>
-                <option value="vi">Tiếng Việt</option>
-                <option value="id">Bahasa Indonesia</option>
-                <option value="th">ไทย</option>
-                <option value="es">Español</option>
-                <option value="fr">Français</option>
-                <option value="de">Deutsch</option>
-                <option value="it">Italiano</option>
-                <option value="pt">Português</option>
-                <option value="ar">العربية</option>
+            <select id="role-selector">
+                <option value="user">User View</option>
+                <option value="provider">Provider (Shop) Reg</option>
+                <option value="admin">Admin (Master) Reg</option>
             </select>
-            <button id="theme-toggle" aria-label="Toggle Theme">🌓</button>
+            <select id="lang-selector">
+                <option value="ko">KO</option>
+                <option value="en">EN</option>
+                <option value="ja">JA</option>
+                <option value="vi">VI</option>
+                <!-- ... other langs -->
+            </select>
+            <button id="theme-toggle">🌓</button>
         </div>
     </header>
-<main>
-    <!-- Pet Profile Card (SNS Style) -->
-    <section class="pet-profile">
-        <div id="pet-profile-container">
-            <!-- main.js에서 렌더링 -->
-        </div>
-    </section>
 
-    <!-- Rule 2: Universal Language Conversion Entry (New) -->
-    <section class="entry-section card">
-        <h3 data-t-domain="ui" data-t-key="add_record">기록 추가</h3>
-        <div class="input-group">
-            <input type="text" id="record-input" placeholder="기록을 입력하세요 (예: 미용 했어요)">
-            <button id="convert-btn" class="globe-btn">🌐</button>
-        </div>
-        <!-- Conversion Preview Grid (Editable) -->
-        <div id="conversion-preview" class="hidden">
-            <div class="grid-header">
-                <span>Lang</span><span>Value (Editable)</span>
+    <main>
+        <!-- 1. ADMIN/PROVIDER REGISTRATION (Data Input Level) -->
+        <section id="registration-view" class="hidden">
+            <div class="card registration-form">
+                <h2 id="reg-title">Data Registration</h2>
+                
+                <!-- Universal Conversion Input -->
+                <div class="input-container">
+                    <label id="input-label">Name</label>
+                    <div class="input-group">
+                        <input type="text" id="master-input" placeholder="Enter text to register...">
+                        <button id="convert-btn" class="globe-btn">🌐</button>
+                    </div>
+                </div>
+
+                <!-- Conversion Preview (13 Langs) -->
+                <div id="conversion-preview" class="hidden">
+                    <div id="conversion-grid-items"></div>
+                    <button id="save-master-btn" class="save-btn">Save to Global System</button>
+                </div>
             </div>
-            <div id="conversion-grid-items"></div>
-            <button id="save-record-btn" data-t-domain="ui" data-t-key="save">저장</button>
-        </div>
-    </section>
+        </section>
 
-    <!-- Category Filter (SNS Style) -->
-    <nav class="category-filter">
-...
-            <button class="active" data-category="all" data-t-domain="pet" data-t-key="filter_all">All</button>
-            <button data-category="medical" data-t-domain="pet" data-t-key="filter_medical">Medical</button>
-            <button data-category="grooming" data-t-domain="pet" data-t-key="filter_grooming">Grooming</button>
-            <button data-category="hotel" data-t-domain="pet" data-t-key="filter_hotel">Hotel</button>
-            <button data-category="training" data-t-domain="pet" data-t-key="filter_training">Training</button>
-            <button data-category="shop" data-t-domain="pet" data-t-key="filter_shop">Shop</button>
-        </nav>
+        <!-- 2. USER VIEW (Data Consumption Level) -->
+        <section id="user-view">
+            <!-- Pet Profile -->
+            <div id="pet-profile-container"></div>
 
-        <!-- Timeline Feed (SNS Style) -->
-        <section class="timeline-container">
-            <div class="timeline-line"></div>
-            <div id="timeline-feed">
-                <!-- main.js에서 렌더링 -->
-            </div>
+            <!-- Selection-Based Feed Filter -->
+            <nav class="category-filter" id="master-category-list">
+                <!-- Admin이 등록한 카테고리가 버튼으로 자동 렌더링됨 -->
+            </nav>
+
+            <!-- Timeline Feed -->
+            <section class="timeline-container">
+                <div class="timeline-line"></div>
+                <div id="timeline-feed"></div>
+            </section>
         </section>
     </main>
 
