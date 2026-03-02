@@ -1,94 +1,128 @@
-class LottoBall extends HTMLElement {
-    constructor() {
-        super();
-        this.attachShadow({ mode: 'open' });
+// Timeline Data with Authentication Info and Translations
+const timelineData = [
+    {
+        id: 1,
+        date: "2024-03-01",
+        category: "medical",
+        title: "정기 예방 접종",
+        content: "종합백신(DHPPL) 및 광견병 예방 접종 완료. 다음 접종은 1년 후입니다.",
+        translation: "Annual Vaccination (DHPPL & Rabies) completed. Next due in 1 year.",
+        institution: "서울 동물 의료센터",
+        isVerified: true
+    },
+    {
+        id: 2,
+        date: "2024-02-25",
+        category: "grooming",
+        title: "전신 미용 & 스파",
+        content: "가위컷 미용 및 머드 스파 진행. 피부 상태 양호함.",
+        translation: "Full grooming & Mud spa. Skin condition is healthy.",
+        institution: "해피퍼피 그루밍샵",
+        isVerified: true
+    },
+    {
+        id: 3,
+        date: "2024-02-15",
+        category: "training",
+        title: "사회성 교육 5회차",
+        content: "다른 강아지와의 인사법 교육 중. 집중력이 매우 좋아짐.",
+        translation: "Socialization Session #5. Greeting other dogs. Focus significantly improved.",
+        institution: "도그 마스터 훈련소",
+        isVerified: true
+    },
+    {
+        id: 4,
+        date: "2024-02-10",
+        category: "shop",
+        title: "유기농 사료 구매",
+        content: "나우 프레쉬 퍼피 5kg 구매. 기호성 테스트 통과.",
+        translation: "Purchased Now Fresh Puppy 5kg. Passed palatability test.",
+        institution: "펫월드 강남점",
+        isVerified: false
+    },
+    {
+        id: 5,
+        date: "2024-01-20",
+        category: "hotel",
+        title: "설 연휴 위탁 관리",
+        content: "3박 4일 호텔 투숙. 식사 및 배변 상태 정상, 활동량 많음.",
+        translation: "3-night stay during Lunar New Year. Normal appetite and bowel movements.",
+        institution: "스테이 펫 호텔",
+        isVerified: true
     }
+];
 
-    connectedCallback() {
-        const number = this.getAttribute('number');
-        const color = this.getRandomColor();
-        this.shadowRoot.innerHTML = `
-            <style>
-                :host {
-                    display: flex;
-                    justify-content: center;
-                    align-items: center;
-                    width: 60px;
-                    height: 60px;
-                    border-radius: 50%;
-                    background: ${color};
-                    color: white;
-                    font-size: 1.5rem;
-                    font-weight: bold;
-                    box-shadow: 0 4px 10px rgba(0,0,0,0.3);
-                    animation: popIn 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
-                }
+// State Management
+let currentFilter = 'all';
+let isTranslated = false;
 
-                @keyframes popIn {
-                    0% { transform: scale(0); opacity: 0; }
-                    100% { transform: scale(1); opacity: 1; }
-                }
-            </style>
-            <div>${number}</div>
+// DOM Elements
+const feedContainer = document.getElementById('timeline-feed');
+const themeToggle = document.getElementById('theme-toggle');
+const translateToggle = document.getElementById('translate-toggle');
+const filterButtons = document.querySelectorAll('.category-filter button');
+
+// Render Feed
+function renderFeed() {
+    feedContainer.innerHTML = '';
+    
+    const filteredData = currentFilter === 'all' 
+        ? timelineData 
+        : timelineData.filter(item => item.category === currentFilter);
+
+    filteredData.forEach(item => {
+        const timelineItem = document.createElement('div');
+        timelineItem.className = `timeline-item ${item.category}`;
+        
+        timelineItem.innerHTML = `
+            <div class="timeline-dot"></div>
+            <div class="timeline-card">
+                <p class="date">${item.date}</p>
+                <h3>
+                    ${item.title}
+                    ${item.isVerified ? '<span class="verified-badge">✓ Verified</span>' : ''}
+                </h3>
+                <p class="content">${isTranslated ? item.translation : item.content}</p>
+                ${isTranslated ? '<p class="translated-label">✨ Auto-translated</p>' : ''}
+                <p class="institution" style="font-size: 0.8rem; color: var(--text-secondary); margin-top: 1rem;">
+                    📍 ${item.institution}
+                </p>
+            </div>
         `;
-    }
-
-    getRandomColor() {
-        const colors = [
-            '#f1c40f', '#e67e22', '#e74c3c', '#3498db', '#2ecc71', 
-            '#9b59b6', '#1abc9c', '#34495e', '#d35400', '#c0392b'
-        ];
-        return colors[Math.floor(Math.random() * colors.length)];
-    }
-}
-
-if (!customElements.get('lotto-ball')) {
-    customElements.define('lotto-ball', LottoBall);
-}
-
-// Lotto Generation Logic
-function generateLottoNumbers() {
-    const numbersContainer = document.getElementById('lotto-numbers');
-    numbersContainer.innerHTML = '';
-    const numbers = new Set();
-    while (numbers.size < 6) {
-        numbers.add(Math.floor(Math.random() * 45) + 1);
-    }
-
-    const sortedNumbers = Array.from(numbers).sort((a, b) => a - b);
-
-    sortedNumbers.forEach((number, index) => {
-        setTimeout(() => {
-            const lottoBall = document.createElement('lotto-ball');
-            lottoBall.setAttribute('number', number);
-            numbersContainer.appendChild(lottoBall);
-        }, index * 100);
+        feedContainer.appendChild(timelineItem);
     });
 }
 
-// Theme Toggle Logic
-const themeToggle = document.getElementById('theme-toggle');
-const body = document.body;
-
-function setTheme(theme) {
-    if (theme === 'light') {
-        body.classList.add('light-mode');
-        themeToggle.querySelector('.icon').textContent = '🌞';
-    } else {
-        body.classList.remove('light-mode');
-        themeToggle.querySelector('.icon').textContent = '🌓';
-    }
-    localStorage.setItem('theme', theme);
+// Theme Handling
+function initTheme() {
+    const savedTheme = localStorage.getItem('theme') || 'dark';
+    document.body.className = savedTheme + '-mode';
 }
 
 themeToggle.addEventListener('click', () => {
-    const isLight = body.classList.contains('light-mode');
-    setTheme(isLight ? 'dark' : 'light');
+    const isDark = document.body.classList.contains('dark-mode');
+    const newTheme = isDark ? 'light' : 'dark';
+    document.body.className = newTheme + '-mode';
+    localStorage.setItem('theme', newTheme);
 });
 
-// Initialize Theme
-const savedTheme = localStorage.getItem('theme') || (window.matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark');
-setTheme(savedTheme);
+// Translation Handling
+translateToggle.addEventListener('click', () => {
+    isTranslated = !isTranslated;
+    translateToggle.style.color = isTranslated ? 'var(--accent-hotel)' : 'inherit';
+    renderFeed();
+});
 
-// Event Listeners
-document.getElementById('generate-btn').addEventListener('click', generateLottoNumbers);
+// Filter Handling
+filterButtons.forEach(btn => {
+    btn.addEventListener('click', () => {
+        filterButtons.forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        currentFilter = btn.dataset.category;
+        renderFeed();
+    });
+});
+
+// Initialize
+initTheme();
+renderFeed();

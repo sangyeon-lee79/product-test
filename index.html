@@ -1,20 +1,58 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="ko">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Lotto Number Generator</title>
+    <title>PawHistory - Global Dog PHR & SNS</title>
     <link rel="stylesheet" href="style.css">
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700&family=Poppins:wght@400;600;700&display=swap" rel="stylesheet">
 </head>
-<body>
-    <button id="theme-toggle" aria-label="Toggle dark/light mode">
-        <span class="icon">🌓</span>
-    </button>
-    <main class="container">
-        <h1>Lotto Number Generator</h1>
-        <button id="generate-btn">Generate Numbers</button>
-        <div id="lotto-numbers"></div>
+<body class="dark-mode">
+    <header>
+        <div class="logo">PawHistory</div>
+        <div class="header-actions">
+            <button id="theme-toggle" aria-label="Toggle Theme">🌓</button>
+            <button id="translate-toggle" aria-label="Translate Feed">🌐</button>
+        </div>
+    </header>
+
+    <main>
+        <!-- Pet Profile Section -->
+        <section class="pet-profile">
+            <div class="profile-card">
+                <div class="profile-img">
+                    <img src="https://images.unsplash.com/photo-1517841905240-472988babdf9?w=300&h=300&fit=crop" alt="Pet Image">
+                </div>
+                <div class="profile-info">
+                    <h2>Coco <span class="badge">Golden Retriever</span></h2>
+                    <p class="stats">3 Years • 28kg • Male</p>
+                    <div class="summary-pills">
+                        <span class="pill medical">Healthy</span>
+                        <span class="pill training">Adv. Trained</span>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Category Filter -->
+        <nav class="category-filter">
+            <button class="active" data-category="all">All</button>
+            <button data-category="medical">Medical</button>
+            <button data-category="grooming">Grooming</button>
+            <button data-category="hotel">Hotel</button>
+            <button data-category="training">Training</button>
+            <button data-category="shop">Shop</button>
+        </nav>
+
+        <!-- Timeline Feed -->
+        <section class="timeline-container">
+            <div class="timeline-line"></div>
+            <div id="timeline-feed">
+                <!-- Records will be injected here via main.js -->
+            </div>
+        </section>
     </main>
+
     <script src="main.js"></script>
 </body>
 </html>

@@ -1,30 +1,28 @@
-# Lotto Number Generator
+# PawHistory: Global Dog PHR & SNS Platform
 
 ## Project Overview
-A simple, modern web application for generating lotto numbers (6 out of 45). The app features a clean UI, animated ball results, and support for both dark and light modes.
+"PawHistory"는 반려견의 모든 생애 기록(의료, 미용, 호텔, 훈련, 쇼핑)을 타임라인으로 관리하는 SNS형 개인건강기록(PHR) 플랫폼입니다. 
 
-## Current Features
-- **Lotto Generation:** Generates 6 unique random numbers between 1 and 45.
-- **Animated Results:** Numbers appear one by one with a "pop-in" animation.
-- **Web Components:** Uses a custom `<lotto-ball>` element for number display.
-- **Dark/Light Mode:** Full support for theme switching with persistence using `localStorage`.
-- **Responsive Design:** Works on all screen sizes with a centered layout and mobile-friendly UI.
-- **Modern CSS:** Uses CSS variables, transitions, and flexbox for a polished look.
+## Core Value
+- **Verified Records:** 인증된 기관(병원, 샵 등)만 공식 기록을 남길 수 있는 신뢰성.
+- **Auto Timeline:** 모든 활동이 생애 주기별 타임라인으로 자동 누적.
+- **Global Sharing:** 자동 번역 기능을 통한 전 세계 반려인과의 정보 공유.
+- **SNS Integration:** 건강 기록 기반의 커뮤니티 형성.
 
-## Design Details
-- **Typography:** Poppins (Google Fonts).
-- **Colors (Dark):** Deep grays (#1a1a1a) with vibrant yellow (#ffde00) accents.
-- **Colors (Light):** Soft gray (#f0f2f5) with orange (#e67e22) accents.
-- **Visual Effects:** Soft deep shadows, smooth transitions between themes, and interactive hover effects on buttons.
+## Key Features (Main Page)
+- **Pet Profile Header:** 반려견의 기본 정보 및 건강 요약 정보.
+- **Interactive Timeline:** 5개 카테고리(Medical, Grooming, Hotel, Training, Shop) 아이콘별 타임라인 피드.
+- **Verification Badge:** 인증된 기관이 작성한 기록에 대한 시각적 표시.
+- **Global Translation Toggle:** 다국어 번역 미리보기 기능.
+- **Category Filter:** 특정 카테고리 기록만 모아보기.
 
-## Implementation Steps (Latest Update)
-1. **Fixed ID Inconsistencies:** Aligned IDs between HTML, CSS, and JS (`generate-btn`, `lotto-numbers`).
-2. **Added Theme Toggle:**
-   - Implemented a floating toggle button.
-   - Added CSS variables for both themes.
-   - Added JS logic to switch classes and save state to `localStorage`.
-3. **Enhanced UI:**
-   - Improved the container layout.
-   - Refined the lotto ball animations.
-   - Added system theme detection as a fallback.
-4. **Git Integration:** Pushed final changes to the main branch.
+## Design System
+- **Concept:** Trustworthy, Warm, Modern, Interactive.
+- **Primary Colors:** 
+  - Medical: #E74C3C (Red)
+  - Grooming: #9B59B6 (Purple)
+  - Hotel: #3498DB (Blue)
+  - Training: #2ECC71 (Green)
+  - Shop: #F1C40F (Yellow)
+- **Typography:** Poppins & Noto Sans KR.
+- **Components:** Shadow DOM을 활용한 타임라인 카드 및 배지.
