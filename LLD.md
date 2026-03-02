@@ -50,4 +50,5 @@
 
 ## 4. UI Rendering Rule
 - 모든 문자열은 `t(domain, key)` 함수를 통해 렌더링.
+- **Feed Component:** 세로형 타임라인 라인, 카테고리별 컬러 도트, 인증 배지(Verified Badge)를 포함한 카드 UI.
 - 클라이언트는 부팅 시 `dictionary_values`를 로드하여 캐싱.

@@ -4,17 +4,28 @@
     --text-main: #e1e1e6;
     --text-dim: #9494a5;
     --accent: #7c4dff;
-    --medical: #ff5252;
-    --training: #69f0ae;
     --border: #2f2f3d;
+    --medical: #ef4444;
+    --grooming: #a855f7;
+    --hotel: #3b82f6;
+    --training: #10b981;
+    --shop: #f59e0b;
+}
+
+body.light-mode {
+    --bg: #f8fafc;
+    --card-bg: #ffffff;
+    --text-main: #1e293b;
+    --text-dim: #64748b;
+    --border: #e2e8f0;
 }
 
 body {
     background-color: var(--bg);
     color: var(--text-main);
-    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    font-family: 'Poppins', -apple-system, sans-serif;
     margin: 0;
-    line-height: 1.5;
+    transition: all 0.3s ease;
 }
 
 header {
@@ -23,23 +34,23 @@ header {
     justify-content: space-between;
     align-items: center;
     border-bottom: 1px solid var(--border);
-    background: rgba(10, 10, 12, 0.8);
-    backdrop-filter: blur(10px);
     position: sticky;
     top: 0;
-    z-index: 100;
+    background: rgba(10, 10, 12, 0.8);
+    backdrop-filter: blur(10px);
+    z-index: 1000;
 }
 
 .logo {
-    font-size: 1.4rem;
+    font-size: 1.5rem;
     font-weight: 800;
-    background: linear-gradient(45deg, #7c4dff, #00e5ff);
+    background: linear-gradient(45deg, var(--accent), #00e5ff);
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
 }
 
 main {
-    max-width: 600px;
+    max-width: 700px;
     margin: 2rem auto;
     padding: 0 1rem;
 }
@@ -47,107 +58,103 @@ main {
 /* Pet Header */
 .pet-card {
     background: var(--card-bg);
-    padding: 2rem;
-    border-radius: 24px;
+    padding: 2.5rem;
+    border-radius: 30px;
     text-align: center;
     border: 1px solid var(--border);
-    margin-bottom: 1.5rem;
-}
-
-.pet-card h2 {
-    font-size: 2rem;
-    margin: 0 0 0.5rem 0;
-}
-
-.pet-card p {
-    color: var(--text-dim);
-    margin: 0.2rem 0;
-}
-
-/* Stats Grid */
-.pet-stats-grid {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 1rem;
+    box-shadow: 0 20px 40px rgba(0,0,0,0.3);
     margin-bottom: 2rem;
 }
 
-.card {
-    background: var(--card-bg);
-    padding: 1.2rem;
-    border-radius: 20px;
-    border: 1px solid var(--border);
+.pet-card h2 { font-size: 2.2rem; margin-bottom: 0.5rem; }
+.pet-card p { color: var(--text-dim); }
+
+/* Timeline UI */
+.timeline-container {
+    position: relative;
+    padding-left: 2rem;
 }
 
-.card h3 {
-    font-size: 0.9rem;
-    color: var(--text-dim);
-    margin: 0 0 1rem 0;
-    text-transform: uppercase;
-    letter-spacing: 0.05rem;
-}
-
-/* Metrics & Conditions */
-.metric-item {
-    margin-bottom: 0.5rem;
-}
-
-.condition-badge {
-    display: inline-block;
-    padding: 0.3rem 0.8rem;
-    border-radius: 50px;
-    font-size: 0.8rem;
-    font-weight: 600;
-}
-
-.condition-badge.healthy {
-    background: rgba(105, 240, 174, 0.1);
-    color: var(--training);
-}
-
-/* Timeline */
-.timeline-section h2 {
-    font-size: 1.2rem;
-    margin-bottom: 1.5rem;
+.timeline-line {
+    position: absolute;
+    left: 7px;
+    top: 0;
+    bottom: 0;
+    width: 2px;
+    background: var(--border);
 }
 
 .timeline-event {
     position: relative;
-    padding-left: 1.5rem;
-    padding-bottom: 1.5rem;
-    border-left: 2px solid var(--border);
+    margin-bottom: 2.5rem;
+    animation: fadeIn 0.5s ease forwards;
 }
 
-.timeline-event::before {
-    content: '';
+.timeline-dot {
     position: absolute;
-    left: -6px;
-    top: 0;
-    width: 10px;
-    height: 10px;
+    left: -22px;
+    top: 5px;
+    width: 16px;
+    height: 16px;
     border-radius: 50%;
-    background: var(--accent);
+    background: var(--bg);
+    border: 3px solid var(--accent);
+    z-index: 2;
 }
 
-.timeline-event.condition::before { background: var(--medical); }
-
-.timeline-event .time {
-    display: block;
-    font-size: 0.75rem;
-    color: var(--text-dim);
+.timeline-card {
+    background: var(--card-bg);
+    padding: 1.5rem;
+    border-radius: 20px;
+    border: 1px solid var(--border);
+    box-shadow: 0 10px 20px rgba(0,0,0,0.1);
 }
 
-.timeline-event .type {
-    font-weight: 700;
-    font-size: 0.8rem;
-    margin-right: 0.5rem;
+.event-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 0.8rem;
+}
+
+.event-date { font-size: 0.8rem; color: var(--text-dim); }
+
+.verified-badge {
+    font-size: 0.7rem;
+    background: rgba(124, 77, 255, 0.1);
     color: var(--accent);
+    padding: 2px 8px;
+    border-radius: 4px;
+    border: 1px solid var(--accent);
+}
+
+.event-content { font-size: 1rem; line-height: 1.6; }
+.event-source { 
+    margin-top: 1rem; 
+    font-size: 0.85rem; 
+    color: var(--text-secondary); 
+    display: flex;
+    align-items: center;
+    gap: 5px;
+}
+
+/* Category Colors */
+.event-medical .timeline-dot { border-color: var(--medical); }
+.event-grooming .timeline-dot { border-color: var(--grooming); }
+.event-hotel .timeline-dot { border-color: var(--hotel); }
+.event-training .timeline-dot { border-color: var(--training); }
+.event-shop .timeline-dot { border-color: var(--shop); }
+
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: translateY(0); }
 }
 
 #lang-selector {
     background: var(--card-bg);
     color: var(--text-main);
     border: 1px solid var(--border);
-    padding: 0.4rem;
-    border-radius: 8px;
+    padding: 0.5rem;
+    border-radius: 10px;
+    outline: none;
 }
