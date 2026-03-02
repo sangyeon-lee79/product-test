@@ -3,18 +3,18 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>방울아놀자 - Global Pet Platform</title>
+    <title data-ui-key="app_title">방울아놀자 - Global Pet Platform</title>
     <link rel="stylesheet" href="style.css">
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;800&family=Noto+Sans+KR:wght@400;700&display=swap" rel="stylesheet">
 </head>
 <body class="dark-mode">
     <header>
-        <div class="logo">방울아놀자</div>
+        <div class="logo" data-ui-key="app_logo">방울아놀자</div>
         <div class="header-actions">
             <select id="role-selector">
-                <option value="user">User Dashboard</option>
-                <option value="provider">Provider Dashboard</option>
-                <option value="admin">Master Admin Control</option>
+                <option value="user" data-ui-key="role_user">User Dashboard</option>
+                <option value="provider" data-ui-key="role_provider">Provider Dashboard</option>
+                <option value="admin" data-ui-key="role_admin">Master Admin Control</option>
             </select>
             <select id="lang-selector">
                 <option value="ko">KO</option><option value="en">EN</option><option value="ja">JA</option>
@@ -29,41 +29,48 @@
     <main>
         <!-- Distributed API Settings -->
         <section class="card settings-section">
-            <h3 data-entity-id="m-label-settings">Personal Translation Settings</h3>
+            <h3 data-ui-key="settings_title">Personal Translation Settings</h3>
             <div class="input-group">
-                <input type="password" id="user-api-key" placeholder="Google API Key for zero-cost translation">
-                <button id="save-api-key-btn">Save Key</button>
+                <input type="password" id="user-api-key" data-ui-placeholder="api_key_placeholder">
+                <button id="save-api-key-btn" data-ui-key="btn_save">Save Key</button>
             </div>
         </section>
 
-        <!-- 1. MASTER ADMIN DASHBOARD (복구) -->
+        <!-- 1. MASTER ADMIN DASHBOARD -->
         <section id="admin-view" class="role-view hidden">
-            <h2 data-entity-id="m-menu-001">Master Admin Control</h2>
+            <h2 data-ui-key="menu_admin_control">Master Admin Control</h2>
             <div class="stats-grid">
                 <div class="stat-card">
-                    <span class="label" data-entity-id="m-stat-users">Total Users</span>
+                    <span class="label" data-ui-key="stat_total_users">Total Users</span>
                     <span class="value">1,240</span>
                 </div>
                 <div class="stat-card">
-                    <span class="label" data-entity-id="m-stat-pets">Total Pets</span>
+                    <span class="label" data-ui-key="stat_total_pets">Total Pets</span>
                     <span class="value">850</span>
                 </div>
                 <div class="stat-card">
-                    <span class="label" data-entity-id="m-stat-bookings">Bookings</span>
+                    <span class="label" data-ui-key="stat_total_bookings">Bookings</span>
                     <span class="value">320</span>
                 </div>
             </div>
 
+            <!-- UI Dictionary Studio (New) -->
             <div class="card master-studio">
-                <h3 data-entity-id="m-label-studio">Master Data Studio</h3>
+                <h3 data-ui-key="label_ui_dictionary">UI Dictionary Studio</h3>
+                <div id="ui-dictionary-table" class="master-list"></div>
+            </div>
+
+            <!-- Master Data Studio -->
+            <div class="card master-studio">
+                <h3 data-ui-key="label_master_studio">Master Data Studio</h3>
                 <div class="studio-actions">
                     <select id="master-domain-selector">
-                        <option value="breed">Breeds</option>
-                        <option value="industry">Industries</option>
+                        <option value="breed" data-ui-key="domain_breed">Breeds</option>
+                        <option value="industry" data-ui-key="domain_industry">Industries</option>
                     </select>
                     <div class="input-group">
-                        <input type="text" id="admin-master-input" placeholder="New Master Item...">
-                        <button id="admin-convert-btn" class="globe-btn">🌐 Add & Translate</button>
+                        <input type="text" id="admin-master-input" data-ui-placeholder="new_item_placeholder">
+                        <button id="admin-convert-btn" class="globe-btn">🌐 <span data-ui-key="btn_add_translate">Add & Translate</span></button>
                     </div>
                 </div>
                 <div id="master-items-table" class="master-list"></div>
@@ -72,32 +79,27 @@
 
         <!-- 2. PROVIDER DASHBOARD -->
         <section id="provider-view" class="role-view hidden">
-            <h2 data-entity-id="m-label-provider">Provider Dashboard</h2>
+            <h2 data-ui-key="role_provider">Provider Dashboard</h2>
             <div class="card registration-form">
-                <h3 data-entity-id="m-label-shop-reg">Shop Registration</h3>
-                
-                <!-- Rule 3: Dropdown from Master Menu -->
+                <h3 data-ui-key="label_shop_reg">Shop Registration</h3>
                 <div class="input-container">
-                    <label>Industry Category</label>
-                    <select id="provider-industry-select" class="dropdown-master">
-                        <!-- Populated via JS from industry master list -->
-                    </select>
+                    <label data-ui-key="label_industry">Industry Category</label>
+                    <select id="provider-industry-select" class="dropdown-master"></select>
                 </div>
-
                 <div class="input-group">
-                    <input type="text" id="provider-shop-input" placeholder="Enter your shop name...">
-                    <button id="provider-convert-btn" class="globe-btn">🌐 Translate</button>
+                    <input type="text" id="provider-shop-input" data-ui-placeholder="shop_name_placeholder">
+                    <button id="provider-convert-btn" class="globe-btn">🌐 <span data-ui-key="btn_translate">Translate</span></button>
                 </div>
                 <div id="provider-conversion-preview" class="hidden">
                     <div id="provider-grid-items" class="conversion-grid"></div>
-                    <button id="save-shop-btn" class="save-btn">Publish Shop Profile</button>
+                    <button id="save-shop-btn" class="save-btn" data-ui-key="btn_publish_shop">Publish Shop Profile</button>
                 </div>
             </div>
         </section>
 
-        <!-- 3. USER DASHBOARD (복구) -->
+        <!-- 3. USER DASHBOARD -->
         <section id="user-view" class="role-view">
-            <h2 data-entity-id="m-label-user">User Timeline</h2>
+            <h2 data-ui-key="label_user_timeline">User Timeline</h2>
             <div id="pet-profile-container"></div>
             <nav class="category-filter" id="user-category-list"></nav>
             <div class="timeline-container">
@@ -110,11 +112,11 @@
     <!-- UNIVERSAL EDITOR MODAL -->
     <div id="universal-modal" class="modal hidden">
         <div class="modal-content card">
-            <h3>🌐 Edit Universal Translations (13 Langs)</h3>
+            <h3 data-ui-key="modal_edit_title">🌐 Edit Universal Translations (13 Langs)</h3>
             <div id="modal-grid-items" class="conversion-grid"></div>
             <div class="modal-footer">
-                <button id="save-modal-btn" class="save-btn">Save Changes</button>
-                <button onclick="document.getElementById('universal-modal').classList.add('hidden')" class="cancel-btn">Cancel</button>
+                <button id="save-modal-btn" class="save-btn" data-ui-key="btn_save_changes">Save Changes</button>
+                <button onclick="document.getElementById('universal-modal').classList.add('hidden')" class="cancel-btn" data-ui-key="btn_cancel">Cancel</button>
             </div>
         </div>
     </div>
