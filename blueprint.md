@@ -1,7 +1,7 @@
-# PawHistory: Global Dog PHR & SNS Platform
+# 방울아놀자: Global Dog PHR & SNS Platform
 
 ## Project Overview
-"PawHistory"는 반려견의 모든 생애 기록(의료, 미용, 호텔, 훈련, 쇼핑)을 타임라인으로 관리하는 SNS형 개인건강기록(PHR) 플랫폼입니다. 
+"방울아놀자"는 반려견의 모든 생애 기록(의료, 미용, 호텔, 훈련, 쇼핑)을 타임라인으로 관리하는 SNS형 개인건강기록(PHR) 플랫폼입니다. 
 
 ## Core Value
 - **Verified Records:** 인증된 기관(병원, 샵 등)만 공식 기록을 남길 수 있는 신뢰성.
