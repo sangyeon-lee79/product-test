@@ -13,6 +13,10 @@
     "filter_training": { "ko": "훈련", "en": "Training", "ja": "訓練", "zh": "训练", "vi": "Huấn luyện", "id": "Pelatihan", "th": "การฝึก", "es": "Entrenamiento", "fr": "Entraînement", "de": "Training", "it": "Addestramento", "pt": "Treinamento", "ar": "تدريب" },
     "filter_shop": { "ko": "쇼핑", "en": "Shop", "ja": "ショップ", "zh": "商店", "vi": "Cửa hàng", "id": "Toko", "th": "ร้านค้า", "es": "Tienda", "fr": "Boutique", "de": "Shop", "it": "Negozio", "pt": "Loja", "ar": "متجر" }
   },
+  "ui": {
+    "add_record": { "ko": "기록 추가", "en": "Add Record", "ja": "記録追加", "zh": "添加记录", "vi": "Thêm bản ghi", "id": "Tambah Catatan", "th": "เพิ่มบันทึก", "es": "Agregar registro", "fr": "Ajouter record", "de": "Eintrag hinzufügen", "it": "Aggiungi record", "pt": "Adicionar registro", "ar": "إضافة سجل" },
+    "save": { "ko": "저장", "en": "Save", "ja": "保存", "zh": "保存", "vi": "Lưu", "id": "Simpan", "th": "บันทึก", "es": "Guardar", "fr": "Sauregistrer", "de": "Speichern", "it": "Salva", "pt": "Salvar", "ar": "حفظ" }
+  },
   "condition": {
     "healthy": {
       "ko": "건강함", "en": "Healthy", "ja": "健康", "zh": "健康", "vi": "Khỏe mạnh", "id": "Sehat", "th": "สุขภาพดี", "es": "Sano", "fr": "Sain", "de": "Gesund", "it": "Sano", "pt": "Saudável", "ar": "صحي"

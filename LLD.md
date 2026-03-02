@@ -30,9 +30,23 @@
 ### Timeline Events
 - `timeline_events`: (id, pet_id, event_type, ref_id, recorded_at)
 
-### Dictionary System
-- `dictionary_entries`: (id, domain, key, code)
-- `dictionary_values`: (id, entry_id, lang_code, value)
+### Text Entity Model (v2)
+- `text_entities`:
+  - `id`: UUID (Primary Key)
+  - `domain`: VARCHAR (pet, shop, feed, etc.)
+  - `owner_type`: ENUM (system, admin, user, provider)
+  - `owner_id`: UUID
+  - `original_text`: TEXT
+  - `original_lang`: VARCHAR(5)
+  - `converted_json`: JSONB (13 languages)
+  - `auto_generated`: BOOLEAN (default: true)
+  - `updated_at`: TIMESTAMP
+
+### Foreign Key Integration
+- `pets.name_text_id` -> `text_entities.id`
+- `shops.name_text_id` -> `text_entities.id`
+- `posts.caption_text_id` -> `text_entities.id`
+- `foods.name_text_id` -> `text_entities.id`
 
 ## 3. API Design (v1)
 

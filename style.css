@@ -55,11 +55,102 @@ main {
     padding: 0 1rem;
 }
 
-/* Pet Profile Card */
-.pet-profile {
+.card {
+    background: var(--card-bg);
+    padding: 1.5rem;
+    border-radius: 20px;
+    border: 1px solid var(--border);
+    box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+}
+
+/* Entry Section */
+.entry-section {
     margin-bottom: 2rem;
 }
 
+.input-group {
+    display: flex;
+    gap: 10px;
+    margin-top: 1rem;
+}
+
+#record-input {
+    flex: 1;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    color: var(--text-main);
+    padding: 0.8rem;
+    border-radius: 12px;
+    font-size: 1rem;
+}
+
+.globe-btn {
+    background: var(--accent);
+    color: white;
+    border: none;
+    padding: 0.8rem;
+    border-radius: 12px;
+    cursor: pointer;
+    font-size: 1.2rem;
+    transition: transform 0.2s;
+}
+
+.globe-btn:hover { transform: scale(1.05); }
+
+/* Conversion Preview Grid */
+#conversion-preview {
+    margin-top: 1.5rem;
+    padding-top: 1.5rem;
+    border-top: 1px solid var(--border);
+}
+
+.grid-header {
+    display: grid;
+    grid-template-columns: 80px 1fr;
+    font-weight: 700;
+    color: var(--text-dim);
+    margin-bottom: 0.5rem;
+    font-size: 0.8rem;
+}
+
+.grid-item {
+    display: grid;
+    grid-template-columns: 80px 1fr;
+    align-items: center;
+    margin-bottom: 0.5rem;
+}
+
+.grid-item span {
+    font-size: 0.8rem;
+    color: var(--text-dim);
+    font-weight: 600;
+}
+
+.grid-item input {
+    background: var(--bg);
+    border: 1px solid var(--border);
+    color: var(--text-main);
+    padding: 0.4rem 0.8rem;
+    border-radius: 8px;
+    font-size: 0.9rem;
+}
+
+#save-record-btn {
+    width: 100%;
+    margin-top: 1.5rem;
+    background: var(--training);
+    color: white;
+    border: none;
+    padding: 0.8rem;
+    border-radius: 12px;
+    font-weight: 700;
+    cursor: pointer;
+}
+
+.hidden { display: none; }
+
+/* Existing Styles... */
+.pet-profile { margin-bottom: 2rem; }
 .profile-card {
     background: var(--card-bg);
     padding: 2rem;
@@ -68,128 +159,24 @@ main {
     align-items: center;
     gap: 2rem;
     border: 1px solid var(--border);
-    box-shadow: 0 15px 35px rgba(0,0,0,0.2);
 }
-
-.profile-img img {
-    width: 100px;
-    height: 100px;
-    border-radius: 30px;
-    object-fit: cover;
-    border: 3px solid var(--accent);
-}
-
-.profile-info h2 { font-size: 1.8rem; margin-bottom: 0.5rem; }
-.profile-info p { color: var(--text-dim); }
-
-/* Category Filter */
-.category-filter {
-    display: flex;
-    gap: 0.5rem;
-    overflow-x: auto;
-    padding-bottom: 1rem;
-    margin-bottom: 2rem;
-}
-
-.category-filter::-webkit-scrollbar { display: none; }
-
-.category-filter button {
-    background: var(--card-bg);
-    border: 1px solid var(--border);
-    color: var(--text-dim);
-    padding: 0.6rem 1.2rem;
-    border-radius: 12px;
-    cursor: pointer;
-    white-space: nowrap;
-    transition: all 0.2s;
-    font-weight: 600;
-}
-
-.category-filter button.active {
-    background: var(--accent);
-    color: white;
-    border-color: var(--accent);
-}
-
-/* Timeline UI */
-.timeline-container {
-    position: relative;
-    padding-left: 2rem;
-}
-
-.timeline-line {
-    position: absolute;
-    left: 7px;
-    top: 0;
-    bottom: 0;
-    width: 2px;
-    background: var(--border);
-}
-
-.timeline-event {
-    position: relative;
-    margin-bottom: 2rem;
-}
-
-.timeline-dot {
-    position: absolute;
-    left: -22px;
-    top: 5px;
-    width: 16px;
-    height: 16px;
-    border-radius: 50%;
-    background: var(--bg);
-    border: 3px solid var(--accent);
-    z-index: 2;
-}
-
-.timeline-card {
-    background: var(--card-bg);
-    padding: 1.5rem;
-    border-radius: 20px;
-    border: 1px solid var(--border);
-}
-
-.event-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 0.8rem;
-}
-
+.profile-img img { width: 100px; height: 100px; border-radius: 30px; object-fit: cover; border: 3px solid var(--accent); }
+.category-filter { display: flex; gap: 0.5rem; overflow-x: auto; padding-bottom: 1rem; margin-bottom: 2rem; }
+.category-filter button { background: var(--card-bg); border: 1px solid var(--border); color: var(--text-dim); padding: 0.6rem 1.2rem; border-radius: 12px; cursor: pointer; white-space: nowrap; font-weight: 600; }
+.category-filter button.active { background: var(--accent); color: white; border-color: var(--accent); }
+.timeline-container { position: relative; padding-left: 2rem; }
+.timeline-line { position: absolute; left: 7px; top: 0; bottom: 0; width: 2px; background: var(--border); }
+.timeline-event { position: relative; margin-bottom: 2rem; }
+.timeline-dot { position: absolute; left: -22px; top: 5px; width: 16px; height: 16px; border-radius: 50%; background: var(--bg); border: 3px solid var(--accent); z-index: 2; }
+.timeline-card { background: var(--card-bg); padding: 1.5rem; border-radius: 20px; border: 1px solid var(--border); }
+.event-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.8rem; }
 .event-date { font-size: 0.8rem; color: var(--text-dim); }
-
-.verified-badge {
-    font-size: 0.7rem;
-    background: rgba(124, 77, 255, 0.1);
-    color: var(--accent);
-    padding: 2px 8px;
-    border-radius: 4px;
-    border: 1px solid var(--accent);
-}
-
+.verified-badge { font-size: 0.7rem; background: rgba(124, 77, 255, 0.1); color: var(--accent); padding: 2px 8px; border-radius: 4px; border: 1px solid var(--accent); }
 .event-source { margin-top: 1rem; font-size: 0.85rem; color: var(--text-dim); }
-
-/* Category Colors */
 .event-medical .timeline-dot { border-color: var(--medical); }
 .event-grooming .timeline-dot { border-color: var(--grooming); }
 .event-hotel .timeline-dot { border-color: var(--hotel); }
 .event-training .timeline-dot { border-color: var(--training); }
 .event-shop .timeline-dot { border-color: var(--shop); }
-
-.header-actions { display: flex; gap: 10px; }
-#lang-selector {
-    background: var(--card-bg);
-    color: var(--text-main);
-    border: 1px solid var(--border);
-    padding: 0.4rem;
-    border-radius: 10px;
-}
-#theme-toggle {
-    background: var(--card-bg);
-    border: 1px solid var(--border);
-    color: var(--text-main);
-    cursor: pointer;
-    border-radius: 10px;
-    padding: 0 0.5rem;
-}
+#lang-selector { background: var(--card-bg); color: var(--text-main); border: 1px solid var(--border); padding: 0.4rem; border-radius: 10px; }
+#theme-toggle { background: var(--card-bg); border: 1px solid var(--border); color: var(--text-main); cursor: pointer; border-radius: 10px; padding: 0 0.5rem; }

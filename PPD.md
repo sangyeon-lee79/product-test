@@ -1,9 +1,10 @@
 # PPD.md - Product Definition & UX Flows (방울아놀자)
 
 ## 1. Product Principle
-- **Pet-Centricity:** 사용자 계정이 아닌 '반려견(Pet)'을 모든 기록의 최상위 엔티티로 설정.
+- **Pet-Centricity:** 모든 기록의 최상위 엔티티는 '반려견'임.
+- **Universal Text Conversion v2:** UI 레이블뿐만 아니라 사용자가 입력한 모든 텍스트(강아지 이름, 샵 이름, 피드 내용 등)를 13개 국어로 변환 및 관리.
 - **SNS-style Feed Timeline:** 의료, 미용 등 모든 기록을 SNS 피드 형식의 시각적 타임라인으로 제공.
-- **Structured Data:** 자유 텍스트 입력을 지양하고 모든 질병, 사료, 증상을 코드로 관리.
+- **Structured Data:** 자유 텍스트 입력을 지양하되, 입력된 텍스트는 즉시 언어 변환 엔티티화함.
 
 ## 2. User Roles & Account
 - **USER:** 반려견 소유자. 여러 마리의 반려견 등록 가능.
@@ -21,9 +22,11 @@
 ### Flow 3: 그루밍 샵 루프 (Phase 4)
 - [Booking] 사용자가 샵 선택 및 예약 -> [Permission] 샵에 반려견 정보(일부) 노출 -> [Execution] 서비스 완료 -> [Verified-Log] 샵 계정으로 타임라인에 공식 기록 등록.
 
-## 4. Language System UX
-- 모든 UI 요소는 `t(domain, key)`를 통해 13개 국어(ko, en, vi, id, ja, zh, th, es, fr, de, it, pt, ar)로 자동 변환되어 노출.
-- 사용자는 타국 사용자의 기록도 자신의 언어로 번역된 형태로 조회.
+## 4. Language System UX (v2 Upgrade)
+- **🌐 Conversion Button:** 텍스트 입력 시 사용자는 언어 변환 버튼을 클릭하여 13개 국어 변환 결과를 확인하고 편집할 수 있음.
+- **Ownership:** 데이터 소유자(사용자/업체) 및 관리자(Admin)는 변환된 텍스트 값을 직접 수정 가능.
+- **Auto-Generated Flag:** 시스템 생성 번역과 수동 수정 번역을 구분하여 관리.
+- 모든 UI 요소 및 데이터 텍스트는 13개 국어(ko, en, vi, id, ja, zh, th, es, fr, de, it, pt, ar)로 노출.
 
 ## 5. Structured Inputs
 - 질병 리스트: 사전 정의된 코드셋에서 선택.

@@ -29,17 +29,34 @@
             <button id="theme-toggle" aria-label="Toggle Theme">🌓</button>
         </div>
     </header>
+<main>
+    <!-- Pet Profile Card (SNS Style) -->
+    <section class="pet-profile">
+        <div id="pet-profile-container">
+            <!-- main.js에서 렌더링 -->
+        </div>
+    </section>
 
-    <main>
-        <!-- Pet Profile Card (SNS Style) -->
-        <section class="pet-profile">
-            <div id="pet-profile-container">
-                <!-- main.js에서 렌더링 -->
+    <!-- Rule 2: Universal Language Conversion Entry (New) -->
+    <section class="entry-section card">
+        <h3 data-t-domain="ui" data-t-key="add_record">기록 추가</h3>
+        <div class="input-group">
+            <input type="text" id="record-input" placeholder="기록을 입력하세요 (예: 미용 했어요)">
+            <button id="convert-btn" class="globe-btn">🌐</button>
+        </div>
+        <!-- Conversion Preview Grid (Editable) -->
+        <div id="conversion-preview" class="hidden">
+            <div class="grid-header">
+                <span>Lang</span><span>Value (Editable)</span>
             </div>
-        </section>
+            <div id="conversion-grid-items"></div>
+            <button id="save-record-btn" data-t-domain="ui" data-t-key="save">저장</button>
+        </div>
+    </section>
 
-        <!-- Category Filter (SNS Style) -->
-        <nav class="category-filter">
+    <!-- Category Filter (SNS Style) -->
+    <nav class="category-filter">
+...
             <button class="active" data-category="all" data-t-domain="pet" data-t-key="filter_all">All</button>
             <button data-category="medical" data-t-domain="pet" data-t-key="filter_medical">Medical</button>
             <button data-category="grooming" data-t-domain="pet" data-t-key="filter_grooming">Grooming</button>
