@@ -38,92 +38,25 @@
 
         <!-- 1. MASTER ADMIN DASHBOARD -->
         <section id="admin-view" class="role-view hidden">
-            <h2 data-ui-key="menu_admin_control">Master Admin Control</h2>
-            <div class="stats-grid">
-                <div class="stat-card">
-                    <span class="label" data-ui-key="stat_total_users">Total Users</span>
-                    <span class="value">1,240</span>
-                </div>
-                <div class="stat-card">
-                    <span class="label" data-ui-key="stat_total_pets">Total Pets</span>
-                    <span class="value">850</span>
-                </div>
-                <div class="stat-card">
-                    <span class="label" data-ui-key="stat_total_bookings">Bookings</span>
-                    <span class="value">320</span>
-                </div>
-            </div>
-
-            <!-- UI Dictionary Studio -->
+            <h2 data-ui-key="role_admin">Master Admin Control</h2>
             <div class="card master-studio">
                 <h3 data-ui-key="label_ui_dictionary">UI Dictionary Studio</h3>
-                
-                <div class="studio-filters">
-                    <div class="view-mode-toggle">
-                        <label>
-                            <input type="radio" name="ui-view-mode" value="all" checked>
-                            <span data-ui-key="view_mode_all">All Keys</span>
-                        </label>
-                        <label>
-                            <input type="radio" name="ui-view-mode" value="page">
-                            <span data-ui-key="view_mode_page">By Page</span>
-                        </label>
-                    </div>
-                    
-                    <select id="ui-page-selector" class="hidden">
-                        <!-- Pages will be populated via JS -->
-                    </select>
-                </div>
-
                 <div id="ui-dictionary-table" class="master-list"></div>
-            </div>
-
-            <!-- Master Data Studio -->
-            <div class="card master-studio">
-                <h3 data-ui-key="label_master_studio">Master Data Studio</h3>
-                <div class="studio-actions">
-                    <select id="master-domain-selector">
-                        <option value="breed" data-ui-key="domain_breed">Breeds</option>
-                        <option value="industry" data-ui-key="domain_industry">Industries</option>
-                    </select>
-                    <div class="input-group">
-                        <input type="text" id="admin-master-input" data-ui-placeholder="new_item_placeholder">
-                        <button id="admin-convert-btn" class="globe-btn">🌐 <span data-ui-key="btn_add_translate">Add & Translate</span></button>
-                    </div>
-                </div>
-                <div id="master-items-table" class="master-list"></div>
             </div>
         </section>
 
-        <!-- 2. PROVIDER DASHBOARD -->
+        <!-- 2. PROVIDER DASHBOARD (Fixed Flow) -->
         <section id="provider-view" class="role-view hidden">
-            <h2 data-ui-key="role_provider">Provider Dashboard</h2>
-            <div class="card registration-form">
-                <h3 data-ui-key="label_shop_reg">Shop Registration</h3>
-                <div class="input-container">
-                    <label data-ui-key="label_industry">Industry Category</label>
-                    <select id="provider-industry-select" class="dropdown-master"></select>
-                </div>
-                <div class="input-group">
-                    <input type="text" id="provider-shop-input" data-ui-placeholder="shop_name_placeholder">
-                    <button id="provider-convert-btn" class="globe-btn">🌐 <span data-ui-key="btn_translate">Translate</span></button>
-                </div>
-                <div id="provider-conversion-preview" class="hidden">
-                    <div id="provider-grid-items" class="conversion-grid"></div>
-                    <button id="save-shop-btn" class="save-btn" data-ui-key="btn_publish_shop">Publish Shop Profile</button>
-                </div>
+            <h2 data-ui-key="label_shop_profile">Shop Profile Management</h2>
+            <div id="provider-profile-area">
+                <!-- Dynamically rendered: List -> Create -> Detail/Edit -->
             </div>
         </section>
 
         <!-- 3. USER DASHBOARD -->
         <section id="user-view" class="role-view">
             <h2 data-ui-key="label_user_timeline">User Timeline</h2>
-            <div id="pet-profile-container"></div>
-            <nav class="category-filter" id="user-category-list"></nav>
-            <div class="timeline-container">
-                <div class="timeline-line"></div>
-                <div id="timeline-feed"></div>
-            </div>
+            <div id="timeline-feed"></div>
         </section>
     </main>
 

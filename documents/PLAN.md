@@ -27,22 +27,21 @@
 - [ ] Ranking Algorithm Implementation (관심사/Engagement 기반)
 
 ### Phase 4: Provider System & Commerce (Updated)
-- [ ] **Provider Profile:** Store setup (Country/Currency/Industry mapping)
+- [ ] **Provider Profile Fix:** "List First, Then Edit" pattern implementation.
+- [ ] **Store Setup:** Country -> Currency mapping & Multi-select Industries.
 - [ ] **Master Products:** Admin creates master catalog (Global)
 - [ ] **Store Inventory:** Provider selects products & sets price/stock
 - [ ] **Service Management:** Provider creates industry-scoped services
 - [ ] **Reservations:** Booking flow with Calendar & Status management
 - [ ] **Promotions:** Discount system & SNS promotion posts
-- [ ] **Pet Data Access:** Industry-based permission logic (Reservation-time view)
 
 ### Phase 5: Safety & Optimization
-- [ ] Admin Monitoring Tools (부적절 콘텐츠 관리)
+- [ ] Admin Monitoring Tools
 - [ ] Data Validation & Security Hardening
-- [ ] Performance Tuning (Cloudflare Workers 최적화)
+- [ ] Performance Tuning
 
 ## 3. Definitions of Done (DoD)
 - 기능 구현 및 Playwright 테스트 통과
-- PLAN.md / PPD.md / LLD.md 업데이트 완료
+- documents/ 내의 PLAN.md / PRD.md / LLD.md 업데이트 완료
+- "List First, Then Edit" UI 패턴 준수 여부 확인
 - 모든 텍스트의 13개 국어 호환성 확인
-- 하드코딩된 문자열 제거 확인
-- 페이지별 UI 키 필터링 및 현재 언어 표시 확인
