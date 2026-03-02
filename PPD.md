@@ -3,25 +3,23 @@
 ## 1. Product Principle
 - **Pet-Centricity:** 모든 데이터의 중심은 '반려견'임.
 - **Global Text System Separation:** 플랫폼의 모든 텍스트는 3가지 소스(UI Dictionary, Master Data, Data Text Entity)로 엄격히 분리되어 관리됨.
-- **Hard-code Prohibition:** 시스템 전체에서 하드코딩된 문자열 사용을 금지하며, 모든 문구는 다국어 엔진을 거쳐 렌더링됨.
-- **Universal Edit Rule:** 관리자는 시스템의 모든 요소(UI 문구 포함)를 실시간으로 수정 및 번역할 수 있음.
+- **Page-based UI Management:** UI 키를 페이지 단위로 그룹화하여 관리 효율성을 높임.
+- **Hard-code Prohibition:** 시스템 전체에서 하드코딩된 문자열 사용을 금지함.
 
 ## 2. User Roles & Account
-- **ADMIN:** UI Dictionary, 마스터 데이터, 시스템 메뉴 관리. 전 영역 수정 권한 보유.
+- **ADMIN:** UI Dictionary(페이지별 관리 포함), 마스터 데이터, 시스템 메뉴 관리.
 - **PROVIDER (Shop/Hospital):** 자신의 업체 정보를 등록하고 서비스를 제공.
 - **USER (Owner):** 반려동물을 등록하고 타임라인을 소비.
 
 ## 3. Core UX Flows (Updated)
 
 ### Flow 1: UI Dictionary 관리 (Admin)
-- [Admin-View] UI 문구(예: '저장', '취소') 수정 -> [Global-Sync] 모든 대시보드의 버튼 문구 즉시 반영.
+- [Admin-View] 보기 모드 전환(전체/페이지별) -> [Page-Select] 특정 페이지 선택 시 관련 키만 필터링 -> [Key-List] 키 옆에 현재 언어 표시값 확인 -> [📝 Edit] 수정 모달 오픈.
 
 ### Flow 2: 마스터 데이터 및 드롭다운
-- [Admin] 마스터 항목(품종 등) 등록 -> [User/Provider] 드롭다운에서 번역된 마스터 항목 선택 사용.
-
-### Flow 3: 개인 데이터 등록
-- [Owner/Shop] 텍스트 입력(샵명 등) -> [Text-Entity] 자동 번역 및 13개 국어 엔티티 생성 -> [Feed] 다른 유저에게 번역된 상태로 노출.
+... (기존 내용)
 
 ## 4. Language System UX
-- **Triple-Source Rendering:** `t(source, key)` 함수를 통해 소스별(UI/Master/Entity) 텍스트를 정합성 있게 출력.
-- **Universal Editor Modal:** 모든 소스의 텍스트를 수정할 수 있는 공통 편집 인터페이스 제공.
+- **Triple-Source Rendering:** `t(source, key)` 함수 사용.
+- **Current Lang Visibility:** UI 사전 관리 목록에서 현재 언어 기준 번역값을 즉시 확인 가능.
+- **Universal Editor Modal:** 페이지 정보 및 13개 국어 편집 기능 제공.

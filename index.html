@@ -54,9 +54,27 @@
                 </div>
             </div>
 
-            <!-- UI Dictionary Studio (New) -->
+            <!-- UI Dictionary Studio -->
             <div class="card master-studio">
                 <h3 data-ui-key="label_ui_dictionary">UI Dictionary Studio</h3>
+                
+                <div class="studio-filters">
+                    <div class="view-mode-toggle">
+                        <label>
+                            <input type="radio" name="ui-view-mode" value="all" checked>
+                            <span data-ui-key="view_mode_all">All Keys</span>
+                        </label>
+                        <label>
+                            <input type="radio" name="ui-view-mode" value="page">
+                            <span data-ui-key="view_mode_page">By Page</span>
+                        </label>
+                    </div>
+                    
+                    <select id="ui-page-selector" class="hidden">
+                        <!-- Pages will be populated via JS -->
+                    </select>
+                </div>
+
                 <div id="ui-dictionary-table" class="master-list"></div>
             </div>
 

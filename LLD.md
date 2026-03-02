@@ -2,29 +2,28 @@
 
 ## 1. System Architecture
 - **Text Management:** 3-Tier Separation (UI / Master / Entity)
-- **Frontend:** Data-driven UI (No hardcoded strings)
+- **UI Management:** Page-based filtering & mapping
 
 ## 2. Database Schema (v2 Core)
 
-### A) UI Dictionary
-- `ui_dictionary_keys`: (id, key, domain, description)
+### A) UI Dictionary (Expanded)
+- `ui_dictionary_keys`: 
+  - `id`: UUID
+  - `key`: VARCHAR
+  - `domain`: VARCHAR
+  - `description`: TEXT
 - `ui_dictionary_values`: (key_id, language, value)
-
-### B) Master Data
-- `master_domains`: (id, name)
-- `master_items`: (id, domain_id, code, status, order)
-- `master_item_values`: (item_id, language, value)
-
-### C) Text Entities (Data Text)
-- `text_entities`: (id, domain, original_text, original_lang, converted_json)
+- `ui_dictionary_key_pages`: (id, key_id, page) -> 페이지-키 매핑 테이블
 
 ## 3. Implementation Logic
 
 ### Universal Translation Function `t(source, key, id)`
-1. `source === 'ui'`: `ui_dictionary`에서 검색.
-2. `source === 'master'`: `master_item_values`에서 검색.
-3. `source === 'entity'`: `text_entities`에서 검색.
+... (기존 내용)
+
+### UI Dictionary Page Management
+- **Page Enum:** `index`, `login`, `signup`, `dashboard_user`, `dashboard_provider`, `dashboard_admin`, `pet_profile`, `settings`, `feed`, `reservation`, `shop_profile`
+- **Current Value Priority:** 1. 해당 언어 번역값 -> 2. 기본 언어값 (ko) -> 3. "—"
 
 ## 4. UI Rendering Rule
-- `index.html` 내의 모든 텍스트 노드는 `data-ui-key` 혹은 `data-entity-id` 속성을 가져야 함.
-- 페이지 로드 및 언어 변경 시 해당 속성을 가진 요소의 텍스트가 자동으로 업데이트됨.
+- `data-ui-key` 속성을 통해 페이지별 키 식별.
+- `renderAll()` 실행 시 현재 보기 모드에 따라 UI 사전 목록 재생성.

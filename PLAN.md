@@ -18,6 +18,7 @@
 - [O] Distributed API Model (개인 API 연동)
 - [O] Master Menu & Dropdown System (마스터 데이터 기반 선택 시스템)
 - [O] Global Text System Separation (UI Dictionary / Master Data / Text Entities 분리)
+- [ ] UI Dictionary Page-based Management (페이지별 UI 키 관리 기능 추가)
 - [O] Admin Dashboard (플랫폼 지표 모니터링)
 
 ### Phase 3: SNS Integration (Next)
@@ -40,3 +41,4 @@
 - PLAN.md / PPD.md / LLD.md 업데이트 완료
 - 모든 텍스트의 13개 국어 호환성 확인
 - 하드코딩된 문자열 제거 확인
+- 페이지별 UI 키 필터링 및 현재 언어 표시 확인

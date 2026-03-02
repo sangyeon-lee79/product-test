@@ -1,51 +1,67 @@
-// 방울아놀자 Global Text System: UI Dictionary + Master Data + Text Entity Separation
+// 방울아놀자 Global Text System: UI Dictionary Page Management
 let uiDictionary = {};
+let uiKeyPages = {}; // { key: [page1, page2] }
 let masterRegistry = { breed: [], industry: [] };
 let textEntities = {};
 let currentLang = localStorage.getItem('lang') || 'ko';
 let currentRole = 'user';
+let uiViewMode = 'all'; // 'all' or 'page'
+let selectedUIPage = 'index';
 
 const LANGS = ['ko', 'en', 'ja', 'vi', 'id', 'zh', 'th', 'es', 'fr', 'de', 'it', 'pt', 'ar'];
+const PAGES = ['index', 'login', 'signup', 'dashboard_user', 'dashboard_provider', 'dashboard_admin', 'pet_profile', 'settings', 'feed', 'reservation', 'shop_profile'];
 
 async function initSystem() {
-    // Load UI Dictionary from separate source or initial seed
     uiDictionary = {
-        'app_title': { ko: '방울아놀자 - Global Pet Platform', en: 'Bang-ul Play - Global Pet Platform' },
+        'app_title': { ko: '방울아놀자 - Global Pet Platform', en: 'Bang-ul Play' },
         'app_logo': { ko: '방울아놀자', en: 'Bang-ul Play' },
         'role_user': { ko: '유저 대시보드', en: 'User Dashboard' },
         'role_provider': { ko: '공급자 대시보드', en: 'Provider Dashboard' },
         'role_admin': { ko: '마스터 관리 제어', en: 'Master Admin Control' },
         'settings_title': { ko: '개인 번역 설정', en: 'Personal Translation Settings' },
-        'api_key_placeholder': { ko: '구글 API 키를 입력하세요', en: 'Enter your Google Cloud API Key' },
+        'api_key_placeholder': { ko: '구글 API 키를 입력하세요', en: 'Enter API Key' },
         'btn_save': { ko: '저장', en: 'Save' },
-        'menu_admin_control': { ko: '마스터 관리 센터', en: 'Master Control Center' },
-        'stat_total_users': { ko: '총 사용자', en: 'Total Users' },
-        'stat_total_pets': { ko: '등록된 반려동물', en: 'Total Pets' },
-        'stat_total_bookings': { ko: '예약 건수', en: 'Total Bookings' },
         'label_ui_dictionary': { ko: 'UI 사전 스튜디오', en: 'UI Dictionary Studio' },
+        'view_mode_all': { ko: '전체 UI 키', en: 'All UI Keys' },
+        'view_mode_page': { ko: '페이지별', en: 'By Page' },
         'label_master_studio': { ko: '마스터 데이터 스튜디오', en: 'Master Data Studio' },
         'domain_breed': { ko: '품종', en: 'Breeds' },
         'domain_industry': { ko: '업종', en: 'Industries' },
-        'new_item_placeholder': { ko: '새 항목 이름...', en: 'New Item Name...' },
         'btn_add_translate': { ko: '추가 및 번역', en: 'Add & Translate' },
-        'label_shop_reg': { ko: '업체 프로필 등록', en: 'Shop Profile Registration' },
-        'label_industry': { ko: '업종 카테고리', en: 'Industry Category' },
-        'shop_name_placeholder': { ko: '샵 이름을 입력하세요', en: 'Enter your shop name...' },
-        'btn_translate': { ko: '번역하기', en: 'Translate' },
-        'btn_publish_shop': { ko: '샵 프로필 공개', en: 'Publish Shop Profile' },
-        'label_user_timeline': { ko: '반려견 생애 타임라인', en: 'Pet Life Timeline' },
-        'modal_edit_title': { ko: '🌐 범용 번역 편집 (13개 국어)', en: '🌐 Edit Universal Translations' },
-        'btn_save_changes': { ko: '변경사항 저장', en: 'Save Changes' },
+        'label_shop_reg': { ko: '샵 등록', en: 'Shop Registration' },
+        'label_industry': { ko: '업종', en: 'Industry' },
+        'btn_translate': { ko: '번역', en: 'Translate' },
+        'btn_publish_shop': { ko: '공개', en: 'Publish' },
+        'label_user_timeline': { ko: '타임라인', en: 'Timeline' },
+        'modal_edit_title': { ko: '🌐 번역 편집', en: '🌐 Edit Translations' },
+        'btn_save_changes': { ko: '저장', en: 'Save' },
         'btn_cancel': { ko: '취소', en: 'Cancel' }
+    };
+
+    // Initial Page Mapping (Rule 5 & 9)
+    uiKeyPages = {
+        'app_title': ['index', 'login'],
+        'app_logo': ['index'],
+        'role_user': ['index'],
+        'role_provider': ['index'],
+        'role_admin': ['index'],
+        'settings_title': ['settings'],
+        'btn_save': ['settings', 'dashboard_provider', 'dashboard_admin']
     };
 
     seedInitialMasterData();
     setupEventListeners();
+    populatePageSelector();
     renderAll();
 }
 
+function populatePageSelector() {
+    const selector = document.getElementById('ui-page-selector');
+    selector.innerHTML = PAGES.map(p => `<option value="${p}">${p}</option>`).join('');
+    selector.value = selectedUIPage;
+}
+
 function seedInitialMasterData() {
-    // Master Items (Source: Master Data)
     registerMasterItem('industry', 'Hospital', { ko: '동물병원', en: 'Animal Hospital' });
     registerMasterItem('breed', 'Golden Retriever', { ko: '골든 리트리버', en: 'Golden Retriever' });
 }
@@ -56,10 +72,12 @@ function registerMasterItem(domain, original, translations) {
     masterRegistry[domain].push(id);
 }
 
-// 🌐 Unified Translation Engine
 function t(source, key, id = null) {
     if (source === 'ui') {
-        return uiDictionary[key] ? (uiDictionary[key][currentLang] || uiDictionary[key]['en']) : key;
+        const entry = uiDictionary[key];
+        if (!entry) return key;
+        // Priority Rule (Rule 10): 1. Target -> 2. KO -> 3. "-"
+        return entry[currentLang] || entry['ko'] || '—';
     }
     if (id && textEntities[id]) {
         return textEntities[id].converted_json[currentLang] || textEntities[id].original_text;
@@ -90,6 +108,7 @@ function openUniversalEditor(source, key, id = null) {
 }
 
 function setupEventListeners() {
+    // Role & Lang
     document.getElementById('role-selector').addEventListener('change', (e) => {
         currentRole = e.target.value;
         document.querySelectorAll('.role-view').forEach(v => v.classList.add('hidden'));
@@ -102,16 +121,27 @@ function setupEventListeners() {
         renderAll();
     });
 
+    // View Mode Toggle (Rule 4)
+    document.querySelectorAll('input[name="ui-view-mode"]').forEach(radio => {
+        radio.addEventListener('change', (e) => {
+            uiViewMode = e.target.value;
+            document.getElementById('ui-page-selector').classList.toggle('hidden', uiViewMode === 'all');
+            renderAll();
+        });
+    });
+
+    document.getElementById('ui-page-selector').addEventListener('change', (e) => {
+        selectedUIPage = e.target.value;
+        renderAll();
+    });
+
     // Admin: Master Item Add
     document.getElementById('admin-convert-btn').addEventListener('click', async () => {
         const input = document.getElementById('admin-master-input');
         const domain = document.getElementById('master-domain-selector').value;
         if (!input.value.trim()) return;
-        
-        // Mock translation
         const converted = {};
         LANGS.forEach(l => converted[l] = l === currentLang ? input.value : `${input.value} [${l.toUpperCase()}]`);
-        
         registerMasterItem(domain, input.value, converted);
         input.value = '';
         renderAll();
@@ -119,44 +149,44 @@ function setupEventListeners() {
 }
 
 function renderAll() {
-    // 1. Render all UI strings
+    // 1. Static UI Sync
     document.querySelectorAll('[data-ui-key]').forEach(el => {
         const key = el.getAttribute('data-ui-key');
         el.innerHTML = `${t('ui', key)} <button class="mini-edit-btn" onclick="openUniversalEditor('ui', '${key}')">📝</button>`;
     });
 
-    // 2. Update Placeholders
-    document.querySelectorAll('[data-ui-placeholder]').forEach(el => {
-        el.placeholder = t('ui', el.getAttribute('data-ui-placeholder'));
-    });
-
-    // 3. Admin: Master List
+    // 2. UI Dictionary Table (Rule 2, 3, 7)
     if (currentRole === 'admin') {
+        const table = document.getElementById('ui-dictionary-table');
+        let keys = Object.keys(uiDictionary);
+        
+        if (uiViewMode === 'page') {
+            keys = keys.filter(k => uiKeyPages[k] && uiKeyPages[k].includes(selectedUIPage));
+        }
+
+        table.innerHTML = keys.map(key => `
+            <div class="table-row">
+                <span class="key-name">${key}</span>
+                <span class="current-val">[${t('ui', key)}]</span>
+                <button onclick="openUniversalEditor('ui', '${key}')">Edit UI</button>
+            </div>
+        `).join('') || '<p style="padding:20px; color:var(--text-dim)">No keys mapped to this page.</p>';
+
+        // Master Data Table
         const domain = document.getElementById('master-domain-selector').value;
-        const table = document.getElementById('master-items-table');
-        table.innerHTML = masterRegistry[domain].map(id => `
+        const masterTable = document.getElementById('master-items-table');
+        masterTable.innerHTML = masterRegistry[domain].map(id => `
             <div class="table-row">
                 <span>${t('master', '', id)}</span>
                 <button onclick="openUniversalEditor('master', '', '${id}')">🌐 Edit</button>
             </div>
         `).join('');
-
-        // UI Dictionary Table (New)
-        const uiTable = document.getElementById('ui-dictionary-table');
-        uiTable.innerHTML = Object.keys(uiDictionary).slice(0, 10).map(key => `
-            <div class="table-row">
-                <span>${key}</span>
-                <button onclick="openUniversalEditor('ui', '${key}')">🌐 Edit UI</button>
-            </div>
-        `).join('') + '<p style="padding:10px; font-size:0.8rem">Showing top 10 keys...</p>';
     }
 
-    // 4. Provider: Industry Dropdown
+    // Provider & User view logic...
     if (currentRole === 'provider') {
         const select = document.getElementById('provider-industry-select');
-        select.innerHTML = masterRegistry.industry.map(id => `
-            <option value="${id}">${t('master', '', id)}</option>
-        `).join('');
+        select.innerHTML = masterRegistry.industry.map(id => `<option value="${id}">${t('master', '', id)}</option>`).join('');
     }
 }
 
