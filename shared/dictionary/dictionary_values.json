@@ -1,0 +1,27 @@
+{
+  "pet": {
+    "breed_golden_retriever": {
+      "ko": "골든 리트리버",
+      "en": "Golden Retriever",
+      "ja": "ゴールデンレトリバー",
+      "zh": "金毛寻回犬",
+      "vi": "Chó săn lông vàng",
+      "id": "Golden Retriever",
+      "th": "โกลเด้น รีทรีฟเวอร์",
+      "es": "Golden Retriever",
+      "fr": "Golden Retriever",
+      "de": "Golden Retriever",
+      "it": "Golden Retriever",
+      "pt": "Golden Retriever",
+      "ar": "جولدن ريتريفر"
+    },
+    "sex_male": {
+      "ko": "수컷", "en": "Male", "ja": "オス", "zh": "公", "vi": "Đực", "id": "Jantan", "th": "ตัวผู้", "es": "Macho", "fr": "Mâle", "de": "Männlich", "it": "Maschio", "pt": "Macho", "ar": "ذكر"
+    }
+  },
+  "condition": {
+    "healthy": {
+      "ko": "건강함", "en": "Healthy", "ja": "健康", "zh": "健康", "vi": "Khỏe mạnh", "id": "Sehat", "th": "สุขภาพดี", "es": "Sano", "fr": "Sain", "de": "Gesund", "it": "Sano", "pt": "Saudável", "ar": "صحي"
+    }
+  }
+}
