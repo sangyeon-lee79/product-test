@@ -23,7 +23,7 @@ body.light-mode {
 body {
     background-color: var(--bg);
     color: var(--text-main);
-    font-family: 'Poppins', -apple-system, sans-serif;
+    font-family: 'Poppins', 'Noto Sans KR', sans-serif;
     margin: 0;
     transition: all 0.3s ease;
 }
@@ -55,19 +55,61 @@ main {
     padding: 0 1rem;
 }
 
-/* Pet Header */
-.pet-card {
-    background: var(--card-bg);
-    padding: 2.5rem;
-    border-radius: 30px;
-    text-align: center;
-    border: 1px solid var(--border);
-    box-shadow: 0 20px 40px rgba(0,0,0,0.3);
+/* Pet Profile Card */
+.pet-profile {
     margin-bottom: 2rem;
 }
 
-.pet-card h2 { font-size: 2.2rem; margin-bottom: 0.5rem; }
-.pet-card p { color: var(--text-dim); }
+.profile-card {
+    background: var(--card-bg);
+    padding: 2rem;
+    border-radius: 24px;
+    display: flex;
+    align-items: center;
+    gap: 2rem;
+    border: 1px solid var(--border);
+    box-shadow: 0 15px 35px rgba(0,0,0,0.2);
+}
+
+.profile-img img {
+    width: 100px;
+    height: 100px;
+    border-radius: 30px;
+    object-fit: cover;
+    border: 3px solid var(--accent);
+}
+
+.profile-info h2 { font-size: 1.8rem; margin-bottom: 0.5rem; }
+.profile-info p { color: var(--text-dim); }
+
+/* Category Filter */
+.category-filter {
+    display: flex;
+    gap: 0.5rem;
+    overflow-x: auto;
+    padding-bottom: 1rem;
+    margin-bottom: 2rem;
+}
+
+.category-filter::-webkit-scrollbar { display: none; }
+
+.category-filter button {
+    background: var(--card-bg);
+    border: 1px solid var(--border);
+    color: var(--text-dim);
+    padding: 0.6rem 1.2rem;
+    border-radius: 12px;
+    cursor: pointer;
+    white-space: nowrap;
+    transition: all 0.2s;
+    font-weight: 600;
+}
+
+.category-filter button.active {
+    background: var(--accent);
+    color: white;
+    border-color: var(--accent);
+}
 
 /* Timeline UI */
 .timeline-container {
@@ -86,8 +128,7 @@ main {
 
 .timeline-event {
     position: relative;
-    margin-bottom: 2.5rem;
-    animation: fadeIn 0.5s ease forwards;
+    margin-bottom: 2rem;
 }
 
 .timeline-dot {
@@ -107,7 +148,6 @@ main {
     padding: 1.5rem;
     border-radius: 20px;
     border: 1px solid var(--border);
-    box-shadow: 0 10px 20px rgba(0,0,0,0.1);
 }
 
 .event-header {
@@ -128,15 +168,7 @@ main {
     border: 1px solid var(--accent);
 }
 
-.event-content { font-size: 1rem; line-height: 1.6; }
-.event-source { 
-    margin-top: 1rem; 
-    font-size: 0.85rem; 
-    color: var(--text-secondary); 
-    display: flex;
-    align-items: center;
-    gap: 5px;
-}
+.event-source { margin-top: 1rem; font-size: 0.85rem; color: var(--text-dim); }
 
 /* Category Colors */
 .event-medical .timeline-dot { border-color: var(--medical); }
@@ -145,16 +177,19 @@ main {
 .event-training .timeline-dot { border-color: var(--training); }
 .event-shop .timeline-dot { border-color: var(--shop); }
 
-@keyframes fadeIn {
-    from { opacity: 0; transform: translateY(10px); }
-    to { opacity: 1; transform: translateY(0); }
-}
-
+.header-actions { display: flex; gap: 10px; }
 #lang-selector {
     background: var(--card-bg);
     color: var(--text-main);
     border: 1px solid var(--border);
-    padding: 0.5rem;
+    padding: 0.4rem;
     border-radius: 10px;
-    outline: none;
+}
+#theme-toggle {
+    background: var(--card-bg);
+    border: 1px solid var(--border);
+    color: var(--text-main);
+    cursor: pointer;
+    border-radius: 10px;
+    padding: 0 0.5rem;
 }

@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>방울아놀자 - Pet Lifetime Platform</title>
     <link rel="stylesheet" href="style.css">
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;800&family=Noto+Sans+KR:wght@400;700&display=swap" rel="stylesheet">
 </head>
 <body class="dark-mode">
     <header>
@@ -25,34 +26,34 @@
                 <option value="pt">Português</option>
                 <option value="ar">العربية</option>
             </select>
-            <button id="theme-toggle">🌓</button>
+            <button id="theme-toggle" aria-label="Toggle Theme">🌓</button>
         </div>
     </header>
 
-    <main id="app">
-        <!-- Pet Profile (Pet-Centric) -->
-        <section class="pet-header">
+    <main>
+        <!-- Pet Profile Card (SNS Style) -->
+        <section class="pet-profile">
             <div id="pet-profile-container">
-                <!-- t('pet', 'identity') -->
+                <!-- main.js에서 렌더링 -->
             </div>
         </section>
 
-        <!-- Condition & Metrics (Structured Input Only) -->
-        <section class="pet-stats-grid">
-            <div class="card metrics-card">
-                <h3 data-t-domain="pet" data-t-key="metrics">건강 지표</h3>
-                <div id="metrics-view"></div>
-            </div>
-            <div class="card conditions-card">
-                <h3 data-t-domain="pet" data-t-key="conditions">기저 질환</h3>
-                <div id="conditions-list"></div>
-            </div>
-        </section>
+        <!-- Category Filter (SNS Style) -->
+        <nav class="category-filter">
+            <button class="active" data-category="all" data-t-domain="pet" data-t-key="filter_all">All</button>
+            <button data-category="medical" data-t-domain="pet" data-t-key="filter_medical">Medical</button>
+            <button data-category="grooming" data-t-domain="pet" data-t-key="filter_grooming">Grooming</button>
+            <button data-category="hotel" data-t-domain="pet" data-t-key="filter_hotel">Hotel</button>
+            <button data-category="training" data-t-domain="pet" data-t-key="filter_training">Training</button>
+            <button data-category="shop" data-t-domain="pet" data-t-key="filter_shop">Shop</button>
+        </nav>
 
-        <!-- Timeline (Auto-Cumulative) -->
-        <section class="timeline-section">
-            <h2 data-t-domain="pet" data-t-key="timeline">생애 타임라인</h2>
-            <div id="timeline-feed"></div>
+        <!-- Timeline Feed (SNS Style) -->
+        <section class="timeline-container">
+            <div class="timeline-line"></div>
+            <div id="timeline-feed">
+                <!-- main.js에서 렌더링 -->
+            </div>
         </section>
     </main>
 

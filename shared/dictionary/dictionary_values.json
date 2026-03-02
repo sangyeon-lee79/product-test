@@ -1,23 +1,17 @@
 {
   "pet": {
     "breed_golden_retriever": {
-      "ko": "골든 리트리버",
-      "en": "Golden Retriever",
-      "ja": "ゴールデンレトリバー",
-      "zh": "金毛寻回犬",
-      "vi": "Chó săn lông vàng",
-      "id": "Golden Retriever",
-      "th": "โกลเด้น รีทรีฟเวอร์",
-      "es": "Golden Retriever",
-      "fr": "Golden Retriever",
-      "de": "Golden Retriever",
-      "it": "Golden Retriever",
-      "pt": "Golden Retriever",
-      "ar": "جولدن ريتريفر"
+      "ko": "골든 리트리버", "en": "Golden Retriever", "ja": "ゴールデンレトリ버", "zh": "金毛寻回犬", "vi": "Chó săn lông vàng", "id": "Golden Retriever", "th": "โกลเด้น รีทรีฟเวอร์", "es": "Golden Retriever", "fr": "Golden Retriever", "de": "Golden Retriever", "it": "Golden Retriever", "pt": "Golden Retriever", "ar": "جولدن ريتريفر"
     },
     "sex_male": {
       "ko": "수컷", "en": "Male", "ja": "オス", "zh": "公", "vi": "Đực", "id": "Jantan", "th": "ตัวผู้", "es": "Macho", "fr": "Mâle", "de": "Männlich", "it": "Maschio", "pt": "Macho", "ar": "ذكر"
-    }
+    },
+    "filter_all": { "ko": "전체", "en": "All", "ja": "すべて", "zh": "全部", "vi": "Tất cả", "id": "Semua", "th": "ทั้งหมด", "es": "Todo", "fr": "Tout", "de": "Alle", "it": "Tutto", "pt": "Tudo", "ar": "الكل" },
+    "filter_medical": { "ko": "의료", "en": "Medical", "ja": "医療", "zh": "医疗", "vi": "Y tế", "id": "Medis", "th": "การแพทย์", "es": "Médico", "fr": "Médical", "de": "Medizinisch", "it": "Medico", "pt": "Médico", "ar": "طبي" },
+    "filter_grooming": { "ko": "미용", "en": "Grooming", "ja": "美容", "zh": "美容", "vi": "Làm đẹp", "id": "Grooming", "th": "ตัดขน", "es": "Peluquería", "fr": "Toilettage", "de": "Pflege", "it": "Toletta", "pt": "Grooming", "ar": "حلاقة" },
+    "filter_hotel": { "ko": "호텔", "en": "Hotel", "ja": "ホテル", "zh": "酒店", "vi": "Khách sạn", "id": "Hotel", "th": "โรงแรม", "es": "Hotel", "fr": "Hôtel", "de": "Hotel", "it": "Hotel", "pt": "Hotel", "ar": "فندق" },
+    "filter_training": { "ko": "훈련", "en": "Training", "ja": "訓練", "zh": "训练", "vi": "Huấn luyện", "id": "Pelatihan", "th": "การฝึก", "es": "Entrenamiento", "fr": "Entraînement", "de": "Training", "it": "Addestramento", "pt": "Treinamento", "ar": "تدريب" },
+    "filter_shop": { "ko": "쇼핑", "en": "Shop", "ja": "ショップ", "zh": "商店", "vi": "Cửa hàng", "id": "Toko", "th": "ร้านค้า", "es": "Tienda", "fr": "Boutique", "de": "Shop", "it": "Negozio", "pt": "Loja", "ar": "متجر" }
   },
   "condition": {
     "healthy": {
