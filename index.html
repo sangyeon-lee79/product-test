@@ -14,53 +14,93 @@
             <select id="role-selector">
                 <option value="user">User View</option>
                 <option value="provider">Provider (Shop) Reg</option>
-                <option value="admin">Admin (Master) Reg</option>
+                <option value="admin">Master Admin Control</option>
             </select>
             <select id="lang-selector">
                 <option value="ko">KO</option>
                 <option value="en">EN</option>
                 <option value="ja">JA</option>
                 <option value="vi">VI</option>
-                <!-- ... other langs -->
             </select>
             <button id="theme-toggle">🌓</button>
         </div>
     </header>
 
     <main>
-        <!-- 1. ADMIN/PROVIDER REGISTRATION (Data Input Level) -->
-        <section id="registration-view" class="hidden">
-            <div class="card registration-form">
-                <h2 id="reg-title">Data Registration</h2>
-                
-                <!-- Universal Conversion Input -->
-                <div class="input-container">
-                    <label id="input-label">Name</label>
+        <!-- 1. MASTER ADMIN DASHBOARD & STUDIO -->
+        <section id="admin-view" class="hidden">
+            <!-- Platform Stats -->
+            <div class="stats-grid">
+                <div class="stat-card">
+                    <span class="label">Users</span>
+                    <span class="value" id="stat-users">1,240</span>
+                </div>
+                <div class="stat-card">
+                    <span class="label">Pets</span>
+                    <span class="value" id="stat-pets">850</span>
+                </div>
+                <div class="stat-card">
+                    <span class="label">Bookings</span>
+                    <span class="value" id="stat-bookings">320</span>
+                </div>
+                <div class="stat-card">
+                    <span class="label">SNS Likes</span>
+                    <span class="value" id="stat-sns">4.5k</span>
+                </div>
+            </div>
+
+            <!-- Master Data Studio -->
+            <div class="card master-studio">
+                <h2>Master Data Studio</h2>
+                <div class="studio-actions">
+                    <select id="master-domain-selector">
+                        <option value="breed">Breed Master</option>
+                        <option value="condition">Condition Master</option>
+                        <option value="industry">Industry Master</option>
+                        <option value="food">Food Master</option>
+                    </select>
                     <div class="input-group">
-                        <input type="text" id="master-input" placeholder="Enter text to register...">
-                        <button id="convert-btn" class="globe-btn">🌐</button>
+                        <input type="text" id="admin-master-input" placeholder="New Master Item...">
+                        <button id="admin-convert-btn" class="globe-btn">🌐</button>
                     </div>
                 </div>
 
-                <!-- Conversion Preview (13 Langs) -->
-                <div id="conversion-preview" class="hidden">
-                    <div id="conversion-grid-items"></div>
-                    <button id="save-master-btn" class="save-btn">Save to Global System</button>
+                <div id="admin-conversion-preview" class="hidden">
+                    <div id="admin-grid-items"></div>
+                    <button id="save-admin-master-btn" class="save-btn">Publish to Global Network</button>
+                </div>
+
+                <div class="master-list-view">
+                    <h3>Global Registry</h3>
+                    <div id="master-items-table">
+                        <!-- Table of registered master items -->
+                    </div>
                 </div>
             </div>
         </section>
 
-        <!-- 2. USER VIEW (Data Consumption Level) -->
+        <!-- 2. PROVIDER REGISTRATION -->
+        <section id="registration-view" class="hidden">
+            <div class="card registration-form">
+                <h2 id="reg-title">Provider Registration</h2>
+                <div class="input-container">
+                    <label>Shop Name</label>
+                    <div class="input-group">
+                        <input type="text" id="master-input" placeholder="Enter shop name...">
+                        <button id="convert-btn" class="globe-btn">🌐</button>
+                    </div>
+                </div>
+                <div id="conversion-preview" class="hidden">
+                    <div id="conversion-grid-items"></div>
+                    <button id="save-master-btn" class="save-btn">Save Shop Profile</button>
+                </div>
+            </div>
+        </section>
+
+        <!-- 3. USER VIEW (Data Consumption) -->
         <section id="user-view">
-            <!-- Pet Profile -->
             <div id="pet-profile-container"></div>
-
-            <!-- Selection-Based Feed Filter -->
-            <nav class="category-filter" id="master-category-list">
-                <!-- Admin이 등록한 카테고리가 버튼으로 자동 렌더링됨 -->
-            </nav>
-
-            <!-- Timeline Feed -->
+            <nav class="category-filter" id="master-category-list"></nav>
             <section class="timeline-container">
                 <div class="timeline-line"></div>
                 <div id="timeline-feed"></div>

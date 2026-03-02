@@ -1,15 +1,14 @@
 # PPD.md - Product Definition & UX Flows (방울아놀자)
-
 ## 1. Product Principle
-- **Pet-Centricity:** 모든 데이터의 중심은 '반려견'임.
-- **Universal Text Conversion v2:** 모든 문자열 데이터(샵명, 업종명, 반려견명 등)는 등록 시점에 13개 국어로 변환되어 `text_entity`로 관리됨.
-- **Role-Based Data Entry:**
-  - **Admin:** 업종(Category), 품종(Breed), 질병(Condition) 등 마스터 데이터 등록 (🌐 변환 사용).
-  - **Provider (Shop/Hospital):** 업체명, 서비스명, 설명 등 등록 (🌐 변환 사용).
-  - **User (Owner):** 반려견 이름 등록 (🌐 변환 사용).
-- **Selection-Based Usage:** 일반 사용자는 이미 번역/등록된 데이터를 '선택'하여 사용함 (직접 입력 최소화).
+... (기존 내용)
+- **Master Admin Control:** 관리자가 플랫폼의 모든 정형 데이터(마스터 아이템)를 통제함.
+- **Data-Driven Insights:** 대시보드를 통해 사용자, 반려동물, 예약, SNS 활동 지표를 실시간 모니터링.
 
-## 2. User Roles & Account
+## 3. Core UX Flows (Data Lifecycle)
+... (기존 내용)
+### Flow 4: Master Admin Monitoring
+- [Dashboard] 전체 가입자, 활성 펫, 예약 완료율 확인 -> [Master-Edit] 필요한 마스터 데이터(품종 등) 추가 및 13개 국어 배포.
+
 - **ADMIN:** 시스템 마스터 데이터 관리.
 - **PROVIDER:** 서비스 제공자 (병원, 미용샵, 호텔 등).
 - **USER:** 반려견 소유자 및 일반 사용자.

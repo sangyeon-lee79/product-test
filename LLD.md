@@ -7,12 +7,15 @@
 
 ## 2. Database Schema (v2 Core)
 
-### Text Entity Model
-- `text_entities`: (id, domain, owner_id, original_text, converted_json, auto_generated)
+### Master Data System
+- `master_domains`: (id, name, description, editable_by)
+- `master_items`: (id, domain_id, code, status)
+- `master_item_values`: (item_id, lang, value, source)
 
-### Master Data (Admin Owned)
-- `categories`: (id, name_text_id, icon_url)
-- `breeds`: (id, name_text_id, species)
+### Analytics Data (Dashboard)
+- `platform_stats`: (date, total_users, total_pets, total_bookings, sns_engagement)
+- `provider_analytics`: (shop_id, booking_count, completion_rate)
+... (기존 내용)
 
 ### Provider Data (Provider Owned)
 - `shops`: (id, owner_id, name_text_id, category_id, info_text_id)

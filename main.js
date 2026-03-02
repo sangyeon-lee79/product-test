@@ -1,4 +1,4 @@
-// Universal Language Conversion v2 - Logic
+// Universal Language Conversion v2 + Master Admin System
 let dictionary = {};
 let textEntities = {};
 let currentLang = localStorage.getItem('lang') || 'ko';
@@ -6,32 +6,40 @@ let currentRole = 'user';
 
 const LANGS = ['ko', 'en', 'ja', 'vi', 'id', 'zh', 'th', 'es', 'fr', 'de', 'it', 'pt', 'ar'];
 
-// Mock Data Storage for Demo
-const masterCategories = []; // Admin registered
-const registeredShops = []; // Provider registered
-let timelineEvents = [];
+// Master Data Storage
+const masterRegistry = {
+    breed: [],
+    condition: [],
+    industry: [],
+    food: []
+};
+
+const registeredShops = [];
 
 async function initSystem() {
     const dictResponse = await fetch('shared/dictionary/dictionary_values.json');
     dictionary = await dictResponse.json();
     
-    // Default Master Data (Admin-like registration)
-    await registerMasterData('Medical', 'pet', 'filter_medical');
-    await registerMasterData('Grooming', 'pet', 'filter_grooming');
-    await registerMasterData('Shop', 'pet', 'filter_shop');
-
+    // Seed initial Master Data
+    seedMasterData();
     renderAll();
 }
 
-async function registerMasterData(original, domain, key) {
-    const entityId = `cat-${domain}-${key}`;
-    textEntities[entityId] = {
-        id: entityId,
-        domain,
-        original_text: original,
-        converted_json: dictionary.pet[key] // dictionary에서 가져옴
-    };
-    masterCategories.push(entityId);
+function seedMasterData() {
+    const initialBreeds = [
+        { id: 'm-breed-001', code: 'GOLDEN', name: 'Golden Retriever' },
+        { id: 'm-breed-002', code: 'POODLE', name: 'Poodle' }
+    ];
+    
+    initialBreeds.forEach(b => {
+        textEntities[b.id] = {
+            id: b.id,
+            domain: 'breed',
+            original_text: b.name,
+            converted_json: { ko: b.name === 'Poodle' ? '푸들' : '골든 리트리버', en: b.name }
+        };
+        masterRegistry.breed.push(b.id);
+    });
 }
 
 function t(domain, key, entityId = null) {
@@ -45,90 +53,93 @@ function t(domain, key, entityId = null) {
     }
 }
 
-// 🌐 Registration Logic
-const masterInput = document.getElementById('master-input');
-const convertBtn = document.getElementById('convert-btn');
-const previewArea = document.getElementById('conversion-preview');
-const gridItems = document.getElementById('conversion-grid-items');
-let tempConverted = {};
+// 🧭 Admin & Registration Logic
+const adminMasterInput = document.getElementById('admin-master-input');
+const adminConvertBtn = document.getElementById('admin-convert-btn');
+const adminPreviewArea = document.getElementById('admin-conversion-preview');
+const adminGridItems = document.getElementById('admin-grid-items');
+const domainSelector = document.getElementById('master-domain-selector');
 
-convertBtn.addEventListener('click', () => {
-    const text = masterInput.value.trim();
+let adminTempConverted = {};
+
+adminConvertBtn.addEventListener('click', () => {
+    const text = adminMasterInput.value.trim();
     if (!text) return;
-    tempConverted = {};
+    adminTempConverted = {};
     LANGS.forEach(lang => {
-        tempConverted[lang] = lang === 'ko' ? text : `${text} (${lang.toUpperCase()})`;
+        adminTempConverted[lang] = lang === 'ko' ? text : `${text} (${lang.toUpperCase()})`;
     });
-    renderGrid();
-    previewArea.classList.remove('hidden');
+    renderAdminGrid();
+    adminPreviewArea.classList.remove('hidden');
 });
 
-function renderGrid() {
-    gridItems.innerHTML = LANGS.map(lang => `
+function renderAdminGrid() {
+    adminGridItems.innerHTML = LANGS.map(lang => `
         <div class="grid-item">
             <span>${lang.toUpperCase()}</span>
-            <input type="text" data-lang="${lang}" value="${tempConverted[lang]}">
+            <input type="text" data-lang="${lang}" value="${adminTempConverted[lang]}">
         </div>
     `).join('');
 }
 
-document.getElementById('save-master-btn').addEventListener('click', () => {
-    const entityId = `entity-${Date.now()}`;
+document.getElementById('save-admin-master-btn').addEventListener('click', () => {
+    const entityId = `m-${domainSelector.value}-${Date.now()}`;
     const finalConverted = {};
-    gridItems.querySelectorAll('input').forEach(input => {
+    adminGridItems.querySelectorAll('input').forEach(input => {
         finalConverted[input.dataset.lang] = input.value;
     });
 
     textEntities[entityId] = {
         id: entityId,
-        domain: currentRole === 'admin' ? 'master' : 'shop',
-        original_text: masterInput.value,
+        domain: domainSelector.value,
+        original_text: adminMasterInput.value,
         converted_json: finalConverted,
         auto_generated: false
     };
 
-    if (currentRole === 'admin') {
-        masterCategories.push(entityId);
-        alert('Master Category Registered!');
-    } else {
-        registeredShops.push(entityId);
-        alert('Shop Registered!');
-    }
+    masterRegistry[domainSelector.value].push(entityId);
+    
+    adminMasterInput.value = '';
+    adminPreviewArea.classList.add('hidden');
+    renderAll();
+    alert(`Published ${entityId} to global registry!`);
+});
 
-    masterInput.value = '';
-    previewArea.classList.add('hidden');
+// Role Management
+document.getElementById('role-selector').addEventListener('change', (e) => {
+    currentRole = e.target.value;
+    document.getElementById('admin-view').classList.toggle('hidden', currentRole !== 'admin');
+    document.getElementById('registration-view').classList.toggle('hidden', currentRole !== 'provider');
+    document.getElementById('user-view').classList.toggle('hidden', currentRole !== 'user');
     renderAll();
 });
 
-// Role Switcher
-document.getElementById('role-selector').addEventListener('change', (e) => {
-    currentRole = e.target.value;
-    const regView = document.getElementById('registration-view');
-    const userView = document.getElementById('user-view');
-    const regTitle = document.getElementById('reg-title');
-
-    if (currentRole === 'user') {
-        regView.classList.add('hidden');
-        userView.classList.remove('hidden');
-    } else {
-        regView.classList.remove('hidden');
-        userView.classList.add('hidden');
-        regTitle.textContent = currentRole === 'admin' ? 'Admin: Register Master Data' : 'Provider: Register Your Shop';
-    }
-});
-
 // UI Rendering
+function renderMasterTable() {
+    const table = document.getElementById('master-items-table');
+    const domain = domainSelector.value;
+    
+    table.innerHTML = `
+        <div class="table-row header">
+            <span>Domain</span><span>Name (${currentLang.toUpperCase()})</span><span>Status</span>
+        </div>
+        ${masterRegistry[domain].map(id => `
+            <div class="table-row">
+                <span>${domain.toUpperCase()}</span>
+                <span>${t(domain, '', id)}</span>
+                <span style="color:var(--training)">ACTIVE</span>
+            </div>
+        `).join('')}
+    `;
+}
+
 function renderUserView() {
-    // 1. Render Category Filter (Selection-Based)
     const filterNav = document.getElementById('master-category-list');
     filterNav.innerHTML = `
         <button class="active">All</button>
-        ${masterCategories.map(catId => `
-            <button>${t('master', '', catId)}</button>
-        `).join('')}
+        ${masterRegistry.industry.map(id => `<button>${t('industry', '', id)}</button>`).join('')}
     `;
 
-    // 2. Render Timeline (Consumption)
     const feed = document.getElementById('timeline-feed');
     feed.innerHTML = registeredShops.map(shopId => `
         <div class="timeline-event event-shop">
@@ -139,21 +150,24 @@ function renderUserView() {
                     <span class="verified-badge">✓ Verified Provider</span>
                 </div>
                 <h3>${t('shop', '', shopId)}</h3>
-                <p>New shop registered in the global network.</p>
+                <p>Provider registered via Master Registry.</p>
             </div>
         </div>
     `).join('');
 }
 
 function renderAll() {
-    renderUserView();
+    if (currentRole === 'admin') renderMasterTable();
+    if (currentRole === 'user') renderUserView();
 }
 
-// Global Event Listeners
+// Listeners
 document.getElementById('lang-selector').addEventListener('change', (e) => {
     currentLang = e.target.value;
     localStorage.setItem('lang', currentLang);
     renderAll();
 });
+
+domainSelector.addEventListener('change', renderMasterTable);
 
 initSystem();

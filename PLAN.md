@@ -12,10 +12,11 @@
 - [ ] Diet Tracking (사료 및 급여 관리)
 - [ ] basic Timeline (기록 누적)
 
-### Phase 2: Language Conversion & Admin
-- [ ] Dictionary DB Schema (13개 국어 대응)
-- [ ] Admin Dictionary Studio (React + Vite)
-- [ ] UI Key-Value Mapping (t(domain, key) 시스템)
+### Phase 2: Master Admin & Master Data System (Current)
+- [ ] Master Data Studio (Breeds, Conditions, Services, etc.)
+- [ ] 13-Language Master Conversion & Versioning
+- [ ] Admin Dashboard (Users, Pets, Bookings, SNS Analytics)
+- [ ] User Submission & Admin Approval Flow
 
 ### Phase 3: SNS Integration
 - [ ] Multi-Role Auth (User, Groomer, Hospital)
