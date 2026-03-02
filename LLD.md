@@ -3,30 +3,27 @@
 ## 1. System Architecture
 - **Mobile:** Flutter (Dart)
 - **Backend:** Node.js (TypeScript) + Cloudflare Workers
-- **Database:** PostgreSQL (Text Entity Model)
+- **Database:** PostgreSQL (Universal Text Entity Reference)
 
 ## 2. Database Schema (v2 Core)
 
-### Master Data System
-- `master_domains`: (id, name, description, editable_by)
-- `master_items`: (id, domain_id, code, status)
-- `master_item_values`: (item_id, lang, value, source)
+### User Settings
+- `user_settings`: (user_id, google_api_key, preferred_lang)
 
-### Analytics Data (Dashboard)
-- `platform_stats`: (date, total_users, total_pets, total_bookings, sns_engagement)
-- `provider_analytics`: (shop_id, booking_count, completion_rate)
-... (기존 내용)
+### Text Entity Model (Universal)
+- 모든 테이블의 `name`, `label`, `description` 컬럼은 `text_entities.id`를 참조함.
+- **Menu Entities:** 'Master Data Studio', 'Users', 'Pets' 등의 메뉴명도 DB화되어 관리됨.
 
-### Provider Data (Provider Owned)
-- `shops`: (id, owner_id, name_text_id, category_id, info_text_id)
-
-### Pet Data (User Owned)
-- `pets`: (id, owner_id, name_text_id, breed_id)
+### Foreign Key Registry
+- `menu_items.label_text_id` -> `text_entities.id`
+- `master_items.name_text_id` -> `text_entities.id`
+- `users.name_text_id` -> `text_entities.id`
+- `pets.name_text_id` -> `text_entities.id`
 
 ## 3. UI Rendering Rule
 - **t(domain, key, entity_id):** 
-  - `entity_id`가 있으면 `text_entities`에서 사용자 언어 값을 가져옴.
-  - 없으면 `dictionary`에서 시스템 레이블을 가져옴.
+  - `entity_id`가 있는 모든 요소는 텍스트를 클릭하거나 수정 버튼을 통해 언어별 편집 모드로 진입 가능.
 
-## 4. Entry UI Component
-- `ConversionInput`: [TextField] + [🌐 Button] -> [Editable Grid Modal]
+## 4. Universal Editor Component
+- `ConversionGrid`: [Input Grid for 13 Langs]
+- `APIConnector`: 사용자의 개인 Google API Key를 사용하여 클라이언트 사이드에서 번역 요청 수행.

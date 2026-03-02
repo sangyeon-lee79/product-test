@@ -13,7 +13,6 @@
         <div class="header-actions">
             <select id="role-selector">
                 <option value="user">User View</option>
-                <option value="provider">Provider (Shop) Reg</option>
                 <option value="admin">Master Admin Control</option>
             </select>
             <select id="lang-selector">
@@ -36,86 +35,58 @@
     </header>
 
     <main>
-        <!-- 1. MASTER ADMIN DASHBOARD & STUDIO -->
-        <section id="admin-view" class="hidden">
-            <!-- Platform Stats -->
-            <div class="stats-grid">
-                <div class="stat-card">
-                    <span class="label">Users</span>
-                    <span class="value" id="stat-users">1,240</span>
-                </div>
-                <div class="stat-card">
-                    <span class="label">Pets</span>
-                    <span class="value" id="stat-pets">850</span>
-                </div>
-                <div class="stat-card">
-                    <span class="label">Bookings</span>
-                    <span class="value" id="stat-bookings">320</span>
-                </div>
-                <div class="stat-card">
-                    <span class="label">SNS Likes</span>
-                    <span class="value" id="stat-sns">4.5k</span>
-                </div>
+        <!-- Distributed API Settings (OFFLOAD COST) -->
+        <section class="card settings-section">
+            <h3>Personal Translation Settings</h3>
+            <div class="input-group">
+                <input type="password" id="user-api-key" placeholder="Enter your Google Cloud API Key">
+                <button id="save-api-key-btn">Save Key</button>
             </div>
+            <p class="hint">Your key is used only in your browser to avoid platform costs.</p>
+        </section>
 
-            <!-- Master Data Studio -->
-            <div class="card master-studio">
-                <h2>Master Data Studio</h2>
+        <!-- 1. MASTER ADMIN VIEW -->
+        <section id="admin-view" class="hidden">
+            <h2 data-entity-id="m-menu-001">Master Data Studio</h2>
+            
+            <div class="card studio-controls">
                 <div class="studio-actions">
                     <select id="master-domain-selector">
-                        <option value="breed">Breed Master</option>
-                        <option value="condition">Condition Master</option>
-                        <option value="industry">Industry Master</option>
-                        <option value="food">Food Master</option>
+                        <option value="breed">Breeds</option>
+                        <option value="condition">Conditions</option>
                     </select>
                     <div class="input-group">
-                        <input type="text" id="admin-master-input" placeholder="New Master Item...">
-                        <button id="admin-convert-btn" class="globe-btn">🌐</button>
+                        <input type="text" id="admin-master-input" placeholder="New Item Name...">
+                        <button id="admin-convert-btn" class="globe-btn">🌐 Add & Translate</button>
                     </div>
                 </div>
-
-                <div id="admin-conversion-preview" class="hidden">
-                    <div id="admin-grid-items"></div>
-                    <button id="save-admin-master-btn" class="save-btn">Publish to Global Network</button>
-                </div>
-
-                <div class="master-list-view">
-                    <h3>Global Registry</h3>
-                    <div id="master-items-table">
-                        <!-- Table of registered master items -->
-                    </div>
-                </div>
+                <div id="master-items-table" class="master-list"></div>
             </div>
+
+            <h2 data-entity-id="m-menu-002">Users</h2>
+            <div class="card">User list would appear here with Edit buttons...</div>
+
+            <h2 data-entity-id="m-menu-003">Pets</h2>
+            <div class="card">Pet list would appear here with Edit buttons...</div>
         </section>
 
-        <!-- 2. PROVIDER REGISTRATION -->
-        <section id="registration-view" class="hidden">
-            <div class="card registration-form">
-                <h2 id="reg-title">Provider Registration</h2>
-                <div class="input-container">
-                    <label>Shop Name</label>
-                    <div class="input-group">
-                        <input type="text" id="master-input" placeholder="Enter shop name...">
-                        <button id="convert-btn" class="globe-btn">🌐</button>
-                    </div>
-                </div>
-                <div id="conversion-preview" class="hidden">
-                    <div id="conversion-grid-items"></div>
-                    <button id="save-master-btn" class="save-btn">Save Shop Profile</button>
-                </div>
-            </div>
-        </section>
-
-        <!-- 3. USER VIEW (Data Consumption) -->
+        <!-- 2. USER VIEW -->
         <section id="user-view">
-            <div id="pet-profile-container"></div>
-            <nav class="category-filter" id="master-category-list"></nav>
-            <section class="timeline-container">
-                <div class="timeline-line"></div>
-                <div id="timeline-feed"></div>
-            </section>
+            <div id="timeline-feed"></div>
         </section>
     </main>
+
+    <!-- UNIVERSAL EDITOR MODAL (Rules v2) -->
+    <div id="universal-modal" class="modal hidden">
+        <div class="modal-content card">
+            <h3>🌐 Edit Universal Translations (13 Langs)</h3>
+            <div id="modal-grid-items" class="conversion-grid"></div>
+            <div class="modal-footer">
+                <button id="save-modal-btn" class="save-btn">Update All Languages</button>
+                <button onclick="document.getElementById('universal-modal').classList.add('hidden')" class="cancel-btn">Cancel</button>
+            </div>
+        </div>
+    </div>
 
     <script src="main.js"></script>
 </body>
