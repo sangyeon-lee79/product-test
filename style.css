@@ -1,11 +1,29 @@
 @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@400;600&display=swap');
 
 :root {
+    /* Dark Mode (Default) */
     --background-color: #1a1a1a;
     --card-color: #2a2a2a;
     --primary-color: #ffde00;
     --text-color: #ffffff;
     --shadow-color: rgba(0, 0, 0, 0.5);
+    --gradient-start: #1a1a1a;
+    --gradient-end: #2a2a2a;
+    --toggle-bg: #333333;
+    --toggle-color: #ffffff;
+}
+
+body.light-mode {
+    /* Light Mode */
+    --background-color: #f0f2f5;
+    --card-color: #ffffff;
+    --primary-color: #e67e22; /* Changed primary color for light mode */
+    --text-color: #2c3e50;
+    --shadow-color: rgba(0, 0, 0, 0.1);
+    --gradient-start: #f0f2f5;
+    --gradient-end: #dfe6e9;
+    --toggle-bg: #ffffff;
+    --toggle-color: #2c3e50;
 }
 
 body {
@@ -17,67 +35,84 @@ body {
     justify-content: center;
     align-items: center;
     min-height: 100vh;
-    background-image: linear-gradient(45deg, #1a1a1a 0%, #2a2a2a 100%);
+    background-image: linear-gradient(45deg, var(--gradient-start) 0%, var(--gradient-end) 100%);
+    transition: background-color 0.3s, color 0.3s;
 }
 
-main {
+main.container {
     background-color: var(--card-color);
-    padding: 2rem;
-    border-radius: 15px;
-    box-shadow: 0 10px 30px var(--shadow-color);
+    padding: 3rem;
+    border-radius: 20px;
+    box-shadow: 0 15px 45px var(--shadow-color);
     text-align: center;
+    max-width: 500px;
+    width: 90%;
+    transition: background-color 0.3s, box-shadow 0.3s;
 }
 
 h1 {
     color: var(--primary-color);
     margin-bottom: 2rem;
+    font-weight: 600;
 }
 
 #generate-btn {
     background-color: var(--primary-color);
-    color: #1a1a1a;
+    color: #fff;
     border: none;
-    padding: 1rem 2rem;
+    padding: 1.2rem 2.5rem;
     font-size: 1.2rem;
     font-weight: 600;
     border-radius: 50px;
     cursor: pointer;
-    transition: transform 0.2s, box-shadow 0.2s;
-    box-shadow: 0 5px 15px rgba(255, 222, 0, 0.3);
+    transition: transform 0.2s, box-shadow 0.2s, background-color 0.3s;
+    box-shadow: 0 5px 15px var(--shadow-color);
 }
 
 #generate-btn:hover {
     transform: translateY(-3px);
-    box-shadow: 0 8px 20px rgba(255, 222, 0, 0.5);
+    box-shadow: 0 8px 25px var(--shadow-color);
+}
+
+#generate-btn:active {
+    transform: translateY(-1px);
 }
 
 #lotto-numbers {
     display: flex;
     justify-content: center;
+    flex-wrap: wrap;
     gap: 1rem;
-    margin-top: 2rem;
+    margin-top: 2.5rem;
+    min-height: 80px;
 }
 
-lotto-ball {
-    width: 60px;
-    height: 60px;
+/* Theme Toggle Button */
+#theme-toggle {
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    background-color: var(--toggle-bg);
+    color: var(--toggle-color);
+    border: none;
+    width: 50px;
+    height: 50px;
     border-radius: 50%;
+    cursor: pointer;
     display: flex;
     justify-content: center;
     align-items: center;
     font-size: 1.5rem;
-    font-weight: 600;
-    color: var(--text-color);
-    animation: pop-in 0.5s ease-out forwards;
+    box-shadow: 0 4px 10px var(--shadow-color);
+    transition: transform 0.2s, background-color 0.3s;
+    z-index: 1000;
 }
 
-@keyframes pop-in {
-    0% {
-        transform: scale(0);
-        opacity: 0;
-    }
-    100% {
-        transform: scale(1);
-        opacity: 1;
-    }
+#theme-toggle:hover {
+    transform: scale(1.1);
+}
+
+/* Custom Element Style */
+lotto-ball {
+    display: block;
 }
