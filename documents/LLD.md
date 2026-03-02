@@ -1,42 +1,53 @@
-# LLD.md - Low Level Design & Architecture (방울아놀자)
+# LLD.md - Low Level Design (Bang-ul Play)
 
-## 1. System Architecture
-- **Mobile App:** Flutter (Dart)
-- **UI Design Baseline:** Material 3 Guidelines (m3.material.io)
-- **Spacing Scale:** 8dp increment (8, 16, 24, 32...)
+## 1. System Architecture & Tech Stack
+- **Mobile:** Flutter (Dart) - Material 3 standard.
+- **Backend:** Node.js (TypeScript) + Express/Cloudflare Workers.
+- **Database:** PostgreSQL.
+- **Localization:** 13-Language Global Text System (Admin Controlled).
 
-## 2. UI Pattern Implementation
+## 2. Database Schema (v2 MVP Core)
 
-### A) List-First Pattern (Component)
-- `DomainList`: 카드형 목록 UI (M3 Card pattern).
-- `DomainForm`: 섹션별 그룹화된 입력 폼.
+### 2.1 Global Text Systems
+- `ui_dictionary`: (key, domain, values_json[13])
+- `master_domains`: (id, name, description)
+- `master_items`: (id, domain_id, code, status, order)
+- `master_item_values`: (item_id, lang, value)
+- `text_entities`: (id, domain, original_text, original_lang, converted_json[13], is_manual)
 
-### B) Provider Profile Flow Machine
-```javascript
-function renderProviderUI() {
-    if (currentStore) {
-        renderStoreDetailView(currentStore); // List/Detail context
-    } else {
-        renderStoreCreateForm(); // Initial registration
-    }
-}
-```
+### 2.2 Role & User System
+- `users`: (id, email, oauth_provider, current_role)
+- `user_roles`: (user_id, role_type[USER, PROVIDER, ADMIN]) - Additive roles.
+- `user_settings`: (user_id, google_api_key, preferred_lang)
 
-## 3. Database Schema (Refined)
+### 2.3 Provider & Commerce
+- `provider_profiles`: (id, owner_id, name_entity_id, address_entity_id, phone, country_master_id, currency_code, industry_item_ids[ ])
+- `provider_services`: (id, provider_id, name_entity_id, price, duration, industry_master_id, is_active)
+- `master_products`: (id, name_entity_id, manufacturer, specs_json, category_id)
+- `provider_inventory`: (id, provider_id, master_product_id, selling_price, stock_qty, is_active)
+- `reservations`: (id, user_id, pet_id, provider_id, service_id, status, scheduled_at)
 
-### Master Data (M3 Selection Context)
-- `master_countries`: (id, name_text_id, currency_code, currency_symbol)
-- `master_industries`: (id, name_text_id, icon_type)
+### 2.4 Pet & Health
+- `pets`: (id, owner_id, name_entity_id, breed_master_id, sex, birthdate, microchip_no)
+- `pet_conditions`: (id, pet_id, condition_master_id, diagnosed_at, status)
+- `daily_logs`: (id, pet_id, date, type[diet, metric, mood], data_json)
 
-### Provider Store (Profile)
-- `provider_profiles`:
-  - `store_name_text_id`: Text Entity
-  - `address_text_id`: Text Entity
-  - `country_id`: Master Country FK
-  - `currency_code`: Read-only (Derived)
-  - `industry_ids`: Array of Master Industry FKs
+## 3. Core Logic Implementation
 
-## 4. Visual Standards (M3 Reference)
-- **Typography:** Display, Headline, Title, Body, Label scales.
-- **Color:** Surface, On-Surface, Primary, Secondary, Variant colors.
-- **Elevation:** Tonal surfaces instead of heavy drop shadows.
+### 3.1 Multi-Source Translation `t(source, key, id)`
+- `source === 'ui'`: Search `ui_dictionary` by key.
+- `source === 'master'`: Search `master_item_values` by item_id + currentLang.
+- `source === 'entity'`: Search `text_entities` by id + currentLang (fallback to original).
+
+### 3.2 Provider Permission Scoping
+- **Pet Data Access:** `SELECT * FROM timeline WHERE pet_id = :id AND category IN (SELECT industry_ids FROM provider_profiles WHERE owner_id = :me)`
+- Access only valid when a non-canceled reservation exists.
+
+### 3.3 Currency & Country Mapping
+- `master_countries`: (id, name_entity_id, iso_code, currency_code, currency_symbol)
+- When `provider.country_id` changes, `provider.currency_code` is updated via lookup.
+
+## 4. UI/UX Components (Material 3)
+- **Shared Shell:** NavigationRail (Desktop) / NavigationBar (Mobile).
+- **List-First Pattern:** `BaseListView` -> `BaseDetailView` -> `BaseFormModal`.
+- **Conversion Trigger:** `GlobeButton` component attached to `TextFormField`.

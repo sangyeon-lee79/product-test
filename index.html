@@ -3,70 +3,62 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title data-ui-key="app_title">방울아놀자 - Global Pet Platform</title>
+    <title>방울아놀자 - Bang-ul Play</title>
     <link rel="stylesheet" href="style.css">
-    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;800&family=Noto+Sans+KR:wght@400;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&family=Noto+Sans+KR:wght@400;700&display=swap" rel="stylesheet">
 </head>
 <body class="dark-mode">
-    <header>
-        <div class="logo" data-ui-key="app_logo">방울아놀자</div>
-        <div class="header-actions">
-            <select id="role-selector">
-                <option value="user" data-ui-key="role_user">User Dashboard</option>
-                <option value="provider" data-ui-key="role_provider">Provider Dashboard</option>
-                <option value="admin" data-ui-key="role_admin">Master Admin Control</option>
+    <!-- APP BAR (Unified Shell) -->
+    <header class="app-bar">
+        <div class="brand">
+            <span class="logo" data-ui-key="app_logo"></span>
+        </div>
+        <div class="actions">
+            <select id="role-selector" class="role-switcher">
+                <option value="user" data-ui-key="role_user"></option>
+                <option value="provider" data-ui-key="role_provider"></option>
+                <option value="admin" data-ui-key="role_admin"></option>
             </select>
-            <select id="lang-selector">
+            <select id="lang-selector" class="lang-switcher">
                 <option value="ko">KO</option><option value="en">EN</option><option value="ja">JA</option>
                 <option value="vi">VI</option><option value="id">ID</option><option value="zh">ZH</option>
                 <option value="th">TH</option><option value="es">ES</option><option value="fr">FR</option>
                 <option value="de">DE</option><option value="it">IT</option><option value="pt">PT</option><option value="ar">AR</option>
             </select>
-            <button id="theme-toggle">🌓</button>
+            <button id="theme-toggle" class="icon-btn">🌓</button>
         </div>
     </header>
 
-    <main>
-        <!-- Distributed API Settings -->
-        <section class="card settings-section">
-            <h3 data-ui-key="settings_title">Personal Translation Settings</h3>
-            <div class="input-group">
-                <input type="password" id="user-api-key" data-ui-placeholder="api_key_placeholder">
-                <button id="save-api-key-btn" data-ui-key="btn_save">Save Key</button>
-            </div>
-        </section>
-
-        <!-- 1. MASTER ADMIN DASHBOARD -->
-        <section id="admin-view" class="role-view hidden">
-            <h2 data-ui-key="role_admin">Master Admin Control</h2>
-            <div class="card master-studio">
-                <h3 data-ui-key="label_ui_dictionary">UI Dictionary Studio</h3>
-                <div id="ui-dictionary-table" class="master-list"></div>
-            </div>
-        </section>
-
-        <!-- 2. PROVIDER DASHBOARD (Fixed Flow) -->
-        <section id="provider-view" class="role-view hidden">
-            <h2 data-ui-key="label_shop_profile">Shop Profile Management</h2>
-            <div id="provider-profile-area">
-                <!-- Dynamically rendered: List -> Create -> Detail/Edit -->
-            </div>
-        </section>
-
-        <!-- 3. USER DASHBOARD -->
+    <main class="main-content">
+        <!-- 1. USER VIEW (Pet Owner) -->
         <section id="user-view" class="role-view">
-            <h2 data-ui-key="label_user_timeline">User Timeline</h2>
-            <div id="timeline-feed"></div>
+            <div id="user-content">
+                <!-- Dynamically Rendered by main.js -->
+            </div>
+        </section>
+
+        <!-- 2. PROVIDER VIEW (Store Owner) -->
+        <section id="provider-view" class="role-view hidden">
+            <div id="provider-content">
+                <!-- Dynamically Rendered by main.js -->
+            </div>
+        </section>
+
+        <!-- 3. ADMIN VIEW (System Master) -->
+        <section id="admin-view" class="role-view hidden">
+            <div id="admin-content">
+                <!-- Dynamically Rendered by main.js -->
+            </div>
         </section>
     </main>
 
-    <!-- UNIVERSAL EDITOR MODAL -->
+    <!-- UNIVERSAL EDITOR MODAL (Rules v2) -->
     <div id="universal-modal" class="modal hidden">
         <div class="modal-content card">
-            <h3 data-ui-key="modal_edit_title">🌐 Edit Universal Translations (13 Langs)</h3>
+            <h3 data-ui-key="modal_edit_title"></h3>
             <div id="modal-grid-items" class="conversion-grid"></div>
             <div class="modal-footer">
-                <button id="save-modal-btn" class="save-btn" data-ui-key="btn_save_changes">Save Changes</button>
+                <button id="save-modal-btn" class="save-btn" data-ui-key="btn_save"></button>
                 <button onclick="document.getElementById('universal-modal').classList.add('hidden')" class="cancel-btn" data-ui-key="btn_cancel">Cancel</button>
             </div>
         </div>
