@@ -32,12 +32,17 @@
 - `pet_conditions`: (id, pet_id, condition_master_id, diagnosed_at, status)
 - `daily_logs`: (id, pet_id, date, type[diet, metric, mood], data_json)
 
-## 3. Core Logic Implementation
+## 3. Implementation Logic
 
 ### 3.1 Multi-Source Translation `t(source, key, id)`
-- `source === 'ui'`: Search `ui_dictionary` by key.
-- `source === 'master'`: Search `master_item_values` by item_id + currentLang.
-- `source === 'entity'`: Search `text_entities` by id + currentLang (fallback to original).
+- **Roles & Static Labels:** All roles (Admin, Provider, User) are stored in `ui_dictionary` and must be editable.
+- **Master Creation:** Any new item (Industry, Breed, etc.) must trigger the 13-language conversion grid before saving.
+
+### 3.2 Master Admin 'Add New' Flow
+1. Click '+ Add New'
+2. Open Create Form with 🌐 Translation Button
+3. Generate/Edit 13-lang JSON
+4. Save as `text_entity` linked to Master Item.
 
 ### 3.2 Provider Permission Scoping
 - **Pet Data Access:** `SELECT * FROM timeline WHERE pet_id = :id AND category IN (SELECT industry_ids FROM provider_profiles WHERE owner_id = :me)`

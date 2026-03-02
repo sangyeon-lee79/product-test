@@ -19,11 +19,13 @@
 - [O] UI Dictionary Page-based Management (현재 언어값 표시 [ ])
 
 ### Phase 2: Master Admin Control (Current)
-- [ ] **Master Data Studio Completion:**
+- [O] **Master Data Studio Completion:**
   - 업종 관리 (언어변환 입력 + 상태 관리)
   - 국가/통화 관리 (국가-통화 매핑 + 언어변환)
-  - 견종/질병/기록 템플릿 마스터 구축
-  - 상품 마스터 (제조사/스펙 포함)
+  - [O] **Admin Add New Flow Fix:** 항목 추가 시 즉시 13개 국어 변환 그리드 연동.
+  - [O] **Role Translation:** 관리자/보호자/공급자 역할 레이블 100% 언어변환 적용.
+- [ ] 견종/질병/기록 템플릿 마스터 구축
+- [ ] 상품 마스터 (제조사/스펙 포함)
 - [ ] **Admin Analytics:** 가입/피드/예약/상거래 통합 지표 대시보드
 
 ### Phase 3: Provider System & Commerce (Current)
