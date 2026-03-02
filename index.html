@@ -3,80 +3,51 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title data-ui-key="app_title">방울아놀자 - Global Pet PHR</title>
+    <title>방울아놀자 - Bang-ul Play</title>
     <link rel="stylesheet" href="style.css">
-    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;800&family=Noto+Sans+KR:wght@400;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&family=Noto+Sans+KR:wght@400;700&display=swap" rel="stylesheet">
 </head>
 <body class="dark-mode">
-    <!-- SNS TOP BAR -->
+    <!-- 통합 헤더 -->
     <header class="app-bar">
-        <div class="logo" data-ui-key="app_logo">방울아놀자</div>
-        <div class="header-actions">
-            <select id="role-selector" class="role-select">
-                <option value="user" data-ui-key="role_user">보호자</option>
-                <option value="provider" data-ui-key="role_provider">공급자</option>
-                <option value="admin" data-ui-key="role_admin">관리자</option>
+        <div class="brand">
+            <span class="logo">방울아놀자</span>
+        </div>
+        <div class="actions">
+            <select id="role-selector" class="role-switcher">
+                <option value="user">User</option>
+                <option value="provider">Provider</option>
+                <option value="admin">Admin</option>
             </select>
-            <select id="lang-selector" class="lang-select">
-                <option value="ko">KO</option><option value="en">EN</option><option value="ja">JA</option>
-                <option value="vi">VI</option><option value="id">ID</option><option value="zh">ZH</option>
-                <option value="th">TH</option><option value="es">ES</option><option value="fr">FR</option>
-                <option value="de">DE</option><option value="it">IT</option><option value="pt">PT</option><option value="ar">AR</option>
+            <select id="lang-selector" class="lang-switcher">
+                <option value="ko">KO</option><option value="en">EN</option><option value="ja">JA</option><option value="vi">VI</option>
             </select>
-            <button id="theme-toggle">🌓</button>
+            <button id="theme-toggle" class="icon-btn">🌓</button>
         </div>
     </header>
 
-    <main id="app-container">
-        <!-- 1. USER VIEW (SNS FEED UI - 복구) -->
-        <section id="user-view" class="role-view">
-            <div id="pet-profile-area">
-                <!-- main.js에서 렌더링 (강아지 프로필 카드) -->
-            </div>
-            <nav id="category-filter" class="sns-filter">
-                <!-- 관리자가 등록한 업종들이 필터 버튼으로 나옵니다 -->
-            </nav>
-            <div class="timeline-container">
-                <div class="timeline-line"></div>
-                <div id="timeline-feed">
-                    <!-- SNS 스타일 피드 아이템 -->
-                </div>
-            </div>
-        </section>
-
-        <!-- 2. PROVIDER VIEW (상점 관리) -->
-        <section id="provider-view" class="role-view hidden">
-            <div id="provider-profile-area"></div>
-        </section>
-
-        <!-- 3. ADMIN VIEW (마스터 관리) -->
+    <main class="main-content">
+        <!-- 1. ADMIN VIEW (3대 관리 시스템) -->
         <section id="admin-view" class="role-view hidden">
-            <div class="admin-dashboard">
-                <h2 data-ui-key="label_master_studio">마스터 데이터 관리</h2>
-                <div class="card admin-controls">
-                    <select id="admin-master-domain" onchange="renderAdminList()">
-                        <option value="industry" data-ui-key="domain_industry">업종</option>
-                        <option value="country" data-ui-key="domain_country">국가</option>
-                        <option value="breed" data-ui-key="domain_breed">견종</option>
-                    </select>
-                    <button class="add-btn" onclick="showMasterCreateForm()">+ <span data-ui-key="btn_add_new">Add New</span></button>
-                </div>
-                <div id="admin-master-list" class="list-container"></div>
+            <div id="admin-content">
+                <!-- main.js: renderAdmin() -->
+            </div>
+        </section>
+
+        <!-- 2. PROVIDER VIEW -->
+        <section id="provider-view" class="role-view hidden">
+            <div id="provider-content">
+                <!-- main.js: renderProvider() -->
+            </div>
+        </section>
+
+        <!-- 3. USER VIEW -->
+        <section id="user-view" class="role-view">
+            <div id="user-content">
+                <!-- main.js: renderUser() -->
             </div>
         </section>
     </main>
-
-    <!-- UNIVERSAL EDITOR MODAL (13개국어) -->
-    <div id="universal-modal" class="modal hidden">
-        <div class="modal-content card">
-            <h3 data-ui-key="modal_edit_title">🌐 번역 편집 (13개 국어)</h3>
-            <div id="modal-grid-items" class="conversion-grid"></div>
-            <div class="modal-footer">
-                <button id="save-modal-btn" class="save-btn" data-ui-key="btn_save">Save</button>
-                <button onclick="document.getElementById('universal-modal').classList.add('hidden')" class="cancel-btn">Cancel</button>
-            </div>
-        </div>
-    </div>
 
     <script src="main.js"></script>
 </body>

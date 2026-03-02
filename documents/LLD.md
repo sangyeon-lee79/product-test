@@ -1,58 +1,52 @@
 # LLD.md - Low Level Design (Bang-ul Play)
 
-## 1. System Architecture & Tech Stack
-- **Mobile:** Flutter (Dart) - Material 3 standard.
-- **Backend:** Node.js (TypeScript) + Express/Cloudflare Workers.
-- **Database:** PostgreSQL.
-- **Localization:** 13-Language Global Text System (Admin Controlled).
+## 1. Database Schema Refinement
 
-## 2. Database Schema (v2 MVP Core)
+### 1.1 Master Data Module
+- `master_categories`:
+  - `id`: UUID (PK)
+  - `category_key`: VARCHAR (Unique, ex: 'industry', 'breed')
+  - `is_active`: BOOLEAN (Default: true)
+- `master_items`:
+  - `id`: UUID (PK)
+  - `category_id`: FK -> master_categories.id
+  - `item_key`: VARCHAR (Unique within category)
+  - `sort_order`: INT
+  - `is_active`: BOOLEAN
 
-### 2.1 Global Text Systems
-- `ui_dictionary`: (key, domain, values_json[13])
-- `master_domains`: (id, name, description)
-- `master_items`: (id, domain_id, code, status, order)
-- `master_item_values`: (item_id, lang, value)
-- `text_entities`: (id, domain, original_text, original_lang, converted_json[13], is_manual)
+### 1.2 Universal Translation Module
+- `languages`:
+  - `code`: VARCHAR(5) (PK, ex: 'ko', 'en')
+  - `name`: VARCHAR
+  - `is_active`: BOOLEAN
+- `translations`:
+  - `id`: UUID (PK)
+  - `translation_key`: VARCHAR (Unique index, ex: 'ui.save', 'industry.grooming.name')
+  - `target_type`: VARCHAR (ui, system, master_item)
+  - `target_ref_id`: UUID (Optional reference)
+  - `language_code`: FK -> languages.code
+  - `text_value`: TEXT
+  - `updated_at`: TIMESTAMP
 
-### 2.2 Role & User System
-- `users`: (id, email, oauth_provider, current_role)
-- `user_roles`: (user_id, role_type[USER, PROVIDER, ADMIN]) - Additive roles.
-- `user_settings`: (user_id, google_api_key, preferred_lang)
+### 1.3 Country & Currency Module
+- `countries`:
+  - `id`: UUID (PK)
+  - `country_code`: VARCHAR(2) (Unique, ex: 'KR')
+  - `is_active`: BOOLEAN
+- `currencies`:
+  - `code`: VARCHAR(3) (PK, ex: 'KRW')
+  - `symbol`: VARCHAR(5)
+- `country_currency_map`:
+  - `country_id`: FK -> countries.id
+  - `currency_code`: FK -> currencies.code
+  - `is_default`: BOOLEAN (Default: true)
 
-### 2.3 Provider & Commerce
-- `provider_profiles`: (id, owner_id, name_entity_id, address_entity_id, phone, country_master_id, currency_code, industry_item_ids[ ])
-- `provider_services`: (id, provider_id, name_entity_id, price, duration, industry_master_id, is_active)
-- `master_products`: (id, name_entity_id, manufacturer, specs_json, category_id)
-- `provider_inventory`: (id, provider_id, master_product_id, selling_price, stock_qty, is_active)
-- `reservations`: (id, user_id, pet_id, provider_id, service_id, status, scheduled_at)
+## 2. Implementation Logic
 
-### 2.4 Pet & Health
-- `pets`: (id, owner_id, name_entity_id, breed_master_id, sex, birthdate, microchip_no)
-- `pet_conditions`: (id, pet_id, condition_master_id, diagnosed_at, status)
-- `daily_logs`: (id, pet_id, date, type[diet, metric, mood], data_json)
+### 2.1 Unified Rendering `t(key)`
+- 플랫폼은 `translation_key`를 기반으로 현재 언어(`currentLang`)에 맞는 `text_value`를 `translations` 테이블에서 조회하여 반환함.
+- **Priority:** Target Language Value -> Default Language (ko) Value -> Key itself.
 
-## 3. Implementation Logic
-
-### 3.1 Multi-Source Translation `t(source, key, id)`
-- **Roles & Static Labels:** All roles (Admin, Provider, User) are stored in `ui_dictionary` and must be editable.
-- **Master Creation:** Any new item (Industry, Breed, etc.) must trigger the 13-language conversion grid before saving.
-
-### 3.2 Master Admin 'Add New' Flow
-1. Click '+ Add New'
-2. Open Create Form with 🌐 Translation Button
-3. Generate/Edit 13-lang JSON
-4. Save as `text_entity` linked to Master Item.
-
-### 3.2 Provider Permission Scoping
-- **Pet Data Access:** `SELECT * FROM timeline WHERE pet_id = :id AND category IN (SELECT industry_ids FROM provider_profiles WHERE owner_id = :me)`
-- Access only valid when a non-canceled reservation exists.
-
-### 3.3 Currency & Country Mapping
-- `master_countries`: (id, name_entity_id, iso_code, currency_code, currency_symbol)
-- When `provider.country_id` changes, `provider.currency_code` is updated via lookup.
-
-## 4. UI/UX Components (Material 3)
-- **Shared Shell:** NavigationRail (Desktop) / NavigationBar (Mobile).
-- **List-First Pattern:** `BaseListView` -> `BaseDetailView` -> `BaseFormModal`.
-- **Conversion Trigger:** `GlobeButton` component attached to `TextFormField`.
+### 2.2 Provider Currency Auto-Sync
+- 공급자가 `country_id` 선택 시, `country_currency_map`에서 `is_default=true`인 `currency_code`를 자동으로 fetch하여 상점 프로필에 저장함.
+- 상점 엔티티의 모든 하위 금액 필드는 이 `currency_code`를 상속받음.
