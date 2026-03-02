@@ -1,8 +1,9 @@
-// Bang-ul Play: Refined MVP Logic (Fix: Admin Add New & 100% Translation)
+// Bang-ul Play: SNS UI Restoration + 100% Translation Integration
 let uiDictionary = {};
-let masterRegistry = { breed: [], industry: [], country: [], product: [] };
+let masterRegistry = { breed: [], industry: [], country: [] };
 let textEntities = {};
-let currentStore = null; 
+let registeredShops = [];
+let currentStore = null;
 
 let currentLang = localStorage.getItem('lang') || 'ko';
 let currentRole = 'user';
@@ -11,6 +12,7 @@ const LANGS = ['ko', 'en', 'ja', 'vi', 'id', 'zh', 'th', 'es', 'fr', 'de', 'it',
 
 async function initSystem() {
     uiDictionary = {
+        'app_title': { ko: '방울아놀자', en: 'Bang-ul Play' },
         'app_logo': { ko: '방울아놀자', en: 'Bang-ul Play' },
         'role_user': { ko: '보호자', en: 'Pet Owner' },
         'role_provider': { ko: '공급자', en: 'Provider' },
@@ -18,19 +20,28 @@ async function initSystem() {
         'btn_save': { ko: '저장', en: 'Save' },
         'btn_add_new': { ko: '새 항목 추가', en: 'Add New' },
         'label_master_studio': { ko: '마스터 데이터 관리', en: 'Master Data Studio' },
-        'label_shop_profile': { ko: '상점 프로필', en: 'Store Profile' },
-        'label_industry_cat': { ko: '업종 카테고리', en: 'Industry Category' },
-        'modal_master_title': { ko: '🌐 새 마스터 항목 등록', en: '🌐 Register Master Item' }
+        'domain_industry': { ko: '업종', en: 'Industries' },
+        'domain_country': { ko: '국가', en: 'Countries' },
+        'domain_breed': { ko: '견종', en: 'Breeds' },
+        'modal_edit_title': { ko: '🌐 번역 편집 (13개 국어)', en: '🌐 Edit Translations' },
+        'btn_cancel': { ko: '취소', en: 'Cancel' },
+        'label_shop_reg': { ko: '상점 프로필', en: 'Shop Profile' },
+        'label_industry_cat': { ko: '업종 선택', en: 'Select Industry' }
     };
 
-    seedInitialData();
+    seedData();
     setupEventListeners();
     renderAll();
 }
 
-function seedInitialData() {
+function seedData() {
     registerMasterItem('industry', 'Grooming', { ko: '애견미용', en: 'Grooming' });
-    registerCountry('South Korea', 'KRW', '₩', { ko: '대한민국', en: 'South Korea' });
+    registerMasterItem('industry', 'Medical', { ko: '동물병원', en: 'Medical' });
+    
+    // Seed a shop for SNS feed
+    const sId = `shop-${Date.now()}`;
+    textEntities[sId] = { domain: 'shop', original_text: 'Happy Paws', converted_json: { ko: '해피퍼피', en: 'Happy Paws' } };
+    registeredShops.push({ id: sId, industry_id: masterRegistry.industry[0] });
 }
 
 function registerMasterItem(domain, original, translations) {
@@ -38,11 +49,6 @@ function registerMasterItem(domain, original, translations) {
     textEntities[id] = { source: 'master', domain, original_text: original, converted_json: translations };
     masterRegistry[domain].push(id);
     return id;
-}
-
-function registerCountry(name, currency, symbol, translations) {
-    const id = registerMasterItem('country', name, translations);
-    textEntities[id].currency_code = currency;
 }
 
 function t(source, key, id = null) {
@@ -56,7 +62,7 @@ function t(source, key, id = null) {
     return key;
 }
 
-// 🌐 Translation Engine (Simulation)
+// 🌐 Translation Engine
 async function getTranslations(text, sourceLang) {
     const results = {};
     LANGS.forEach(l => {
@@ -72,8 +78,6 @@ async function showMasterCreateForm() {
     if (!name) return;
 
     const translations = await getTranslations(name, currentLang);
-    
-    // Open Universal Editor for inspection before saving
     const tempId = `temp-${Date.now()}`;
     textEntities[tempId] = { domain, original_text: name, converted_json: translations };
     
@@ -119,41 +123,63 @@ function setupEventListeners() {
         localStorage.setItem('lang', currentLang);
         renderAll();
     });
+
+    document.getElementById('theme-toggle').addEventListener('click', () => {
+        document.body.classList.toggle('light-mode');
+    });
 }
 
 function renderAll() {
     document.querySelectorAll('.role-view').forEach(v => v.classList.add('hidden'));
     document.getElementById(`${currentRole}-view`).classList.remove('hidden');
 
-    // UI Key Sync (Includes Roles)
+    // UI Key Sync (100% translation)
     document.querySelectorAll('[data-ui-key]').forEach(el => {
         const key = el.getAttribute('data-ui-key');
         el.textContent = t('ui', key);
     });
 
+    if (currentRole === 'user') renderSNSFeed();
     if (currentRole === 'admin') renderAdmin();
     if (currentRole === 'provider') renderProvider();
 }
 
-function renderAdmin() {
-    const container = document.getElementById('admin-content');
-    container.innerHTML = `
-        <div class="card">
-            <h3 data-ui-key="label_master_studio">${t('ui', 'label_master_studio')}</h3>
-            <div class="studio-actions">
-                <select id="admin-master-domain" onchange="renderAdminList()">
-                    <option value="industry">Industries</option>
-                    <option value="country">Countries</option>
-                </select>
-                <button class="save-btn" onclick="showMasterCreateForm()">+ ${t('ui', 'btn_add_new')}</button>
+function renderSNSFeed() {
+    // Pet Profile Card
+    const profile = document.getElementById('pet-profile-area');
+    profile.innerHTML = `
+        <div class="profile-card">
+            <div class="profile-img"><img src="https://images.unsplash.com/photo-1517841905240-472988babdf9?w=200" alt="Pet"></div>
+            <div class="profile-info">
+                <h2>Coco <button class="mini-edit-btn">📝</button></h2>
+                <p>Golden Retriever • Male • 3 yrs</p>
             </div>
-            <div id="admin-master-list" class="list-container"></div>
         </div>
     `;
-    renderAdminList();
+
+    // Category Filter
+    const filter = document.getElementById('category-filter');
+    filter.innerHTML = `<button class="active">All</button>` + 
+        masterRegistry.industry.map(id => `<button>${t('master', '', id)}</button>`).join('');
+
+    // Feed Items
+    const feed = document.getElementById('timeline-feed');
+    feed.innerHTML = registeredShops.map(shop => `
+        <div class="timeline-event">
+            <div class="timeline-dot"></div>
+            <div class="timeline-card">
+                <div class="event-header">
+                    <span class="industry-tag">${t('master', '', shop.industry_id)}</span>
+                    <span class="event-date">JUST NOW</span>
+                </div>
+                <h3>${t('entity', '', shop.id)}</h3>
+                <p>Welcome to our new global provider!</p>
+            </div>
+        </div>
+    `).join('');
 }
 
-function renderAdminList() {
+function renderAdmin() {
     const domain = document.getElementById('admin-master-domain').value;
     const list = document.getElementById('admin-master-list');
     list.innerHTML = masterRegistry[domain].map(id => `
@@ -165,23 +191,20 @@ function renderAdminList() {
 }
 
 function renderProvider() {
-    const container = document.getElementById('provider-content');
-    if (!currentStore) {
-        container.innerHTML = `
-            <div class="card">
-                <h3>${t('ui', 'label_shop_reg')}</h3>
-                <div class="input-container"><label>${t('ui', 'label_industry_cat')}</label>
-                    <select id="p-industry">
-                        ${masterRegistry.industry.map(id => `<option value="${id}">${t('master', '', id)}</option>`).join('')}
-                    </select>
-                </div>
-                <button class="save-btn">Create</button>
+    const profile = document.getElementById('provider-profile-area');
+    profile.innerHTML = `
+        <div class="card">
+            <h3>${t('ui', 'label_shop_reg')}</h3>
+            <div class="input-container">
+                <label>${t('ui', 'label_industry_cat')}</label>
+                <select>${masterRegistry.industry.map(id => `<option value="${id}">${t('master', '', id)}</option>`).join('')}</select>
             </div>
-        `;
-    }
+            <button class="save-btn">${t('ui', 'btn_save')}</button>
+        </div>
+    `;
 }
 
 initSystem();
 window.showMasterCreateForm = showMasterCreateForm;
-window.renderAdminList = renderAdminList;
+window.renderAdminList = renderAdmin;
 window.openUniversalEditor = openUniversalEditor;
