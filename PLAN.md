@@ -5,20 +5,20 @@
 
 ## 2. Phases & Milestones
 
-### Phase 1: Pet Health Core (Current)
-- [ ] Pet Identity CRUD (이름, 품종, 성별, 생일 등)
-- [ ] Condition System (질병 관리: 진단일, 심각도, 상태)
-- [ ] Daily Metrics (건강 지표: 몸무게, 활동량 등)
-- [ ] Diet Tracking (사료 및 급여 관리)
-- [ ] basic Timeline (기록 누적)
+### Phase 1: Pet Health Core
+- [O] Pet Identity CRUD (이름, 품종, 성별, 생일 등)
+- [O] Condition System (질병 관리: 진단일, 심각도, 상태)
+- [O] Daily Metrics (건강 지표: 몸무게, 활동량 등)
+- [O] Diet Tracking (사료 및 급여 관리)
+- [O] basic Timeline (기록 누적)
 
-### Phase 2: Master Admin & Master Data System (Current)
-- [ ] Master Data Studio (Breeds, Conditions, Services, etc.)
-- [ ] 13-Language Master Conversion & Versioning
-- [ ] Admin Dashboard (Users, Pets, Bookings, SNS Analytics)
+### Phase 2: Master Admin & Master Data System
+- [O] Master Data Studio (Breeds, Conditions, Services, etc.)
+- [O] 13-Language Master Conversion & Versioning
+- [O] Admin Dashboard (Users, Pets, Bookings, SNS Analytics)
 - [ ] User Submission & Admin Approval Flow
 
-### Phase 3: SNS Integration
+### Phase 3: SNS Integration (Next)
 - [ ] Multi-Role Auth (User, Groomer, Hospital)
 - [ ] Feed System (Following / ForYou)
 - [ ] Ranking Algorithm Implementation
