@@ -45,12 +45,12 @@ function t(domain, key, entityId = null) {
     }
 }
 
-// 🌐 Universal Conversion Engine (Mock)
+// 🌐 Universal Conversion Engine (Mock - No Google Account Needed)
 function generateMockTranslations(text) {
     const mock = {};
     LANGS.forEach(lang => {
         if (lang === 'ko') mock[lang] = text;
-        else mock[lang] = `${text} [${lang.toUpperCase()}]`; // Mocking actual translation
+        else mock[lang] = `${text} [${lang.toUpperCase()}]`; 
     });
     return mock;
 }
@@ -65,66 +65,75 @@ function renderConversionGrid(containerId, data) {
     `).join('');
 }
 
-// Setup All Event Listeners
 function setupEventListeners() {
     // 1. Admin Master Registration
     const adminInput = document.getElementById('admin-master-input');
     const adminConvertBtn = document.getElementById('admin-convert-btn');
     const adminPreview = document.getElementById('admin-conversion-preview');
     
-    adminConvertBtn.addEventListener('click', () => {
-        const text = adminInput.value.trim();
-        if (!text) return;
-        const translations = generateMockTranslations(text);
-        renderConversionGrid('admin-grid-items', translations);
-        adminPreview.classList.remove('hidden');
-    });
-
-    document.getElementById('save-admin-master-btn').addEventListener('click', () => {
-        const domain = document.getElementById('master-domain-selector').value;
-        const entityId = `m-${domain}-${Date.now()}`;
-        const converted = {};
-        document.querySelectorAll('#admin-grid-items input').forEach(input => {
-            converted[input.dataset.lang] = input.value;
+    if(adminConvertBtn) {
+        adminConvertBtn.addEventListener('click', () => {
+            const text = adminInput.value.trim();
+            if (!text) return;
+            const translations = generateMockTranslations(text);
+            renderConversionGrid('admin-grid-items', translations);
+            adminPreview.classList.remove('hidden');
         });
+    }
 
-        textEntities[entityId] = { id: entityId, domain, original_text: adminInput.value, converted_json: converted, auto_generated: false };
-        masterRegistry[domain].push(entityId);
-        adminInput.value = '';
-        adminPreview.classList.add('hidden');
-        renderAll();
-        alert('Master Item Saved!');
-    });
+    const saveAdminBtn = document.getElementById('save-admin-master-btn');
+    if(saveAdminBtn) {
+        saveAdminBtn.addEventListener('click', () => {
+            const domain = document.getElementById('master-domain-selector').value;
+            const entityId = `m-${domain}-${Date.now()}`;
+            const converted = {};
+            document.querySelectorAll('#admin-grid-items input').forEach(input => {
+                converted[input.dataset.lang] = input.value;
+            });
+
+            textEntities[entityId] = { id: entityId, domain, original_text: adminInput.value, converted_json: converted, auto_generated: false };
+            masterRegistry[domain].push(entityId);
+            adminInput.value = '';
+            adminPreview.classList.add('hidden');
+            renderAll();
+            alert('Master Item Saved Globally!');
+        });
+    }
 
     // 2. Provider Shop Registration
     const shopInput = document.getElementById('master-input');
     const shopConvertBtn = document.getElementById('convert-btn');
     const shopPreview = document.getElementById('conversion-preview');
 
-    shopConvertBtn.addEventListener('click', () => {
-        const text = shopInput.value.trim();
-        if (!text) return;
-        const translations = generateMockTranslations(text);
-        renderConversionGrid('conversion-grid-items', translations);
-        shopPreview.classList.remove('hidden');
-    });
-
-    document.getElementById('save-master-btn').addEventListener('click', () => {
-        const entityId = `shop-${Date.now()}`;
-        const converted = {};
-        document.querySelectorAll('#conversion-grid-items input').forEach(input => {
-            converted[input.dataset.lang] = input.value;
+    if(shopConvertBtn) {
+        shopConvertBtn.addEventListener('click', () => {
+            const text = shopInput.value.trim();
+            if (!text) return;
+            const translations = generateMockTranslations(text);
+            renderConversionGrid('conversion-grid-items', translations);
+            shopPreview.classList.remove('hidden');
         });
+    }
 
-        textEntities[entityId] = { id: entityId, domain: 'shop', original_text: shopInput.value, converted_json: converted, auto_generated: false };
-        registeredShops.push(entityId);
-        shopInput.value = '';
-        shopPreview.classList.add('hidden');
-        renderAll();
-        alert('Shop Saved!');
-    });
+    const saveShopBtn = document.getElementById('save-master-btn');
+    if(saveShopBtn) {
+        saveShopBtn.addEventListener('click', () => {
+            const entityId = `shop-${Date.now()}`;
+            const converted = {};
+            document.querySelectorAll('#conversion-grid-items input').forEach(input => {
+                converted[input.dataset.lang] = input.value;
+            });
 
-    // 3. Role & Lang Selectors
+            textEntities[entityId] = { id: entityId, domain: 'shop', original_text: shopInput.value, converted_json: converted, auto_generated: false };
+            registeredShops.push(entityId);
+            shopInput.value = '';
+            shopPreview.classList.add('hidden');
+            renderAll();
+            alert('Shop Profile Registered!');
+        });
+    }
+
+    // 3. Selectors
     document.getElementById('role-selector').addEventListener('change', (e) => {
         currentRole = e.target.value;
         document.getElementById('admin-view').classList.toggle('hidden', currentRole !== 'admin');
@@ -142,7 +151,6 @@ function setupEventListeners() {
     document.getElementById('master-domain-selector').addEventListener('change', renderAll);
 }
 
-// UI Rendering
 function renderAll() {
     if (currentRole === 'admin') {
         const table = document.getElementById('master-items-table');
@@ -154,9 +162,6 @@ function renderAll() {
     }
     
     if (currentRole === 'user') {
-        const filterNav = document.getElementById('master-category-list');
-        filterNav.innerHTML = `<button class="active">All</button>${masterRegistry.industry.map(id => `<button>${t('industry', '', id)}</button>`).join('')}`;
-
         const feed = document.getElementById('timeline-feed');
         feed.innerHTML = registeredShops.map(shopId => `
             <div class="timeline-event event-shop">
@@ -164,10 +169,10 @@ function renderAll() {
                 <div class="timeline-card">
                     <div class="event-header"><span class="event-date">2024-03-02</span><span class="verified-badge">✓ Verified Provider</span></div>
                     <h3>${t('shop', '', shopId)}</h3>
-                    <p>Global Shop Registered via v2 System.</p>
+                    <p>Global Shop Profile Viewed in ${currentLang.toUpperCase()}.</p>
                 </div>
             </div>
-        `).join('');
+        `).join('') || '<p style="text-align:center; color:var(--text-dim)">No shops registered yet. Switch to Provider role to add one.</p>';
     }
 }
 
