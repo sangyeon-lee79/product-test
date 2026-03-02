@@ -1,29 +1,44 @@
 # LLD.md - Low Level Design & Architecture (방울아놀자)
 
 ## 1. System Architecture
-- **Mobile:** Flutter (Dart)
-- **Backend:** Node.js (TypeScript) + Cloudflare Workers
-- **Database:** PostgreSQL (Universal Text Entity Reference)
+- **Frontend:** Pure JS + CSS (Web Components Style)
+- **State Management:** LocalStorage-based persistence for v1
+- **Testing:** Playwright MCP (Automated UI/UX Testing)
+- **Translation:** Distributed Client-side API (Google Translate API)
 
 ## 2. Database Schema (v2 Core)
 
-### User Settings
-- `user_settings`: (user_id, google_api_key, preferred_lang)
+### Universal Text Entity Model
+- `text_entities`:
+  - `id`: Unique identifier (referenced by menus, master items, shops, pets)
+  - `domain`: category (menu, breed, shop, etc.)
+  - `original_text`: The first entered text
+  - `original_lang`: Code of the first entered language (Source)
+  - `converted_json`: JSON object containing 13 language values
+  - `auto_generated`: Boolean flag (false if user edited)
 
-### Text Entity Model (Universal)
-- 모든 테이블의 `name`, `label`, `description` 컬럼은 `text_entities.id`를 참조함.
-- **Menu Entities:** 'Master Data Studio', 'Users', 'Pets' 등의 메뉴명도 DB화되어 관리됨.
+### Registry Structure
+- `menu_items`: (id, label_text_id) -> DB-driven menu names
+- `master_registry`: (domain, item_list: text_entity_id[])
+- `shop_registry`: (id, owner_id, name_text_id)
 
-### Foreign Key Registry
-- `menu_items.label_text_id` -> `text_entities.id`
-- `master_items.name_text_id` -> `text_entities.id`
-- `users.name_text_id` -> `text_entities.id`
-- `pets.name_text_id` -> `text_entities.id`
+### User Settings (Distributed API)
+- `google_api_key`: Stored securely in client-side storage or user profile.
 
-## 3. UI Rendering Rule
-- **t(domain, key, entity_id):** 
-  - `entity_id`가 있는 모든 요소는 텍스트를 클릭하거나 수정 버튼을 통해 언어별 편집 모드로 진입 가능.
+## 3. Implementation Logic
 
-## 4. Universal Editor Component
-- `ConversionGrid`: [Input Grid for 13 Langs]
-- `APIConnector`: 사용자의 개인 Google API Key를 사용하여 클라이언트 사이드에서 번역 요청 수행.
+### Unified Translation Function `t()`
+1. If `entity_id` exists:
+   - return `converted_json[currentLang]`
+   - if null, return `original_text`
+2. Else:
+   - look up in static `dictionary`
+
+### Universal Editor Workflow
+- `openUniversalEditor(entityId)`: 
+  - Fetches `text_entity` by ID.
+  - Renders 13-input grid.
+  - Updates `converted_json` on Save.
+
+## 4. UI Rendering Rule
+- 모든 텍스트는 `text_entity` 조회를 거쳐야 하며, 관리자 권한 시 📝 버튼이 동적으로 생성됨.
