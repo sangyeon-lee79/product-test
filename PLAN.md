@@ -18,7 +18,7 @@
 - [O] Distributed API Model (개인 API 연동)
 - [O] Master Menu & Dropdown System (마스터 데이터 기반 선택 시스템)
 - [O] Global Text System Separation (UI Dictionary / Master Data / Text Entities 분리)
-- [ ] UI Dictionary Page-based Management (페이지별 UI 키 관리 기능 추가)
+- [O] UI Dictionary Page-based Management (페이지별 UI 키 관리 기능)
 - [O] Admin Dashboard (플랫폼 지표 모니터링)
 
 ### Phase 3: SNS Integration (Next)
@@ -26,10 +26,14 @@
 - [ ] Feed System (Following / ForYou 기반 정교한 필터링)
 - [ ] Ranking Algorithm Implementation (관심사/Engagement 기반)
 
-### Phase 4: Grooming Shop Loop
-- [ ] Shop Profile & Service Slots 상세화
-- [ ] Booking System (예약 및 결제 연동)
-- [ ] Completion & Auto-Timeline Integration (샵 인증 기록 자동화)
+### Phase 4: Provider System & Commerce (Updated)
+- [ ] **Provider Profile:** Store setup (Country/Currency/Industry mapping)
+- [ ] **Master Products:** Admin creates master catalog (Global)
+- [ ] **Store Inventory:** Provider selects products & sets price/stock
+- [ ] **Service Management:** Provider creates industry-scoped services
+- [ ] **Reservations:** Booking flow with Calendar & Status management
+- [ ] **Promotions:** Discount system & SNS promotion posts
+- [ ] **Pet Data Access:** Industry-based permission logic (Reservation-time view)
 
 ### Phase 5: Safety & Optimization
 - [ ] Admin Monitoring Tools (부적절 콘텐츠 관리)

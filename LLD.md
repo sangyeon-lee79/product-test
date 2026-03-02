@@ -2,28 +2,67 @@
 
 ## 1. System Architecture
 - **Text Management:** 3-Tier Separation (UI / Master / Entity)
-- **UI Management:** Page-based filtering & mapping
+- **Frontend:** Data-driven UI (No hardcoded strings)
 
-## 2. Database Schema (v2 Core)
+## 2. Database Schema (v2 Core + Provider System)
 
-### A) UI Dictionary (Expanded)
-- `ui_dictionary_keys`: 
+### A) UI Dictionary & Master Data
+- `ui_dictionary_keys/values`, `master_domains/items/values` (Existing)
+- **New Masters:**
+  - `master_countries`: (id, name_text_id, currency_code, currency_symbol)
+  - `master_products`: (id, name_text_id, category_id, specs_json, image_url)
+
+### B) Provider System
+- `provider_profiles`:
   - `id`: UUID
-  - `key`: VARCHAR
-  - `domain`: VARCHAR
-  - `description`: TEXT
-- `ui_dictionary_values`: (key_id, language, value)
-- `ui_dictionary_key_pages`: (id, key_id, page) -> 페이지-키 매핑 테이블
+  - `owner_id`: UUID
+  - `store_name_text_id`: FK -> text_entities
+  - `country_id`: FK -> master_countries
+  - `currency_code`: VARCHAR (Auto from country)
+  - `industry_ids`: JSON array (e.g. ["grooming", "hotel"])
+- `provider_services`:
+  - `id`: UUID
+  - `provider_id`: FK
+  - `name_text_id`: FK
+  - `price`: DECIMAL (Store Currency)
+  - `industry_id`: FK -> master_items (Scope)
+- `provider_products`:
+  - `id`: UUID
+  - `provider_id`: FK
+  - `master_product_id`: FK -> master_products
+  - `selling_price`: DECIMAL
+  - `stock_qty`: INT
+  - `is_active`: BOOLEAN
+
+### C) Commerce & Reservations
+- `reservations`:
+  - `id`: UUID
+  - `pet_id`: FK
+  - `provider_id`: FK
+  - `service_id`: FK (Optional)
+  - `status`: (requested, accepted, completed, canceled)
+  - `date_time`: TIMESTAMP
+- `promotions`:
+  - `id`: UUID
+  - `provider_id`: FK
+  - `target_type`: (service, product)
+  - `target_id`: UUID
+  - `discount_type`: (percent, fixed)
+  - `value`: DECIMAL
 
 ## 3. Implementation Logic
 
-### Universal Translation Function `t(source, key, id)`
-... (기존 내용)
+### Currency Handling
+- Frontend displays prices with `store.currency_symbol`.
+- No currency conversion logic in MVP storage (store raw values).
 
-### UI Dictionary Page Management
-- **Page Enum:** `index`, `login`, `signup`, `dashboard_user`, `dashboard_provider`, `dashboard_admin`, `pet_profile`, `settings`, `feed`, `reservation`, `shop_profile`
-- **Current Value Priority:** 1. 해당 언어 번역값 -> 2. 기본 언어값 (ko) -> 3. "—"
+### Permission Logic (Pet Data)
+- `getPetDataForProvider(petId, providerId)`:
+  - Fetch `provider.industry_ids`.
+  - Fetch `pet.timeline_events` where `event.category` IN `provider.industry_ids`.
+  - Return filtered list + Basic Profile.
 
 ## 4. UI Rendering Rule
-- `data-ui-key` 속성을 통해 페이지별 키 식별.
-- `renderAll()` 실행 시 현재 보기 모드에 따라 UI 사전 목록 재생성.
+- `data-ui-key` for labels.
+- `master_items` for dropdowns.
+- `text_entities` for user content.
