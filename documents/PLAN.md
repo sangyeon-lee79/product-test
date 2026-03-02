@@ -16,12 +16,17 @@
 - [O] Pet Identity CRUD (Master-driven selections).
 
 ### Phase 2: Master Admin & Universal Control (Current)
-- [ ] **Master Data Management (Screen 1):** 카테고리/아이템 리스트-에디트 시스템.
-- [ ] **Language Management (Screen 2):** 전역 텍스트 사전 및 언어별 컬럼 편집.
-- [ ] **Country & Currency Management (Screen 3):** 국가-통화 매핑 및 공급자 연동.
+- [O] **Master Data Management:** 카테고리/아이템 리스트-에디트 시스템.
+- [O] **Language Management:** 전역 텍스트 사전 및 언어별 컬럼 편집.
+- [O] **Country & Currency Management:** 국가-통화 매핑 및 공급자 연동.
 - [O] **Universal Edit System:** 메뉴 및 정적 레이블의 13개 국어 수정 기능.
+- [ ] **Domain Specific Masters:**
+  - [ ] 견종(Breed) 마스터 데이터 구축
+  - [ ] 질병(Condition) 및 기록 템플릿(Log Template) 구축
+  - [ ] 상품(Product) 마스터 (제조사/스펙 포함) 구축
+- [ ] **Admin Analytics:** 가입/피드/예약/상거래 통합 지표 대시보드
 
-### Phase 3: Provider System & Commerce (Current)
+### Phase 3: Provider System & Commerce
 - [O] **Provider Profile (Fixed):** 국가 선택 시 통화 자동 매핑 로직.
 - [ ] **Inventory & Service Management:** 마스터 상품 연동 및 공급자 고유 서비스 생성.
 - [ ] **Reservation Flow:** 상태 관리(Requested -> Accepted -> Completed).

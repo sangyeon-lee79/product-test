@@ -8,6 +8,8 @@
     --md-outline: #938f99;
     --accent: #7c4dff;
     --border: #2f2f3d;
+    --up: #4caf50;
+    --down: #f44336;
 }
 
 body.light-mode {
@@ -35,30 +37,27 @@ body { background-color: var(--md-surface); color: var(--md-on-surface); font-fa
 .admin-tabs button { background: none; border: none; color: var(--md-on-surface-variant); padding: 8px 16px; cursor: pointer; border-radius: 8px; font-weight: 500; }
 .admin-tabs button.active { background: var(--md-surface-variant); color: var(--md-primary); }
 
-/* CARD & LIST */
+/* STATS GRID */
+.stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px; margin-bottom: 24px; }
+.stat-card { background: var(--md-surface-variant); padding: 20px; border-radius: 12px; position: relative; }
+.stat-card .label { display: block; font-size: 12px; color: var(--md-on-surface-variant); margin-bottom: 8px; }
+.stat-card .value { font-size: 28px; font-weight: 700; color: var(--md-primary); }
+.stat-card .trend { position: absolute; top: 20px; right: 20px; font-size: 12px; font-weight: 700; padding: 2px 8px; border-radius: 4px; }
+.trend.up { background: rgba(76, 175, 80, 0.1); color: var(--up); }
+.trend.down { background: rgba(244, 67, 54, 0.1); color: var(--down); }
+
+/* MOCK CHART */
+.chart-placeholder { height: 300px; }
+.mock-chart { display: flex; align-items: flex-end; gap: 12px; height: 200px; margin-top: 20px; padding: 0 20px; border-bottom: 2px solid var(--border); }
+.mock-chart .bar { flex: 1; background: var(--md-primary); border-radius: 4px 4px 0 0; min-width: 30px; transition: height 0.5s ease; }
+
+/* LIST & ITEMS */
 .card { background: var(--md-surface-variant); padding: 24px; border-radius: 12px; margin-bottom: 16px; }
 .list-container { margin-top: 16px; border: 1px solid var(--border); border-radius: 8px; overflow: hidden; background: var(--md-surface); }
-.list-item { display: flex; justify-content: space-between; align-items: center; padding: 12px 16px; border-bottom: 1px solid var(--border); transition: background 0.2s; }
+.list-item { display: flex; justify-content: space-between; align-items: center; padding: 12px 16px; border-bottom: 1px solid var(--border); }
 .list-item.clickable:hover { background: rgba(255,255,255,0.05); cursor: pointer; }
-.list-item:last-child { border-bottom: none; }
+.key-label { font-family: monospace; font-size: 11px; color: var(--md-on-surface-variant); background: rgba(0,0,0,0.2); padding: 2px 6px; border-radius: 4px; }
 
-/* TRANSLATION TABLE */
-.overflow-x { overflow-x: auto; }
-.translation-table { width: 100%; border-collapse: collapse; margin-top: 16px; font-size: 14px; }
-.translation-table th, .translation-table td { padding: 12px; border: 1px solid var(--border); text-align: left; }
-.translation-table th { background: rgba(255,255,255,0.05); color: var(--md-primary); }
-.translation-table input { width: 100%; background: transparent; border: none; color: var(--md-on-surface); border-bottom: 1px dashed var(--md-outline); outline: none; }
-.translation-table input:focus { border-bottom: 1px solid var(--md-primary); }
-.key-cell { font-family: monospace; color: var(--md-on-surface-variant); font-size: 12px; }
-
-/* BADGES & BUTTONS */
-.status-badge { width: 10px; height: 10px; border-radius: 50%; background: #555; }
-.status-badge.active { background: #4caf50; }
-.save-btn { background: var(--md-primary); color: var(--md-on-primary); border: none; padding: 10px 24px; border-radius: 100px; font-weight: 700; cursor: pointer; }
-.mini-add-btn, .back-btn { background: none; border: 1px solid var(--md-outline); color: var(--md-on-surface); width: 24px; height: 24px; border-radius: 4px; cursor: pointer; font-size: 14px; }
-.edit-btn { background: none; border: 1px solid var(--md-outline); color: var(--md-primary); padding: 4px 8px; border-radius: 4px; cursor: pointer; font-size: 12px; }
-
-/* FORMS */
-.input-container { margin-bottom: 16px; }
-.input-container label { display: block; font-size: 12px; margin-bottom: 4px; color: var(--md-primary); }
-input[type="text"], select { width: 100%; padding: 10px; background: var(--md-surface); border: 1px solid var(--border); border-radius: 8px; color: var(--md-on-surface); }
+/* BUTTONS */
+.save-btn, .add-btn { background: var(--md-primary); color: var(--md-on-primary); border: none; padding: 10px 24px; border-radius: 100px; font-weight: 700; cursor: pointer; }
+.back-btn { background: none; border: 1px solid var(--md-outline); color: var(--md-on-surface); width: 32px; height: 32px; border-radius: 8px; cursor: pointer; }
