@@ -3,45 +3,45 @@
 ## 1. Project Overview
 반려견 중심의 생애 기록 및 SNS형 PHR 플랫폼 "방울아놀자" 개발 로드맵.
 
-## 2. Phases & Milestones
+## 2. Tech Stack Mandate
+- **Mobile:** Flutter (Dart) - Mandatory
+- **Design:** Material 3 (M3) Guideline Reference
+- **Backend:** Node.js (TypeScript)
+- **Database:** PostgreSQL
+
+## 3. Phases & Milestones
 
 ### Phase 1: Pet Health Core
-- [O] Pet Identity CRUD (이름, 품종, 성별, 생일 등)
-- [O] Condition System (질병 관리: 진단일, 심각도, 상태)
-- [O] Daily Metrics (건강 지표: 몸무게, 활동량 등)
-- [O] basic Timeline (기록 누적 및 SNS 피드 스타일 UI)
+- [O] Pet Identity CRUD
+- [O] Condition & Metrics System
+- [O] SNS-style Feed Timeline UI (M3 Reference)
 
 ### Phase 2: Master Admin & Universal Translation
-- [O] Master Data Studio (Breeds, Conditions, Industries 관리)
+- [O] Master Data Studio (Breeds, Industries, Countries)
 - [O] 13-Language Universal Translation System (v2)
-- [O] Universal Edit System (메뉴명, 데이터 전 영역 수정)
-- [O] Distributed API Model (개인 API 연동)
-- [O] Master Menu & Dropdown System (마스터 데이터 기반 선택 시스템)
-- [O] Global Text System Separation (UI Dictionary / Master Data / Text Entities 분리)
-- [O] UI Dictionary Page-based Management (페이지별 UI 키 관리 기능)
-- [O] Admin Dashboard (플랫폼 지표 모니터링)
+- [O] Universal Edit System (Menu & Master Data)
+- [O] Distributed API Model
+- [O] UI Dictionary Page-based Management
 
-### Phase 3: SNS Integration (Next)
-- [ ] Multi-Role Auth (User, Groomer, Hospital 역할 기반 로그인)
-- [ ] Feed System (Following / ForYou 기반 정교한 필터링)
-- [ ] Ranking Algorithm Implementation (관심사/Engagement 기반)
+### Phase 3: SNS Integration
+- [ ] Multi-Role Auth System
+- [ ] M3-style Feed Interaction (Likes, Shares)
+- [ ] Ranking & Discovery
 
-### Phase 4: Provider System & Commerce (Updated)
-- [ ] **Provider Profile Fix:** "List First, Then Edit" pattern implementation.
-- [ ] **Store Setup:** Country -> Currency mapping & Multi-select Industries.
-- [ ] **Master Products:** Admin creates master catalog (Global)
-- [ ] **Store Inventory:** Provider selects products & sets price/stock
-- [ ] **Service Management:** Provider creates industry-scoped services
-- [ ] **Reservations:** Booking flow with Calendar & Status management
-- [ ] **Promotions:** Discount system & SNS promotion posts
+### Phase 4: Provider System & Commerce
+- [O] **Provider Profile Fix:** "List First, Then Edit" pattern.
+- [O] **Country-Currency mapping:** Auto-derived from Admin masters.
+- [ ] **Master Product Catalog:** Admin defined.
+- [ ] **Store Inventory:** Provider price/stock management.
+- [ ] **Service Management:** Custom service creation.
+- [ ] **Reservations:** Booking flow & Calendar.
 
 ### Phase 5: Safety & Optimization
 - [ ] Admin Monitoring Tools
-- [ ] Data Validation & Security Hardening
 - [ ] Performance Tuning
 
-## 3. Definitions of Done (DoD)
-- 기능 구현 및 Playwright 테스트 통과
-- documents/ 내의 PLAN.md / PRD.md / LLD.md 업데이트 완료
-- "List First, Then Edit" UI 패턴 준수 여부 확인
-- 모든 텍스트의 13개 국어 호환성 확인
+## 4. Definitions of Done (DoD)
+- Flutter mobile stack alignment
+- Material 3 design principles followed (Spacing, Typography, Hierarchy)
+- "List First, Then Edit" UX pattern verified
+- PLAN.md / PRD.md / LLD.md updated

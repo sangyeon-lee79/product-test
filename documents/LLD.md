@@ -1,48 +1,42 @@
 # LLD.md - Low Level Design & Architecture (방울아놀자)
 
 ## 1. System Architecture
-- **Document Management:** All docs managed in `/documents` folder.
-- **UI Pattern:** List-First architecture for all management modules.
+- **Mobile App:** Flutter (Dart)
+- **UI Design Baseline:** Material 3 Guidelines (m3.material.io)
+- **Spacing Scale:** 8dp increment (8, 16, 24, 32...)
 
-## 2. Database Schema (Updated)
+## 2. UI Pattern Implementation
 
-### A) Master Countries & Currencies
-- `master_countries`:
-  - `id`: UUID
-  - `name_text_id`: FK -> text_entities
-  - `currency_code`: VARCHAR (e.g., KRW, USD)
-  - `currency_symbol`: VARCHAR (e.g., ₩, $)
+### A) List-First Pattern (Component)
+- `DomainList`: 카드형 목록 UI (M3 Card pattern).
+- `DomainForm`: 섹션별 그룹화된 입력 폼.
 
-### B) Provider Profiles (Fixed)
-- `provider_profiles`:
-  - `id`: UUID
-  - `owner_id`: UUID
-  - `store_name_text_id`: FK -> text_entities
-  - `address_text_id`: FK -> text_entities
-  - `phone_number`: VARCHAR
-  - `country_id`: FK -> master_countries
-  - `currency_code`: VARCHAR (Derived from country)
-  - `industry_ids`: JSONB (Array of master_items.id)
-
-## 3. Implementation Logic
-
-### Store Profile Flow Machine
+### B) Provider Profile Flow Machine
 ```javascript
-function renderStoreProfile() {
-    if (!currentStore) {
-        showCreateForm(); // Shop Name, Address, Phone, Country (Dropdown), Industries (Multi)
+function renderProviderUI() {
+    if (currentStore) {
+        renderStoreDetailView(currentStore); // List/Detail context
     } else {
-        showEditPage(currentStore);
+        renderStoreCreateForm(); // Initial registration
     }
 }
 ```
 
-### Country-Currency Auto-Mapping
-- `onCountryChange(countryId)`:
-  - Find country in `master_countries`.
-  - Update `store.currency_code` and display symbol.
+## 3. Database Schema (Refined)
 
-## 4. UI Rendering Rule
-- **List Page:** Default entry point for all domains.
-- **Edit/Create Modal:** Context-aware forms.
-- **Translation:** Supplemental 🌐 tool next to text inputs.
+### Master Data (M3 Selection Context)
+- `master_countries`: (id, name_text_id, currency_code, currency_symbol)
+- `master_industries`: (id, name_text_id, icon_type)
+
+### Provider Store (Profile)
+- `provider_profiles`:
+  - `store_name_text_id`: Text Entity
+  - `address_text_id`: Text Entity
+  - `country_id`: Master Country FK
+  - `currency_code`: Read-only (Derived)
+  - `industry_ids`: Array of Master Industry FKs
+
+## 4. Visual Standards (M3 Reference)
+- **Typography:** Display, Headline, Title, Body, Label scales.
+- **Color:** Surface, On-Surface, Primary, Secondary, Variant colors.
+- **Elevation:** Tonal surfaces instead of heavy drop shadows.
