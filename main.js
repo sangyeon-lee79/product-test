@@ -28,6 +28,7 @@ function seedMasterData() {
             id: b.id,
             domain: 'breed',
             original_text: b.name,
+            original_lang: 'en',
             converted_json: { ko: b.ko, en: b.name }
         };
         masterRegistry.breed.push(b.id);
@@ -36,7 +37,11 @@ function seedMasterData() {
 
 function t(domain, key, entityId = null) {
     if (entityId && textEntities[entityId]) {
-        return textEntities[entityId].converted_json[currentLang] || textEntities[entityId].original_text;
+        const entity = textEntities[entityId];
+        // 1. 현재 선택된 언어의 값이 있으면 반환
+        if (entity.converted_json[currentLang]) return entity.converted_json[currentLang];
+        // 2. 없으면 원본 텍스트 반환
+        return entity.original_text;
     }
     try {
         return dictionary[domain][key][currentLang] || dictionary[domain][key]['en'] || key;
@@ -45,12 +50,16 @@ function t(domain, key, entityId = null) {
     }
 }
 
-// 🌐 Universal Conversion Engine (Mock - No Google Account Needed)
-function generateMockTranslations(text) {
+// 🌐 Universal Conversion Engine (Context-Aware Mock)
+function generateMockTranslations(text, sourceLang) {
     const mock = {};
     LANGS.forEach(lang => {
-        if (lang === 'ko') mock[lang] = text;
-        else mock[lang] = `${text} [${lang.toUpperCase()}]`; 
+        if (lang === sourceLang) {
+            mock[lang] = text; // 현재 선택된 언어가 원본
+        } else {
+            // 다른 언어들은 [Source -> Target] 형태로 시뮬레이션
+            mock[lang] = `${text} [${sourceLang.toUpperCase()}→${lang.toUpperCase()}]`; 
+        }
     });
     return mock;
 }
@@ -58,8 +67,8 @@ function generateMockTranslations(text) {
 function renderConversionGrid(containerId, data) {
     const container = document.getElementById(containerId);
     container.innerHTML = LANGS.map(lang => `
-        <div class="grid-item">
-            <span>${lang.toUpperCase()}</span>
+        <div class="grid-item ${lang === currentLang ? 'source-lang' : ''}">
+            <span>${lang.toUpperCase()}${lang === currentLang ? ' (ORG)' : ''}</span>
             <input type="text" data-lang="${lang}" value="${data[lang]}">
         </div>
     `).join('');
@@ -75,7 +84,8 @@ function setupEventListeners() {
         adminConvertBtn.addEventListener('click', () => {
             const text = adminInput.value.trim();
             if (!text) return;
-            const translations = generateMockTranslations(text);
+            // 현재 선택된 currentLang을 원본 언어로 전달
+            const translations = generateMockTranslations(text, currentLang);
             renderConversionGrid('admin-grid-items', translations);
             adminPreview.classList.remove('hidden');
         });
@@ -91,12 +101,19 @@ function setupEventListeners() {
                 converted[input.dataset.lang] = input.value;
             });
 
-            textEntities[entityId] = { id: entityId, domain, original_text: adminInput.value, converted_json: converted, auto_generated: false };
+            textEntities[entityId] = { 
+                id: entityId, 
+                domain, 
+                original_text: adminInput.value, 
+                original_lang: currentLang, // 원본 언어 저장
+                converted_json: converted, 
+                auto_generated: false 
+            };
             masterRegistry[domain].push(entityId);
             adminInput.value = '';
             adminPreview.classList.add('hidden');
             renderAll();
-            alert('Master Item Saved Globally!');
+            alert(`Saved! Original Language: ${currentLang.toUpperCase()}`);
         });
     }
 
@@ -109,7 +126,7 @@ function setupEventListeners() {
         shopConvertBtn.addEventListener('click', () => {
             const text = shopInput.value.trim();
             if (!text) return;
-            const translations = generateMockTranslations(text);
+            const translations = generateMockTranslations(text, currentLang);
             renderConversionGrid('conversion-grid-items', translations);
             shopPreview.classList.remove('hidden');
         });
@@ -124,12 +141,19 @@ function setupEventListeners() {
                 converted[input.dataset.lang] = input.value;
             });
 
-            textEntities[entityId] = { id: entityId, domain: 'shop', original_text: shopInput.value, converted_json: converted, auto_generated: false };
+            textEntities[entityId] = { 
+                id: entityId, 
+                domain: 'shop', 
+                original_text: shopInput.value, 
+                original_lang: currentLang, // 원본 언어 저장
+                converted_json: converted, 
+                auto_generated: false 
+            };
             registeredShops.push(entityId);
             shopInput.value = '';
             shopPreview.classList.add('hidden');
             renderAll();
-            alert('Shop Profile Registered!');
+            alert(`Shop Registered! (Base: ${currentLang.toUpperCase()})`);
         });
     }
 
@@ -169,10 +193,10 @@ function renderAll() {
                 <div class="timeline-card">
                     <div class="event-header"><span class="event-date">2024-03-02</span><span class="verified-badge">✓ Verified Provider</span></div>
                     <h3>${t('shop', '', shopId)}</h3>
-                    <p>Global Shop Profile Viewed in ${currentLang.toUpperCase()}.</p>
+                    <p>Global Shop Profile (Base: ${textEntities[shopId].original_lang.toUpperCase()})</p>
                 </div>
             </div>
-        `).join('') || '<p style="text-align:center; color:var(--text-dim)">No shops registered yet. Switch to Provider role to add one.</p>';
+        `).join('') || '<p style="text-align:center; color:var(--text-dim)">No shops registered yet.</p>';
     }
 }
 

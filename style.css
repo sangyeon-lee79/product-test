@@ -90,6 +90,19 @@ main {
 input { flex: 1; background: var(--bg); border: 1px solid var(--border); color: var(--text-main); padding: 0.8rem; border-radius: 12px; }
 .globe-btn { background: var(--accent); color: white; border: none; padding: 0.8rem; border-radius: 12px; cursor: pointer; }
 
+/* Conversion Grid */
+#admin-grid-items, #conversion-grid-items {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+    margin-top: 1rem;
+}
+
+.grid-item { display: flex; flex-direction: column; gap: 5px; }
+.grid-item span { font-size: 0.7rem; font-weight: 700; color: var(--text-dim); }
+.grid-item.source-lang input { border-color: var(--accent); background: rgba(124, 77, 255, 0.05); }
+.grid-item.source-lang span { color: var(--accent); }
+
 /* Table View */
 .master-list-view { margin-top: 2rem; }
 #master-items-table { background: var(--bg); border-radius: 15px; border: 1px solid var(--border); overflow: hidden; }
