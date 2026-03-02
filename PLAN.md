@@ -11,14 +11,13 @@
 - [O] Daily Metrics (건강 지표: 몸무게, 활동량 등)
 - [O] basic Timeline (기록 누적 및 SNS 피드 스타일 UI)
 
-### Phase 2: Master Admin & Universal Translation (Current)
+### Phase 2: Master Admin & Universal Translation
 - [O] Master Data Studio (Breeds, Conditions, Industries 관리)
 - [O] 13-Language Universal Translation System (v2)
-- [O] Universal Edit System (메뉴명, 사용자, 반려동물 등 전 영역 수정 가능)
-- [O] Distributed API Model (개인별 Google API Key 연동 구조)
-- [O] Context-Aware Source Language Detection (현재 언어를 원본으로 인식)
+- [O] Universal Edit System (메뉴명, 데이터 전 영역 수정)
+- [O] Distributed API Model (개인 API 연동)
+- [ ] Master Menu & Dropdown System (지침에 따른 드롭다운 전환)
 - [O] Admin Dashboard (플랫폼 지표 모니터링)
-- [O] Playwright MCP 기반 자동화 테스트 환경 구축
 
 ### Phase 3: SNS Integration (Next)
 - [ ] Multi-Role Auth (User, Groomer, Hospital 역할 기반 로그인)

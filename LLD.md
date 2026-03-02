@@ -8,19 +8,15 @@
 
 ## 2. Database Schema (v2 Core)
 
-### Universal Text Entity Model
-- `text_entities`:
-  - `id`: Unique identifier (referenced by menus, master items, shops, pets)
-  - `domain`: category (menu, breed, shop, etc.)
-  - `original_text`: The first entered text
-  - `original_lang`: Code of the first entered language (Source)
-  - `converted_json`: JSON object containing 13 language values
-  - `auto_generated`: Boolean flag (false if user edited)
+### Master Menu System (Mandatory)
+- `master_domains`: (id, name) [industry, breed, service, condition, food, sns_tag]
+- `master_items`: (id, domain_id, code, status, order)
+- `master_item_values`: (item_id, language, value) -> 13 langs per item
 
-### Registry Structure
-- `menu_items`: (id, label_text_id) -> DB-driven menu names
-- `master_registry`: (domain, item_list: text_entity_id[])
-- `shop_registry`: (id, owner_id, name_text_id)
+### Consumer Integration
+- `shops.industry_item_id` -> `master_items.id`
+- `pets.breed_item_id` -> `master_items.id`
+- 모든 드롭다운은 `master_items.id`를 저장하고, `master_item_values`를 통해 현재 언어 레이블을 렌더링함.
 
 ### User Settings (Distributed API)
 - `google_api_key`: Stored securely in client-side storage or user profile.
