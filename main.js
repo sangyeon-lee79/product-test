@@ -6,37 +6,29 @@ let currentRole = 'user';
 
 const LANGS = ['ko', 'en', 'ja', 'vi', 'id', 'zh', 'th', 'es', 'fr', 'de', 'it', 'pt', 'ar'];
 
-// Master Data Storage
-const masterRegistry = {
-    breed: [],
-    condition: [],
-    industry: [],
-    food: []
-};
-
+// Master Data & Shop Data Storage
+const masterRegistry = { breed: [], condition: [], industry: [], food: [] };
 const registeredShops = [];
 
 async function initSystem() {
     const dictResponse = await fetch('shared/dictionary/dictionary_values.json');
     dictionary = await dictResponse.json();
-    
-    // Seed initial Master Data
     seedMasterData();
+    setupEventListeners();
     renderAll();
 }
 
 function seedMasterData() {
     const initialBreeds = [
-        { id: 'm-breed-001', code: 'GOLDEN', name: 'Golden Retriever' },
-        { id: 'm-breed-002', code: 'POODLE', name: 'Poodle' }
+        { id: 'm-breed-001', name: 'Golden Retriever', ko: '골든 리트리버' },
+        { id: 'm-breed-002', name: 'Poodle', ko: '푸들' }
     ];
-    
     initialBreeds.forEach(b => {
         textEntities[b.id] = {
             id: b.id,
             domain: 'breed',
             original_text: b.name,
-            converted_json: { ko: b.name === 'Poodle' ? '푸들' : '골든 리트리버', en: b.name }
+            converted_json: { ko: b.ko, en: b.name }
         };
         masterRegistry.breed.push(b.id);
     });
@@ -53,121 +45,132 @@ function t(domain, key, entityId = null) {
     }
 }
 
-// 🧭 Admin & Registration Logic
-const adminMasterInput = document.getElementById('admin-master-input');
-const adminConvertBtn = document.getElementById('admin-convert-btn');
-const adminPreviewArea = document.getElementById('admin-conversion-preview');
-const adminGridItems = document.getElementById('admin-grid-items');
-const domainSelector = document.getElementById('master-domain-selector');
-
-let adminTempConverted = {};
-
-adminConvertBtn.addEventListener('click', () => {
-    const text = adminMasterInput.value.trim();
-    if (!text) return;
-    adminTempConverted = {};
+// 🌐 Universal Conversion Engine (Mock)
+function generateMockTranslations(text) {
+    const mock = {};
     LANGS.forEach(lang => {
-        adminTempConverted[lang] = lang === 'ko' ? text : `${text} (${lang.toUpperCase()})`;
+        if (lang === 'ko') mock[lang] = text;
+        else mock[lang] = `${text} [${lang.toUpperCase()}]`; // Mocking actual translation
     });
-    renderAdminGrid();
-    adminPreviewArea.classList.remove('hidden');
-});
+    return mock;
+}
 
-function renderAdminGrid() {
-    adminGridItems.innerHTML = LANGS.map(lang => `
+function renderConversionGrid(containerId, data) {
+    const container = document.getElementById(containerId);
+    container.innerHTML = LANGS.map(lang => `
         <div class="grid-item">
             <span>${lang.toUpperCase()}</span>
-            <input type="text" data-lang="${lang}" value="${adminTempConverted[lang]}">
+            <input type="text" data-lang="${lang}" value="${data[lang]}">
         </div>
     `).join('');
 }
 
-document.getElementById('save-admin-master-btn').addEventListener('click', () => {
-    const entityId = `m-${domainSelector.value}-${Date.now()}`;
-    const finalConverted = {};
-    adminGridItems.querySelectorAll('input').forEach(input => {
-        finalConverted[input.dataset.lang] = input.value;
+// Setup All Event Listeners
+function setupEventListeners() {
+    // 1. Admin Master Registration
+    const adminInput = document.getElementById('admin-master-input');
+    const adminConvertBtn = document.getElementById('admin-convert-btn');
+    const adminPreview = document.getElementById('admin-conversion-preview');
+    
+    adminConvertBtn.addEventListener('click', () => {
+        const text = adminInput.value.trim();
+        if (!text) return;
+        const translations = generateMockTranslations(text);
+        renderConversionGrid('admin-grid-items', translations);
+        adminPreview.classList.remove('hidden');
     });
 
-    textEntities[entityId] = {
-        id: entityId,
-        domain: domainSelector.value,
-        original_text: adminMasterInput.value,
-        converted_json: finalConverted,
-        auto_generated: false
-    };
+    document.getElementById('save-admin-master-btn').addEventListener('click', () => {
+        const domain = document.getElementById('master-domain-selector').value;
+        const entityId = `m-${domain}-${Date.now()}`;
+        const converted = {};
+        document.querySelectorAll('#admin-grid-items input').forEach(input => {
+            converted[input.dataset.lang] = input.value;
+        });
 
-    masterRegistry[domainSelector.value].push(entityId);
-    
-    adminMasterInput.value = '';
-    adminPreviewArea.classList.add('hidden');
-    renderAll();
-    alert(`Published ${entityId} to global registry!`);
-});
+        textEntities[entityId] = { id: entityId, domain, original_text: adminInput.value, converted_json: converted, auto_generated: false };
+        masterRegistry[domain].push(entityId);
+        adminInput.value = '';
+        adminPreview.classList.add('hidden');
+        renderAll();
+        alert('Master Item Saved!');
+    });
 
-// Role Management
-document.getElementById('role-selector').addEventListener('change', (e) => {
-    currentRole = e.target.value;
-    document.getElementById('admin-view').classList.toggle('hidden', currentRole !== 'admin');
-    document.getElementById('registration-view').classList.toggle('hidden', currentRole !== 'provider');
-    document.getElementById('user-view').classList.toggle('hidden', currentRole !== 'user');
-    renderAll();
-});
+    // 2. Provider Shop Registration
+    const shopInput = document.getElementById('master-input');
+    const shopConvertBtn = document.getElementById('convert-btn');
+    const shopPreview = document.getElementById('conversion-preview');
+
+    shopConvertBtn.addEventListener('click', () => {
+        const text = shopInput.value.trim();
+        if (!text) return;
+        const translations = generateMockTranslations(text);
+        renderConversionGrid('conversion-grid-items', translations);
+        shopPreview.classList.remove('hidden');
+    });
+
+    document.getElementById('save-master-btn').addEventListener('click', () => {
+        const entityId = `shop-${Date.now()}`;
+        const converted = {};
+        document.querySelectorAll('#conversion-grid-items input').forEach(input => {
+            converted[input.dataset.lang] = input.value;
+        });
+
+        textEntities[entityId] = { id: entityId, domain: 'shop', original_text: shopInput.value, converted_json: converted, auto_generated: false };
+        registeredShops.push(entityId);
+        shopInput.value = '';
+        shopPreview.classList.add('hidden');
+        renderAll();
+        alert('Shop Saved!');
+    });
+
+    // 3. Role & Lang Selectors
+    document.getElementById('role-selector').addEventListener('change', (e) => {
+        currentRole = e.target.value;
+        document.getElementById('admin-view').classList.toggle('hidden', currentRole !== 'admin');
+        document.getElementById('registration-view').classList.toggle('hidden', currentRole !== 'provider');
+        document.getElementById('user-view').classList.toggle('hidden', currentRole !== 'user');
+        renderAll();
+    });
+
+    document.getElementById('lang-selector').addEventListener('change', (e) => {
+        currentLang = e.target.value;
+        localStorage.setItem('lang', currentLang);
+        renderAll();
+    });
+
+    document.getElementById('master-domain-selector').addEventListener('change', renderAll);
+}
 
 // UI Rendering
-function renderMasterTable() {
-    const table = document.getElementById('master-items-table');
-    const domain = domainSelector.value;
-    
-    table.innerHTML = `
-        <div class="table-row header">
-            <span>Domain</span><span>Name (${currentLang.toUpperCase()})</span><span>Status</span>
-        </div>
-        ${masterRegistry[domain].map(id => `
-            <div class="table-row">
-                <span>${domain.toUpperCase()}</span>
-                <span>${t(domain, '', id)}</span>
-                <span style="color:var(--training)">ACTIVE</span>
-            </div>
-        `).join('')}
-    `;
-}
-
-function renderUserView() {
-    const filterNav = document.getElementById('master-category-list');
-    filterNav.innerHTML = `
-        <button class="active">All</button>
-        ${masterRegistry.industry.map(id => `<button>${t('industry', '', id)}</button>`).join('')}
-    `;
-
-    const feed = document.getElementById('timeline-feed');
-    feed.innerHTML = registeredShops.map(shopId => `
-        <div class="timeline-event event-shop">
-            <div class="timeline-dot"></div>
-            <div class="timeline-card">
-                <div class="event-header">
-                    <span class="event-date">2024-03-02</span>
-                    <span class="verified-badge">✓ Verified Provider</span>
-                </div>
-                <h3>${t('shop', '', shopId)}</h3>
-                <p>Provider registered via Master Registry.</p>
-            </div>
-        </div>
-    `).join('');
-}
-
 function renderAll() {
-    if (currentRole === 'admin') renderMasterTable();
-    if (currentRole === 'user') renderUserView();
+    if (currentRole === 'admin') {
+        const table = document.getElementById('master-items-table');
+        const domain = document.getElementById('master-domain-selector').value;
+        table.innerHTML = `
+            <div class="table-row header"><span>Domain</span><span>Name (${currentLang.toUpperCase()})</span><span>Status</span></div>
+            ${masterRegistry[domain].map(id => `<div class="table-row"><span>${domain.toUpperCase()}</span><span>${t(domain, '', id)}</span><span style="color:var(--training)">ACTIVE</span></div>`).join('')}
+        `;
+    }
+    
+    if (currentRole === 'user') {
+        const filterNav = document.getElementById('master-category-list');
+        filterNav.innerHTML = `<button class="active">All</button>${masterRegistry.industry.map(id => `<button>${t('industry', '', id)}</button>`).join('')}`;
+
+        const feed = document.getElementById('timeline-feed');
+        feed.innerHTML = registeredShops.map(shopId => `
+            <div class="timeline-event event-shop">
+                <div class="timeline-dot"></div>
+                <div class="timeline-card">
+                    <div class="event-header"><span class="event-date">2024-03-02</span><span class="verified-badge">✓ Verified Provider</span></div>
+                    <h3>${t('shop', '', shopId)}</h3>
+                    <p>Global Shop Registered via v2 System.</p>
+                </div>
+            </div>
+        `).join('');
+    }
 }
 
-// Listeners
-document.getElementById('lang-selector').addEventListener('change', (e) => {
-    currentLang = e.target.value;
-    localStorage.setItem('lang', currentLang);
-    renderAll();
-});
-
-domainSelector.addEventListener('change', renderMasterTable);
+document.getElementById('theme-toggle').addEventListener('click', () => document.body.classList.toggle('light-mode'));
 
 initSystem();
