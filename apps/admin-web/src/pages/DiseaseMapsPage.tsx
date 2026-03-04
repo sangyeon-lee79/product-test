@@ -1,8 +1,10 @@
 // S3: 질병 연결 매핑 관리 — Tree-view UI (PRD ADM-02, PLAN §3 예외 허용)
 import { useState, useEffect, useCallback } from 'react';
 import { api, type MasterItem, type DiseaseTree } from '../lib/api';
+import { useT } from '../lib/i18n';
 
 export default function DiseaseMapsPage() {
+  const t = useT();
   const [diseases, setDiseases] = useState<MasterItem[]>([]);
   const [symptoms, setSymptoms] = useState<MasterItem[]>([]);
   const [metrics, setMetrics] = useState<MasterItem[]>([]);
@@ -25,17 +27,17 @@ export default function DiseaseMapsPage() {
     setLoading(true);
     setMsg('');
     try {
-      const t = await api.diseaseMaps.tree(disease.id);
-      setTree(t);
+      const tr = await api.diseaseMaps.tree(disease.id);
+      setTree(tr);
       setSelectedDisease(disease);
     } catch {
-      setMsg('매핑 데이터 없음 (아직 연결 없음)');
+      setMsg(t('admin.disease_maps.no_mapping', '매핑 데이터 없음'));
       setTree({ disease: { id: disease.id, key: disease.key }, symptoms: [] });
       setSelectedDisease(disease);
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [t]);
 
   const flash = (m: string) => { setMsg(m); setTimeout(() => setMsg(''), 3000); };
 
@@ -44,7 +46,7 @@ export default function DiseaseMapsPage() {
     try {
       await api.diseaseMaps.addSymptom({ disease_id: selectedDisease.id, symptom_id: symptomId });
       await loadTree(selectedDisease);
-      flash('증상 연결 완료');
+      flash(t('admin.disease_maps.success_add_symptom', '증상 연결 완료'));
     } catch (e: unknown) { flash((e as Error).message); }
   };
 
@@ -53,7 +55,7 @@ export default function DiseaseMapsPage() {
     try {
       await api.diseaseMaps.removeSymptom(mapId);
       await loadTree(selectedDisease);
-      flash('증상 연결 해제');
+      flash(t('admin.disease_maps.success_remove_symptom', '증상 연결 해제'));
     } catch (e: unknown) { flash((e as Error).message); }
   };
 
@@ -62,7 +64,7 @@ export default function DiseaseMapsPage() {
     try {
       await api.diseaseMaps.addMetric({ symptom_id: symptomId, metric_id: metricId });
       await loadTree(selectedDisease);
-      flash('수치 연결 완료');
+      flash(t('admin.disease_maps.success_add_metric', '수치 연결 완료'));
     } catch (e: unknown) { flash((e as Error).message); }
   };
 
@@ -71,7 +73,7 @@ export default function DiseaseMapsPage() {
     try {
       await api.diseaseMaps.removeMetric(mapId);
       await loadTree(selectedDisease);
-      flash('수치 연결 해제');
+      flash(t('admin.disease_maps.success_remove_metric', '수치 연결 해제'));
     } catch (e: unknown) { flash((e as Error).message); }
   };
 
@@ -80,7 +82,7 @@ export default function DiseaseMapsPage() {
     try {
       await api.diseaseMaps.addUnit({ metric_id: metricId, unit_id: unitId });
       await loadTree(selectedDisease);
-      flash('단위 연결 완료');
+      flash(t('admin.disease_maps.success_add_unit', '단위 연결 완료'));
     } catch (e: unknown) { flash((e as Error).message); }
   };
 
@@ -89,7 +91,7 @@ export default function DiseaseMapsPage() {
     try {
       await api.diseaseMaps.removeUnit(mapId);
       await loadTree(selectedDisease);
-      flash('단위 연결 해제');
+      flash(t('admin.disease_maps.success_remove_unit', '단위 연결 해제'));
     } catch (e: unknown) { flash((e as Error).message); }
   };
 
@@ -98,7 +100,7 @@ export default function DiseaseMapsPage() {
     try {
       await api.diseaseMaps.addLogtype({ metric_id: metricId, logtype_id: logtypeId });
       await loadTree(selectedDisease);
-      flash('기록유형 연결 완료');
+      flash(t('admin.disease_maps.success_add_logtype', '기록유형 연결 완료'));
     } catch (e: unknown) { flash((e as Error).message); }
   };
 
@@ -107,7 +109,7 @@ export default function DiseaseMapsPage() {
     try {
       await api.diseaseMaps.removeLogtype(mapId);
       await loadTree(selectedDisease);
-      flash('기록유형 연결 해제');
+      flash(t('admin.disease_maps.success_remove_logtype', '기록유형 연결 해제'));
     } catch (e: unknown) { flash((e as Error).message); }
   };
 
@@ -117,8 +119,8 @@ export default function DiseaseMapsPage() {
     <div style={{ display: 'flex', gap: 24, alignItems: 'flex-start' }}>
       {/* 왼쪽: 질병 목록 */}
       <div style={{ width: 200, flexShrink: 0 }}>
-        <h3 style={{ margin: '0 0 12px', fontSize: 14, color: '#aaa' }}>질병 선택</h3>
-        {diseases.length === 0 && <p style={{ color: '#666', fontSize: 13 }}>질병 없음</p>}
+        <h3 style={{ margin: '0 0 12px', fontSize: 14, color: '#aaa' }}>{t('admin.disease_maps.select_disease', '질병 선택')}</h3>
+        {diseases.length === 0 && <p style={{ color: '#666', fontSize: 13 }}>{t('admin.disease_maps.no_disease', '질병 없음')}</p>}
         {diseases.map(d => (
           <div
             key={d.id}
@@ -139,21 +141,23 @@ export default function DiseaseMapsPage() {
       <div style={{ flex: 1 }}>
         {msg && <div style={{ padding: '8px 12px', background: '#1a3a1a', color: '#4caf50', borderRadius: 6, marginBottom: 12, fontSize: 13 }}>{msg}</div>}
 
-        {!selectedDisease && <p style={{ color: '#666' }}>왼쪽에서 질병을 선택하세요</p>}
+        {!selectedDisease && <p style={{ color: '#666' }}>{t('admin.disease_maps.select_hint', '왼쪽에서 질병을 선택하세요')}</p>}
 
-        {selectedDisease && loading && <p style={{ color: '#aaa' }}>로딩 중...</p>}
+        {selectedDisease && loading && <p style={{ color: '#aaa' }}>{t('admin.common.loading', '로딩 중...')}</p>}
 
         {selectedDisease && !loading && tree && (
           <>
             <h2 style={{ margin: '0 0 16px', fontSize: 16 }}>
-              {selectedDisease.key} 매핑
+              {selectedDisease.key} {t('admin.disease_maps.mapping', '매핑')}
             </h2>
 
             {/* 증상 연결 추가 */}
             <AddRow
-              label="+ 증상 연결"
+              label={t('admin.disease_maps.add_symptom', '+ 증상 연결')}
               items={symptoms.filter(s => !linkedSymptomIds.has(s.id))}
               onAdd={addSymptom}
+              cancelLabel={t('admin.common.cancel', '취소')}
+              selectPlaceholder={t('admin.common.select', '선택...')}
             />
 
             {/* 트리 */}
@@ -161,55 +165,57 @@ export default function DiseaseMapsPage() {
               <div key={symptom.id} style={{ marginBottom: 16, background: '#1e1e2e', borderRadius: 8, padding: 12 }}>
                 {/* 증상 행 */}
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
-                  <span style={{ fontSize: 13, color: '#90caf9', fontWeight: 600 }}>▸ 증상: {symptom.key}</span>
-                  {symptom.is_required && <Badge label="필수" color="#ff9800" />}
-                  <button onClick={() => removeSymptom(symptom.map_id)} style={btnStyle('#c62828')}>연결해제</button>
+                  <span style={{ fontSize: 13, color: '#90caf9', fontWeight: 600 }}>▸ {t('admin.disease_maps.symptom', '증상')}: {symptom.key}</span>
+                  {symptom.is_required && <Badge label={t('admin.common.required', '필수')} color="#ff9800" />}
+                  <button onClick={() => removeSymptom(symptom.map_id)} style={btnStyle('#c62828')}>{t('admin.common.disconnect', '연결해제')}</button>
                 </div>
 
                 {/* 수치 추가 */}
                 <div style={{ marginLeft: 16 }}>
                   <AddRow
-                    label="+ 수치 연결"
+                    label={t('admin.disease_maps.add_metric', '+ 수치 연결')}
                     items={metrics.filter(m => !symptom.metrics.some(sm => sm.id === m.id))}
                     onAdd={(metricId) => addMetric(symptom.id, metricId)}
+                    cancelLabel={t('admin.common.cancel', '취소')}
+                    selectPlaceholder={t('admin.common.select', '선택...')}
                   />
 
                   {symptom.metrics.map(metric => (
                     <div key={metric.id} style={{ marginBottom: 8, background: '#12121e', borderRadius: 6, padding: 10 }}>
                       {/* 수치 행 */}
                       <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
-                        <span style={{ fontSize: 13, color: '#ce93d8' }}>▸ 수치: {metric.key}</span>
-                        <button onClick={() => removeMetric(metric.map_id)} style={btnStyle('#c62828')}>연결해제</button>
+                        <span style={{ fontSize: 13, color: '#ce93d8' }}>▸ {t('admin.disease_maps.metric', '수치')}: {metric.key}</span>
+                        <button onClick={() => removeMetric(metric.map_id)} style={btnStyle('#c62828')}>{t('admin.common.disconnect', '연결해제')}</button>
                       </div>
 
                       {/* 단위 + 기록유형 */}
                       <div style={{ marginLeft: 16, display: 'flex', gap: 24 }}>
                         {/* 단위 */}
                         <div>
-                          <div style={{ fontSize: 12, color: '#aaa', marginBottom: 4 }}>단위</div>
+                          <div style={{ fontSize: 12, color: '#aaa', marginBottom: 4 }}>{t('admin.disease_maps.unit', '단위')}</div>
                           <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4, marginBottom: 6 }}>
                             {metric.units.map(u => (
                               <span key={u.id} style={{ display: 'flex', alignItems: 'center', gap: 4, background: '#1a2744', padding: '3px 8px', borderRadius: 12, fontSize: 12, color: '#90caf9' }}>
-                                {u.key}{u.is_default && <Badge label="기본" color="#4caf50" />}
+                                {u.key}{u.is_default && <Badge label={t('admin.common.default', '기본')} color="#4caf50" />}
                                 <button onClick={() => removeUnit(u.map_id)} style={{ background: 'none', border: 'none', color: '#f44336', cursor: 'pointer', fontSize: 12, padding: 0 }}>✕</button>
                               </span>
                             ))}
                           </div>
-                          <InlineAdd items={units.filter(u => !metric.units.some(mu => mu.id === u.id))} onAdd={(id) => addUnit(metric.id, id)} placeholder="단위 추가" />
+                          <InlineAdd items={units.filter(u => !metric.units.some(mu => mu.id === u.id))} onAdd={(id) => addUnit(metric.id, id)} placeholder={t('admin.disease_maps.add_unit', '단위 추가')} />
                         </div>
 
                         {/* 기록유형 */}
                         <div>
-                          <div style={{ fontSize: 12, color: '#aaa', marginBottom: 4 }}>기록유형</div>
+                          <div style={{ fontSize: 12, color: '#aaa', marginBottom: 4 }}>{t('admin.disease_maps.logtype', '기록유형')}</div>
                           <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4, marginBottom: 6 }}>
                             {metric.log_types.map(l => (
                               <span key={l.id} style={{ display: 'flex', alignItems: 'center', gap: 4, background: '#1a2a1a', padding: '3px 8px', borderRadius: 12, fontSize: 12, color: '#a5d6a7' }}>
-                                {l.key}{l.is_default && <Badge label="기본" color="#4caf50" />}
+                                {l.key}{l.is_default && <Badge label={t('admin.common.default', '기본')} color="#4caf50" />}
                                 <button onClick={() => removeLogtype(l.map_id)} style={{ background: 'none', border: 'none', color: '#f44336', cursor: 'pointer', fontSize: 12, padding: 0 }}>✕</button>
                               </span>
                             ))}
                           </div>
-                          <InlineAdd items={logtypes.filter(l => !metric.log_types.some(ml => ml.id === l.id))} onAdd={(id) => addLogtype(metric.id, id)} placeholder="기록유형 추가" />
+                          <InlineAdd items={logtypes.filter(l => !metric.log_types.some(ml => ml.id === l.id))} onAdd={(id) => addLogtype(metric.id, id)} placeholder={t('admin.disease_maps.add_logtype', '기록유형 추가')} />
                         </div>
                       </div>
                     </div>
@@ -228,16 +234,16 @@ function Badge({ label, color }: { label: string; color: string }) {
   return <span style={{ fontSize: 10, background: color, color: '#fff', padding: '1px 6px', borderRadius: 8 }}>{label}</span>;
 }
 
-function AddRow({ label, items, onAdd }: { label: string; items: MasterItem[]; onAdd: (id: string) => void }) {
+function AddRow({ label, items, onAdd, cancelLabel, selectPlaceholder }: { label: string; items: MasterItem[]; onAdd: (id: string) => void; cancelLabel: string; selectPlaceholder: string }) {
   const [open, setOpen] = useState(false);
   if (!open) return <button onClick={() => setOpen(true)} style={btnStyle('#1565c0')}>{label}</button>;
   return (
     <div style={{ display: 'flex', gap: 8, marginBottom: 8, alignItems: 'center' }}>
       <select onChange={e => { if (e.target.value) { onAdd(e.target.value); setOpen(false); } }} defaultValue="" style={selectStyle}>
-        <option value="">선택...</option>
+        <option value="">{selectPlaceholder}</option>
         {items.map(i => <option key={i.id} value={i.id}>{i.key}</option>)}
       </select>
-      <button onClick={() => setOpen(false)} style={btnStyle('#555')}>취소</button>
+      <button onClick={() => setOpen(false)} style={btnStyle('#555')}>{cancelLabel}</button>
     </div>
   );
 }

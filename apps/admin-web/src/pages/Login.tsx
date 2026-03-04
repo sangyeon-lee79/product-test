@@ -2,9 +2,11 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { api, setTokens } from '../lib/api';
 import { storeRole } from '../lib/auth';
+import { useT } from '../lib/i18n';
 
 export default function Login() {
   const navigate = useNavigate();
+  const t = useT();
   const [email, setEmail] = useState('admin@petlife.com');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -19,7 +21,7 @@ export default function Login() {
       storeRole(data.role);
       navigate('/');
     } catch (err) {
-      setError(err instanceof Error ? err.message : '로그인 실패');
+      setError(err instanceof Error ? err.message : t('admin.login.error', '로그인 실패'));
     } finally {
       setLoading(false);
     }
@@ -30,13 +32,13 @@ export default function Login() {
       <div className="login-card card">
         <div className="card-body">
           <div className="login-logo">
-            <h1>🐾 방울아 놀자</h1>
-            <p>Admin Console</p>
+            <h1>🐾 {t('admin.login.app_name', '방울아 놀자')}</h1>
+            <p>{t('admin.login.console', 'Admin Console')}</p>
           </div>
           {error && <div className="alert alert-error">{error}</div>}
           <form onSubmit={handleLogin}>
             <div className="form-group">
-              <label className="form-label">이메일 (테스트 로그인)</label>
+              <label className="form-label">{t('admin.login.email', '이메일 (테스트 로그인)')}</label>
               <input
                 className="form-input"
                 type="email"
@@ -47,11 +49,11 @@ export default function Login() {
               />
             </div>
             <button className="btn btn-primary" type="submit" disabled={loading} style={{ width: '100%' }}>
-              {loading ? <><span className="spinner" /> 로그인 중...</> : '로그인'}
+              {loading ? <><span className="spinner" /> {t('admin.login.loading', '로그인 중...')}</> : t('admin.login.submit', '로그인')}
             </button>
           </form>
           <p className="text-muted text-sm mt-3" style={{ textAlign: 'center' }}>
-            개발용 테스트 로그인 (OAuth는 S12에서 구현)
+            {t('admin.login.dev_note', '개발용 테스트 로그인 (OAuth는 S12에서 구현)')}
           </p>
         </div>
       </div>

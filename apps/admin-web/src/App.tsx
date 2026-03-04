@@ -1,5 +1,6 @@
 import { HashRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { isLoggedIn } from './lib/auth';
+import { I18nProvider } from './lib/i18n';
 import Layout from './components/Layout';
 import Login from './pages/Login';
 import Dashboard from './pages/Dashboard';
@@ -15,6 +16,7 @@ function PrivateRoute({ children }: { children: React.ReactNode }) {
 
 export default function App() {
   return (
+    <I18nProvider>
     <HashRouter>
       <Routes>
         <Route path="/login" element={<Login />} />
@@ -34,5 +36,6 @@ export default function App() {
         } />
       </Routes>
     </HashRouter>
+    </I18nProvider>
   );
 }
