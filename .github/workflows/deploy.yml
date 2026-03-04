@@ -45,6 +45,8 @@ jobs:
       - name: Build
         working-directory: apps/admin-web
         run: npm run build
+        env:
+          VITE_API_URL: https://pet-life-api.adrien-lee.workers.dev
 
       - name: Install wrangler
         run: npm install -g wrangler
