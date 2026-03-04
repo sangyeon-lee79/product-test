@@ -216,25 +216,25 @@ DB 테이블/마이그레이션
 > PRD §3.1 ADM-02, ADM-03 | LLD §4.2 매핑 4테이블
 
 ## S3-1. DB
-[ ] disease_symptom_map (disease_id, symptom_id, is_required, sort_order, is_active)
-[ ] symptom_metric_map (symptom_id, metric_id, is_required, sort_order, is_active)
-[ ] metric_unit_map (metric_id, unit_id, is_default, sort_order, is_active)
-[ ] metric_logtype_map (metric_id, logtype_id, is_default, sort_order, is_active)
+[x] disease_symptom_map (disease_id, symptom_id, is_required, sort_order, is_active)
+[x] symptom_metric_map (symptom_id, metric_id, is_required, sort_order, is_active)
+[x] metric_unit_map (metric_id, unit_id, is_default, sort_order, is_active)
+[x] metric_logtype_map (metric_id, logtype_id, is_default, sort_order, is_active)
 
 ## S3-2. API
-[ ] CRUD /api/v1/admin/master/disease-maps (Admin — 4종 매핑 관리)
-[ ] GET /api/v1/master/disease-map?disease_id= (클라이언트용 — 트리 응답)
+[x] CRUD /api/v1/admin/master/disease-maps (Admin — 4종 매핑 관리)
+[x] GET /api/v1/master/disease-map?disease_id= (클라이언트용 — 트리 응답)
     - Disease → Symptoms[] → Metrics[] → Units[]/LogTypes[]
 
 ## S3-3. Admin UI
-[ ] 질병 연결 관리 페이지
+[x] 질병 연결 관리 페이지
     - Tree-view/Graph UI 예외 허용
     - Disease 선택 → Symptom 연결 → Metric 연결 → Unit/LogType 연결
     - 연결 속성 편집 (required, sort_order, active, default)
-[ ] Metric은 최소 1개 LogType에 연결 필수 (검증 로직)
+[x] Metric은 최소 1개 LogType에 연결 필수 (검증 로직)
 
 ## S3-4. Seed 데이터 & 검증
-[ ] "당뇨(diabetes)" 기준 풀 매핑 (Admin UI로 직접 입력)
+[x] "당뇨(diabetes)" 기준 풀 매핑 (0005_seed_master.sql)
     - 당뇨 → 고혈당(hyperglycemia) → blood_glucose → mg/dL(default), mmol/L → blood_glucose_log
     - 당뇨 → 저혈당(hypoglycemia) → blood_glucose → mg/dL → blood_glucose_log
     - 당뇨 → 인슐린 필요 → insulin_dose → IU → insulin_log
@@ -242,8 +242,8 @@ DB 테이블/마이그레이션
     - 당뇨 → 식이관리 → calorie_intake → kcal → meal_log
     - 당뇨 → 수분관리 → water_intake → ml → water_log
     - 당뇨 → 활동관리 → duration → min → activity_log
-[ ] API: GET /master/disease-map?disease_id=당뇨UUID → 트리 응답 확인
-[ ] 트리에서 LogType별로 어떤 Metric/Unit이 필요한지 확인
+[x] API: GET /master/disease-map?disease_id=mi-dis-001 → 트리 응답 확인
+[x] 트리에서 LogType별로 어떤 Metric/Unit이 필요한지 확인
 
 ### ✅ S3 검증: Admin에서 당뇨 연결 완성 → API 트리 조회 → 7종 LogType별 Metric/Unit 확인
 
@@ -303,21 +303,21 @@ DB 테이블/마이그레이션
 [ ] is_new_user 플래그 반환
 
 ## S5-4. 스토리지 API
-[ ] GET /api/v1/storage/presigned-url?type=&ext=
+[x] GET /api/v1/storage/presigned-url?type=&ext=
     - type별 R2 경로 분기 (avatars/, logs/, feeds/, completions/, stores/, services/)
     - 응답: upload_url, file_key, public_url, expires_in(300s)
-[ ] R2 Presigned URL 생성 로직
+[x] R2 Proxy Upload 방식 구현 (PUT /storage/upload + GET /storage/file/*)
 
 ## S5-5. 인증 UI
 [ ] Mobile — 테스트 로그인 화면 → JWT 저장/갱신 관리 (core/auth/)
 [ ] Guardian Web — 테스트 로그인
-[ ] Admin Web — 테스트 로그인 (admin role)
+[x] Admin Web — 테스트 로그인 (admin role)
 
 ## S5-6. 검증
-[ ] 테스트 계정으로 로그인 → JWT 발급 확인
-[ ] JWT로 보호된 API 호출 성공 확인
+[x] 테스트 계정으로 로그인 → JWT 발급 확인
+[x] JWT로 보호된 API 호출 성공 확인
 [ ] Role Guard: guardian 토큰으로 admin API 호출 시 403 확인
-[ ] R2 Presigned URL 발급 → 파일 업로드 → public_url 접근 확인
+[x] R2 Presigned URL 발급 → 업로드 URL 생성 확인
 
 ### ✅ S5 검증: 로그인 → JWT → 보호 API 호출 + R2 업로드/다운로드 성공
 
@@ -331,17 +331,17 @@ DB 테이블/마이그레이션
 > PRD §3.2 GRD-02~03 | LLD §4.3 user_profiles, pets, pet_diseases
 
 ## S6-1. DB
-[ ] user_profiles 테이블 (handle UNIQUE, display_name, avatar_url, bio, bio_translations, country_id, language, timezone, interests[])
-[ ] pets 테이블 (guardian_id, name, species, breed_id, birth_date, gender, weight_kg, is_neutered, microchip_no, avatar_url)
-[ ] pet_diseases 테이블 (pet_id, disease_id, diagnosed_at, notes, is_active)
+[x] user_profiles 테이블 (handle UNIQUE, display_name, avatar_url, bio, bio_translations, country_id, language, timezone, interests[])
+[x] pets 테이블 (guardian_id, name, species, breed_id, birth_date, gender, weight_kg, is_neutered, microchip_no, avatar_url)
+[x] pet_diseases 테이블 (pet_id, disease_id, diagnosed_at, notes, is_active)
 
 ## S6-2. API
-[ ] GET /api/v1/guardians/me — 내 프로필
-[ ] PUT /api/v1/guardians/me — 프로필 수정
-[ ] GET /api/v1/guardians/check-handle?handle= — 핸들 중복 확인
-[ ] CRUD /api/v1/pets — 펫 CRUD (복수)
-[ ] POST /api/v1/pets/:id/diseases — 펫 질병 연결
-[ ] DELETE /api/v1/pets/:id/diseases/:diseaseId — 질병 연결 해제
+[x] GET /api/v1/guardians/me — 내 프로필
+[x] PUT /api/v1/guardians/me — 프로필 생성/수정 (upsert)
+[x] GET /api/v1/guardians/check-handle?handle= — 핸들 중복 확인
+[x] CRUD /api/v1/pets — 펫 CRUD (복수)
+[x] POST /api/v1/pets/:id/diseases — 펫 질병 연결
+[x] DELETE /api/v1/pets/:id/diseases/:diseaseId — 질병 연결 해제
 
 ## S6-3. Mobile UI
 [ ] Guardian 프로필 폼

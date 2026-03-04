@@ -4,8 +4,9 @@ export interface Env {
   ENVIRONMENT: string;
   ALLOWED_ORIGINS: string;
   JWT_SECRET: string;
-  DB: D1Database;   // Cloudflare D1 (로컬 개발) / 배포 시 Hyperdrive 전환
-  // R2: R2Bucket;  // S5 이후 스토리지 연결 시 주석 해제
+  R2_PUBLIC_URL: string;  // R2 퍼블릭 URL (빈 문자열이면 로컬 서빙 fallback)
+  DB: D1Database;         // Cloudflare D1 (로컬 개발) / 배포 시 Hyperdrive 전환
+  R2: R2Bucket;           // Cloudflare R2 미디어 스토리지 (LLD §8)
 }
 
 // LLD §6.1 JWT Payload
