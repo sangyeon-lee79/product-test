@@ -18,7 +18,7 @@
 		{
 			"binding": "DB",
 			"database_name": "pet-life-db",
-			"database_id": "local-dev-db",
+			"database_id": "307a9a1c-8ea3-4ae6-a4b5-5d31f7178d9d",
 			"migrations_dir": "src/db/migrations"
 		}
 	],
