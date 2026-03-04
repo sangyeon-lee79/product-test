@@ -1,28 +1,81 @@
-// i18n 유틸 — DB 기반 번역 (하드코딩 제로 원칙)
-// GET /api/v1/i18n?lang=ko&prefix=admin → { [key]: value }
+// i18n 유틸 — DB 기반 다국어 (하드코딩 제로 원칙)
+// GET /api/v1/i18n?lang={lang}&prefix=admin → { [key]: value }
 import { createContext, useContext, useEffect, useState, type ReactNode } from 'react';
 
 const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:8787';
 
-type TFunc = (key: string, fallback?: string) => string;
+export const SUPPORTED_LANGS = ['ko','en','ja','zh_cn','zh_tw','es','fr','de','pt','vi','th','id_lang','ar'] as const;
+export type Lang = typeof SUPPORTED_LANGS[number];
 
-const I18nContext = createContext<TFunc>((_key, fb) => fb ?? '');
+export const LANG_LABELS: Record<Lang, string> = {
+  ko:      '한국어',
+  en:      'English',
+  ja:      '日本語',
+  zh_cn:   '中文(简)',
+  zh_tw:   '中文(繁)',
+  es:      'Español',
+  fr:      'Français',
+  de:      'Deutsch',
+  pt:      'Português',
+  vi:      'Tiếng Việt',
+  th:      'ภาษาไทย',
+  id_lang: 'Bahasa Indonesia',
+  ar:      'العربية',
+};
 
-export function useT(): TFunc {
+interface I18nCtx {
+  t: (key: string, fallback?: string) => string;
+  lang: Lang;
+  setLang: (lang: Lang) => void;
+}
+
+const I18nContext = createContext<I18nCtx>({
+  t: (_k, fb) => fb ?? '',
+  lang: 'ko',
+  setLang: () => {},
+});
+
+const STORAGE_KEY = 'admin_lang';
+
+function getInitialLang(): Lang {
+  const stored = localStorage.getItem(STORAGE_KEY) as Lang;
+  if (SUPPORTED_LANGS.includes(stored)) return stored;
+  // 브라우저 언어 자동 감지
+  const browser = navigator.language.toLowerCase().replace('-', '_');
+  const match = SUPPORTED_LANGS.find(l => browser.startsWith(l.replace('_lang', '')));
+  return match ?? 'ko';
+}
+
+export function useT() {
+  return useContext(I18nContext).t;
+}
+
+export function useI18n() {
   return useContext(I18nContext);
 }
 
 export function I18nProvider({ children }: { children: ReactNode }) {
+  const [lang, setLangState] = useState<Lang>(getInitialLang);
   const [trans, setTrans] = useState<Record<string, string>>({});
 
   useEffect(() => {
-    fetch(`${API_BASE}/api/v1/i18n?lang=ko&prefix=admin`)
+    setTrans({}); // 언어 전환 시 이전 텍스트 클리어
+    fetch(`${API_BASE}/api/v1/i18n?lang=${lang}&prefix=admin`)
       .then(r => r.json() as Promise<{ success: boolean; data: Record<string, string> }>)
       .then(json => { if (json.success) setTrans(json.data); })
-      .catch(() => {}); // 실패 시 fallback 값 사용
-  }, []);
+      .catch(() => {});
+  }, [lang]);
 
-  const t: TFunc = (key, fallback) => trans[key] || fallback || key;
+  const setLang = (l: Lang) => {
+    localStorage.setItem(STORAGE_KEY, l);
+    setLangState(l);
+  };
 
-  return <I18nContext.Provider value={t}>{children}</I18nContext.Provider>;
+  const t = (key: string, fallback?: string) => trans[key] || fallback || key;
+
+  return (
+    <I18nContext.Provider value={{ t, lang, setLang }}>
+      {children}
+    </I18nContext.Provider>
+  );
 }

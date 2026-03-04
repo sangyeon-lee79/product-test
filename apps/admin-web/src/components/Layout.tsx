@@ -1,10 +1,11 @@
 import { NavLink, useNavigate } from 'react-router-dom';
 import { logout, getStoredRole } from '../lib/auth';
-import { useT } from '../lib/i18n';
+import { useT, useI18n, SUPPORTED_LANGS, LANG_LABELS } from '../lib/i18n';
 
 export default function Layout({ children }: { children: React.ReactNode }) {
   const navigate = useNavigate();
   const t = useT();
+  const { lang, setLang } = useI18n();
 
   const NAV = [
     { section: t('admin.section.dashboard', '대시보드'), items: [
@@ -47,6 +48,15 @@ export default function Layout({ children }: { children: React.ReactNode }) {
           ))}
         </nav>
         <div className="sidebar-footer">
+          <select
+            value={lang}
+            onChange={e => setLang(e.target.value as typeof lang)}
+            style={{ width: '100%', marginBottom: 8, background: '#1e1e2e', border: '1px solid #333', color: '#ccc', padding: '4px 6px', borderRadius: 4, fontSize: 12 }}
+          >
+            {SUPPORTED_LANGS.map(l => (
+              <option key={l} value={l}>{LANG_LABELS[l]}</option>
+            ))}
+          </select>
           <div>{getStoredRole()} {t('admin.common.account', '계정')}</div>
           <button className="nav-item" style={{ padding: '6px 0', marginTop: 4 }}
             onClick={() => { logout(); navigate('/login'); }}>
