@@ -54,10 +54,19 @@ body { background-color: var(--md-surface); color: var(--md-on-surface); font-fa
 /* LIST & ITEMS */
 .card { background: var(--md-surface-variant); padding: 24px; border-radius: 12px; margin-bottom: 16px; }
 .list-container { margin-top: 16px; border: 1px solid var(--border); border-radius: 8px; overflow: hidden; background: var(--md-surface); }
-.list-item { display: flex; justify-content: space-between; align-items: center; padding: 12px 16px; border-bottom: 1px solid var(--border); }
+.list-item { display: flex; justify-content: space-between; align-items: center; padding: 12px 16px; border-bottom: 1px solid var(--border); transition: background-color 0.3s;}
+.list-item.inactive { opacity: 0.5; background-color: #333; }
 .list-item.clickable:hover { background: rgba(255,255,255,0.05); cursor: pointer; }
 .key-label { font-family: monospace; font-size: 11px; color: var(--md-on-surface-variant); background: rgba(0,0,0,0.2); padding: 2px 6px; border-radius: 4px; }
+.list-item .actions { display: flex; gap: 8px; }
 
 /* BUTTONS */
-.save-btn, .add-btn { background: var(--md-primary); color: var(--md-on-primary); border: none; padding: 10px 24px; border-radius: 100px; font-weight: 700; cursor: pointer; }
+.save-btn, .add-btn, .icon-btn { background: var(--md-primary); color: var(--md-on-primary); border: none; padding: 10px 24px; border-radius: 100px; font-weight: 700; cursor: pointer; }
 .back-btn { background: none; border: 1px solid var(--md-outline); color: var(--md-on-surface); width: 32px; height: 32px; border-radius: 8px; cursor: pointer; }
+.icon-btn { padding: 8px; font-size: 16px; line-height: 1; }
+.edit-btn, .toggle-btn { background: none; border: 1px solid var(--md-outline); color: var(--md-on-surface-variant); padding: 6px 12px; border-radius: 6px; cursor: pointer; font-size: 12px; }
+
+/* INPUT FORM */
+.input-form { display: flex; gap: 8px; margin-top: 16px; }
+.input-form input { flex: 1; background: var(--md-surface); color: var(--md-on-surface); border: 1px solid var(--border); padding: 10px; border-radius: 8px; }
+.input-form button { background: var(--md-primary); color: var(--md-on-primary); border: none; padding: 10px 20px; border-radius: 8px; cursor: pointer; font-weight: 500;}

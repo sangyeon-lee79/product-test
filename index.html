@@ -6,8 +6,21 @@
     <title>방울아놀자 - Bang-ul Play</title>
     <link rel="stylesheet" href="style.css">
     <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&family=Noto+Sans+KR:wght@400;700&display=swap" rel="stylesheet">
+    <style>
+        .hub-bar { display:flex; gap:8px; align-items:center; padding:8px 16px; background:#1a1a2e; border-bottom:1px solid #333; flex-wrap:wrap; }
+        .hub-bar a { color:#90caf9; text-decoration:none; font-size:13px; padding:4px 12px; border-radius:20px; border:1px solid #90caf9; white-space:nowrap; }
+        .hub-bar a:hover { background:#90caf9; color:#000; }
+        .hub-bar .hub-title { color:#aaa; font-size:12px; margin-right:4px; }
+    </style>
 </head>
 <body class="dark-mode">
+    <!-- 허브 네비게이션 바 -->
+    <div class="hub-bar">
+        <span class="hub-title">🐾 방울아놀자</span>
+        <a href="index.html">📱 프로토타입 데모</a>
+        <a href="apps/admin-web/dist/index.html" target="_blank">⚙️ Admin Web (React)</a>
+    </div>
+
     <!-- 통합 헤더 -->
     <header class="app-bar">
         <div class="brand">

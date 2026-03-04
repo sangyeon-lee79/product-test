@@ -1,0 +1,35 @@
+# Dependencies
+node_modules/
+**/node_modules/
+
+# Build outputs (admin-web dist는 GitHub Pages를 위해 포함)
+# apps/admin-web/dist/
+
+# Wrangler / Cloudflare
+.wrangler/
+**/.wrangler/
+*.wrangler/
+
+# Environment files
+.env
+.env.local
+.env.*.local
+
+# Logs
+*.log
+firebase-debug.log
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/settings.json
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+
+# Test outputs
+coverage/
+dist/coverage/
