@@ -52,6 +52,9 @@ jobs:
       - name: Check auth
         run: wrangler whoami
 
+      - name: Create Pages project (최초 1회)
+        run: wrangler pages project create pet-life-admin --production-branch=main || true
+
       - name: Deploy to Cloudflare Pages
         run: wrangler pages deploy apps/admin-web/dist --project-name=pet-life-admin --branch=main
 
