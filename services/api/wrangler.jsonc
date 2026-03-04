@@ -1,0 +1,47 @@
+{
+	"$schema": "node_modules/wrangler/config-schema.json",
+	"name": "pet-life-api",
+	"main": "src/index.ts",
+	"compatibility_date": "2026-03-01",
+	"compatibility_flags": ["nodejs_compat"],
+	"observability": { "enabled": true },
+
+	// 로컬 개발용 기본 변수 (민감 정보는 wrangler secret put 사용)
+	"vars": {
+		"ENVIRONMENT": "development",
+		"ALLOWED_ORIGINS": "http://localhost:5173,http://localhost:5174",
+		"JWT_SECRET": "dev-secret-change-in-production"
+	},
+
+	// D1 로컬 SQLite (개발용 — 배포 시 Hyperdrive+PostgreSQL로 전환)
+	"d1_databases": [
+		{
+			"binding": "DB",
+			"database_name": "pet-life-db",
+			"database_id": "local-dev-db",
+			"migrations_dir": "src/db/migrations"
+		}
+	],
+
+	// R2 Object Storage (미디어) — 배포 시 활성화
+	// "r2_buckets": [{ "binding": "R2", "bucket_name": "pet-life-media" }],
+
+	"env": {
+		"staging": {
+			"name": "pet-life-api-staging",
+			"vars": {
+				"ENVIRONMENT": "staging",
+				"ALLOWED_ORIGINS": "https://admin-staging.petlife.com,https://guardian-staging.petlife.com",
+				"JWT_SECRET": "staging-secret"
+			}
+		},
+		"production": {
+			"name": "pet-life-api-prod",
+			"vars": {
+				"ENVIRONMENT": "production",
+				"ALLOWED_ORIGINS": "https://admin.petlife.com,https://guardian.petlife.com",
+				"JWT_SECRET": "REPLACE_WITH_SECURE_SECRET"
+			}
+		}
+	}
+}
