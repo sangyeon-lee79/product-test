@@ -44,11 +44,12 @@ export default function Dashboard() {
             {[
               { slice: 'S0 인프라',             done: true,  note: 'D1 DB + Wrangler 설정 완료' },
               { slice: 'S1 언어관리 (i18n)',    done: true,  note: 'API + Admin UI 완료' },
-              { slice: 'S2 마스터 데이터',      done: true,  note: 'API + Admin UI 완료' },
+              { slice: 'S2 마스터 데이터',      done: true,  note: 'API + Admin UI + Seed 완료' },
               { slice: 'S3 질병 연결 매핑',     done: true,  note: 'API + Admin UI 완료' },
-              { slice: 'S4 국가/통화',          done: true,  note: 'API + Admin UI 완료' },
-              { slice: 'S5 인증 + R2',          done: false, note: 'JWT 완료, R2 미구현' },
-              { slice: 'S6~S12',               done: false, note: '미개발' },
+              { slice: 'S4 국가/통화',          done: true,  note: 'API + Admin UI + Seed 완료' },
+              { slice: 'S5 인증 + R2',          done: true,  note: 'JWT + R2 프록시 업로드 완료' },
+              { slice: 'S6 프로필 + 펫',        done: true,  note: 'Guardian/Pet/Disease API 완료' },
+              { slice: 'S7~S12',               done: false, note: '미개발' },
             ].map(item => (
               <div key={item.slice} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '8px 0', borderBottom: '1px solid var(--border)' }}>
                 <span style={{ width: 20, textAlign: 'center' }}>{item.done ? '✅' : '⬜'}</span>

@@ -6,6 +6,15 @@ function getToken(): string | null {
   return localStorage.getItem('access_token');
 }
 
+function isTokenExpired(token: string): boolean {
+  try {
+    const payload = JSON.parse(atob(token.split('.')[1]));
+    return payload.exp * 1000 < Date.now();
+  } catch {
+    return true;
+  }
+}
+
 export function setTokens(access: string, refresh: string) {
   localStorage.setItem('access_token', access);
   localStorage.setItem('refresh_token', refresh);
@@ -14,10 +23,17 @@ export function setTokens(access: string, refresh: string) {
 export function clearTokens() {
   localStorage.removeItem('access_token');
   localStorage.removeItem('refresh_token');
+  localStorage.removeItem('user_role');
 }
 
 export function isLoggedIn(): boolean {
-  return !!getToken();
+  const token = getToken();
+  if (!token) return false;
+  if (isTokenExpired(token)) {
+    clearTokens();
+    return false;
+  }
+  return true;
 }
 
 async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
@@ -29,8 +45,14 @@ async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
   if (token) headers['Authorization'] = `Bearer ${token}`;
 
   const res = await fetch(`${API_BASE}${path}`, { ...options, headers });
-  const json = await res.json() as { success: boolean; data?: T; error?: string };
 
+  if (res.status === 401) {
+    clearTokens();
+    window.location.href = '/#/login';
+    throw new Error('세션이 만료되었습니다. 다시 로그인해주세요.');
+  }
+
+  const json = await res.json() as { success: boolean; data?: T; error?: string };
   if (!json.success) throw new Error(json.error || `HTTP ${res.status}`);
   return json.data as T;
 }
