@@ -24,6 +24,7 @@ export default function I18nPage() {
   const [modal, setModal] = useState<'create' | 'edit' | null>(null);
   const [form, setForm] = useState<Partial<I18nRow>>(EMPTY_FORM());
   const [saving, setSaving] = useState(false);
+  const [translating, setTranslating] = useState(false);
   const LIMIT = 50;
 
   const load = useCallback(async () => {
@@ -40,6 +41,18 @@ export default function I18nPage() {
   function openCreate() { setForm(EMPTY_FORM()); setModal('create'); setError(''); }
   function openEdit(row: I18nRow) { setForm({ ...row }); setModal('edit'); setError(''); }
   function closeModal() { setModal(null); setForm(EMPTY_FORM()); }
+
+  async function handleAutoTranslate() {
+    const text = form.ko;
+    if (!text) { alert(t('admin.i18n.translate_hint', '한국어 원문을 먼저 입력해주세요.')); return; }
+    
+    setTranslating(true); setError('');
+    try {
+      const { translations } = await api.i18n.translate(text);
+      setForm(f => ({ ...f, ...translations }));
+    } catch (e) { setError(e instanceof Error ? e.message : 'Translation Error'); }
+    finally { setTranslating(false); }
+  }
 
   async function handleSave() {
     setSaving(true); setError('');
@@ -166,7 +179,14 @@ export default function I18nPage() {
               <div style={{ borderTop: '1px solid var(--border)', marginBottom: 16 }} />
               {LANGS.map(lang => (
                 <div className="form-group" key={lang}>
-                  <label className="form-label">{LANG_LABELS[lang]} <span className="font-mono" style={{ opacity: .5 }}>({lang})</span></label>
+                  <label className="form-label" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <span>{LANG_LABELS[lang]} <span className="font-mono" style={{ opacity: .5 }}>({lang})</span></span>
+                    {lang === 'ko' && (
+                      <button className="btn btn-secondary btn-xs" onClick={handleAutoTranslate} disabled={translating || !form.ko}>
+                        {translating ? <><span className="spinner" /> 번역중...</> : '✨ 12개국어 자동번역'}
+                      </button>
+                    )}
+                  </label>
                   <input className="form-input" value={(form as Record<string, string>)[lang] || ''}
                     onChange={e => setForm(f => ({ ...f, [lang]: e.target.value }))} />
                 </div>

@@ -1,0 +1,72 @@
+{
+  "disease": {
+    "id": "uuid-diabetes",
+    "key": "master.disease.diabetes"
+  },
+  "symptoms": [
+    {
+      "id": "uuid-hyperglycemia",
+      "key": "master.symptom.hyperglycemia",
+      "is_required": true,
+      "sort_order": 1,
+      "metrics": [
+        {
+          "id": "uuid-blood-glucose",
+          "key": "master.metric.blood_glucose",
+          "is_required": true,
+          "sort_order": 1,
+          "units": [
+            {
+              "id": "uuid-mg-dl",
+              "key": "master.unit.mg_dl",
+              "is_default": true,
+              "sort_order": 1
+            },
+            {
+              "id": "uuid-mmol-l",
+              "key": "master.unit.mmol_l",
+              "is_default": false,
+              "sort_order": 2
+            }
+          ],
+          "log_types": [
+            {
+              "id": "uuid-bg-log",
+              "key": "master.log_type.blood_glucose_log",
+              "is_default": true,
+              "sort_order": 1
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "uuid-hypoglycemia",
+      "key": "master.symptom.hypoglycemia",
+      "is_required": false,
+      "sort_order": 2,
+      "metrics": [
+        {
+          "id": "uuid-blood-glucose",
+          "key": "master.metric.blood_glucose",
+          "is_required": true,
+          "sort_order": 1,
+          "units": [
+            {
+              "id": "uuid-mg-dl",
+              "key": "master.unit.mg_dl",
+              "is_default": true
+            }
+          ],
+          "log_types": [
+            {
+              "id": "uuid-bg-log",
+              "key": "master.log_type.blood_glucose_log",
+              "is_default": true
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

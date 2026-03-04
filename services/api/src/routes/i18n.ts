@@ -44,6 +44,28 @@ export async function handleI18n(request: Request, env: Env, url: URL): Promise<
     const idMatch = path.match(/\/api\/v1\/admin\/i18n\/([^/]+)$/);
     const id = idMatch?.[1];
 
+    // 자동 번역 API (한국어 -> 나머지 언어)
+    if (request.method === 'POST' && path.endsWith('/translate')) {
+      let body: { text: string };
+      try { body = await request.json() as { text: string }; } catch { return err('Invalid JSON'); }
+      if (!body.text) return err('text required');
+
+      // TODO: 실제 서비스 시 Cloudflare Workers AI 또는 Google Translate API 연동
+      // 현재는 시뮬레이션: [언어코드] + 원문 형태의 mock 데이터 반환
+      const translations: Record<string, string> = {};
+      const mockPrefixes: Record<string, string> = {
+        en: '[EN]', ja: '[JA]', zh_cn: '[ZH-CN]', zh_tw: '[ZH-TW]', es: '[ES]',
+        fr: '[FR]', de: '[DE]', pt: '[PT]', vi: '[VI]', th: '[TH]', id_lang: '[ID]', ar: '[AR]'
+      };
+      
+      for (const lang of LANGS) {
+        if (lang === 'ko') continue;
+        translations[lang] = `${mockPrefixes[lang] || `[${lang}]`} ${body.text}`;
+      }
+
+      return ok({ translations });
+    }
+
     // GET 목록
     if (request.method === 'GET' && !id) {
       const page = parseInt(url.searchParams.get('page') || '1');
