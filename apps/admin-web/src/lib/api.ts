@@ -88,6 +88,28 @@ export const api = {
     },
   },
 
+  // Disease Maps (S3)
+  diseaseMaps: {
+    tree: (diseaseId: string) =>
+      request<DiseaseTree>(`/api/v1/master/disease-map?disease_id=${diseaseId}`),
+    addSymptom: (data: { disease_id: string; symptom_id: string; is_required?: boolean; sort_order?: number }) =>
+      request('/api/v1/admin/master/disease-maps/disease-symptom', { method: 'POST', body: JSON.stringify(data) }),
+    removeSymptom: (id: string) =>
+      request(`/api/v1/admin/master/disease-maps/disease-symptom/${id}`, { method: 'DELETE' }),
+    addMetric: (data: { symptom_id: string; metric_id: string; is_required?: boolean; sort_order?: number }) =>
+      request('/api/v1/admin/master/disease-maps/symptom-metric', { method: 'POST', body: JSON.stringify(data) }),
+    removeMetric: (id: string) =>
+      request(`/api/v1/admin/master/disease-maps/symptom-metric/${id}`, { method: 'DELETE' }),
+    addUnit: (data: { metric_id: string; unit_id: string; is_default?: boolean; sort_order?: number }) =>
+      request('/api/v1/admin/master/disease-maps/metric-unit', { method: 'POST', body: JSON.stringify(data) }),
+    removeUnit: (id: string) =>
+      request(`/api/v1/admin/master/disease-maps/metric-unit/${id}`, { method: 'DELETE' }),
+    addLogtype: (data: { metric_id: string; logtype_id: string; is_default?: boolean; sort_order?: number }) =>
+      request('/api/v1/admin/master/disease-maps/metric-logtype', { method: 'POST', body: JSON.stringify(data) }),
+    removeLogtype: (id: string) =>
+      request(`/api/v1/admin/master/disease-maps/metric-logtype/${id}`, { method: 'DELETE' }),
+  },
+
   // Countries
   countries: {
     list: () => request<Country[]>('/api/v1/admin/countries'),
@@ -133,6 +155,18 @@ export interface MasterItem {
 export interface Country {
   id: string; code: string; name_key: string; is_active: number;
   sort_order: number; created_at: string;
+}
+
+export interface DiseaseTree {
+  disease: { id: string; key: string };
+  symptoms: Array<{
+    id: string; key: string; map_id: string; is_required: boolean;
+    metrics: Array<{
+      id: string; key: string; map_id: string; is_required: boolean;
+      units: Array<{ id: string; key: string; map_id: string; is_default: boolean }>;
+      log_types: Array<{ id: string; key: string; map_id: string; is_default: boolean }>;
+    }>;
+  }>;
 }
 
 export interface Currency {

@@ -9,6 +9,7 @@ const NAV = [
     { to: '/i18n', icon: '🌐', label: '언어 관리' },
     { to: '/master', icon: '🗂', label: '마스터 데이터' },
     { to: '/countries', icon: '🌍', label: '국가 / 통화' },
+    { to: '/disease-maps', icon: '🔗', label: '질병 연결 매핑' },
   ]},
   { section: '광고 / 운영', items: [
     { to: '/ads', icon: '📢', label: '광고 설정' },
