@@ -33,7 +33,7 @@ jobs:
         with:
           apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-          command: pages deploy dist --project-name=pet-life-admin --directory=apps/admin-web/dist
+          command: pages deploy apps/admin-web/dist --project-name=pet-life-admin
 
   # ─────────────────────────────────────
   # API → Cloudflare Workers
