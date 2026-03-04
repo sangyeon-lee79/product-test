@@ -6,7 +6,12 @@ import type { Env } from '../types';
 export function corsHeaders(request: Request, env: Env): Record<string, string> {
   const origin = request.headers.get('Origin') ?? '';
   const allowed = env.ALLOWED_ORIGINS.split(',').map((o) => o.trim());
-  const isAllowed = allowed.includes(origin);
+  const isAllowed = allowed.some((pattern) => {
+    if (pattern.startsWith('*.')) {
+      return origin.endsWith(pattern.slice(1));
+    }
+    return pattern === origin;
+  });
 
   return {
     'Access-Control-Allow-Origin': isAllowed ? origin : '',
