@@ -1,7 +1,7 @@
--- Migration 0005: 마스터 데이터 및 국가/통화 Seed (최종 통합본)
--- 참조 무결성 오류를 방지하기 위해 오직 INSERT OR IGNORE 명령만 사용합니다.
+-- Migration 0008: 최종 통합 마스터 데이터 및 국가/통화 Seed
+-- 이전의 0005, 0006, 0007 실패를 우회하기 위해 새로운 번호를 사용합니다.
 
--- 1. 마스터 카테고리 (부모)
+-- 1. 마스터 카테고리
 INSERT OR IGNORE INTO master_categories (id, key, sort_order, is_active, created_at, updated_at) VALUES
 ('cat-breed',       'breed',       1,  1, datetime('now'), datetime('now')),
 ('cat-industry',    'industry',    2,  1, datetime('now'), datetime('now')),
@@ -14,7 +14,7 @@ INSERT OR IGNORE INTO master_categories (id, key, sort_order, is_active, created
 ('cat-country_ref', 'country_ref', 9,  1, datetime('now'), datetime('now')),
 ('cat-ad_slot',     'ad_slot',     10, 1, datetime('now'), datetime('now'));
 
--- 2. 마스터 아이템 (자식)
+-- 2. 마스터 아이템
 INSERT OR IGNORE INTO master_items (id, category_id, key, sort_order, is_active, metadata, created_at, updated_at) VALUES
 ('mi-breed-001', 'cat-breed', 'pomeranian',      1, 1, '{}', datetime('now'), datetime('now')),
 ('mi-breed-002', 'cat-breed', 'maltese',         2, 1, '{}', datetime('now'), datetime('now')),
@@ -70,7 +70,7 @@ INSERT OR IGNORE INTO master_items (id, category_id, key, sort_order, is_active,
 ('mi-ads-001', 'cat-ad_slot', 'feed_list_banner',    1, 1, '{}', datetime('now'), datetime('now')),
 ('mi-ads-002', 'cat-ad_slot', 'store_detail_banner', 2, 1, '{}', datetime('now'), datetime('now'));
 
--- 3. 국가 및 통화
+-- 3. 통화
 INSERT OR IGNORE INTO currencies (id, code, symbol, name_key, decimal_places, is_active, created_at) VALUES
 ('cur-krw', 'KRW', '₩',   'currency.krw', 0, 1, datetime('now')),
 ('cur-usd', 'USD', '$',   'currency.usd', 2, 1, datetime('now')),
@@ -83,6 +83,7 @@ INSERT OR IGNORE INTO currencies (id, code, symbol, name_key, decimal_places, is
 ('cur-idr', 'IDR', 'Rp',  'currency.idr', 0, 1, datetime('now')),
 ('cur-brl', 'BRL', 'R$',  'currency.brl', 2, 1, datetime('now'));
 
+-- 4. 국가
 INSERT OR IGNORE INTO countries (id, code, name_key, is_active, sort_order, created_at) VALUES
 ('ctr-kr', 'KR', 'country.kr', 1, 1,  datetime('now')),
 ('ctr-us', 'US', 'country.us', 1, 2,  datetime('now')),
@@ -97,6 +98,7 @@ INSERT OR IGNORE INTO countries (id, code, name_key, is_active, sort_order, crea
 ('ctr-vn', 'VN', 'country.vn', 1, 11, datetime('now')),
 ('ctr-id', 'ID', 'country.id', 1, 12, datetime('now'));
 
+-- 5. 국가-통화 매핑
 INSERT OR IGNORE INTO country_currency_map (id, country_id, currency_id, is_default) VALUES
 ('ccm-kr', 'ctr-kr', 'cur-krw', 1),
 ('ccm-us', 'ctr-us', 'cur-usd', 1),
@@ -112,4 +114,4 @@ INSERT OR IGNORE INTO country_currency_map (id, country_id, currency_id, is_defa
 ('ccm-id', 'ctr-id', 'cur-idr', 1);
 
 -- 마이그레이션 기록
-INSERT OR IGNORE INTO schema_migrations (version) VALUES ('0005_seed_master');
+INSERT OR IGNORE INTO schema_migrations (version) VALUES ('0008_final_seed');
