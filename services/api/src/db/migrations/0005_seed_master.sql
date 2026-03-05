@@ -1,14 +1,7 @@
--- Migration 0005: 마스터 데이터 Seed 및 기존 매핑 데이터 정리
--- 이 파일은 마스터 카테고리와 아이템의 기본 데이터만 삽입하며,
--- 기존 매핑 테이블의 데이터를 비워 참조 무결성 오류를 최소화합니다.
+-- Migration 0005: 마스터 데이터 및 국가/통화 Seed (최종 통합본)
+-- 참조 무결성 오류를 방지하기 위해 오직 INSERT OR IGNORE 명령만 사용합니다.
 
--- 1. 기존 매핑 테이블의 데이터만 비웁니다 (테이블 삭제는 0007 이후로 연기)
-DELETE FROM disease_symptom_map;
-DELETE FROM symptom_metric_map;
-DELETE FROM metric_unit_map;
-DELETE FROM metric_logtype_map;
-
--- 2. 10종 마스터 카테고리 삽입 (부모 데이터)
+-- 1. 마스터 카테고리 (부모)
 INSERT OR IGNORE INTO master_categories (id, key, sort_order, is_active, created_at, updated_at) VALUES
 ('cat-breed',       'breed',       1,  1, datetime('now'), datetime('now')),
 ('cat-industry',    'industry',    2,  1, datetime('now'), datetime('now')),
@@ -21,7 +14,7 @@ INSERT OR IGNORE INTO master_categories (id, key, sort_order, is_active, created
 ('cat-country_ref', 'country_ref', 9,  1, datetime('now'), datetime('now')),
 ('cat-ad_slot',     'ad_slot',     10, 1, datetime('now'), datetime('now'));
 
--- 3. 기본 마스터 아이템 삽입 (자식 데이터)
+-- 2. 마스터 아이템 (자식)
 INSERT OR IGNORE INTO master_items (id, category_id, key, sort_order, is_active, metadata, created_at, updated_at) VALUES
 ('mi-breed-001', 'cat-breed', 'pomeranian',      1, 1, '{}', datetime('now'), datetime('now')),
 ('mi-breed-002', 'cat-breed', 'maltese',         2, 1, '{}', datetime('now'), datetime('now')),
@@ -76,6 +69,47 @@ INSERT OR IGNORE INTO master_items (id, category_id, key, sort_order, is_active,
 ('mi-int-005', 'cat-interest', 'social',        5, 1, '{}', datetime('now'), datetime('now')),
 ('mi-ads-001', 'cat-ad_slot', 'feed_list_banner',    1, 1, '{}', datetime('now'), datetime('now')),
 ('mi-ads-002', 'cat-ad_slot', 'store_detail_banner', 2, 1, '{}', datetime('now'), datetime('now'));
+
+-- 3. 국가 및 통화
+INSERT OR IGNORE INTO currencies (id, code, symbol, name_key, decimal_places, is_active, created_at) VALUES
+('cur-krw', 'KRW', '₩',   'currency.krw', 0, 1, datetime('now')),
+('cur-usd', 'USD', '$',   'currency.usd', 2, 1, datetime('now')),
+('cur-jpy', 'JPY', '¥',   'currency.jpy', 0, 1, datetime('now')),
+('cur-eur', 'EUR', '€',   'currency.eur', 2, 1, datetime('now')),
+('cur-cny', 'CNY', '¥',   'currency.cny', 2, 1, datetime('now')),
+('cur-gbp', 'GBP', '£',   'currency.gbp', 2, 1, datetime('now')),
+('cur-thb', 'THB', '฿',   'currency.thb', 2, 1, datetime('now')),
+('cur-vnd', 'VND', '₫',   'currency.vnd', 0, 1, datetime('now')),
+('cur-idr', 'IDR', 'Rp',  'currency.idr', 0, 1, datetime('now')),
+('cur-brl', 'BRL', 'R$',  'currency.brl', 2, 1, datetime('now'));
+
+INSERT OR IGNORE INTO countries (id, code, name_key, is_active, sort_order, created_at) VALUES
+('ctr-kr', 'KR', 'country.kr', 1, 1,  datetime('now')),
+('ctr-us', 'US', 'country.us', 1, 2,  datetime('now')),
+('ctr-jp', 'JP', 'country.jp', 1, 3,  datetime('now')),
+('ctr-cn', 'CN', 'country.cn', 1, 4,  datetime('now')),
+('ctr-tw', 'TW', 'country.tw', 1, 5,  datetime('now')),
+('ctr-gb', 'GB', 'country.gb', 1, 6,  datetime('now')),
+('ctr-de', 'DE', 'country.de', 1, 7,  datetime('now')),
+('ctr-fr', 'FR', 'country.fr', 1, 8,  datetime('now')),
+('ctr-br', 'BR', 'country.br', 1, 9,  datetime('now')),
+('ctr-th', 'TH', 'country.th', 1, 10, datetime('now')),
+('ctr-vn', 'VN', 'country.vn', 1, 11, datetime('now')),
+('ctr-id', 'ID', 'country.id', 1, 12, datetime('now'));
+
+INSERT OR IGNORE INTO country_currency_map (id, country_id, currency_id, is_default) VALUES
+('ccm-kr', 'ctr-kr', 'cur-krw', 1),
+('ccm-us', 'ctr-us', 'cur-usd', 1),
+('ccm-jp', 'ctr-jp', 'cur-jpy', 1),
+('ccm-cn', 'ctr-cn', 'cur-cny', 1),
+('ccm-tw', 'ctr-tw', 'cur-cny', 1),
+('ccm-gb', 'ctr-gb', 'cur-gbp', 1),
+('ccm-de', 'ctr-de', 'cur-eur', 1),
+('ccm-fr', 'ctr-fr', 'cur-eur', 1),
+('ccm-br', 'ctr-br', 'cur-brl', 1),
+('ccm-th', 'ctr-th', 'cur-thb', 1),
+('ccm-vn', 'ctr-vn', 'cur-vnd', 1),
+('ccm-id', 'ctr-id', 'cur-idr', 1);
 
 -- 마이그레이션 기록
 INSERT OR IGNORE INTO schema_migrations (version) VALUES ('0005_seed_master');
