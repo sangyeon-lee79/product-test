@@ -15,7 +15,6 @@ export default function Layout({ children }: { children: React.ReactNode }) {
       { to: '/i18n',         icon: '🌐', label: t('admin.nav.i18n',          '언어 관리') },
       { to: '/master',       icon: '🗂', label: t('admin.nav.master',        '마스터 데이터') },
       { to: '/countries',    icon: '🌍', label: t('admin.nav.countries',     '국가 / 통화') },
-      { to: '/disease-maps', icon: '🔗', label: t('admin.nav.disease_maps',  '질병 연결 매핑') },
     ]},
     { section: t('admin.section.ads', '광고 / 운영'), items: [
       { to: '/ads', icon: '📢', label: t('admin.nav.ads', '광고 설정') },

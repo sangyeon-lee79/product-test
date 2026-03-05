@@ -20,9 +20,9 @@ export default function MasterPage() {
   const [catSaving, setCatSaving] = useState(false);
 
   // Item modal
-  type ItemForm = { id?: string; key: string; sort_order: string; is_active?: number };
+  type ItemForm = { id?: string; key: string; sort_order: string; is_active?: number; parent_id?: string | null };
   const [itemModal, setItemModal] = useState<'create' | 'edit' | null>(null);
-  const [itemForm, setItemForm] = useState<ItemForm>({ key: '', sort_order: '0' });
+  const [itemForm, setItemForm] = useState<ItemForm>({ key: '', sort_order: '0', parent_id: null });
   const [itemTrans, setItemTrans] = useState<Record<string, string>>(emptyTrans());
   const [itemSaving, setItemSaving] = useState(false);
   const [translating, setTranslating] = useState(false);
@@ -95,10 +95,10 @@ export default function MasterPage() {
     setItemSaving(true); setError('');
     try {
       if (itemModal === 'create') {
-        await api.master.items.create({ category_id: selectedCat.id, key: itemForm.key, sort_order: parseInt(itemForm.sort_order), translations: itemTrans });
+        await api.master.items.create({ category_id: selectedCat.id, key: itemForm.key, sort_order: parseInt(itemForm.sort_order), translations: itemTrans, parent_id: itemForm.parent_id || undefined });
         flash(t('admin.master.success_item_add', '아이템이 추가되었습니다.'));
       } else if (itemModal === 'edit' && itemForm.id) {
-        await api.master.items.update(itemForm.id, { key: itemForm.key, sort_order: parseInt(itemForm.sort_order) });
+        await api.master.items.update(itemForm.id, { key: itemForm.key, sort_order: parseInt(itemForm.sort_order), parent_id: itemForm.parent_id });
         flash(t('admin.master.success_item_edit', '아이템이 수정되었습니다.'));
       }
       setItemModal(null);
@@ -107,11 +107,15 @@ export default function MasterPage() {
     finally { setItemSaving(false); }
   }
 
-  async function handleItemDeactivate(item: MasterItem) {
-    if (!confirm(`"${item.key}" ${t('admin.master.confirm_deactivate_item', '아이템을 비활성화하시겠습니까?')}`)) return;
+  async function handleItemDelete(item: MasterItem) {
+    if (!confirm(`"${item.key}" ${t('admin.master.confirm_delete_item', '아이템을 삭제하시겠습니까?')}`)) return;
     try {
-      await api.master.items.deactivate(item.id);
-      flash(t('admin.master.success_done', '처리되었습니다.'));
+      const res = await api.master.items.delete(item.id);
+      if (res.deleted) {
+        flash(t('admin.master.success_done', '삭제되었습니다.'));
+      } else {
+        flash(t('admin.master.success_deactivated', '다른 데이터에서 사용 중이라 비활성화되었습니다.'));
+      }
       if (selectedCat) await loadItems(selectedCat.key);
     } catch (e) { setError(e instanceof Error ? e.message : 'Error'); }
   }
@@ -163,7 +167,7 @@ export default function MasterPage() {
             <div className="card-header">
               <div className="card-title">{selectedCat ? `${selectedCat.key} 아이템` : t('admin.master.select_hint', '카테고리를 선택하세요')}</div>
               {selectedCat && (
-                <button className="btn btn-primary btn-sm" onClick={() => { setItemForm({ key: '', sort_order: '0' }); setItemTrans(emptyTrans()); setItemModal('create'); }}>{t('admin.master.add_item', '+ 아이템 추가')}</button>
+                <button className="btn btn-primary btn-sm" onClick={() => { setItemForm({ key: '', sort_order: '0', parent_id: null }); setItemTrans(emptyTrans()); setItemModal('create'); }}>{t('admin.master.add_item', '+ 아이템 추가')}</button>
               )}
             </div>
             <div className="table-wrap">
@@ -171,6 +175,7 @@ export default function MasterPage() {
                 <thead>
                   <tr>
                     <th>{t('admin.common.key', '키')}</th>
+                    <th>{t('admin.master.parent', '부모')}</th>
                     <th>Sort</th>
                     <th>{t('admin.common.status', '상태')}</th>
                     <th>{t('admin.common.action', '작업')}</th>
@@ -180,21 +185,22 @@ export default function MasterPage() {
                   {items.map(item => (
                     <tr key={item.id}>
                       <td><span className="font-mono" style={{ fontSize: 12 }}>{item.key}</span></td>
+                      <td><span style={{ fontSize: 11, color: '#666' }}>{item.parent_id ? (items.find(i => i.id === item.parent_id)?.key || item.parent_id) : '-'}</span></td>
                       <td>{item.sort_order}</td>
                       <td><span className={`badge ${item.is_active ? 'badge-green' : 'badge-gray'}`}>{item.is_active ? t('admin.common.active', '활성') : t('admin.common.inactive', '비활성')}</span></td>
                       <td>
                         <div className="td-actions">
-                          <button className="btn btn-secondary btn-sm" onClick={() => { setItemForm({ id: item.id, key: item.key, sort_order: String(item.sort_order), is_active: item.is_active }); setItemModal('edit'); }}>{t('admin.common.edit', '편집')}</button>
-                          {item.is_active ? <button className="btn btn-danger btn-sm" onClick={() => handleItemDeactivate(item)}>{t('admin.common.deactivate', '비활성화')}</button> : null}
+                          <button className="btn btn-secondary btn-sm" onClick={() => { setItemForm({ id: item.id, key: item.key, sort_order: String(item.sort_order), is_active: item.is_active, parent_id: item.parent_id }); setItemModal('edit'); }}>{t('admin.common.edit', '편집')}</button>
+                          <button className="btn btn-danger btn-sm" onClick={() => handleItemDelete(item)}>{t('admin.common.delete', '삭제')}</button>
                         </div>
                       </td>
                     </tr>
                   ))}
                   {items.length === 0 && selectedCat && (
-                    <tr><td colSpan={4} style={{ textAlign: 'center', padding: 24, color: 'var(--text-muted)' }}>{t('admin.master.no_item', '아이템이 없습니다')}</td></tr>
+                    <tr><td colSpan={5} style={{ textAlign: 'center', padding: 24, color: 'var(--text-muted)' }}>{t('admin.master.no_item', '아이템이 없습니다')}</td></tr>
                   )}
                   {!selectedCat && (
-                    <tr><td colSpan={4} style={{ textAlign: 'center', padding: 32, color: 'var(--text-muted)' }}>← {t('admin.master.select_hint', '카테고리를 선택하세요')}</td></tr>
+                    <tr><td colSpan={5} style={{ textAlign: 'center', padding: 32, color: 'var(--text-muted)' }}>← {t('admin.master.select_hint', '카테고리를 선택하세요')}</td></tr>
                   )}
                 </tbody>
               </table>
@@ -272,6 +278,15 @@ export default function MasterPage() {
               <div className="form-group">
                 <label className="form-label">{t('admin.common.key', '키')} *</label>
                 <input className="form-input font-mono" value={itemForm.key} onChange={e => setItemForm(f => ({ ...f, key: e.target.value }))} placeholder="pomeranian, diabetes, ..." />
+              </div>
+              <div className="form-group">
+                <label className="form-label">{t('admin.master.parent_item', '부모 아이템')}</label>
+                <select className="form-input" value={itemForm.parent_id || ''} onChange={e => setItemForm(f => ({ ...f, parent_id: e.target.value || null }))}>
+                  <option value="">-- {t('admin.common.none', '없음')} --</option>
+                  {items.filter(i => i.id !== itemForm.id).map(i => (
+                    <option key={i.id} value={i.id}>{i.key}</option>
+                  ))}
+                </select>
               </div>
               <div className="form-group">
                 <label className="form-label">{t('admin.common.sort_order', '정렬 순서')}</label>

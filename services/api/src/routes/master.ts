@@ -177,8 +177,16 @@ export async function handleMaster(request: Request, env: Env, url: URL): Promis
         return ok(await env.DB.prepare('SELECT * FROM master_items WHERE id = ?').bind(id).first());
       }
       if (request.method === 'DELETE' && id) {
-        await env.DB.prepare('UPDATE master_items SET is_active = 0, updated_at = ? WHERE id = ?').bind(now(), id).run();
-        return ok({ id, is_active: false });
+        // 실제 삭제 시도. 외래 키 제약 조건 등으로 실패할 수 있음.
+        try {
+          const result = await env.DB.prepare('DELETE FROM master_items WHERE id = ?').bind(id).run();
+          if (result.meta.changes === 0) return err('Item not found', 404);
+          return ok({ id, deleted: true });
+        } catch (e: unknown) {
+          // 제약 조건 오류 발생 시 비활성화로 대체
+          await env.DB.prepare('UPDATE master_items SET is_active = 0, updated_at = ? WHERE id = ?').bind(now(), id).run();
+          return ok({ id, deleted: false, message: 'Deactivated (used in other data)' });
+        }
       }
     }
   }

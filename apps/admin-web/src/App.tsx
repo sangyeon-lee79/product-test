@@ -7,7 +7,6 @@ import Dashboard from './pages/Dashboard';
 import I18nPage from './pages/I18nPage';
 import MasterPage from './pages/MasterPage';
 import CountriesPage from './pages/CountriesPage';
-import DiseaseMapsPage from './pages/DiseaseMapsPage';
 import './index.css';
 
 function PrivateRoute({ children }: { children: React.ReactNode }) {
@@ -28,7 +27,6 @@ export default function App() {
                 <Route path="/i18n" element={<I18nPage />} />
                 <Route path="/master" element={<MasterPage />} />
                 <Route path="/countries" element={<CountriesPage />} />
-                <Route path="/disease-maps" element={<DiseaseMapsPage />} />
                 <Route path="*" element={<Navigate to="/" replace />} />
               </Routes>
             </Layout>
