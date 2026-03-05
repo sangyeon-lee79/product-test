@@ -8,7 +8,9 @@ function getToken(): string | null {
 
 function isTokenExpired(token: string): boolean {
   try {
-    const payload = JSON.parse(atob(token.split('.')[1]));
+    // JWT payload는 base64url 인코딩 — atob 전에 base64로 변환 필요
+    const b64 = token.split('.')[1].replace(/-/g, '+').replace(/_/g, '/');
+    const payload = JSON.parse(atob(b64)) as { exp: number };
     return payload.exp * 1000 < Date.now();
   } catch {
     return true;
