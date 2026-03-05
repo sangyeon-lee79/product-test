@@ -24,9 +24,6 @@
 		}
 	],
 
-	// R2 Object Storage (미디어)
-	"r2_buckets": [{ "binding": "R2", "bucket_name": "pet-life-media" }],
-
 	"env": {
 		"staging": {
 			"name": "pet-life-api-staging",
