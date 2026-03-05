@@ -1,15 +1,15 @@
--- Migration 0005: 마스터 데이터 Seed (S2-5 + S3-4 기반)
--- 불필요한 매핑 테이블을 먼저 제거하여 외래 키 제약 조건 오류를 방지합니다.
+-- Migration 0005: 마스터 데이터 Seed 및 테이블 정리
+-- 외래 키 제약 조건을 일시적으로 비활성화하여 제약 조건 오류를 방지합니다.
 
+PRAGMA foreign_keys = OFF;
+
+-- 1. 더 이상 사용하지 않는 복잡한 매핑 테이블 삭제 (질병 관리 단순화)
 DROP TABLE IF EXISTS disease_symptom_map;
 DROP TABLE IF EXISTS symptom_metric_map;
 DROP TABLE IF EXISTS metric_unit_map;
 DROP TABLE IF EXISTS metric_logtype_map;
 
--- ─────────────────────────────────────────────────────────
--- 10종 마스터 카테고리
--- ─────────────────────────────────────────────────────────
-
+-- 2. 10종 마스터 카테고리 삽입
 INSERT OR IGNORE INTO master_categories (id, key, sort_order, is_active, created_at, updated_at) VALUES
 ('cat-breed',       'breed',       1,  1, datetime('now'), datetime('now')),
 ('cat-industry',    'industry',    2,  1, datetime('now'), datetime('now')),
@@ -22,10 +22,8 @@ INSERT OR IGNORE INTO master_categories (id, key, sort_order, is_active, created
 ('cat-country_ref', 'country_ref', 9,  1, datetime('now'), datetime('now')),
 ('cat-ad_slot',     'ad_slot',     10, 1, datetime('now'), datetime('now'));
 
--- ─────────────────────────────────────────────────────────
+-- 3. 기본 마스터 아이템 삽입
 -- breed (견종)
--- ─────────────────────────────────────────────────────────
-
 INSERT OR IGNORE INTO master_items (id, category_id, key, sort_order, is_active, metadata, created_at, updated_at) VALUES
 ('mi-breed-001', 'cat-breed', 'pomeranian',      1, 1, '{}', datetime('now'), datetime('now')),
 ('mi-breed-002', 'cat-breed', 'maltese',         2, 1, '{}', datetime('now'), datetime('now')),
@@ -35,10 +33,7 @@ INSERT OR IGNORE INTO master_items (id, category_id, key, sort_order, is_active,
 ('mi-breed-006', 'cat-breed', 'yorkshire',       6, 1, '{}', datetime('now'), datetime('now')),
 ('mi-breed-007', 'cat-breed', 'bichon',          7, 1, '{}', datetime('now'), datetime('now'));
 
--- ─────────────────────────────────────────────────────────
 -- industry (업종)
--- ─────────────────────────────────────────────────────────
-
 INSERT OR IGNORE INTO master_items (id, category_id, key, sort_order, is_active, metadata, created_at, updated_at) VALUES
 ('mi-ind-001', 'cat-industry', 'vet',         1, 1, '{}', datetime('now'), datetime('now')),
 ('mi-ind-002', 'cat-industry', 'grooming',    2, 1, '{}', datetime('now'), datetime('now')),
@@ -46,10 +41,7 @@ INSERT OR IGNORE INTO master_items (id, category_id, key, sort_order, is_active,
 ('mi-ind-004', 'cat-industry', 'hotel',       4, 1, '{}', datetime('now'), datetime('now')),
 ('mi-ind-005', 'cat-industry', 'supply',      5, 1, '{}', datetime('now'), datetime('now'));
 
--- ─────────────────────────────────────────────────────────
--- disease (질병) — 당뇨 + 기타 주요 질병
--- ─────────────────────────────────────────────────────────
-
+-- disease (질병)
 INSERT OR IGNORE INTO master_items (id, category_id, key, sort_order, is_active, metadata, created_at, updated_at) VALUES
 ('mi-dis-001', 'cat-disease', 'diabetes',         1, 1, '{}', datetime('now'), datetime('now')),
 ('mi-dis-002', 'cat-disease', 'heart_disease',    2, 1, '{}', datetime('now'), datetime('now')),
@@ -58,10 +50,7 @@ INSERT OR IGNORE INTO master_items (id, category_id, key, sort_order, is_active,
 ('mi-dis-005', 'cat-disease', 'hypothyroidism',   5, 1, '{}', datetime('now'), datetime('now')),
 ('mi-dis-006', 'cat-disease', 'cushing',          6, 1, '{}', datetime('now'), datetime('now'));
 
--- ─────────────────────────────────────────────────────────
 -- symptom (증상)
--- ─────────────────────────────────────────────────────────
-
 INSERT OR IGNORE INTO master_items (id, category_id, key, sort_order, is_active, metadata, created_at, updated_at) VALUES
 ('mi-sym-001', 'cat-symptom', 'hyperglycemia',  1, 1, '{}', datetime('now'), datetime('now')),
 ('mi-sym-002', 'cat-symptom', 'hypoglycemia',   2, 1, '{}', datetime('now'), datetime('now')),
@@ -70,10 +59,7 @@ INSERT OR IGNORE INTO master_items (id, category_id, key, sort_order, is_active,
 ('mi-sym-005', 'cat-symptom', 'hydration',      5, 1, '{}', datetime('now'), datetime('now')),
 ('mi-sym-006', 'cat-symptom', 'activity_mgmt',  6, 1, '{}', datetime('now'), datetime('now'));
 
--- ─────────────────────────────────────────────────────────
 -- metric (측정 지표)
--- ─────────────────────────────────────────────────────────
-
 INSERT OR IGNORE INTO master_items (id, category_id, key, sort_order, is_active, metadata, created_at, updated_at) VALUES
 ('mi-met-001', 'cat-metric', 'blood_glucose',   1, 1, '{}', datetime('now'), datetime('now')),
 ('mi-met-002', 'cat-metric', 'insulin_dose',    2, 1, '{}', datetime('now'), datetime('now')),
@@ -83,10 +69,7 @@ INSERT OR IGNORE INTO master_items (id, category_id, key, sort_order, is_active,
 ('mi-met-006', 'cat-metric', 'duration',        6, 1, '{}', datetime('now'), datetime('now')),
 ('mi-met-007', 'cat-metric', 'body_weight',     7, 1, '{}', datetime('now'), datetime('now'));
 
--- ─────────────────────────────────────────────────────────
 -- unit (단위)
--- ─────────────────────────────────────────────────────────
-
 INSERT OR IGNORE INTO master_items (id, category_id, key, sort_order, is_active, metadata, created_at, updated_at) VALUES
 ('mi-unit-001', 'cat-unit', 'mg_dl',   1, 1, '{"symbol":"mg/dL"}',  datetime('now'), datetime('now')),
 ('mi-unit-002', 'cat-unit', 'mmol_l',  2, 1, '{"symbol":"mmol/L"}', datetime('now'), datetime('now')),
@@ -97,10 +80,7 @@ INSERT OR IGNORE INTO master_items (id, category_id, key, sort_order, is_active,
 ('mi-unit-007', 'cat-unit', 'min',     7, 1, '{"symbol":"min"}',    datetime('now'), datetime('now')),
 ('mi-unit-008', 'cat-unit', 'kg',      8, 1, '{"symbol":"kg"}',     datetime('now'), datetime('now'));
 
--- ─────────────────────────────────────────────────────────
--- log_type (기록 유형 — 7종 LDD §4.3)
--- ─────────────────────────────────────────────────────────
-
+-- log_type (기록 유형)
 INSERT OR IGNORE INTO master_items (id, category_id, key, sort_order, is_active, metadata, created_at, updated_at) VALUES
 ('mi-lt-001', 'cat-log_type', 'blood_glucose_log',  1, 1, '{}', datetime('now'), datetime('now')),
 ('mi-lt-002', 'cat-log_type', 'insulin_log',        2, 1, '{}', datetime('now'), datetime('now')),
@@ -110,10 +90,7 @@ INSERT OR IGNORE INTO master_items (id, category_id, key, sort_order, is_active,
 ('mi-lt-006', 'cat-log_type', 'symptom_event_log',  6, 1, '{}', datetime('now'), datetime('now')),
 ('mi-lt-007', 'cat-log_type', 'lab_test_log',       7, 1, '{}', datetime('now'), datetime('now'));
 
--- ─────────────────────────────────────────────────────────
 -- interest (관심사)
--- ─────────────────────────────────────────────────────────
-
 INSERT OR IGNORE INTO master_items (id, category_id, key, sort_order, is_active, metadata, created_at, updated_at) VALUES
 ('mi-int-001', 'cat-interest', 'health_care',   1, 1, '{}', datetime('now'), datetime('now')),
 ('mi-int-002', 'cat-interest', 'grooming',      2, 1, '{}', datetime('now'), datetime('now')),
@@ -121,18 +98,12 @@ INSERT OR IGNORE INTO master_items (id, category_id, key, sort_order, is_active,
 ('mi-int-004', 'cat-interest', 'nutrition',     4, 1, '{}', datetime('now'), datetime('now')),
 ('mi-int-005', 'cat-interest', 'social',        5, 1, '{}', datetime('now'), datetime('now'));
 
--- ─────────────────────────────────────────────────────────
 -- ad_slot
--- ─────────────────────────────────────────────────────────
-
 INSERT OR IGNORE INTO master_items (id, category_id, key, sort_order, is_active, metadata, created_at, updated_at) VALUES
 ('mi-ads-001', 'cat-ad_slot', 'feed_list_banner',    1, 1, '{}', datetime('now'), datetime('now')),
 ('mi-ads-002', 'cat-ad_slot', 'store_detail_banner', 2, 1, '{}', datetime('now'), datetime('now'));
 
--- ─────────────────────────────────────────────────────────
--- 국가/통화 Seed (S4-4)
--- ─────────────────────────────────────────────────────────
-
+-- 4. 국가/통화 Seed
 INSERT OR IGNORE INTO currencies (id, code, symbol, name_key, decimal_places, is_active, created_at) VALUES
 ('cur-krw', 'KRW', '₩',   'currency.krw', 0, 1, datetime('now')),
 ('cur-usd', 'USD', '$',   'currency.usd', 2, 1, datetime('now')),
@@ -173,4 +144,7 @@ INSERT OR IGNORE INTO country_currency_map (id, country_id, currency_id, is_defa
 ('ccm-vn', 'ctr-vn', 'cur-vnd', 1),
 ('ccm-id', 'ctr-id', 'cur-idr', 1);
 
+PRAGMA foreign_keys = ON;
+
+-- 마이그레이션 기록
 INSERT OR IGNORE INTO schema_migrations (version) VALUES ('0005_seed_master');
