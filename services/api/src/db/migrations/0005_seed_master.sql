@@ -169,47 +169,4 @@ INSERT OR IGNORE INTO country_currency_map (id, country_id, currency_id, is_defa
 ('ccm-vn', 'ctr-vn', 'cur-vnd', 1),
 ('ccm-id', 'ctr-id', 'cur-idr', 1);
 
--- ─────────────────────────────────────────────────────────
--- S3: 당뇨 Disease Connection Mapping Seed (Admin에서 직접 입력 전 기본값)
--- disease → symptom → metric → unit / logtype
--- ─────────────────────────────────────────────────────────
-
--- diabetes → symptoms
-INSERT OR IGNORE INTO disease_symptom_map (id, disease_id, symptom_id, is_required, sort_order, is_active) VALUES
-('dsm-001', 'mi-dis-001', 'mi-sym-001', 1, 1, 1),  -- diabetes → hyperglycemia
-('dsm-002', 'mi-dis-001', 'mi-sym-002', 1, 2, 1),  -- diabetes → hypoglycemia
-('dsm-003', 'mi-dis-001', 'mi-sym-003', 0, 3, 1),  -- diabetes → insulin_needed
-('dsm-004', 'mi-dis-001', 'mi-sym-004', 0, 4, 1),  -- diabetes → diet_control
-('dsm-005', 'mi-dis-001', 'mi-sym-005', 0, 5, 1),  -- diabetes → hydration
-('dsm-006', 'mi-dis-001', 'mi-sym-006', 0, 6, 1);  -- diabetes → activity_mgmt
-
--- symptoms → metrics
-INSERT OR IGNORE INTO symptom_metric_map (id, symptom_id, metric_id, is_required, sort_order, is_active) VALUES
-('smm-001', 'mi-sym-001', 'mi-met-001', 1, 1, 1),  -- hyperglycemia → blood_glucose
-('smm-002', 'mi-sym-002', 'mi-met-001', 1, 1, 1),  -- hypoglycemia → blood_glucose
-('smm-003', 'mi-sym-003', 'mi-met-002', 1, 1, 1),  -- insulin_needed → insulin_dose
-('smm-004', 'mi-sym-004', 'mi-met-003', 0, 1, 1),  -- diet_control → food_weight
-('smm-005', 'mi-sym-004', 'mi-met-004', 0, 2, 1),  -- diet_control → calorie_intake
-('smm-006', 'mi-sym-005', 'mi-met-005', 1, 1, 1),  -- hydration → water_intake
-('smm-007', 'mi-sym-006', 'mi-met-006', 1, 1, 1);  -- activity_mgmt → duration
-
--- metrics → units
-INSERT OR IGNORE INTO metric_unit_map (id, metric_id, unit_id, is_default, sort_order, is_active) VALUES
-('mum-001', 'mi-met-001', 'mi-unit-001', 1, 1, 1),  -- blood_glucose → mg/dL (default)
-('mum-002', 'mi-met-001', 'mi-unit-002', 0, 2, 1),  -- blood_glucose → mmol/L
-('mum-003', 'mi-met-002', 'mi-unit-003', 1, 1, 1),  -- insulin_dose → IU
-('mum-004', 'mi-met-003', 'mi-unit-004', 1, 1, 1),  -- food_weight → g
-('mum-005', 'mi-met-004', 'mi-unit-005', 1, 1, 1),  -- calorie_intake → kcal
-('mum-006', 'mi-met-005', 'mi-unit-006', 1, 1, 1),  -- water_intake → ml
-('mum-007', 'mi-met-006', 'mi-unit-007', 1, 1, 1);  -- duration → min
-
--- metrics → log_types
-INSERT OR IGNORE INTO metric_logtype_map (id, metric_id, logtype_id, is_default, sort_order, is_active) VALUES
-('mlm-001', 'mi-met-001', 'mi-lt-001', 1, 1, 1),  -- blood_glucose → blood_glucose_log
-('mlm-002', 'mi-met-002', 'mi-lt-002', 1, 1, 1),  -- insulin_dose → insulin_log
-('mlm-003', 'mi-met-003', 'mi-lt-003', 1, 1, 1),  -- food_weight → meal_log
-('mlm-004', 'mi-met-004', 'mi-lt-003', 1, 2, 1),  -- calorie_intake → meal_log
-('mlm-005', 'mi-met-005', 'mi-lt-004', 1, 1, 1),  -- water_intake → water_log
-('mlm-006', 'mi-met-006', 'mi-lt-005', 1, 1, 1);  -- duration → activity_log
-
 INSERT OR IGNORE INTO schema_migrations (version) VALUES ('0005_seed_master');
