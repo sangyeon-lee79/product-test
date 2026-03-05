@@ -1,6 +1,10 @@
 -- Migration 0005: 마스터 데이터 Seed (S2-5 + S3-4 기반)
--- PLAN S2-5: 필수 10종 카테고리 + breed/disease/symptom/metric/unit/log_type 기본 아이템
--- PLAN S3-4: 당뇨(diabetes) 풀 매핑을 위한 마스터 아이템 Seed
+-- 불필요한 매핑 테이블을 먼저 제거하여 외래 키 제약 조건 오류를 방지합니다.
+
+DROP TABLE IF EXISTS disease_symptom_map;
+DROP TABLE IF EXISTS symptom_metric_map;
+DROP TABLE IF EXISTS metric_unit_map;
+DROP TABLE IF EXISTS metric_logtype_map;
 
 -- ─────────────────────────────────────────────────────────
 -- 10종 마스터 카테고리

@@ -335,6 +335,11 @@ DB 테이블/마이그레이션
 [x] pets 테이블 (guardian_id, name, species, breed_id, birth_date, gender, weight_kg, is_neutered, microchip_no, avatar_url)
 [x] pet_diseases 테이블 (pet_id, disease_id, diagnosed_at, notes, is_active)
 
+
+
+
+
+
 ## S6-2. API
 [x] GET /api/v1/guardians/me — 내 프로필
 [x] PUT /api/v1/guardians/me — 프로필 생성/수정 (upsert)
