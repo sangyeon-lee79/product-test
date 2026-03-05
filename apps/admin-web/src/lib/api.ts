@@ -91,7 +91,7 @@ export const api = {
   master: {
     categories: {
       list: () => request<MasterCategory[]>('/api/v1/admin/master/categories'),
-      create: (data: { key: string; sort_order?: number }) =>
+      create: (data: { key: string; sort_order?: number; translations?: Record<string, string> }) =>
         request<MasterCategory>('/api/v1/admin/master/categories', { method: 'POST', body: JSON.stringify(data) }),
       update: (id: string, data: Partial<MasterCategory>) =>
         request<MasterCategory>(`/api/v1/admin/master/categories/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
@@ -103,7 +103,7 @@ export const api = {
         const q = categoryKey ? `?category_key=${encodeURIComponent(categoryKey)}` : '';
         return request<MasterItem[]>(`/api/v1/admin/master/items${q}`);
       },
-      create: (data: { category_id: string; key: string; sort_order?: number; metadata?: Record<string, unknown> }) =>
+      create: (data: { category_id: string; key: string; sort_order?: number; metadata?: Record<string, unknown>; translations?: Record<string, string> }) =>
         request<MasterItem>('/api/v1/admin/master/items', { method: 'POST', body: JSON.stringify(data) }),
       update: (id: string, data: Partial<MasterItem>) =>
         request<MasterItem>(`/api/v1/admin/master/items/${id}`, { method: 'PUT', body: JSON.stringify(data) }),

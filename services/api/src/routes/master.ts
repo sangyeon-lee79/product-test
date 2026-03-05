@@ -9,6 +9,28 @@ import { ok, created, err, newId, now } from '../types';
 import { requireAuth, requireRole } from '../middleware/auth';
 import type { JwtPayload } from '../types';
 
+const LANGS = ['ko','en','ja','zh_cn','zh_tw','es','fr','de','pt','vi','th','id_lang','ar'] as const;
+
+async function upsertI18n(env: Env, i18nKey: string, translations: Record<string, string>) {
+  const existing = await env.DB.prepare('SELECT id FROM i18n_translations WHERE key = ?').bind(i18nKey).first<{ id: string }>();
+  const lv = LANGS.map(l => translations[l] ?? null);
+  if (existing) {
+    // 기존 키가 있으면 빈 값만 채움 (덮어쓰지 않음)
+    const sets: string[] = ['updated_at = ?'];
+    const vals: (string | null)[] = [now()];
+    for (const l of LANGS) {
+      if (translations[l]) { sets.push(`${l} = COALESCE(${l}, ?)`); vals.push(translations[l]); }
+    }
+    vals.push(existing.id);
+    await env.DB.prepare(`UPDATE i18n_translations SET ${sets.join(', ')} WHERE id = ?`).bind(...vals).run();
+  } else {
+    await env.DB.prepare(
+      `INSERT INTO i18n_translations (id,key,page,ko,en,ja,zh_cn,zh_tw,es,fr,de,pt,vi,th,id_lang,ar,is_active,created_at,updated_at)
+       VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`
+    ).bind(newId(), i18nKey, 'master', ...lv, 1, now(), now()).run();
+  }
+}
+
 export async function handleMaster(request: Request, env: Env, url: URL): Promise<Response> {
   const path = url.pathname;
   const isAdmin = path.startsWith('/api/v1/admin/master');
@@ -59,8 +81,8 @@ export async function handleMaster(request: Request, env: Env, url: URL): Promis
         return ok(row);
       }
       if (request.method === 'POST') {
-        let body: { key: string; sort_order?: number };
-        try { body = await request.json() as { key: string; sort_order?: number }; } catch { return err('Invalid JSON'); }
+        let body: { key: string; sort_order?: number; translations?: Record<string, string> };
+        try { body = await request.json() as typeof body; } catch { return err('Invalid JSON'); }
         if (!body.key) return err('key required');
         const exists = await env.DB.prepare('SELECT id FROM master_categories WHERE key = ?').bind(body.key).first();
         if (exists) return err('key already exists', 409, 'duplicate_key');
@@ -68,6 +90,9 @@ export async function handleMaster(request: Request, env: Env, url: URL): Promis
         await env.DB.prepare(
           'INSERT INTO master_categories (id,key,sort_order,is_active,created_at,updated_at) VALUES (?,?,?,?,?,?)'
         ).bind(row.id, row.key, row.sort_order, row.is_active, row.created_at, row.updated_at).run();
+        if (body.translations && Object.values(body.translations).some(v => v)) {
+          await upsertI18n(env, `master.${body.key}`, body.translations);
+        }
         return created(row);
       }
       if (request.method === 'PUT' && id) {
@@ -116,7 +141,7 @@ export async function handleMaster(request: Request, env: Env, url: URL): Promis
         return ok(row);
       }
       if (request.method === 'POST') {
-        let body: { category_id: string; key: string; parent_id?: string; sort_order?: number; metadata?: Record<string, unknown> };
+        let body: { category_id: string; key: string; parent_id?: string; sort_order?: number; metadata?: Record<string, unknown>; translations?: Record<string, string> };
         try { body = await request.json() as typeof body; } catch { return err('Invalid JSON'); }
         if (!body.category_id || !body.key) return err('category_id and key required');
         const exists = await env.DB.prepare('SELECT id FROM master_items WHERE category_id = ? AND key = ?').bind(body.category_id, body.key).first();
@@ -130,6 +155,10 @@ export async function handleMaster(request: Request, env: Env, url: URL): Promis
         await env.DB.prepare(
           'INSERT INTO master_items (id,category_id,key,parent_id,sort_order,is_active,metadata,created_at,updated_at) VALUES (?,?,?,?,?,?,?,?,?)'
         ).bind(row.id, row.category_id, row.key, row.parent_id, row.sort_order, row.is_active, row.metadata, row.created_at, row.updated_at).run();
+        if (body.translations && Object.values(body.translations).some(v => v)) {
+          const cat = await env.DB.prepare('SELECT key FROM master_categories WHERE id = ?').bind(body.category_id).first<{ key: string }>();
+          if (cat) await upsertI18n(env, `master.${cat.key}.${body.key}`, body.translations);
+        }
         return created({ ...row, metadata: body.metadata ?? {} });
       }
       if (request.method === 'PUT' && id) {
