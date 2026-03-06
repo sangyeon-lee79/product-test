@@ -83,6 +83,7 @@ export default defineConfig([
 - Local: no `VITE_API_URL` needed (falls back to localhost/IDX mapping).
 - Staging: `VITE_API_URL=https://stg-api.petlife.com`
 - Production: `VITE_API_URL=https://api.petlife.com`
+- If `VITE_API_URL` is missing on Cloudflare Pages, code fallback uses `https://pet-life-api.adrien-lee.workers.dev`.
 
 ### CORS dependency
 - If login shows `Failed to fetch`, first check whether the current web origin is included in API `ALLOWED_ORIGINS`.
