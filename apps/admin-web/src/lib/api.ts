@@ -145,9 +145,9 @@ export const api = {
   // Countries
   countries: {
     list: () => request<Country[]>('/api/v1/admin/countries'),
-    create: (data: { code: string; name_key: string; sort_order?: number }) =>
+    create: (data: { code: string; translations: Record<string, string>; default_currency_id: string }) =>
       request<Country>('/api/v1/admin/countries', { method: 'POST', body: JSON.stringify(data) }),
-    update: (id: string, data: Partial<Country>) =>
+    update: (id: string, data: { sort_order?: number; is_active?: number; translations?: Record<string, string>; default_currency_id?: string }) =>
       request<Country>(`/api/v1/admin/countries/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
     mapCurrency: (countryId: string, currencyId: string, isDefault: boolean) =>
       request(`/api/v1/admin/countries/${countryId}/currencies`, {
@@ -192,6 +192,13 @@ export interface MasterItem {
 export interface Country {
   id: string; code: string; name_key: string; is_active: number;
   sort_order: number; created_at: string;
+  ko_name?: string | null;
+  default_currency_id?: string | null;
+  default_currency_code?: string | null;
+  ko?: string | null; en?: string | null; ja?: string | null;
+  zh_cn?: string | null; zh_tw?: string | null; es?: string | null;
+  fr?: string | null; de?: string | null; pt?: string | null;
+  vi?: string | null; th?: string | null; id_lang?: string | null; ar?: string | null;
 }
 
 export interface Currency {

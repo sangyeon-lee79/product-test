@@ -9,6 +9,56 @@ import { ok, created, err, newId, now } from '../types';
 import { requireAuth, requireRole } from '../middleware/auth';
 import type { JwtPayload } from '../types';
 
+const LANGS = ['ko','en','ja','zh_cn','zh_tw','es','fr','de','pt','vi','th','id_lang','ar'] as const;
+
+async function upsertI18n(env: Env, i18nKey: string, translations: Record<string, string>) {
+  const existing = await env.DB.prepare('SELECT id FROM i18n_translations WHERE key = ?').bind(i18nKey).first<{ id: string }>();
+  const lv = LANGS.map(l => translations[l] ?? null);
+  if (existing) {
+    const sets: string[] = ['updated_at = ?'];
+    const vals: (string | null)[] = [now()];
+    for (const l of LANGS) {
+      if ((translations[l] || '').trim()) { sets.push(`${l} = COALESCE(${l}, ?)`); vals.push(translations[l]); }
+    }
+    vals.push(existing.id);
+    await env.DB.prepare(`UPDATE i18n_translations SET ${sets.join(', ')} WHERE id = ?`).bind(...vals).run();
+  } else {
+    await env.DB.prepare(
+      `INSERT INTO i18n_translations (id,key,page,ko,en,ja,zh_cn,zh_tw,es,fr,de,pt,vi,th,id_lang,ar,is_active,created_at,updated_at)
+       VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`
+    ).bind(newId(), i18nKey, 'country', ...lv, 1, now(), now()).run();
+  }
+}
+
+async function getNextCountrySortOrder(env: Env): Promise<number> {
+  const row = await env.DB.prepare('SELECT COALESCE(MAX(sort_order), 0) as max_sort FROM countries').first<{ max_sort: number }>();
+  return (row?.max_sort ?? 0) + 1;
+}
+
+async function setDefaultCurrency(env: Env, countryId: string, currencyId: string): Promise<void> {
+  await env.DB.prepare('UPDATE country_currency_map SET is_default = 0 WHERE country_id = ?').bind(countryId).run();
+  const mapId = newId();
+  await env.DB.prepare(
+    'INSERT OR REPLACE INTO country_currency_map (id,country_id,currency_id,is_default) VALUES (?,?,?,1)'
+  ).bind(mapId, countryId, currencyId).run();
+}
+
+async function fetchCountryById(env: Env, id: string) {
+  return env.DB.prepare(`
+    SELECT
+      c.*,
+      tr.ko as ko_name,
+      tr.en, tr.ja, tr.zh_cn, tr.zh_tw, tr.es, tr.fr, tr.de, tr.pt, tr.vi, tr.th, tr.id_lang, tr.ar,
+      cur.id as default_currency_id,
+      cur.code as default_currency_code
+    FROM countries c
+    LEFT JOIN i18n_translations tr ON tr.key = c.name_key
+    LEFT JOIN country_currency_map ccm ON c.id = ccm.country_id AND ccm.is_default = 1
+    LEFT JOIN currencies cur ON ccm.currency_id = cur.id
+    WHERE c.id = ?
+  `).bind(id).first();
+}
+
 export async function handleCountries(request: Request, env: Env, url: URL): Promise<Response> {
   const path = url.pathname;
   const isAdmin = path.startsWith('/api/v1/admin/');
@@ -41,44 +91,67 @@ export async function handleCountries(request: Request, env: Env, url: URL): Pro
       const isCurrencyMap = path.endsWith('/currencies');
 
       if (request.method === 'GET' && !id) {
-        const rows = await env.DB.prepare('SELECT * FROM countries ORDER BY sort_order, code').all();
+        const rows = await env.DB.prepare(`
+          SELECT
+            c.*,
+            tr.ko as ko_name,
+            tr.en, tr.ja, tr.zh_cn, tr.zh_tw, tr.es, tr.fr, tr.de, tr.pt, tr.vi, tr.th, tr.id_lang, tr.ar,
+            cur.id as default_currency_id,
+            cur.code as default_currency_code
+          FROM countries c
+          LEFT JOIN i18n_translations tr ON tr.key = c.name_key
+          LEFT JOIN country_currency_map ccm ON c.id = ccm.country_id AND ccm.is_default = 1
+          LEFT JOIN currencies cur ON ccm.currency_id = cur.id
+          ORDER BY c.sort_order, c.code
+        `).all();
         return ok(rows.results);
       }
       if (request.method === 'GET' && id && !isCurrencyMap) {
-        const row = await env.DB.prepare(`
-          SELECT c.*, json_group_array(json_object(
-            'currency_id', cur.id, 'code', cur.code, 'symbol', cur.symbol,
-            'is_default', ccm.is_default
-          )) as currencies
-          FROM countries c
-          LEFT JOIN country_currency_map ccm ON c.id = ccm.country_id
-          LEFT JOIN currencies cur ON ccm.currency_id = cur.id
-          WHERE c.id = ? GROUP BY c.id
-        `).bind(id).first();
+        const row = await fetchCountryById(env, id);
         if (!row) return err('Not found', 404);
         return ok(row);
       }
       if (request.method === 'POST' && !id) {
-        let body: { code: string; name_key: string; sort_order?: number };
+        let body: { code: string; translations?: Record<string, string>; default_currency_id?: string };
         try { body = await request.json() as typeof body; } catch { return err('Invalid JSON'); }
-        if (!body.code || !body.name_key) return err('code and name_key required');
-        const row = { id: newId(), code: body.code.toUpperCase(), name_key: body.name_key, is_active: 1, sort_order: body.sort_order ?? 0, created_at: now() };
+        const code = (body.code || '').trim().toUpperCase();
+        if (!/^[A-Z]{2}$/.test(code)) return err('code must be ISO 3166-1 alpha-2');
+        const koName = body.translations?.ko?.trim();
+        if (!koName) return err('ko translation required');
+        if (!body.default_currency_id) return err('default_currency_id required');
+        const currency = await env.DB.prepare('SELECT id FROM currencies WHERE id = ? AND is_active = 1').bind(body.default_currency_id).first();
+        if (!currency) return err('default currency not found', 404);
+
+        const nameKey = `country.${code.toLowerCase()}`;
+        const sortOrder = await getNextCountrySortOrder(env);
+        const row = { id: newId(), code, name_key: nameKey, is_active: 1, sort_order: sortOrder, created_at: now() };
         await env.DB.prepare('INSERT INTO countries (id,code,name_key,is_active,sort_order,created_at) VALUES (?,?,?,?,?,?)')
           .bind(row.id, row.code, row.name_key, row.is_active, row.sort_order, row.created_at).run();
-        return created(row);
+        if (body.translations) await upsertI18n(env, nameKey, body.translations);
+        await setDefaultCurrency(env, row.id, body.default_currency_id);
+        return created(await fetchCountryById(env, row.id));
       }
       if (request.method === 'PUT' && id && !isCurrencyMap) {
-        let body: { name_key?: string; sort_order?: number; is_active?: boolean };
+        let body: { sort_order?: number; is_active?: boolean; translations?: Record<string, string>; default_currency_id?: string };
         try { body = await request.json() as typeof body; } catch { return err('Invalid JSON'); }
         const sets: string[] = [];
         const vals: (string | number)[] = [];
-        if (body.name_key !== undefined) { sets.push('name_key = ?'); vals.push(body.name_key); }
         if (body.sort_order !== undefined) { sets.push('sort_order = ?'); vals.push(body.sort_order); }
         if (body.is_active !== undefined) { sets.push('is_active = ?'); vals.push(body.is_active ? 1 : 0); }
-        if (sets.length === 0) return err('Nothing to update');
-        vals.push(id);
-        await env.DB.prepare(`UPDATE countries SET ${sets.join(', ')} WHERE id = ?`).bind(...vals).run();
-        return ok(await env.DB.prepare('SELECT * FROM countries WHERE id = ?').bind(id).first());
+        if (sets.length > 0) {
+          vals.push(id);
+          await env.DB.prepare(`UPDATE countries SET ${sets.join(', ')} WHERE id = ?`).bind(...vals).run();
+        }
+        if (body.translations && Object.values(body.translations).some(v => v)) {
+          const country = await env.DB.prepare('SELECT name_key FROM countries WHERE id = ?').bind(id).first<{ name_key: string }>();
+          if (country) await upsertI18n(env, country.name_key, body.translations);
+        }
+        if (body.default_currency_id) {
+          const currency = await env.DB.prepare('SELECT id FROM currencies WHERE id = ? AND is_active = 1').bind(body.default_currency_id).first();
+          if (!currency) return err('default currency not found', 404);
+          await setDefaultCurrency(env, id, body.default_currency_id);
+        }
+        return ok(await fetchCountryById(env, id));
       }
       if (request.method === 'DELETE' && id && !isCurrencyMap) {
         await env.DB.prepare('UPDATE countries SET is_active = 0 WHERE id = ?').bind(id).run();
