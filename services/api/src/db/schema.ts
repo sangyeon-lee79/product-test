@@ -253,6 +253,27 @@ export interface Feed {
   updated_at: string;
 }
 
+// S10: unified pet album media
+export interface PetAlbumMedia {
+  id: string;
+  pet_id: string;
+  source_type: 'profile' | 'feed' | 'booking_completed' | 'health_record' | 'manual_upload';
+  source_id: string | null;
+  booking_id: string | null;
+  media_type: 'image' | 'video';
+  media_url: string;
+  thumbnail_url: string | null;
+  caption: string | null;
+  tags: string[];
+  uploaded_by_user_id: string;
+  visibility_scope: 'public' | 'friends_only' | 'private' | 'guardian_supplier_only' | 'booking_related';
+  is_primary: boolean;
+  sort_order: number;
+  status: 'active' | 'pending' | 'hidden' | 'deleted';
+  created_at: string;
+  updated_at: string;
+}
+
 // ─── Provider 영역 (S9~S10) ──────────────────────────────────────────
 
 // S9: LLD §4.4 stores

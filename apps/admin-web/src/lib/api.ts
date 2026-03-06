@@ -252,6 +252,52 @@ export const api = {
   bookings: {
     list: () => request<{ bookings: Booking[] }>('/api/v1/bookings'),
   },
+  petAlbum: {
+    list: (params?: {
+      pet_id?: string;
+      source_type?: string;
+      media_type?: 'image' | 'video';
+      sort?: 'latest' | 'oldest';
+      include_pending?: boolean;
+      limit?: number;
+    }) => {
+      const q = new URLSearchParams();
+      if (params?.pet_id) q.set('pet_id', params.pet_id);
+      if (params?.source_type) q.set('source_type', params.source_type);
+      if (params?.media_type) q.set('media_type', params.media_type);
+      if (params?.sort) q.set('sort', params.sort);
+      if (params?.include_pending) q.set('include_pending', 'true');
+      if (params?.limit) q.set('limit', String(params.limit));
+      const suffix = q.toString() ? `?${q.toString()}` : '';
+      return request<{ media: PetAlbumMedia[] }>(`/api/v1/pet-album${suffix}`);
+    },
+    detail: (id: string) => request<{ media: PetAlbumMedia }>(`/api/v1/pet-album/${id}`),
+    create: (data: {
+      pet_id: string;
+      source_type: 'profile' | 'feed' | 'booking_completed' | 'health_record' | 'manual_upload';
+      source_id?: string | null;
+      booking_id?: string | null;
+      media_type?: 'image' | 'video';
+      media_url: string;
+      thumbnail_url?: string | null;
+      caption?: string | null;
+      tags?: string[];
+      visibility_scope?: 'public' | 'friends_only' | 'private' | 'guardian_supplier_only' | 'booking_related';
+      is_primary?: boolean;
+      sort_order?: number;
+      status?: 'active' | 'pending' | 'hidden';
+    }) => request<{ media: PetAlbumMedia }>('/api/v1/pet-album', { method: 'POST', body: JSON.stringify(data) }),
+    update: (id: string, data: Partial<{
+      caption: string | null;
+      thumbnail_url: string | null;
+      tags: string[];
+      visibility_scope: 'public' | 'friends_only' | 'private' | 'guardian_supplier_only' | 'booking_related';
+      is_primary: boolean;
+      sort_order: number;
+      status: 'active' | 'pending' | 'hidden' | 'deleted';
+    }>) => request<{ media: PetAlbumMedia }>(`/api/v1/pet-album/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
+    remove: (id: string) => request<{ deleted: boolean; id: string }>(`/api/v1/pet-album/${id}`, { method: 'DELETE' }),
+  },
   currencies: {
     list: () => request<Currency[]>('/api/v1/admin/currencies'),
     create: (data: { code: string; symbol: string; name_key: string; decimal_places?: number }) =>
@@ -395,6 +441,27 @@ export interface FeedComment {
   parent_comment_id?: string | null;
   content: string;
   status: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface PetAlbumMedia {
+  id: string;
+  pet_id: string;
+  source_type: 'profile' | 'feed' | 'booking_completed' | 'health_record' | 'manual_upload';
+  source_id?: string | null;
+  booking_id?: string | null;
+  media_type: 'image' | 'video';
+  media_url: string;
+  thumbnail_url?: string | null;
+  caption?: string | null;
+  tags: string[] | string;
+  uploaded_by_user_id: string;
+  uploaded_by_email?: string | null;
+  visibility_scope: 'public' | 'friends_only' | 'private' | 'guardian_supplier_only' | 'booking_related';
+  is_primary?: number;
+  sort_order?: number;
+  status: 'active' | 'pending' | 'hidden' | 'deleted';
   created_at: string;
   updated_at: string;
 }

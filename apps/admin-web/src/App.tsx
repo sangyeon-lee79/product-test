@@ -49,6 +49,7 @@ export default function App() {
           <Route element={<AuthRoute />}>
             <Route element={<RoleRoute allow={['guardian']} />}>
               <Route path="/guardian" element={<GuardianMainPage />} />
+              <Route path="/guardian/pets/:pet_id" element={<GuardianMainPage />} />
             </Route>
             <Route element={<RoleRoute allow={['provider']} />}>
               <Route path="/supplier" element={<SupplierDashboardPage />} />

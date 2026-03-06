@@ -1,10 +1,13 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Link } from 'react-router-dom';
-import { api, type Booking, type FeedPost, type FriendRequest, type MasterItem, type Pet } from '../lib/api';
+import { Link, useParams } from 'react-router-dom';
+import { api, type Booking, type FeedPost, type FriendRequest, type MasterItem, type Pet, type PetAlbumMedia } from '../lib/api';
 import { useT } from '../lib/i18n';
+import { getStoredRole } from '../lib/auth';
+import PetGalleryPanel from '../components/PetGalleryPanel';
 
 type FeedTab = 'all' | 'friends';
 type Mode = 'create' | 'edit';
+type PetProfileTab = 'timeline' | 'health' | 'services' | 'gallery' | 'profile';
 
 type Option = { id: string; label: string; parentId?: string | null; metadata?: Record<string, unknown> };
 
@@ -190,7 +193,10 @@ async function loadCategoryItems(candidates: string[]): Promise<MasterItem[]> {
 }
 
 export default function GuardianMainPage() {
+  const { pet_id: petIdParam } = useParams();
   const t = useT();
+  const role = getStoredRole();
+  const isGuardian = role === 'guardian';
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
@@ -203,7 +209,9 @@ export default function GuardianMainPage() {
 
   const [bookings, setBookings] = useState<Booking[]>([]);
   const [feeds, setFeeds] = useState<FeedPost[]>([]);
+  const [albumMedia, setAlbumMedia] = useState<PetAlbumMedia[]>([]);
   const [feedTab, setFeedTab] = useState<FeedTab>('all');
+  const [petTab, setPetTab] = useState<PetProfileTab>('gallery');
   const [feedCompose, setFeedCompose] = useState<FeedCompose>(DEFAULT_FEED_COMPOSE);
 
   const [friendCount, setFriendCount] = useState(0);
@@ -271,6 +279,7 @@ export default function GuardianMainPage() {
         friendsRes,
         requestsRes,
         feedsRes,
+        albumRes,
         petTypeRows,
         breedRows,
         genderRows,
@@ -300,6 +309,7 @@ export default function GuardianMainPage() {
         api.friends.list(),
         api.friends.requests.list('inbox'),
         api.feeds.list({ tab, limit: 30 }),
+        api.petAlbum.list({ include_pending: true, limit: 400 }).catch(() => ({ media: [] })),
         loadCategoryItems(CATEGORY_KEYS.pet_type),
         loadCategoryItems(CATEGORY_KEYS.pet_breed),
         loadCategoryItems(CATEGORY_KEYS.pet_gender),
@@ -331,6 +341,7 @@ export default function GuardianMainPage() {
       setFriendCount((friendsRes.friends || []).length);
       setPendingRequests((requestsRes.requests || []).filter((r) => r.status === 'request_sent'));
       setFeeds(feedsRes.feeds || []);
+      setAlbumMedia(albumRes.media || []);
 
       setOptPetType(toOption(petTypeRows));
       setOptBreed(toOption(breedRows));
@@ -365,6 +376,21 @@ export default function GuardianMainPage() {
   useEffect(() => {
     loadAll();
   }, []);
+
+  useEffect(() => {
+    if (!petIdParam) return;
+    setSelectedPetId(petIdParam);
+  }, [petIdParam]);
+
+  const healthFeeds = useMemo(
+    () => feeds.filter((f) => f.feed_type === 'health_update' && (!selectedPet || !f.pet_id || f.pet_id === selectedPet.id)),
+    [feeds, selectedPet],
+  );
+
+  const serviceFeeds = useMemo(
+    () => feeds.filter((f) => f.feed_type === 'booking_completed' && (!selectedPet || !f.pet_id || f.pet_id === selectedPet.id)),
+    [feeds, selectedPet],
+  );
 
   function openCreatePet() {
     setPetMode('create');
@@ -576,95 +602,170 @@ export default function GuardianMainPage() {
               </div>
             )}
 
-            <div className="card">
-              <div className="card-header"><div className="card-title">{t('guardian.feed.create_title', 'Create Feed Post')}</div></div>
-              <div className="card-body">
-                <div className="form-row col3">
-                  <div className="form-group">
-                    <label className="form-label">{t('guardian.feed.feed_type', 'Feed Type')}</label>
-                    <select className="form-select" value={feedCompose.feed_type} onChange={(e) => setFeedCompose((p) => ({ ...p, feed_type: e.target.value as FeedCompose['feed_type'] }))}>
-                      <option value="guardian_post">{t('guardian.feed.type.guardian_post', 'Guardian Post')}</option>
-                      <option value="health_update">{t('guardian.feed.type.health_update', 'Health Update')}</option>
-                      <option value="pet_milestone">{t('guardian.feed.type.pet_milestone', 'Pet Milestone')}</option>
-                      <option value="supplier_story">{t('guardian.feed.type.supplier_story', 'Supplier Story')}</option>
-                    </select>
-                  </div>
-                  <div className="form-group">
-                    <label className="form-label">{t('guardian.feed.visibility', 'Visibility')}</label>
-                    <select className="form-select" value={feedCompose.visibility_scope} onChange={(e) => setFeedCompose((p) => ({ ...p, visibility_scope: e.target.value as FeedCompose['visibility_scope'] }))}>
-                      <option value="public">{t('guardian.feed.visibility.public', 'Public')}</option>
-                      <option value="friends_only">{t('guardian.feed.visibility.friends_only', 'Friends Only')}</option>
-                      <option value="private">{t('guardian.feed.visibility.private', 'Private')}</option>
-                      <option value="connected_only">{t('guardian.feed.visibility.connected_only', 'Connected Only')}</option>
-                      <option value="booking_related_only">{t('guardian.feed.visibility.booking_related_only', 'Booking Related Only')}</option>
-                    </select>
-                  </div>
-                  <div className="form-group">
-                    <label className="form-label">{t('guardian.feed.linked_pet', 'Linked Pet')}</label>
-                    <select className="form-select" value={feedCompose.pet_id} onChange={(e) => setFeedCompose((p) => ({ ...p, pet_id: e.target.value }))}>
-                      <option value="">{t('common.none', 'None')}</option>
-                      {pets.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
-                    </select>
-                  </div>
-                </div>
-                <div className="form-row col2">
-                  <div className="form-group">
-                    <label className="form-label">{t('guardian.feed.booking_id_optional', 'booking_id (optional)')}</label>
-                    <input className="form-input" value={feedCompose.booking_id} onChange={(e) => setFeedCompose((p) => ({ ...p, booking_id: e.target.value }))} />
-                  </div>
-                  <div className="form-group">
-                    <label className="form-label">{t('guardian.feed.supplier_id_optional', 'supplier_id (optional)')}</label>
-                    <input className="form-input" value={feedCompose.supplier_id} onChange={(e) => setFeedCompose((p) => ({ ...p, supplier_id: e.target.value }))} />
-                  </div>
-                </div>
-                <div className="form-group">
-                  <label className="form-label">{t('guardian.feed.caption', 'Caption')}</label>
-                  <textarea className="form-textarea" value={feedCompose.caption} onChange={(e) => setFeedCompose((p) => ({ ...p, caption: e.target.value }))} />
-                </div>
-                <div className="form-group">
-                  <label className="form-label">{t('guardian.feed.tags', 'Tags (comma separated)')}</label>
-                  <input className="form-input" value={feedCompose.tagsText} onChange={(e) => setFeedCompose((p) => ({ ...p, tagsText: e.target.value }))} />
-                </div>
-                <button className="btn btn-primary" onClick={createFeedPost}>{t('guardian.feed.post', 'Post')}</button>
-              </div>
-            </div>
-
             <div className="feed-toolbar card">
-              <div className="feed-tabs">
-                <button className={`feed-tab ${feedTab === 'all' ? 'active' : ''}`} onClick={() => { setFeedTab('all'); loadAll('all'); }}>{t('guardian.feed.filter.all', 'All')}</button>
-                <button className={`feed-tab ${feedTab === 'friends' ? 'active' : ''}`} onClick={() => { setFeedTab('friends'); loadAll('friends'); }}>{t('guardian.feed.filter.friends', 'Friends Feed')}</button>
+              <div className="feed-tabs pet-profile-tabs">
+                <button className={`feed-tab ${petTab === 'timeline' ? 'active' : ''}`} onClick={() => setPetTab('timeline')}>Timeline</button>
+                <button className={`feed-tab ${petTab === 'health' ? 'active' : ''}`} onClick={() => setPetTab('health')}>Health</button>
+                <button className={`feed-tab ${petTab === 'services' ? 'active' : ''}`} onClick={() => setPetTab('services')}>Services</button>
+                <button className={`feed-tab ${petTab === 'gallery' ? 'active' : ''}`} onClick={() => setPetTab('gallery')}>Gallery</button>
+                <button className={`feed-tab ${petTab === 'profile' ? 'active' : ''}`} onClick={() => setPetTab('profile')}>Profile</button>
               </div>
             </div>
 
-            <div className="sns-feed-list">
-              {feeds.map((f) => (
-                <article key={f.id} className="sns-card">
-                  <div className="sns-card-header">
-                    <div>
+            {petTab === 'gallery' && (
+              <PetGalleryPanel
+                selectedPet={selectedPet}
+                mediaItems={albumMedia}
+                bookings={bookings}
+                breedLabel={labelOf(optBreed, selectedPet?.breed_id, t('common.none', '-'))}
+                genderLabel={labelOf(optGender, selectedPet?.gender_id, t('common.none', '-'))}
+                lifeStageLabel={labelOf(optLifeStage, selectedPet?.life_stage_id, t('common.none', '-'))}
+                isGuardian={isGuardian}
+                setError={setError}
+                onRefresh={() => loadAll(feedTab)}
+              />
+            )}
+
+            {petTab === 'timeline' && (
+              <>
+                <div className="card">
+                  <div className="card-header"><div className="card-title">{t('guardian.feed.create_title', 'Create Feed Post')}</div></div>
+                  <div className="card-body">
+                    <div className="form-row col3">
+                      <div className="form-group">
+                        <label className="form-label">{t('guardian.feed.feed_type', 'Feed Type')}</label>
+                        <select className="form-select" value={feedCompose.feed_type} onChange={(e) => setFeedCompose((p) => ({ ...p, feed_type: e.target.value as FeedCompose['feed_type'] }))}>
+                          <option value="guardian_post">{t('guardian.feed.type.guardian_post', 'Guardian Post')}</option>
+                          <option value="health_update">{t('guardian.feed.type.health_update', 'Health Update')}</option>
+                          <option value="pet_milestone">{t('guardian.feed.type.pet_milestone', 'Pet Milestone')}</option>
+                          <option value="supplier_story">{t('guardian.feed.type.supplier_story', 'Supplier Story')}</option>
+                        </select>
+                      </div>
+                      <div className="form-group">
+                        <label className="form-label">{t('guardian.feed.visibility', 'Visibility')}</label>
+                        <select className="form-select" value={feedCompose.visibility_scope} onChange={(e) => setFeedCompose((p) => ({ ...p, visibility_scope: e.target.value as FeedCompose['visibility_scope'] }))}>
+                          <option value="public">{t('guardian.feed.visibility.public', 'Public')}</option>
+                          <option value="friends_only">{t('guardian.feed.visibility.friends_only', 'Friends Only')}</option>
+                          <option value="private">{t('guardian.feed.visibility.private', 'Private')}</option>
+                          <option value="connected_only">{t('guardian.feed.visibility.connected_only', 'Connected Only')}</option>
+                          <option value="booking_related_only">{t('guardian.feed.visibility.booking_related_only', 'Booking Related Only')}</option>
+                        </select>
+                      </div>
+                      <div className="form-group">
+                        <label className="form-label">{t('guardian.feed.linked_pet', 'Linked Pet')}</label>
+                        <select className="form-select" value={feedCompose.pet_id} onChange={(e) => setFeedCompose((p) => ({ ...p, pet_id: e.target.value }))}>
+                          <option value="">{t('common.none', 'None')}</option>
+                          {pets.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
+                        </select>
+                      </div>
+                    </div>
+                    <div className="form-row col2">
+                      <div className="form-group">
+                        <label className="form-label">{t('guardian.feed.booking_id_optional', 'booking_id (optional)')}</label>
+                        <input className="form-input" value={feedCompose.booking_id} onChange={(e) => setFeedCompose((p) => ({ ...p, booking_id: e.target.value }))} />
+                      </div>
+                      <div className="form-group">
+                        <label className="form-label">{t('guardian.feed.supplier_id_optional', 'supplier_id (optional)')}</label>
+                        <input className="form-input" value={feedCompose.supplier_id} onChange={(e) => setFeedCompose((p) => ({ ...p, supplier_id: e.target.value }))} />
+                      </div>
+                    </div>
+                    <div className="form-group">
+                      <label className="form-label">{t('guardian.feed.caption', 'Caption')}</label>
+                      <textarea className="form-textarea" value={feedCompose.caption} onChange={(e) => setFeedCompose((p) => ({ ...p, caption: e.target.value }))} />
+                    </div>
+                    <div className="form-group">
+                      <label className="form-label">{t('guardian.feed.tags', 'Tags (comma separated)')}</label>
+                      <input className="form-input" value={feedCompose.tagsText} onChange={(e) => setFeedCompose((p) => ({ ...p, tagsText: e.target.value }))} />
+                    </div>
+                    <button className="btn btn-primary" onClick={createFeedPost}>{t('guardian.feed.post', 'Post')}</button>
+                  </div>
+                </div>
+
+                <div className="feed-toolbar card">
+                  <div className="feed-tabs">
+                    <button className={`feed-tab ${feedTab === 'all' ? 'active' : ''}`} onClick={() => { setFeedTab('all'); loadAll('all'); }}>{t('guardian.feed.filter.all', 'All')}</button>
+                    <button className={`feed-tab ${feedTab === 'friends' ? 'active' : ''}`} onClick={() => { setFeedTab('friends'); loadAll('friends'); }}>{t('guardian.feed.filter.friends', 'Friends Feed')}</button>
+                  </div>
+                </div>
+
+                <div className="sns-feed-list">
+                  {feeds.map((f) => (
+                    <article key={f.id} className="sns-card">
+                      <div className="sns-card-header">
+                        <div>
+                          <p className="sns-meta">{feedTypeLabel(t, f.feed_type)}</p>
+                          <h3>{f.author_email || t('common.none', '-')}</h3>
+                          <p className="text-sm text-muted">{formatDate(f.created_at, t('common.none', '-'))}</p>
+                        </div>
+                        <div className="sns-badges">
+                          <span className="badge badge-blue">{f.business_category_ko || f.business_category_key || t('common.none', '-')}</span>
+                          <span className="badge badge-gray">{f.pet_type_ko || f.pet_type_key || t('common.none', '-')}</span>
+                          <span className="badge badge-green">{visibilityLabel(t, f.visibility_scope)}</span>
+                        </div>
+                      </div>
+                      {f.pet_name && <p className="sns-pet">{t('guardian.feed.pet_prefix', 'Pet')}: {f.pet_name}</p>}
+                      {f.caption && <p className="sns-caption">{f.caption}</p>}
+                      <div className="sns-actions">
+                        <button className="btn btn-secondary btn-sm" onClick={() => api.feeds.like(f.id).then(() => loadAll(feedTab)).catch((e) => setError(e instanceof Error ? e.message : t('guardian.alert.like_failed', 'Failed to like post')))}>
+                          {t('guardian.feed.like', 'Like')} ({f.like_count || 0})
+                        </button>
+                        <button className="btn btn-secondary btn-sm" onClick={() => api.feeds.comments.list(f.id).then(() => null).catch((e) => setError(e instanceof Error ? e.message : t('guardian.alert.comment_failed', 'Failed to load comments')))}>
+                          {t('guardian.feed.comment', 'Comment')} ({f.comment_count || 0})
+                        </button>
+                      </div>
+                    </article>
+                  ))}
+                  {feeds.length === 0 && <div className="card"><div className="card-body">{t('guardian.feed.no_feeds', 'No feeds to display.')}</div></div>}
+                </div>
+              </>
+            )}
+
+            {petTab === 'health' && (
+              <div className="card">
+                <div className="card-header"><div className="card-title">Health Updates</div></div>
+                <div className="card-body">
+                  {healthFeeds.map((f) => (
+                    <article key={f.id} className="sns-card">
                       <p className="sns-meta">{feedTypeLabel(t, f.feed_type)}</p>
-                      <h3>{f.author_email || t('common.none', '-')}</h3>
                       <p className="text-sm text-muted">{formatDate(f.created_at, t('common.none', '-'))}</p>
-                    </div>
-                    <div className="sns-badges">
-                      <span className="badge badge-blue">{f.business_category_ko || f.business_category_key || t('common.none', '-')}</span>
-                      <span className="badge badge-gray">{f.pet_type_ko || f.pet_type_key || t('common.none', '-')}</span>
-                      <span className="badge badge-green">{visibilityLabel(t, f.visibility_scope)}</span>
-                    </div>
-                  </div>
-                  {f.pet_name && <p className="sns-pet">{t('guardian.feed.pet_prefix', 'Pet')}: {f.pet_name}</p>}
-                  {f.caption && <p className="sns-caption">{f.caption}</p>}
-                  <div className="sns-actions">
-                    <button className="btn btn-secondary btn-sm" onClick={() => api.feeds.like(f.id).then(() => loadAll(feedTab)).catch((e) => setError(e instanceof Error ? e.message : t('guardian.alert.like_failed', 'Failed to like post')))}>
-                      {t('guardian.feed.like', 'Like')} ({f.like_count || 0})
-                    </button>
-                    <button className="btn btn-secondary btn-sm" onClick={() => api.feeds.comments.list(f.id).then(() => null).catch((e) => setError(e instanceof Error ? e.message : t('guardian.alert.comment_failed', 'Failed to load comments')))}>
-                      {t('guardian.feed.comment', 'Comment')} ({f.comment_count || 0})
-                    </button>
-                  </div>
-                </article>
-              ))}
-              {feeds.length === 0 && <div className="card"><div className="card-body">{t('guardian.feed.no_feeds', 'No feeds to display.')}</div></div>}
-            </div>
+                      <p>{f.caption || t('common.none', '-')}</p>
+                    </article>
+                  ))}
+                  {healthFeeds.length === 0 && <p className="text-muted">건강기록 피드가 없습니다.</p>}
+                </div>
+              </div>
+            )}
+
+            {petTab === 'services' && (
+              <div className="card">
+                <div className="card-header"><div className="card-title">Services & Booking Completion</div></div>
+                <div className="card-body">
+                  {bookings
+                    .filter((b) => !selectedPet || !b.pet_id || b.pet_id === selectedPet.id)
+                    .map((b) => (
+                      <div key={b.id} className="guardian-pet-item">
+                        <p className="text-sm">#{b.id.slice(0, 8)} · {b.status}</p>
+                        <p className="text-sm text-muted">{formatDate(b.updated_at, t('common.none', '-'))}</p>
+                      </div>
+                    ))}
+                  {serviceFeeds.length > 0 && <p className="mt-2 text-sm">완료 피드 {serviceFeeds.length}건</p>}
+                </div>
+              </div>
+            )}
+
+            {petTab === 'profile' && selectedPet && (
+              <div className="card">
+                <div className="card-header"><div className="card-title">Pet Profile</div></div>
+                <div className="card-body">
+                  <p><strong>{selectedPet.name}</strong></p>
+                  <p className="text-sm">{t('master.pet_type', 'Pet Type')}: {labelOf(optPetType, selectedPet.pet_type_id, t('common.none', '-'))}</p>
+                  <p className="text-sm">{t('master.pet_breed', 'Breed')}: {labelOf(optBreed, selectedPet.breed_id, t('common.none', '-'))}</p>
+                  <p className="text-sm">{t('master.pet_gender', 'Gender')}: {labelOf(optGender, selectedPet.gender_id, t('common.none', '-'))}</p>
+                  <p className="text-sm">{t('master.life_stage', 'Life Stage')}: {labelOf(optLifeStage, selectedPet.life_stage_id, t('common.none', '-'))}</p>
+                  <button className="btn btn-secondary mt-2" onClick={() => openEditPet(selectedPet.id)}>{t('common.edit', 'Edit')}</button>
+                </div>
+              </div>
+            )}
           </main>
 
           <aside className="guardian-side">

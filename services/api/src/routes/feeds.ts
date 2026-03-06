@@ -72,6 +72,118 @@ function normalizeFeedRow(row: FeedRow): FeedRow {
   };
 }
 
+function normalizeAlbumVisibilityFromFeed(visibility: string): string {
+  if (visibility === 'connected_only') return 'guardian_supplier_only';
+  if (visibility === 'booking_related_only') return 'booking_related';
+  return visibility;
+}
+
+function inferAlbumSourceType(feedType: string, tags: string[]): string {
+  if (feedType === 'booking_completed') return 'booking_completed';
+  if (feedType === 'health_update') return 'health_record';
+  const sourceTag = tags.find((tag) => tag.startsWith('source:'));
+  if (!sourceTag) return 'feed';
+  const value = sourceTag.replace('source:', '').trim();
+  if (value === 'profile') return 'profile';
+  if (value === 'manual_upload') return 'manual_upload';
+  if (value === 'health_record') return 'health_record';
+  if (value === 'booking_completed') return 'booking_completed';
+  return 'feed';
+}
+
+function inferMediaType(url: string): 'image' | 'video' {
+  const value = url.toLowerCase();
+  if (/(\.mp4|\.mov|\.webm|\.mkv|\.avi)(\?|$)/.test(value)) return 'video';
+  return 'image';
+}
+
+function inferAlbumStatus(feedStatus: string, publishRequestStatus: string): 'active' | 'pending' | 'hidden' {
+  if (publishRequestStatus === 'pending') return 'pending';
+  if (feedStatus === 'published') return 'active';
+  return 'hidden';
+}
+
+async function upsertAlbumFromFeed(env: Env, params: {
+  feedId: string;
+  petId: string | null;
+  bookingId?: string | null;
+  feedType: string;
+  mediaUrls: string[];
+  caption: string | null;
+  tags: string[];
+  authorUserId: string;
+  visibilityScope: string;
+  feedStatus: string;
+  publishRequestStatus: string;
+  createdAt: string;
+  updatedAt: string;
+}): Promise<void> {
+  if (!params.petId) return;
+  if (!params.mediaUrls.length) return;
+
+  const sourceType = inferAlbumSourceType(params.feedType, params.tags);
+  const visibility = normalizeAlbumVisibilityFromFeed(params.visibilityScope);
+  const status = inferAlbumStatus(params.feedStatus, params.publishRequestStatus);
+  const tagsJson = JSON.stringify(params.tags);
+
+  for (let index = 0; index < params.mediaUrls.length; index += 1) {
+    const mediaUrl = (params.mediaUrls[index] || '').trim();
+    if (!mediaUrl) continue;
+    await env.DB.prepare(
+      `INSERT INTO pet_album_media (
+        id, pet_id, source_type, source_id, booking_id,
+        media_type, media_url, thumbnail_url, caption, tags,
+        uploaded_by_user_id, visibility_scope, is_primary,
+        sort_order, status, created_at, updated_at
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      ON CONFLICT(pet_id, source_type, source_id, media_url)
+      DO UPDATE SET
+        booking_id = excluded.booking_id,
+        media_type = excluded.media_type,
+        thumbnail_url = excluded.thumbnail_url,
+        caption = excluded.caption,
+        tags = excluded.tags,
+        uploaded_by_user_id = excluded.uploaded_by_user_id,
+        visibility_scope = excluded.visibility_scope,
+        sort_order = excluded.sort_order,
+        status = excluded.status,
+        updated_at = excluded.updated_at`
+    ).bind(
+      newId(),
+      params.petId,
+      sourceType,
+      params.feedId,
+      params.bookingId ?? null,
+      inferMediaType(mediaUrl),
+      mediaUrl,
+      mediaUrl,
+      params.caption,
+      tagsJson,
+      params.authorUserId,
+      visibility,
+      sourceType === 'profile' && index === 0 ? 1 : 0,
+      index,
+      status,
+      params.createdAt,
+      params.updatedAt,
+    ).run();
+  }
+
+  if (sourceType === 'profile') {
+    await env.DB.prepare(
+      `UPDATE pet_album_media
+       SET is_primary = CASE WHEN id = (
+         SELECT id FROM pet_album_media
+         WHERE pet_id = ? AND source_type = 'profile' AND status = 'active'
+         ORDER BY datetime(created_at) DESC, id DESC
+         LIMIT 1
+       ) THEN 1 ELSE 0 END,
+       updated_at = ?
+       WHERE pet_id = ? AND source_type = 'profile'`
+    ).bind(params.petId, now(), params.petId).run();
+  }
+}
+
 async function listFeeds(request: Request, env: Env, url: URL): Promise<Response> {
   const me = await optionalAuth(request, env);
   const friends = me ? await friendSet(env, me.sub) : new Set<string>();
@@ -160,6 +272,7 @@ async function createGuardianPost(request: Request, env: Env): Promise<Response>
 
   const id = newId();
   const publicVisible = visibility === 'public' ? 1 : 0;
+  const timestamp = now();
   await env.DB.prepare(
     `INSERT INTO feeds (
       id, feed_type, author_user_id, author_role, pet_id, business_category_id, pet_type_id,
@@ -183,9 +296,25 @@ async function createGuardianPost(request: Request, env: Env): Promise<Response>
     mediaUrls,
     tags,
     publicVisible,
-    now(),
-    now(),
+    timestamp,
+    timestamp,
   ).run();
+
+  await upsertAlbumFromFeed(env, {
+    feedId: id,
+    petId: (body.pet_id as string | null) ?? null,
+    bookingId: (body.booking_id as string | null) ?? null,
+    feedType,
+    mediaUrls: parseJsonArray(mediaUrls),
+    caption,
+    tags: parseJsonArray(tags),
+    authorUserId: me.sub,
+    visibilityScope: visibility,
+    feedStatus: 'published',
+    publishRequestStatus: 'none',
+    createdAt: timestamp,
+    updatedAt: timestamp,
+  });
 
   return created({ id });
 }
@@ -213,6 +342,7 @@ async function requestBookingCompletedFeed(request: Request, env: Env): Promise<
   const completionId = newId();
   const mediaUrls = toJsonArray(body.media_urls);
   const memo = typeof body.completion_memo === 'string' ? body.completion_memo.trim() : null;
+  const timestamp = now();
 
   await env.DB.prepare(
     `INSERT INTO booking_completion_contents (
@@ -224,7 +354,7 @@ async function requestBookingCompletedFeed(request: Request, env: Env): Promise<
       publish_status = 'pending',
       requested_at = excluded.requested_at,
       updated_at = excluded.updated_at`
-  ).bind(completionId, bookingId, me.sub, mediaUrls, memo, now(), now(), now()).run();
+  ).bind(completionId, bookingId, me.sub, mediaUrls, memo, timestamp, timestamp, timestamp).run();
 
   let feed = await env.DB.prepare(
     `SELECT id FROM feeds WHERE booking_id = ? AND feed_type = 'booking_completed'`
@@ -249,8 +379,8 @@ async function requestBookingCompletedFeed(request: Request, env: Env): Promise<
       booking.service_id ?? null,
       memo,
       mediaUrls,
-      now(),
-      now(),
+      timestamp,
+      timestamp,
     ).run();
     feed = { id: feedId };
   } else {
@@ -273,12 +403,28 @@ async function requestBookingCompletedFeed(request: Request, env: Env): Promise<
       body.pet_type_id ?? null,
       memo,
       mediaUrls,
-      now(),
+      timestamp,
       feed.id,
     ).run();
   }
 
-  await env.DB.prepare(`UPDATE bookings SET status = 'publish_requested', updated_at = ? WHERE id = ?`).bind(now(), bookingId).run();
+  await env.DB.prepare(`UPDATE bookings SET status = 'publish_requested', updated_at = ? WHERE id = ?`).bind(timestamp, bookingId).run();
+
+  await upsertAlbumFromFeed(env, {
+    feedId: feed.id,
+    petId: (booking.pet_id as string | null) ?? null,
+    bookingId,
+    feedType: 'booking_completed',
+    mediaUrls: parseJsonArray(mediaUrls),
+    caption: memo,
+    tags: [],
+    authorUserId: me.sub,
+    visibilityScope: 'connected_only',
+    feedStatus: 'hidden',
+    publishRequestStatus: 'pending',
+    createdAt: String(booking.created_at || timestamp),
+    updatedAt: timestamp,
+  });
 
   return ok({ feed_id: feed.id, booking_id: bookingId, publish_request_status: 'pending' });
 }
@@ -304,6 +450,8 @@ async function approveBookingCompletedFeed(request: Request, env: Env, feedId: s
   const approved = body.action ? body.action === 'approve' : !!body.approved;
   if (approved) {
     const visibility = (body.visibility_scope || 'public').trim();
+    const albumVisibility = normalizeAlbumVisibilityFromFeed(visibility);
+    const timestamp = now();
     await env.DB.prepare(
       `UPDATE feeds
        SET publish_request_status = 'approved',
@@ -312,31 +460,42 @@ async function approveBookingCompletedFeed(request: Request, env: Env, feedId: s
            status = 'published',
            updated_at = ?
        WHERE id = ?`
-    ).bind(visibility, visibility, now(), feedId).run();
+    ).bind(visibility, visibility, timestamp, feedId).run();
 
     await env.DB.prepare(
       `UPDATE booking_completion_contents
        SET publish_status = 'approved', responded_at = ?, responded_by_guardian_id = ?, updated_at = ?
        WHERE booking_id = ?`
-    ).bind(now(), me.sub, now(), booking.id).run();
+    ).bind(timestamp, me.sub, timestamp, booking.id).run();
 
-    await env.DB.prepare(`UPDATE bookings SET status = 'publish_approved', updated_at = ? WHERE id = ?`).bind(now(), booking.id).run();
+    await env.DB.prepare(`UPDATE bookings SET status = 'publish_approved', updated_at = ? WHERE id = ?`).bind(timestamp, booking.id).run();
+    await env.DB.prepare(
+      `UPDATE pet_album_media
+       SET status = 'active', visibility_scope = ?, updated_at = ?
+       WHERE source_type = 'booking_completed' AND source_id = ?`
+    ).bind(albumVisibility, timestamp, feedId).run();
     return ok({ approved: true, feed_id: feedId });
   }
 
+  const timestamp = now();
   await env.DB.prepare(
     `UPDATE feeds
      SET publish_request_status = 'rejected', is_public = 0, status = 'hidden', updated_at = ?
      WHERE id = ?`
-  ).bind(now(), feedId).run();
+  ).bind(timestamp, feedId).run();
 
   await env.DB.prepare(
     `UPDATE booking_completion_contents
      SET publish_status = 'rejected', responded_at = ?, responded_by_guardian_id = ?, updated_at = ?
      WHERE booking_id = ?`
-  ).bind(now(), me.sub, now(), booking.id).run();
+  ).bind(timestamp, me.sub, timestamp, booking.id).run();
 
-  await env.DB.prepare(`UPDATE bookings SET status = 'publish_rejected', updated_at = ? WHERE id = ?`).bind(now(), booking.id).run();
+  await env.DB.prepare(`UPDATE bookings SET status = 'publish_rejected', updated_at = ? WHERE id = ?`).bind(timestamp, booking.id).run();
+  await env.DB.prepare(
+    `UPDATE pet_album_media
+     SET status = 'hidden', updated_at = ?
+     WHERE source_type = 'booking_completed' AND source_id = ?`
+  ).bind(timestamp, feedId).run();
   return ok({ approved: false, feed_id: feedId });
 }
 

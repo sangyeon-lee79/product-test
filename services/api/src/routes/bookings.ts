@@ -2,6 +2,24 @@ import type { Env, JwtPayload } from '../types';
 import { ok, created, err, newId, now } from '../types';
 import { requireAuth, requireRole } from '../middleware/auth';
 
+function parseJsonArray(raw: unknown): string[] {
+  if (Array.isArray(raw)) return raw.filter((x) => typeof x === 'string') as string[];
+  if (typeof raw !== 'string' || !raw.trim()) return [];
+  try {
+    const parsed = JSON.parse(raw) as unknown;
+    if (!Array.isArray(parsed)) return [];
+    return parsed.filter((x) => typeof x === 'string') as string[];
+  } catch {
+    return [];
+  }
+}
+
+function inferMediaType(url: string): 'image' | 'video' {
+  const value = url.toLowerCase();
+  if (/(\.mp4|\.mov|\.webm|\.mkv|\.avi)(\?|$)/.test(value)) return 'video';
+  return 'image';
+}
+
 async function listBookings(env: Env, me: JwtPayload): Promise<Response> {
   const rows = await env.DB.prepare(
     `SELECT * FROM bookings
@@ -90,6 +108,7 @@ async function supplierCompletionRequest(request: Request, env: Env, me: JwtPayl
     ? JSON.stringify((body.media_urls as unknown[]).filter((x) => typeof x === 'string').map((x) => (x as string).trim()).filter(Boolean))
     : '[]';
   const memo = typeof body.completion_memo === 'string' ? body.completion_memo.trim() : null;
+  const timestamp = now();
 
   await env.DB.prepare(
     `INSERT INTO booking_completion_contents (
@@ -101,7 +120,7 @@ async function supplierCompletionRequest(request: Request, env: Env, me: JwtPayl
       publish_status = 'pending',
       requested_at = excluded.requested_at,
       updated_at = excluded.updated_at`
-  ).bind(newId(), bookingId, me.sub, mediaUrls, memo, now(), now(), now()).run();
+  ).bind(newId(), bookingId, me.sub, mediaUrls, memo, timestamp, timestamp, timestamp).run();
 
   let feed = await env.DB.prepare(
     `SELECT id FROM feeds WHERE booking_id = ? AND feed_type = 'booking_completed'`
@@ -126,13 +145,52 @@ async function supplierCompletionRequest(request: Request, env: Env, me: JwtPayl
       booking.service_id ?? null,
       memo,
       mediaUrls,
-      now(),
-      now(),
+      timestamp,
+      timestamp,
     ).run();
     feed = { id: feedId };
   }
 
-  await env.DB.prepare(`UPDATE bookings SET status = 'publish_requested', updated_at = ? WHERE id = ?`).bind(now(), bookingId).run();
+  await env.DB.prepare(`UPDATE bookings SET status = 'publish_requested', updated_at = ? WHERE id = ?`).bind(timestamp, bookingId).run();
+
+  if (booking.pet_id) {
+    const urls = parseJsonArray(mediaUrls);
+    for (let index = 0; index < urls.length; index += 1) {
+      const mediaUrl = urls[index];
+      await env.DB.prepare(
+        `INSERT INTO pet_album_media (
+          id, pet_id, source_type, source_id, booking_id,
+          media_type, media_url, thumbnail_url, caption, tags,
+          uploaded_by_user_id, visibility_scope, is_primary,
+          sort_order, status, created_at, updated_at
+        ) VALUES (?, ?, 'booking_completed', ?, ?, ?, ?, ?, ?, '[]', ?, 'guardian_supplier_only', 0, ?, 'pending', ?, ?)
+        ON CONFLICT(pet_id, source_type, source_id, media_url)
+        DO UPDATE SET
+          booking_id = excluded.booking_id,
+          media_type = excluded.media_type,
+          thumbnail_url = excluded.thumbnail_url,
+          caption = excluded.caption,
+          uploaded_by_user_id = excluded.uploaded_by_user_id,
+          visibility_scope = excluded.visibility_scope,
+          sort_order = excluded.sort_order,
+          status = excluded.status,
+          updated_at = excluded.updated_at`
+      ).bind(
+        newId(),
+        booking.pet_id,
+        feed.id,
+        bookingId,
+        inferMediaType(mediaUrl),
+        mediaUrl,
+        mediaUrl,
+        memo,
+        me.sub,
+        index,
+        timestamp,
+        timestamp,
+      ).run();
+    }
+  }
   return ok({ booking_id: bookingId, feed_id: feed.id, status: 'publish_requested' });
 }
 

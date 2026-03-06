@@ -119,6 +119,12 @@ async function dispatch(request: Request, env: Env, url: URL): Promise<Response>
     return handleFriends(request, env, url);
   }
 
+  // S10: Pet Album
+  if (path.startsWith('/api/v1/pet-album')) {
+    const { handlePetAlbum } = await import('./routes/petAlbum');
+    return handlePetAlbum(request, env, url);
+  }
+
   // ─── Admin 전용 (/api/v1/admin/*) ─────────────────────────────────
   if (path.startsWith('/api/v1/admin')) {
     return dispatchAdmin(request, env, url, path);
