@@ -1,6 +1,19 @@
 // Admin Web API 클라이언트
 
-const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:8787';
+const getApiBase = () => {
+  if (import.meta.env.VITE_API_URL) return import.meta.env.VITE_API_URL;
+  
+  const { hostname, protocol } = window.location;
+  if (hostname.includes('cluster.cloudworkstations.dev')) {
+    // IDX environment: map 5173-idx-... to 8787-idx-...
+    const backendHostname = hostname.replace(/^5173-/, '8787-');
+    return `${protocol}//${backendHostname}`;
+  }
+  
+  return 'http://localhost:8787';
+};
+
+const API_BASE = getApiBase();
 
 function getToken(): string | null {
   return localStorage.getItem('access_token');

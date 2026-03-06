@@ -340,6 +340,7 @@ DB 테이블/마이그레이션
 
 
 
+
 ## S6-2. API
 [x] GET /api/v1/guardians/me — 내 프로필
 [x] PUT /api/v1/guardians/me — 프로필 생성/수정 (upsert)

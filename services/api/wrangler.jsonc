@@ -9,7 +9,7 @@
 	// 로컬 개발용 기본 변수 (민감 정보는 wrangler secret put 사용)
 	"vars": {
 		"ENVIRONMENT": "production",
-		"ALLOWED_ORIGINS": "http://localhost:5173,http://localhost:5174,https://pet-life-admin.pages.dev,*.pet-life-admin.pages.dev,https://product-webtest.pages.dev,*.product-webtest.pages.dev",
+		"ALLOWED_ORIGINS": "http://localhost:5173,http://localhost:5174,https://pet-life-admin.pages.dev,*.pet-life-admin.pages.dev,https://product-webtest.pages.dev,*.product-webtest.pages.dev,*.cluster.cloudworkstations.dev",
 		"JWT_SECRET": "dev-secret-change-in-production",
 		"R2_PUBLIC_URL": ""
 	},
