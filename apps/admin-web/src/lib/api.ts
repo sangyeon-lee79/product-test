@@ -50,7 +50,23 @@ async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
   };
   if (token) headers['Authorization'] = `Bearer ${token}`;
 
-  const res = await fetch(`${API_BASE}${path}`, { ...options, headers });
+  const url = `${API_BASE}${path}`;
+  const res = await fetch(url, { ...options, headers });
+
+  const contentType = res.headers.get('content-type') || '';
+  const raw = await res.text();
+  let json: { success?: boolean; data?: T; error?: string } | null = null;
+  if (raw) {
+    if (contentType.includes('application/json')) {
+      try {
+        json = JSON.parse(raw) as { success?: boolean; data?: T; error?: string };
+      } catch {
+        throw new Error(`API JSON 파싱 실패 (${res.status}) - ${url}`);
+      }
+    } else {
+      throw new Error(`API 응답 형식 오류 (${res.status}) - ${url}`);
+    }
+  }
 
   if (res.status === 401) {
     clearTokens();
@@ -58,8 +74,13 @@ async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
     throw new Error('세션이 만료되었습니다. 다시 로그인해주세요.');
   }
 
-  const json = await res.json() as { success: boolean; data?: T; error?: string };
-  if (!json.success) throw new Error(json.error || `HTTP ${res.status}`);
+  if (!res.ok) {
+    throw new Error(json?.error || `HTTP ${res.status} - ${url}`);
+  }
+  if (!json) {
+    throw new Error(`API 빈 응답 (${res.status}) - ${url}`);
+  }
+  if (!json.success) throw new Error(json.error || `HTTP ${res.status} - ${url}`);
   return json.data as T;
 }
 
