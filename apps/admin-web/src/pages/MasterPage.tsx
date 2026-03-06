@@ -52,6 +52,23 @@ export default function MasterPage() {
   function flash(msg: string) { setSuccess(msg); setTimeout(() => setSuccess(''), 3000); }
   function getCategoryLabel(cat: MasterCategory) { return cat.ko_name?.trim() || cat.key; }
   function getItemLabel(item: MasterItem) { return item.ko_name?.trim() || item.ko?.trim() || item.key; }
+  function categoryToTranslations(cat: MasterCategory): Record<string, string> {
+    return {
+      ko: cat.ko ?? cat.ko_name ?? '',
+      en: cat.en ?? '',
+      ja: cat.ja ?? '',
+      zh_cn: cat.zh_cn ?? '',
+      zh_tw: cat.zh_tw ?? '',
+      es: cat.es ?? '',
+      fr: cat.fr ?? '',
+      de: cat.de ?? '',
+      pt: cat.pt ?? '',
+      vi: cat.vi ?? '',
+      th: cat.th ?? '',
+      id_lang: cat.id_lang ?? '',
+      ar: cat.ar ?? '',
+    };
+  }
   function itemToTranslations(item: MasterItem): Record<string, string> {
     return {
       ko: item.ko ?? item.ko_name ?? '',
@@ -110,7 +127,24 @@ export default function MasterPage() {
         await api.master.categories.create({ sort_order: parseInt(catForm.sort_order), translations });
         flash(t('admin.master.success_cat_add', '카테고리가 추가되었습니다.'));
       } else if (catModal === 'edit' && selectedCat) {
-        await api.master.categories.update(selectedCat.id, { sort_order: parseInt(catForm.sort_order) });
+        const ko = (catTrans.ko || '').trim();
+        if (!ko) throw new Error('한국어 표시명은 필수입니다.');
+
+        let translations: Record<string, string> = { ...catTrans, ko };
+        const hasMissing = SUPPORTED_LANGS.some((lang) => lang !== 'ko' && !(translations[lang] || '').trim());
+        if (hasMissing) {
+          const result = await api.i18n.translate(ko, translations);
+          translations = {
+            ...result.translations,
+            ...translations,
+            ko,
+          };
+        }
+
+        await api.master.categories.update(selectedCat.id, {
+          sort_order: parseInt(catForm.sort_order),
+          translations,
+        });
         flash(t('admin.master.success_cat_edit', '카테고리가 수정되었습니다.'));
       }
       setCatModal(null);
@@ -226,7 +260,13 @@ export default function MasterPage() {
                       <span className={`badge ${cat.is_active ? 'badge-green' : 'badge-gray'}`} style={{ fontSize: 10 }}>
                         {cat.is_active ? t('admin.common.active', '활성') : t('admin.common.inactive', '비활성')}
                       </span>
-                      <button className="btn btn-secondary btn-sm" onClick={e => { e.stopPropagation(); setCatForm({ sort_order: String(cat.sort_order) }); setSelectedCat(cat); setCatModal('edit'); }}>✏</button>
+                      <button className="btn btn-secondary btn-sm" onClick={e => {
+                        e.stopPropagation();
+                        setCatForm({ sort_order: String(cat.sort_order) });
+                        setCatTrans(categoryToTranslations(cat));
+                        setSelectedCat(cat);
+                        setCatModal('edit');
+                      }}>✏</button>
                       <button className="btn btn-danger btn-sm" onClick={e => { e.stopPropagation(); handleCatDelete(cat); }}>✕</button>
                     </div>
                   </div>
@@ -306,33 +346,31 @@ export default function MasterPage() {
                 <label className="form-label">{t('admin.common.sort_order', '정렬 순서')}</label>
                 <input className="form-input" type="number" value={catForm.sort_order} onChange={e => setCatForm(f => ({ ...f, sort_order: e.target.value }))} />
               </div>
-              {catModal === 'create' && (
-                <div style={{ borderTop: '1px solid var(--border)', paddingTop: 12, marginTop: 4 }}>
-                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
-                    <div style={{ fontSize: 13, fontWeight: 600 }}>{t('admin.master.translations', '표시명 (13개국어)')}</div>
-                    <button className="btn btn-secondary btn-sm" onClick={() => autoTranslate(catTrans.ko, setCatTrans, catTrans)} disabled={translating || !catTrans.ko}>
-                      {translating ? '...' : t('admin.master.auto_translate', '🌐 한국어 기준 자동번역')}
-                    </button>
-                  </div>
-                  <div style={{ fontSize: 11, color: 'var(--text-muted)', marginBottom: 10 }}>
-                    키는 저장 시 시스템이 자동 생성합니다. (예: master.axxdfd)
-                  </div>
-                  {SUPPORTED_LANGS.map(lang => (
-                    <div key={lang} className="form-group" style={{ marginBottom: 6, display: 'flex', alignItems: 'center', gap: 8 }}>
-                      <label style={{ fontSize: 12, width: 110, flexShrink: 0, color: lang === 'ko' ? 'var(--text)' : 'var(--text-muted)' }}>
-                        {LANG_LABELS[lang]}{lang === 'ko' ? ' *' : ''}
-                      </label>
-                      <input
-                        className="form-input"
-                        style={{ fontSize: 13 }}
-                        value={catTrans[lang] ?? ''}
-                        onChange={e => setCatTrans(f => ({ ...f, [lang]: e.target.value }))}
-                        placeholder={lang === 'ko' ? '한국어 표시명 입력 후 자동번역' : ''}
-                      />
-                    </div>
-                  ))}
+              <div style={{ borderTop: '1px solid var(--border)', paddingTop: 12, marginTop: 4 }}>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
+                  <div style={{ fontSize: 13, fontWeight: 600 }}>{t('admin.master.translations', '표시명 (13개국어)')}</div>
+                  <button className="btn btn-secondary btn-sm" onClick={() => autoTranslate(catTrans.ko, setCatTrans, catTrans)} disabled={translating || !catTrans.ko}>
+                    {translating ? '...' : t('admin.master.auto_translate', '🌐 한국어 기준 자동번역')}
+                  </button>
                 </div>
-              )}
+                <div style={{ fontSize: 11, color: 'var(--text-muted)', marginBottom: 10 }}>
+                  키는 시스템 내부 식별자이며 직접 수정할 수 없습니다.
+                </div>
+                {SUPPORTED_LANGS.map(lang => (
+                  <div key={lang} className="form-group" style={{ marginBottom: 6, display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <label style={{ fontSize: 12, width: 110, flexShrink: 0, color: lang === 'ko' ? 'var(--text)' : 'var(--text-muted)' }}>
+                      {LANG_LABELS[lang]}{lang === 'ko' ? ' *' : ''}
+                    </label>
+                    <input
+                      className="form-input"
+                      style={{ fontSize: 13 }}
+                      value={catTrans[lang] ?? ''}
+                      onChange={e => setCatTrans(f => ({ ...f, [lang]: e.target.value }))}
+                      placeholder={lang === 'ko' ? '한국어 표시명 입력 후 자동번역' : ''}
+                    />
+                  </div>
+                ))}
+              </div>
             </div>
             <div className="modal-footer">
               <button className="btn btn-secondary" onClick={() => setCatModal(null)}>{t('admin.common.cancel', '취소')}</button>

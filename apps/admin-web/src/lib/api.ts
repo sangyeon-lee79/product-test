@@ -136,7 +136,7 @@ export const api = {
       list: () => request<MasterCategory[]>('/api/v1/admin/master/categories'),
       create: (data: { sort_order?: number; translations?: Record<string, string> }) =>
         request<MasterCategory>('/api/v1/admin/master/categories', { method: 'POST', body: JSON.stringify(data) }),
-      update: (id: string, data: Partial<MasterCategory>) =>
+      update: (id: string, data: { sort_order?: number; is_active?: number; translations?: Record<string, string> }) =>
         request<MasterCategory>(`/api/v1/admin/master/categories/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
       delete: (id: string) =>
         request<{ id: string; deleted: boolean }>(`/api/v1/admin/master/categories/${id}`, { method: 'DELETE' }),
@@ -189,6 +189,10 @@ export interface I18nRow {
 export interface MasterCategory {
   id: string; key: string; sort_order: number; is_active: number;
   ko_name?: string | null;
+  ko?: string | null; en?: string | null; ja?: string | null;
+  zh_cn?: string | null; zh_tw?: string | null; es?: string | null;
+  fr?: string | null; de?: string | null; pt?: string | null;
+  vi?: string | null; th?: string | null; id_lang?: string | null; ar?: string | null;
   created_at: string; updated_at: string;
 }
 

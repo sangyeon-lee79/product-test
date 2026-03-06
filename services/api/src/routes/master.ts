@@ -126,7 +126,8 @@ export async function handleMaster(request: Request, env: Env, url: URL): Promis
         const rows = await env.DB.prepare(
           `SELECT
              mc.*,
-             tr.ko AS ko_name
+             tr.ko AS ko_name,
+             tr.en, tr.ja, tr.zh_cn, tr.zh_tw, tr.es, tr.fr, tr.de, tr.pt, tr.vi, tr.th, tr.id_lang, tr.ar
            FROM master_categories mc
            LEFT JOIN i18n_translations tr
              ON tr.key = CASE
@@ -138,7 +139,19 @@ export async function handleMaster(request: Request, env: Env, url: URL): Promis
         return ok(rows.results);
       }
       if (request.method === 'GET' && id) {
-        const row = await env.DB.prepare('SELECT * FROM master_categories WHERE id = ?').bind(id).first();
+        const row = await env.DB.prepare(
+          `SELECT
+             mc.*,
+             tr.ko AS ko_name,
+             tr.en, tr.ja, tr.zh_cn, tr.zh_tw, tr.es, tr.fr, tr.de, tr.pt, tr.vi, tr.th, tr.id_lang, tr.ar
+           FROM master_categories mc
+           LEFT JOIN i18n_translations tr
+             ON tr.key = CASE
+               WHEN mc.key LIKE 'master.%' THEN mc.key
+               ELSE ('master.' || mc.key)
+             END
+           WHERE mc.id = ?`
+        ).bind(id).first();
         if (!row) return err('Not found', 404);
         return ok(row);
       }
@@ -159,17 +172,34 @@ export async function handleMaster(request: Request, env: Env, url: URL): Promis
         return created({ ...row, ko_name: koName });
       }
       if (request.method === 'PUT' && id) {
-        let body: { key?: string; sort_order?: number; is_active?: boolean };
-        try { body = await request.json() as { key?: string; sort_order?: number; is_active?: boolean }; } catch { return err('Invalid JSON'); }
+        let body: { sort_order?: number; is_active?: boolean; translations?: Record<string, string> };
+        try { body = await request.json() as { sort_order?: number; is_active?: boolean; translations?: Record<string, string> }; } catch { return err('Invalid JSON'); }
         const sets: string[] = ['updated_at = ?'];
         const vals: (string | number)[] = [now()];
-        if (body.key !== undefined) { sets.push('key = ?'); vals.push(body.key); }
         if (body.sort_order !== undefined) { sets.push('sort_order = ?'); vals.push(body.sort_order); }
         if (body.is_active !== undefined) { sets.push('is_active = ?'); vals.push(body.is_active ? 1 : 0); }
         vals.push(id);
         const result = await env.DB.prepare(`UPDATE master_categories SET ${sets.join(', ')} WHERE id = ?`).bind(...vals).run();
         if (result.meta.changes === 0) return err('Not found', 404);
-        return ok(await env.DB.prepare('SELECT * FROM master_categories WHERE id = ?').bind(id).first());
+
+        if (body.translations && Object.values(body.translations).some(v => (v || '').trim())) {
+          const cat = await env.DB.prepare('SELECT key FROM master_categories WHERE id = ?').bind(id).first<{ key: string }>();
+          if (cat?.key) await upsertI18n(env, categoryI18nKey(cat.key), body.translations);
+        }
+
+        return ok(await env.DB.prepare(
+          `SELECT
+             mc.*,
+             tr.ko AS ko_name,
+             tr.en, tr.ja, tr.zh_cn, tr.zh_tw, tr.es, tr.fr, tr.de, tr.pt, tr.vi, tr.th, tr.id_lang, tr.ar
+           FROM master_categories mc
+           LEFT JOIN i18n_translations tr
+             ON tr.key = CASE
+               WHEN mc.key LIKE 'master.%' THEN mc.key
+               ELSE ('master.' || mc.key)
+             END
+           WHERE mc.id = ?`
+        ).bind(id).first());
       }
       if (request.method === 'DELETE' && id) {
         // 사용중이면 비활성화, 아이템 없으면 실제 삭제
