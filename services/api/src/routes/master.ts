@@ -29,6 +29,17 @@ async function generateCategoryKey(env: Env): Promise<string> {
   throw new Error('Failed to generate unique category key');
 }
 
+async function generateItemKey(env: Env, categoryId: string): Promise<string> {
+  for (let i = 0; i < 10; i++) {
+    const candidate = `master_item.${randomToken(6)}`;
+    const exists = await env.DB.prepare(
+      'SELECT id FROM master_items WHERE category_id = ? AND key = ?'
+    ).bind(categoryId, candidate).first();
+    if (!exists) return candidate;
+  }
+  throw new Error('Failed to generate unique item key');
+}
+
 function categoryI18nKey(categoryKey: string): string {
   return categoryKey.startsWith('master.') ? categoryKey : `master.${categoryKey}`;
 }
@@ -181,13 +192,14 @@ export async function handleMaster(request: Request, env: Env, url: URL): Promis
         return ok(row);
       }
       if (request.method === 'POST') {
-        let body: { category_id: string; key: string; parent_id?: string; sort_order?: number; metadata?: Record<string, unknown>; translations?: Record<string, string> };
+        let body: { category_id: string; parent_id?: string; sort_order?: number; metadata?: Record<string, unknown>; translations?: Record<string, string> };
         try { body = await request.json() as typeof body; } catch { return err('Invalid JSON'); }
-        if (!body.category_id || !body.key) return err('category_id and key required');
-        const exists = await env.DB.prepare('SELECT id FROM master_items WHERE category_id = ? AND key = ?').bind(body.category_id, body.key).first();
-        if (exists) return err('key already exists in this category', 409, 'duplicate_key');
+        if (!body.category_id) return err('category_id required');
+        if (!body.translations?.ko?.trim()) return err('ko translation required');
+
+        const autoKey = await generateItemKey(env, body.category_id);
         const row = {
-          id: newId(), category_id: body.category_id, key: body.key,
+          id: newId(), category_id: body.category_id, key: autoKey,
           parent_id: body.parent_id ?? null, sort_order: body.sort_order ?? 0,
           is_active: 1, metadata: JSON.stringify(body.metadata ?? {}),
           created_at: now(), updated_at: now(),
@@ -197,16 +209,15 @@ export async function handleMaster(request: Request, env: Env, url: URL): Promis
         ).bind(row.id, row.category_id, row.key, row.parent_id, row.sort_order, row.is_active, row.metadata, row.created_at, row.updated_at).run();
         if (body.translations && Object.values(body.translations).some(v => v)) {
           const cat = await env.DB.prepare('SELECT key FROM master_categories WHERE id = ?').bind(body.category_id).first<{ key: string }>();
-          if (cat) await upsertI18n(env, itemI18nKey(cat.key, body.key), body.translations);
+          if (cat) await upsertI18n(env, itemI18nKey(cat.key, row.key), body.translations);
         }
         return created({ ...row, metadata: body.metadata ?? {} });
       }
       if (request.method === 'PUT' && id) {
-        let body: { key?: string; sort_order?: number; is_active?: boolean; metadata?: Record<string, unknown>; parent_id?: string | null };
+        let body: { sort_order?: number; is_active?: boolean; metadata?: Record<string, unknown>; parent_id?: string | null };
         try { body = await request.json() as typeof body; } catch { return err('Invalid JSON'); }
         const sets: string[] = ['updated_at = ?'];
         const vals: (string | number | null)[] = [now()];
-        if (body.key !== undefined) { sets.push('key = ?'); vals.push(body.key); }
         if (body.sort_order !== undefined) { sets.push('sort_order = ?'); vals.push(body.sort_order); }
         if (body.is_active !== undefined) { sets.push('is_active = ?'); vals.push(body.is_active ? 1 : 0); }
         if (body.metadata !== undefined) { sets.push('metadata = ?'); vals.push(JSON.stringify(body.metadata)); }

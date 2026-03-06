@@ -20,9 +20,9 @@ export default function MasterPage() {
   const [catSaving, setCatSaving] = useState(false);
 
   // Item modal
-  type ItemForm = { id?: string; key: string; sort_order: string; is_active?: number; parent_id?: string | null };
+  type ItemForm = { id?: string; key?: string; sort_order: string; is_active?: number; parent_id?: string | null };
   const [itemModal, setItemModal] = useState<'create' | 'edit' | null>(null);
-  const [itemForm, setItemForm] = useState<ItemForm>({ key: '', sort_order: '0', parent_id: null });
+  const [itemForm, setItemForm] = useState<ItemForm>({ sort_order: '0', parent_id: null });
   const [itemTrans, setItemTrans] = useState<Record<string, string>>(emptyTrans());
   const [itemSaving, setItemSaving] = useState(false);
   const [translating, setTranslating] = useState(false);
@@ -51,11 +51,6 @@ export default function MasterPage() {
 
   function flash(msg: string) { setSuccess(msg); setTimeout(() => setSuccess(''), 3000); }
   function getCategoryLabel(cat: MasterCategory) { return cat.ko_name?.trim() || cat.key; }
-  function getItemI18nPreview(categoryKey: string, itemKey: string) {
-    return categoryKey.startsWith('master.')
-      ? `${categoryKey}.${itemKey}`
-      : `master.${categoryKey}.${itemKey}`;
-  }
 
   // 자동번역
   async function autoTranslate(koText: string, setTrans: (t: Record<string, string>) => void, current: Record<string, string>) {
@@ -122,10 +117,29 @@ export default function MasterPage() {
     setItemSaving(true); setError('');
     try {
       if (itemModal === 'create') {
-        await api.master.items.create({ category_id: selectedCat.id, key: itemForm.key, sort_order: parseInt(itemForm.sort_order), translations: itemTrans, parent_id: itemForm.parent_id || undefined });
+        const ko = (itemTrans.ko || '').trim();
+        if (!ko) throw new Error('한국어 표시명은 필수입니다.');
+
+        let translations: Record<string, string> = { ...itemTrans, ko };
+        const hasMissing = SUPPORTED_LANGS.some((lang) => lang !== 'ko' && !(translations[lang] || '').trim());
+        if (hasMissing) {
+          const result = await api.i18n.translate(ko, translations);
+          translations = {
+            ...result.translations,
+            ...translations,
+            ko,
+          };
+        }
+
+        await api.master.items.create({
+          category_id: selectedCat.id,
+          sort_order: parseInt(itemForm.sort_order),
+          translations,
+          parent_id: itemForm.parent_id || undefined,
+        });
         flash(t('admin.master.success_item_add', '아이템이 추가되었습니다.'));
       } else if (itemModal === 'edit' && itemForm.id) {
-        await api.master.items.update(itemForm.id, { key: itemForm.key, sort_order: parseInt(itemForm.sort_order), parent_id: itemForm.parent_id });
+        await api.master.items.update(itemForm.id, { sort_order: parseInt(itemForm.sort_order), parent_id: itemForm.parent_id });
         flash(t('admin.master.success_item_edit', '아이템이 수정되었습니다.'));
       }
       setItemModal(null);
@@ -195,7 +209,7 @@ export default function MasterPage() {
             <div className="card-header">
               <div className="card-title">{selectedCat ? `${getCategoryLabel(selectedCat)} 아이템` : t('admin.master.select_hint', '카테고리를 선택하세요')}</div>
               {selectedCat && (
-                <button className="btn btn-primary btn-sm" onClick={() => { setItemForm({ key: '', sort_order: '0', parent_id: null }); setItemTrans(emptyTrans()); setItemModal('create'); }}>{t('admin.master.add_item', '+ 아이템 추가')}</button>
+                <button className="btn btn-primary btn-sm" onClick={() => { setItemForm({ sort_order: '0', parent_id: null }); setItemTrans(emptyTrans()); setItemModal('create'); }}>{t('admin.master.add_item', '+ 아이템 추가')}</button>
               )}
             </div>
             <div className="table-wrap">
@@ -218,7 +232,7 @@ export default function MasterPage() {
                       <td><span className={`badge ${item.is_active ? 'badge-green' : 'badge-gray'}`}>{item.is_active ? t('admin.common.active', '활성') : t('admin.common.inactive', '비활성')}</span></td>
                       <td>
                         <div className="td-actions">
-                          <button className="btn btn-secondary btn-sm" onClick={() => { setItemForm({ id: item.id, key: item.key, sort_order: String(item.sort_order), is_active: item.is_active, parent_id: item.parent_id }); setItemModal('edit'); }}>{t('admin.common.edit', '편집')}</button>
+                          <button className="btn btn-secondary btn-sm" onClick={() => { setItemForm({ id: item.id, key: item.key, sort_order: String(item.sort_order), is_active: item.is_active, parent_id: item.parent_id }); setItemModal('edit'); setItemTrans(emptyTrans()); }}>{t('admin.common.edit', '편집')}</button>
                           <button className="btn btn-danger btn-sm" onClick={() => handleItemDelete(item)}>{t('admin.common.delete', '삭제')}</button>
                         </div>
                       </td>
@@ -304,9 +318,15 @@ export default function MasterPage() {
             <div className="modal-body" style={{ maxHeight: '70vh', overflowY: 'auto' }}>
               {error && <div className="alert alert-error">{error}</div>}
               <div className="form-group">
-                <label className="form-label">{t('admin.common.key', '키')} *</label>
-                <input className="form-input font-mono" value={itemForm.key} onChange={e => setItemForm(f => ({ ...f, key: e.target.value }))} placeholder="pomeranian, diabetes, ..." />
+                <label className="form-label">{t('admin.master.categories', '카테고리')}</label>
+                <input className="form-input" value={selectedCat ? getCategoryLabel(selectedCat) : ''} readOnly />
               </div>
+              {itemModal === 'edit' && itemForm.key && (
+                <div className="form-group">
+                  <label className="form-label">{t('admin.common.key', '키')}</label>
+                  <input className="form-input font-mono" value={itemForm.key} readOnly />
+                </div>
+              )}
               <div className="form-group">
                 <label className="form-label">{t('admin.master.parent_item', '부모 아이템')}</label>
                 <select className="form-input" value={itemForm.parent_id || ''} onChange={e => setItemForm(f => ({ ...f, parent_id: e.target.value || null }))}>
@@ -328,22 +348,29 @@ export default function MasterPage() {
                       {translating ? '...' : t('admin.master.auto_translate', '🌐 한국어 기준 자동번역')}
                     </button>
                   </div>
-                  {itemForm.key && selectedCat && (
-                    <div style={{ fontSize: 11, color: 'var(--text-muted)', marginBottom: 10, fontFamily: 'monospace' }}>
-                      i18n key: {getItemI18nPreview(selectedCat.key, itemForm.key)}
-                    </div>
-                  )}
-                  {SUPPORTED_LANGS.map(lang => (
+                  <div style={{ fontSize: 11, color: 'var(--text-muted)', marginBottom: 10 }}>
+                    키는 저장 시 시스템이 자동 생성합니다. (예: master_item.k82asd)
+                  </div>
+                  <div className="form-group" style={{ marginBottom: 10 }}>
+                    <label className="form-label">한국어 표시명 *</label>
+                    <input
+                      className="form-input"
+                      style={{ fontSize: 13 }}
+                      value={itemTrans.ko ?? ''}
+                      onChange={e => setItemTrans(f => ({ ...f, ko: e.target.value }))}
+                      placeholder="예: Cafe, Hospital, Restaurant"
+                    />
+                  </div>
+                  {SUPPORTED_LANGS.filter(lang => lang !== 'ko').map(lang => (
                     <div key={lang} className="form-group" style={{ marginBottom: 6, display: 'flex', alignItems: 'center', gap: 8 }}>
-                      <label style={{ fontSize: 12, width: 110, flexShrink: 0, color: lang === 'ko' ? 'var(--text)' : 'var(--text-muted)' }}>
-                        {LANG_LABELS[lang]}{lang === 'ko' ? ' *' : ''}
+                      <label style={{ fontSize: 12, width: 110, flexShrink: 0, color: 'var(--text-muted)' }}>
+                        {LANG_LABELS[lang]}
                       </label>
                       <input
                         className="form-input"
                         style={{ fontSize: 13 }}
                         value={itemTrans[lang] ?? ''}
                         onChange={e => setItemTrans(f => ({ ...f, [lang]: e.target.value }))}
-                        placeholder={lang === 'ko' ? '한국어 표시명 입력 후 자동번역' : ''}
                       />
                     </div>
                   ))}
