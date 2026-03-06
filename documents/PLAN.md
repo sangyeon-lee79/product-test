@@ -141,19 +141,19 @@ DB 테이블/마이그레이션
 ## S1-2. API
 [x] CRUD /api/v1/admin/i18n (Admin 전용)
 [x] GET /api/v1/i18n?lang=ko&prefix=page.home (클라이언트용, 공개)
-[ ] POST /api/v1/admin/i18n/translate (한국어 -> 12개국어 자동 번역)
+[x] POST /api/v1/admin/i18n/translate (한국어 -> 12개국어 자동 번역)
 
 ## S1-3. Admin UI
 [x] 언어관리 페이지
     - key 목록 + 현재 언어값 표시: `app_title [방울아 놀자]`
     - 키 접두사 필터 + "활성만" 필터음.
     - 13개국어 편집 폼
-[ ] "한국어 기준 일괄 번역" 버튼 추가 및 연동
+[x] "한국어 기준 일괄 번역" 버튼 추가 및 연동
 
 ## S1-4. 클라이언트 i18n 엔진
 [ ] packages/shared — i18n 키 타입 정의
 [ ] Mobile (Flutter) — core/i18n/ 엔진: GET /i18n 호출 + 로컬 캐시 + t(key) 함수
-[ ] Admin Web — i18n 훅/유틸
+[x] Admin Web — i18n 훅/유틸
 [ ] Guardian Web — i18n 훅/유틸
 
 ## S1-5. Seed 데이터 & 검증
@@ -190,7 +190,7 @@ DB 테이블/마이그레이션
 ## S2-3. Admin UI
 [x] 마스터 카테고리 관리 페이지 (List → Select → Edit + Create)
 [x] 마스터 아이템 관리 페이지 (카테고리 선택 → 아이템 CRUD)
-[ ] 아이템 표시명 = i18n key 연동 (예: master.breed.pomeranian → t() 렌더)
+[x] 아이템 표시명 = i18n key 연동 (예: master.breed.pomeranian → t() 렌더)
 
 ## S2-4. 클라이언트 마스터 로더
 [ ] Mobile — core/master/: GET /master/* 호출 + 로컬 캐시
@@ -268,8 +268,8 @@ DB 테이블/마이그레이션
 
 ## S4-3. Admin UI
 [x] 국가 관리 페이지 (CRUD)
-[x] 통화 관리 페이지 (CRUD)
-[ ] 국가-통화 매핑 편집 UI (API는 완성, UI는 미구현)
+[x] 통화 관리는 국가 화면 내 기본통화 선택으로 통합 (분리 탭 제거)
+[x] 국가-통화 매핑 편집 UI (국가 Create/Edit 내 default currency 선택)
 
 ## S4-4. Seed 데이터 & 검증
 [x] 기본 국가/통화 입력 (API로)
