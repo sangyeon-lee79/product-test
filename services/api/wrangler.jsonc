@@ -11,6 +11,7 @@
 		"ENVIRONMENT": "production",
 		"ALLOWED_ORIGINS": "http://localhost:5173,http://localhost:5174,https://pet-life-admin.pages.dev,*.pet-life-admin.pages.dev,https://product-webtest.pages.dev,*.product-webtest.pages.dev,*.cluster.cloudworkstations.dev",
 		"JWT_SECRET": "dev-secret-change-in-production",
+		"GOOGLE_TRANSLATE_SERVICE_ACCOUNT_EMAIL": "",
 		"GOOGLE_TRANSLATE_RPM_LIMIT": "60",
 		"GOOGLE_TRANSLATE_DAILY_CHAR_LIMIT": "200000",
 		"R2_PUBLIC_URL": ""
@@ -33,6 +34,7 @@
 				"ENVIRONMENT": "staging",
 				"ALLOWED_ORIGINS": "https://admin-staging.petlife.com,https://guardian-staging.petlife.com",
 				"JWT_SECRET": "staging-secret",
+				"GOOGLE_TRANSLATE_SERVICE_ACCOUNT_EMAIL": "",
 				"GOOGLE_TRANSLATE_RPM_LIMIT": "60",
 				"GOOGLE_TRANSLATE_DAILY_CHAR_LIMIT": "200000"
 			}
@@ -43,6 +45,7 @@
 				"ENVIRONMENT": "production",
 				"ALLOWED_ORIGINS": "https://admin.petlife.com,https://guardian.petlife.com",
 				"JWT_SECRET": "REPLACE_WITH_SECURE_SECRET",
+				"GOOGLE_TRANSLATE_SERVICE_ACCOUNT_EMAIL": "",
 				"GOOGLE_TRANSLATE_RPM_LIMIT": "60",
 				"GOOGLE_TRANSLATE_DAILY_CHAR_LIMIT": "200000"
 			}

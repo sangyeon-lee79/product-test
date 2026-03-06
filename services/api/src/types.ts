@@ -4,7 +4,8 @@ export interface Env {
   ENVIRONMENT: string;
   ALLOWED_ORIGINS: string;
   JWT_SECRET: string;
-  GOOGLE_TRANSLATE_API_KEY?: string;
+  GOOGLE_TRANSLATE_SERVICE_ACCOUNT_EMAIL?: string;
+  GOOGLE_TRANSLATE_SERVICE_ACCOUNT_PRIVATE_KEY?: string;
   GOOGLE_TRANSLATE_RPM_LIMIT?: string;
   GOOGLE_TRANSLATE_DAILY_CHAR_LIMIT?: string;
   R2_PUBLIC_URL: string;  // R2 퍼블릭 URL (빈 문자열이면 로컬 서빙 fallback)

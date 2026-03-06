@@ -81,15 +81,31 @@ Admin 자동번역(`POST /api/v1/admin/i18n/translate`)은 Google Cloud Translat
 - quota: 분당 요청/일일 문자수 제한을 적용.
 
 필수 환경 설정:
-1. Cloudflare Worker Secret
-- `GOOGLE_TRANSLATE_API_KEY`
+1. Google Cloud Console (수동 설정)
+- `Cloud Translation API` 활성화
+- 서비스 계정 생성 (권장: 전용 계정 1개)
+- 서비스 계정 키(JSON) 발급
 
-2. Cloudflare Worker Vars
+2. Cloudflare Worker Secret
+- `GOOGLE_TRANSLATE_SERVICE_ACCOUNT_PRIVATE_KEY`
+
+3. Cloudflare Worker Vars
+- `GOOGLE_TRANSLATE_SERVICE_ACCOUNT_EMAIL`
 - `GOOGLE_TRANSLATE_RPM_LIMIT` (기본 60)
 - `GOOGLE_TRANSLATE_DAILY_CHAR_LIMIT` (기본 200000)
 
 예시:
 ```bash
 cd services/api
-npx wrangler secret put GOOGLE_TRANSLATE_API_KEY
+npx wrangler secret put GOOGLE_TRANSLATE_SERVICE_ACCOUNT_PRIVATE_KEY
+```
+
+서비스 계정 JSON에서 아래 값을 사용:
+- `client_email` -> `GOOGLE_TRANSLATE_SERVICE_ACCOUNT_EMAIL`
+- `private_key` -> `GOOGLE_TRANSLATE_SERVICE_ACCOUNT_PRIVATE_KEY`
+
+보안 원칙:
+- 프론트엔드에는 Google 키/토큰을 절대 노출하지 않는다.
+- 번역 호출은 서버(API Worker)만 수행한다.
+- Worker는 서비스계정 JWT(OAuth2)로 access token을 발급받아 Google API를 호출한다.
 ```
