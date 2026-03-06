@@ -92,9 +92,21 @@ export async function handleMaster(request: Request, env: Env, url: URL): Promis
     ).bind(categoryKey).first<{ id: string }>();
     if (!cat) return err('Category not found', 404);
 
-    const rows = await env.DB.prepare(
-      'SELECT * FROM master_items WHERE category_id = ? AND is_active = 1 ORDER BY sort_order, key'
-    ).bind(cat.id).all();
+    const rows = await env.DB.prepare(`
+      SELECT
+        mi.*,
+        tr.ko as ko_name,
+        tr.en, tr.ja, tr.zh_cn, tr.zh_tw, tr.es, tr.fr, tr.de, tr.pt, tr.vi, tr.th, tr.id_lang, tr.ar
+      FROM master_items mi
+      LEFT JOIN master_categories mc ON mc.id = mi.category_id
+      LEFT JOIN i18n_translations tr
+        ON tr.key = CASE
+          WHEN mc.key LIKE 'master.%' THEN (mc.key || '.' || mi.key)
+          ELSE ('master.' || mc.key || '.' || mi.key)
+        END
+      WHERE mi.category_id = ? AND mi.is_active = 1
+      ORDER BY mi.sort_order, mi.key
+    `).bind(cat.id).all();
     return ok(rows.results);
   }
 

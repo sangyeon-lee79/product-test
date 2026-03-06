@@ -5,8 +5,15 @@ type ApiOk<T> = { success: true; data: T };
 type ApiErr = { success: false; error: string };
 type ApiResp<T> = ApiOk<T> | ApiErr;
 
-type Country = { id: string; code: string };
-type MasterItem = { id: string; key: string };
+type Country = { id: string; code: string; ko_name?: string | null };
+type MasterItem = {
+  id: string;
+  key: string;
+  ko_name?: string | null;
+  en?: string | null;
+  metadata?: string;
+};
+
 type Profile = {
   id?: string;
   handle: string | null;
@@ -19,46 +26,129 @@ type Profile = {
   interests: string[];
   avatar_url: string | null;
 };
-type PetDisease = { disease_id: string; disease_key?: string };
+
 type Pet = {
   id: string;
   name: string;
-  species: 'dog' | 'cat' | 'other';
+  pet_type_id: string | null;
   breed_id: string | null;
+  gender_id: string | null;
+  neuter_status_id: string | null;
+  life_stage_id: string | null;
+  body_size_id: string | null;
+  country_id: string | null;
+  medication_status_id: string | null;
+  weight_unit_id: string | null;
+  health_condition_level_id: string | null;
+  activity_level_id: string | null;
+  diet_type_id: string | null;
+  living_style_id: string | null;
+  ownership_type_id: string | null;
+  coat_length_id: string | null;
+  coat_type_id: string | null;
+  grooming_cycle_id: string | null;
+  color_ids: string[];
+  allergy_ids: string[];
+  disease_history_ids: string[];
+  symptom_tag_ids: string[];
+  vaccination_ids: string[];
+  temperament_ids: string[];
   birth_date: string | null;
-  gender: 'male' | 'female' | 'unknown' | null;
   weight_kg: number | null;
-  is_neutered: number;
   microchip_no: string | null;
-  avatar_url: string | null;
-  diseases: PetDisease[];
+  notes: string | null;
+  intro_text: string | null;
 };
 
 type PetForm = {
   id?: string;
   name: string;
-  species: 'dog' | 'cat' | 'other';
+  pet_type_id: string;
   breed_id: string;
+  gender_id: string;
+  neuter_status_id: string;
+  life_stage_id: string;
+  body_size_id: string;
+  country_id: string;
+  medication_status_id: string;
+  weight_unit_id: string;
+  health_condition_level_id: string;
+  activity_level_id: string;
+  diet_type_id: string;
+  living_style_id: string;
+  ownership_type_id: string;
+  coat_length_id: string;
+  coat_type_id: string;
+  grooming_cycle_id: string;
+  color_ids: string[];
+  allergy_ids: string[];
+  disease_history_ids: string[];
+  symptom_tag_ids: string[];
+  vaccination_ids: string[];
+  temperament_ids: string[];
   birth_date: string;
-  gender: 'male' | 'female' | 'unknown' | '';
   weight_kg: string;
-  is_neutered: boolean;
   microchip_no: string;
-  avatar_url: string;
-  disease_ids: string[];
+  notes: string;
+  intro_text: string;
 };
+
+const CATEGORY_KEYS = {
+  pet_type: 'pet_type',
+  pet_breed: 'pet_breed',
+  pet_gender: 'pet_gender',
+  neuter_status: 'neuter_status',
+  life_stage: 'life_stage',
+  body_size: 'body_size',
+  pet_color: 'pet_color',
+  allergy_type: 'allergy_type',
+  disease_type: 'disease_type',
+  symptom_type: 'symptom_type',
+  vaccination_type: 'vaccination_type',
+  medication_status: 'medication_status',
+  weight_unit: 'weight_unit',
+  health_condition_level: 'health_condition_level',
+  activity_level: 'activity_level',
+  diet_type: 'diet_type',
+  temperament_type: 'temperament_type',
+  living_style: 'living_style',
+  ownership_type: 'ownership_type',
+  coat_length: 'coat_length',
+  coat_type: 'coat_type',
+  grooming_cycle: 'grooming_cycle',
+  interest: 'interest',
+} as const;
 
 const emptyPetForm: PetForm = {
   name: '',
-  species: 'dog',
+  pet_type_id: '',
   breed_id: '',
+  gender_id: '',
+  neuter_status_id: '',
+  life_stage_id: '',
+  body_size_id: '',
+  country_id: '',
+  medication_status_id: '',
+  weight_unit_id: '',
+  health_condition_level_id: '',
+  activity_level_id: '',
+  diet_type_id: '',
+  living_style_id: '',
+  ownership_type_id: '',
+  coat_length_id: '',
+  coat_type_id: '',
+  grooming_cycle_id: '',
+  color_ids: [],
+  allergy_ids: [],
+  disease_history_ids: [],
+  symptom_tag_ids: [],
+  vaccination_ids: [],
+  temperament_ids: [],
   birth_date: '',
-  gender: '',
   weight_kg: '',
-  is_neutered: false,
   microchip_no: '',
-  avatar_url: '',
-  disease_ids: [],
+  notes: '',
+  intro_text: '',
 };
 
 function getApiBase() {
@@ -96,16 +186,35 @@ async function api<T>(path: string, init: RequestInit = {}, token?: string): Pro
   return json.data;
 }
 
+function itemLabel(item: MasterItem): string {
+  return item.ko_name || item.en || item.key;
+}
+
+function parseBreedTypes(item: MasterItem): string[] {
+  if (!item.metadata) return [];
+  try {
+    const obj = JSON.parse(item.metadata) as { pet_type_keys?: unknown };
+    if (!Array.isArray(obj.pet_type_keys)) return [];
+    return obj.pet_type_keys.map((x) => (typeof x === 'string' ? x : '')).filter(Boolean);
+  } catch {
+    return [];
+  }
+}
+
+function toArray(value: unknown): string[] {
+  if (!Array.isArray(value)) return [];
+  return value.map((x) => (typeof x === 'string' ? x : '')).filter(Boolean);
+}
+
 export default function App() {
   const [token, setToken] = useState(localStorage.getItem('guardian_access_token') || '');
   const [email, setEmail] = useState('guardian@petlife.com');
   const [message, setMessage] = useState('');
   const [loading, setLoading] = useState(false);
+  const [microchipMessage, setMicrochipMessage] = useState('');
 
   const [countries, setCountries] = useState<Country[]>([]);
-  const [breeds, setBreeds] = useState<MasterItem[]>([]);
-  const [diseases, setDiseases] = useState<MasterItem[]>([]);
-  const [interests, setInterests] = useState<MasterItem[]>([]);
+  const [master, setMaster] = useState<Record<string, MasterItem[]>>({});
 
   const [profile, setProfile] = useState<Profile>({
     handle: '',
@@ -121,10 +230,27 @@ export default function App() {
 
   const [pets, setPets] = useState<Pet[]>([]);
   const [petForm, setPetForm] = useState<PetForm>(emptyPetForm);
-  const [editingPetDiseaseIds, setEditingPetDiseaseIds] = useState<string[]>([]);
 
-  const breedMap = useMemo(() => Object.fromEntries(breeds.map((x) => [x.id, x.key])), [breeds]);
-  const diseaseMap = useMemo(() => Object.fromEntries(diseases.map((x) => [x.id, x.key])), [diseases]);
+  const masterById = useMemo(() => {
+    const all = Object.values(master).flat();
+    return Object.fromEntries(all.map((x) => [x.id, x]));
+  }, [master]);
+
+  const petTypeById = useMemo(() => {
+    const list = master[CATEGORY_KEYS.pet_type] || [];
+    return Object.fromEntries(list.map((x) => [x.id, x.key]));
+  }, [master]);
+
+  const filteredBreeds = useMemo(() => {
+    const list = master[CATEGORY_KEYS.pet_breed] || [];
+    if (!petForm.pet_type_id) return list;
+    const selectedTypeKey = petTypeById[petForm.pet_type_id];
+    if (!selectedTypeKey) return list;
+    return list.filter((breed) => {
+      const matchTypes = parseBreedTypes(breed);
+      return matchTypes.length === 0 || matchTypes.includes(selectedTypeKey);
+    });
+  }, [master, petForm.pet_type_id, petTypeById]);
 
   async function login() {
     setLoading(true);
@@ -132,7 +258,7 @@ export default function App() {
     try {
       const data = await api<{ access_token: string }>('/api/v1/auth/test-login', {
         method: 'POST',
-        body: JSON.stringify({ email, role: 'guardian' }),
+        body: JSON.stringify({ email }),
       });
       setToken(data.access_token);
       localStorage.setItem('guardian_access_token', data.access_token);
@@ -149,16 +275,20 @@ export default function App() {
     setLoading(true);
     setMessage('');
     try {
-      const [countryRows, breedRows, diseaseRows, interestRows] = await Promise.all([
+      const categoryList = Object.values(CATEGORY_KEYS);
+      const masterPromises = categoryList.map((key) =>
+        api<MasterItem[]>(`/api/v1/master/items?category_key=${encodeURIComponent(key)}`)
+          .then((rows) => [key, rows] as const)
+          .catch(() => [key, []] as const),
+      );
+
+      const [countryRows, ...masterRows] = await Promise.all([
         api<Country[]>('/api/v1/countries'),
-        api<MasterItem[]>('/api/v1/master/items?category_key=breed'),
-        api<MasterItem[]>('/api/v1/master/items?category_key=disease'),
-        api<MasterItem[]>('/api/v1/master/items?category_key=interest'),
+        ...masterPromises,
       ]);
+
       setCountries(countryRows);
-      setBreeds(breedRows);
-      setDiseases(diseaseRows);
-      setInterests(interestRows);
+      setMaster(Object.fromEntries(masterRows));
 
       const me = await api<{ profile: Profile | null }>('/api/v1/guardians/me', {}, token);
       if (me.profile) {
@@ -184,10 +314,13 @@ export default function App() {
     }));
   }
 
-  function togglePetDisease(id: string) {
+  function toggleMultiField(field: keyof Pick<
+    PetForm,
+    'color_ids' | 'allergy_ids' | 'disease_history_ids' | 'symptom_tag_ids' | 'vaccination_ids' | 'temperament_ids'
+  >, id: string) {
     setPetForm((f) => ({
       ...f,
-      disease_ids: f.disease_ids.includes(id) ? f.disease_ids.filter((x) => x !== id) : [...f.disease_ids, id],
+      [field]: f[field].includes(id) ? f[field].filter((x) => x !== id) : [...f[field], id],
     }));
   }
 
@@ -198,6 +331,28 @@ export default function App() {
       setMessage(data.available ? 'Handle available.' : `Handle unavailable${data.reason ? ` (${data.reason})` : ''}.`);
     } catch (e) {
       setMessage(e instanceof Error ? e.message : 'Handle check failed');
+    }
+  }
+
+  async function checkMicrochip() {
+    const value = petForm.microchip_no.trim();
+    if (!value || !token) {
+      setMicrochipMessage('');
+      return true;
+    }
+    try {
+      const query = new URLSearchParams({ microchip_no: value });
+      if (petForm.id) query.set('exclude_pet_id', petForm.id);
+      const res = await api<{ available: boolean; reason?: string }>(`/api/v1/pets/check-microchip?${query.toString()}`, {}, token);
+      if (!res.available) {
+        setMicrochipMessage(res.reason || '이미 등록된 마이크로칩 번호입니다.');
+        return false;
+      }
+      setMicrochipMessage('사용 가능한 마이크로칩 번호입니다.');
+      return true;
+    } catch (e) {
+      setMicrochipMessage(e instanceof Error ? e.message : '마이크로칩 확인 실패');
+      return false;
     }
   }
 
@@ -230,20 +385,38 @@ export default function App() {
   }
 
   function startEditPet(pet: Pet) {
-    const diseaseIds = (pet.diseases || []).map((d) => d.disease_id);
-    setEditingPetDiseaseIds(diseaseIds);
+    setMicrochipMessage('');
     setPetForm({
       id: pet.id,
-      name: pet.name,
-      species: pet.species,
+      name: pet.name || '',
+      pet_type_id: pet.pet_type_id || '',
       breed_id: pet.breed_id || '',
+      gender_id: pet.gender_id || '',
+      neuter_status_id: pet.neuter_status_id || '',
+      life_stage_id: pet.life_stage_id || '',
+      body_size_id: pet.body_size_id || '',
+      country_id: pet.country_id || '',
+      medication_status_id: pet.medication_status_id || '',
+      weight_unit_id: pet.weight_unit_id || '',
+      health_condition_level_id: pet.health_condition_level_id || '',
+      activity_level_id: pet.activity_level_id || '',
+      diet_type_id: pet.diet_type_id || '',
+      living_style_id: pet.living_style_id || '',
+      ownership_type_id: pet.ownership_type_id || '',
+      coat_length_id: pet.coat_length_id || '',
+      coat_type_id: pet.coat_type_id || '',
+      grooming_cycle_id: pet.grooming_cycle_id || '',
+      color_ids: toArray(pet.color_ids),
+      allergy_ids: toArray(pet.allergy_ids),
+      disease_history_ids: toArray(pet.disease_history_ids),
+      symptom_tag_ids: toArray(pet.symptom_tag_ids),
+      vaccination_ids: toArray(pet.vaccination_ids),
+      temperament_ids: toArray(pet.temperament_ids),
       birth_date: pet.birth_date || '',
-      gender: pet.gender || '',
       weight_kg: pet.weight_kg == null ? '' : String(pet.weight_kg),
-      is_neutered: !!pet.is_neutered,
       microchip_no: pet.microchip_no || '',
-      avatar_url: pet.avatar_url || '',
-      disease_ids: diseaseIds,
+      notes: pet.notes || '',
+      intro_text: pet.intro_text || '',
     });
   }
 
@@ -253,38 +426,63 @@ export default function App() {
       setMessage('Pet name is required.');
       return;
     }
+    if (!petForm.pet_type_id) {
+      setMessage('Pet type is required.');
+      return;
+    }
+
+    const microchipOk = await checkMicrochip();
+    if (!microchipOk) {
+      setMessage('마이크로칩 번호 중복으로 저장할 수 없습니다.');
+      return;
+    }
+
     setLoading(true);
     setMessage('');
     try {
+      const petTypeKey = petTypeById[petForm.pet_type_id];
       const payload = {
         name: petForm.name.trim(),
-        species: petForm.species,
+        species: petTypeKey === 'dog' || petTypeKey === 'cat' ? petTypeKey : 'other',
+        pet_type_id: petForm.pet_type_id,
         breed_id: petForm.breed_id || null,
+        gender_id: petForm.gender_id || null,
+        neuter_status_id: petForm.neuter_status_id || null,
+        life_stage_id: petForm.life_stage_id || null,
+        body_size_id: petForm.body_size_id || null,
+        country_id: petForm.country_id || null,
+        medication_status_id: petForm.medication_status_id || null,
+        weight_unit_id: petForm.weight_unit_id || null,
+        health_condition_level_id: petForm.health_condition_level_id || null,
+        activity_level_id: petForm.activity_level_id || null,
+        diet_type_id: petForm.diet_type_id || null,
+        living_style_id: petForm.living_style_id || null,
+        ownership_type_id: petForm.ownership_type_id || null,
+        coat_length_id: petForm.coat_length_id || null,
+        coat_type_id: petForm.coat_type_id || null,
+        grooming_cycle_id: petForm.grooming_cycle_id || null,
+        color_ids: petForm.color_ids,
+        allergy_ids: petForm.allergy_ids,
+        disease_history_ids: petForm.disease_history_ids,
+        symptom_tag_ids: petForm.symptom_tag_ids,
+        vaccination_ids: petForm.vaccination_ids,
+        temperament_ids: petForm.temperament_ids,
         birth_date: petForm.birth_date || null,
-        gender: petForm.gender || null,
         weight_kg: petForm.weight_kg ? Number(petForm.weight_kg) : null,
-        is_neutered: petForm.is_neutered,
         microchip_no: petForm.microchip_no || null,
-        avatar_url: petForm.avatar_url || null,
+        notes: petForm.notes || null,
+        intro_text: petForm.intro_text || null,
       };
 
       if (!petForm.id) {
-        await api('/api/v1/pets', { method: 'POST', body: JSON.stringify({ ...payload, disease_ids: petForm.disease_ids }) }, token);
+        await api('/api/v1/pets', { method: 'POST', body: JSON.stringify(payload) }, token);
       } else {
         await api(`/api/v1/pets/${petForm.id}`, { method: 'PUT', body: JSON.stringify(payload) }, token);
-        const toAdd = petForm.disease_ids.filter((x) => !editingPetDiseaseIds.includes(x));
-        const toRemove = editingPetDiseaseIds.filter((x) => !petForm.disease_ids.includes(x));
-        for (const diseaseId of toAdd) {
-          await api(`/api/v1/pets/${petForm.id}/diseases`, { method: 'POST', body: JSON.stringify({ disease_id: diseaseId }) }, token);
-        }
-        for (const diseaseId of toRemove) {
-          await api(`/api/v1/pets/${petForm.id}/diseases/${diseaseId}`, { method: 'DELETE' }, token);
-        }
       }
 
       setMessage('Pet saved.');
       setPetForm(emptyPetForm);
-      setEditingPetDiseaseIds([]);
+      setMicrochipMessage('');
       await loadAll();
     } catch (e) {
       setMessage(e instanceof Error ? e.message : 'Pet save failed');
@@ -301,7 +499,10 @@ export default function App() {
     try {
       await api(`/api/v1/pets/${id}`, { method: 'DELETE' }, token);
       setMessage('Pet deleted.');
-      if (petForm.id === id) setPetForm(emptyPetForm);
+      if (petForm.id === id) {
+        setPetForm(emptyPetForm);
+        setMicrochipMessage('');
+      }
       await loadAll();
     } catch (e) {
       setMessage(e instanceof Error ? e.message : 'Delete failed');
@@ -317,15 +518,43 @@ export default function App() {
     setMessage('Logged out.');
   }
 
+  function renderSingleSelect(label: string, field: keyof PetForm, options: MasterItem[]) {
+    return (
+      <div>
+        <label>{label}</label>
+        <select value={(petForm[field] as string) || ''} onChange={(e) => setPetForm((f) => ({ ...f, [field]: e.target.value }))}>
+          <option value="">Select</option>
+          {options.map((x) => <option key={x.id} value={x.id}>{itemLabel(x)}</option>)}
+        </select>
+      </div>
+    );
+  }
+
+  function renderMultiSelect(label: string, field: keyof Pick<PetForm, 'color_ids' | 'allergy_ids' | 'disease_history_ids' | 'symptom_tag_ids' | 'vaccination_ids' | 'temperament_ids'>, options: MasterItem[]) {
+    return (
+      <>
+        <label>{label}</label>
+        <div className="check-grid">
+          {options.map((x) => (
+            <label key={x.id} className="check-item">
+              <input type="checkbox" checked={petForm[field].includes(x.id)} onChange={() => toggleMultiField(field, x.id)} />
+              <span>{itemLabel(x)}</span>
+            </label>
+          ))}
+        </div>
+      </>
+    );
+  }
+
   if (!token) {
     return (
       <main className="app-wrap">
         <section className="panel login-panel">
           <h1>Guardian Web</h1>
-          <p className="muted">S6 profile + pet registration</p>
+          <p className="muted">My Pet Structured Profile</p>
           <label>Email</label>
           <input value={email} onChange={(e) => setEmail(e.target.value)} />
-          <button disabled={loading} onClick={() => void login()}>Test Login (guardian)</button>
+          <button disabled={loading} onClick={() => void login()}>Test Login</button>
           {message && <p className="notice">{message}</p>}
         </section>
       </main>
@@ -335,7 +564,7 @@ export default function App() {
   return (
     <main className="app-wrap">
       <header className="top-row">
-        <h1>Guardian Profile + Pets</h1>
+        <h1>Guardian Profile + My Pets</h1>
         <button onClick={logout}>Logout</button>
       </header>
       {message && <div className="notice">{message}</div>}
@@ -358,7 +587,7 @@ export default function App() {
             <label>Country</label>
             <select value={profile.country_id || ''} onChange={(e) => setProfile((p) => ({ ...p, country_id: e.target.value }))}>
               <option value="">Select country</option>
-              {countries.map((c) => <option key={c.id} value={c.id}>{c.code}</option>)}
+              {countries.map((c) => <option key={c.id} value={c.id}>{c.ko_name || c.code}</option>)}
             </select>
           </div>
           <div>
@@ -378,10 +607,10 @@ export default function App() {
         <textarea value={profile.bio || ''} onChange={(e) => setProfile((p) => ({ ...p, bio: e.target.value }))} rows={3} />
         <label>Interests</label>
         <div className="check-grid">
-          {interests.map((i) => (
+          {(master[CATEGORY_KEYS.interest] || []).map((i) => (
             <label key={i.id} className="check-item">
               <input type="checkbox" checked={profile.interests.includes(i.id)} onChange={() => toggleInterest(i.id)} />
-              <span>{i.key}</span>
+              <span>{itemLabel(i)}</span>
             </label>
           ))}
         </div>
@@ -389,15 +618,16 @@ export default function App() {
       </section>
 
       <section className="panel">
-        <h2>Pets</h2>
+        <h2>My Pets</h2>
         <div className="pet-layout">
           <div className="pet-list">
             {pets.map((p) => (
               <div key={p.id} className="pet-card">
                 <div>
                   <strong>{p.name}</strong>
-                  <p className="muted">{p.species} / {p.breed_id ? (breedMap[p.breed_id] || p.breed_id) : '-'}</p>
-                  <p className="muted">Diseases: {(p.diseases || []).map((d) => diseaseMap[d.disease_id] || d.disease_id).join(', ') || '-'}</p>
+                  <p className="muted">{p.pet_type_id ? itemLabel(masterById[p.pet_type_id]) : '-'} / {p.breed_id ? itemLabel(masterById[p.breed_id]) : '-'}</p>
+                  <p className="muted">Gender: {p.gender_id ? itemLabel(masterById[p.gender_id]) : '-'}</p>
+                  <p className="muted">Microchip: {p.microchip_no || '-'}</p>
                 </div>
                 <div className="row">
                   <button onClick={() => startEditPet(p)}>Edit</button>
@@ -409,70 +639,59 @@ export default function App() {
 
           <div className="pet-form">
             <h3>{petForm.id ? 'Edit Pet' : 'Add Pet'}</h3>
+
             <div className="grid2">
               <div>
                 <label>Name *</label>
                 <input value={petForm.name} onChange={(e) => setPetForm((f) => ({ ...f, name: e.target.value }))} />
               </div>
-              <div>
-                <label>Species *</label>
-                <select value={petForm.species} onChange={(e) => setPetForm((f) => ({ ...f, species: e.target.value as PetForm['species'] }))}>
-                  <option value="dog">dog</option>
-                  <option value="cat">cat</option>
-                  <option value="other">other</option>
-                </select>
-              </div>
-              <div>
-                <label>Breed</label>
-                <select value={petForm.breed_id} onChange={(e) => setPetForm((f) => ({ ...f, breed_id: e.target.value }))}>
-                  <option value="">Select breed</option>
-                  {breeds.map((b) => <option key={b.id} value={b.id}>{b.key}</option>)}
-                </select>
-              </div>
+              {renderSingleSelect('Pet Type *', 'pet_type_id', master[CATEGORY_KEYS.pet_type] || [])}
+              {renderSingleSelect('Breed', 'breed_id', filteredBreeds)}
+              {renderSingleSelect('Gender', 'gender_id', master[CATEGORY_KEYS.pet_gender] || [])}
+              {renderSingleSelect('Neutered Status', 'neuter_status_id', master[CATEGORY_KEYS.neuter_status] || [])}
+              {renderSingleSelect('Life Stage', 'life_stage_id', master[CATEGORY_KEYS.life_stage] || [])}
+              {renderSingleSelect('Body Size', 'body_size_id', master[CATEGORY_KEYS.body_size] || [])}
+              {renderSingleSelect('Country', 'country_id', countries.map((c) => ({ id: c.id, key: c.code, ko_name: c.ko_name })))}
+              {renderSingleSelect('Medication Status', 'medication_status_id', master[CATEGORY_KEYS.medication_status] || [])}
+              {renderSingleSelect('Weight Unit', 'weight_unit_id', master[CATEGORY_KEYS.weight_unit] || [])}
+              {renderSingleSelect('Health Condition', 'health_condition_level_id', master[CATEGORY_KEYS.health_condition_level] || [])}
+              {renderSingleSelect('Activity Level', 'activity_level_id', master[CATEGORY_KEYS.activity_level] || [])}
+              {renderSingleSelect('Diet Type', 'diet_type_id', master[CATEGORY_KEYS.diet_type] || [])}
+              {renderSingleSelect('Living Style', 'living_style_id', master[CATEGORY_KEYS.living_style] || [])}
+              {renderSingleSelect('Ownership Type', 'ownership_type_id', master[CATEGORY_KEYS.ownership_type] || [])}
+              {renderSingleSelect('Coat Length', 'coat_length_id', master[CATEGORY_KEYS.coat_length] || [])}
+              {renderSingleSelect('Coat Type', 'coat_type_id', master[CATEGORY_KEYS.coat_type] || [])}
+              {renderSingleSelect('Grooming Cycle', 'grooming_cycle_id', master[CATEGORY_KEYS.grooming_cycle] || [])}
               <div>
                 <label>Birth Date</label>
                 <input type="date" value={petForm.birth_date} onChange={(e) => setPetForm((f) => ({ ...f, birth_date: e.target.value }))} />
               </div>
               <div>
-                <label>Gender</label>
-                <select value={petForm.gender} onChange={(e) => setPetForm((f) => ({ ...f, gender: e.target.value as PetForm['gender'] }))}>
-                  <option value="">-</option>
-                  <option value="male">male</option>
-                  <option value="female">female</option>
-                  <option value="unknown">unknown</option>
-                </select>
-              </div>
-              <div>
-                <label>Weight (kg)</label>
+                <label>Weight</label>
                 <input type="number" step="0.1" value={petForm.weight_kg} onChange={(e) => setPetForm((f) => ({ ...f, weight_kg: e.target.value }))} />
               </div>
               <div>
-                <label>Microchip No</label>
-                <input value={petForm.microchip_no} onChange={(e) => setPetForm((f) => ({ ...f, microchip_no: e.target.value }))} />
-              </div>
-              <div>
-                <label>Avatar URL</label>
-                <input value={petForm.avatar_url} onChange={(e) => setPetForm((f) => ({ ...f, avatar_url: e.target.value }))} />
+                <label>Microchip Number (Unique)</label>
+                <input value={petForm.microchip_no} onChange={(e) => setPetForm((f) => ({ ...f, microchip_no: e.target.value }))} onBlur={() => void checkMicrochip()} />
+                {microchipMessage && <p className="muted">{microchipMessage}</p>}
               </div>
             </div>
-            <label className="check-item">
-              <input type="checkbox" checked={petForm.is_neutered} onChange={(e) => setPetForm((f) => ({ ...f, is_neutered: e.target.checked }))} />
-              <span>Neutered</span>
-            </label>
 
-            <label>Diseases</label>
-            <div className="check-grid">
-              {diseases.map((d) => (
-                <label key={d.id} className="check-item">
-                  <input type="checkbox" checked={petForm.disease_ids.includes(d.id)} onChange={() => togglePetDisease(d.id)} />
-                  <span>{d.key}</span>
-                </label>
-              ))}
-            </div>
+            {renderMultiSelect('Primary Color', 'color_ids', master[CATEGORY_KEYS.pet_color] || [])}
+            {renderMultiSelect('Allergy', 'allergy_ids', master[CATEGORY_KEYS.allergy_type] || [])}
+            {renderMultiSelect('Disease History', 'disease_history_ids', master[CATEGORY_KEYS.disease_type] || [])}
+            {renderMultiSelect('Symptom Tag', 'symptom_tag_ids', master[CATEGORY_KEYS.symptom_type] || [])}
+            {renderMultiSelect('Vaccination Status', 'vaccination_ids', master[CATEGORY_KEYS.vaccination_type] || [])}
+            {renderMultiSelect('Temperament', 'temperament_ids', master[CATEGORY_KEYS.temperament_type] || [])}
+
+            <label>Notes</label>
+            <textarea rows={2} value={petForm.notes} onChange={(e) => setPetForm((f) => ({ ...f, notes: e.target.value }))} />
+            <label>Intro</label>
+            <textarea rows={2} value={petForm.intro_text} onChange={(e) => setPetForm((f) => ({ ...f, intro_text: e.target.value }))} />
 
             <div className="row">
               <button disabled={loading} onClick={() => void savePet()}>{petForm.id ? 'Update Pet' : 'Create Pet'}</button>
-              {petForm.id && <button onClick={() => { setPetForm(emptyPetForm); setEditingPetDiseaseIds([]); }}>Cancel Edit</button>}
+              {petForm.id && <button onClick={() => { setPetForm(emptyPetForm); setMicrochipMessage(''); }}>Cancel Edit</button>}
             </div>
           </div>
         </div>
