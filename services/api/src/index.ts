@@ -113,6 +113,12 @@ async function dispatch(request: Request, env: Env, url: URL): Promise<Response>
     return handleBookings(request, env, url);
   }
 
+  // S10: 친구/연결
+  if (path.startsWith('/api/v1/friends')) {
+    const { handleFriends } = await import('./routes/friends');
+    return handleFriends(request, env, url);
+  }
+
   // ─── Admin 전용 (/api/v1/admin/*) ─────────────────────────────────
   if (path.startsWith('/api/v1/admin')) {
     return dispatchAdmin(request, env, url, path);

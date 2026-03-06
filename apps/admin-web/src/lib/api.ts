@@ -167,6 +167,56 @@ export const api = {
         method: 'POST', body: JSON.stringify({ currency_id: currencyId, is_default: isDefault }),
       }),
   },
+  feeds: {
+    list: (params?: { feed_type?: string; business_category_id?: string; pet_type_id?: string; tab?: string; limit?: number }) => {
+      const q = new URLSearchParams();
+      if (params?.feed_type) q.set('feed_type', params.feed_type);
+      if (params?.business_category_id) q.set('business_category_id', params.business_category_id);
+      if (params?.pet_type_id) q.set('pet_type_id', params.pet_type_id);
+      if (params?.tab) q.set('tab', params.tab);
+      if (params?.limit) q.set('limit', String(params.limit));
+      const suffix = q.toString() ? `?${q.toString()}` : '';
+      return request<{ feeds: FeedPost[] }>(`/api/v1/feeds${suffix}`);
+    },
+    like: (feedId: string) =>
+      request<{ liked: boolean }>(`/api/v1/feeds/${feedId}/like`, { method: 'POST' }),
+    unlike: (feedId: string) =>
+      request<{ liked: boolean }>(`/api/v1/feeds/${feedId}/like`, { method: 'DELETE' }),
+    comments: {
+      list: (feedId: string) =>
+        request<{ comments: FeedComment[] }>(`/api/v1/feeds/${feedId}/comments`),
+      create: (feedId: string, content: string, parent_comment_id?: string | null) =>
+        request<{ id: string }>(`/api/v1/feeds/${feedId}/comments`, {
+          method: 'POST',
+          body: JSON.stringify({ content, parent_comment_id: parent_comment_id ?? null }),
+        }),
+      update: (feedId: string, commentId: string, content: string) =>
+        request<{ updated: boolean }>(`/api/v1/feeds/${feedId}/comments/${commentId}`, {
+          method: 'PUT',
+          body: JSON.stringify({ content }),
+        }),
+      remove: (feedId: string, commentId: string) =>
+        request<{ deleted: boolean }>(`/api/v1/feeds/${feedId}/comments/${commentId}`, { method: 'DELETE' }),
+    },
+  },
+  friends: {
+    list: () =>
+      request<{ friends: FriendConnection[] }>('/api/v1/friends'),
+    requests: {
+      list: (scope: 'inbox' | 'outbox' | 'all' = 'inbox') =>
+        request<{ requests: FriendRequest[]; scope: string }>(`/api/v1/friends/requests?scope=${scope}`),
+      create: (data: { receiver_user_id?: string; receiver_email?: string }) =>
+        request<{ request_id: string | null; status: string }>('/api/v1/friends/requests', {
+          method: 'POST',
+          body: JSON.stringify(data),
+        }),
+      respond: (requestId: string, action: 'accept' | 'reject' | 'block') =>
+        request<{ request_id: string; status: string }>(`/api/v1/friends/requests/${requestId}/respond`, {
+          method: 'POST',
+          body: JSON.stringify({ action }),
+        }),
+    },
+  },
   currencies: {
     list: () => request<Currency[]>('/api/v1/admin/currencies'),
     create: (data: { code: string; symbol: string; name_key: string; decimal_places?: number }) =>
@@ -221,4 +271,65 @@ export interface Country {
 export interface Currency {
   id: string; code: string; symbol: string; name_key: string;
   decimal_places: number; is_active: number; created_at: string;
+}
+
+export interface FeedPost {
+  id: string;
+  feed_type: string;
+  author_user_id: string;
+  author_role: string;
+  author_email?: string | null;
+  pet_id?: string | null;
+  pet_name?: string | null;
+  business_category_id?: string | null;
+  business_category_key?: string | null;
+  business_category_ko?: string | null;
+  pet_type_id?: string | null;
+  pet_type_key?: string | null;
+  pet_type_ko?: string | null;
+  booking_guardian_email?: string | null;
+  booking_supplier_email?: string | null;
+  booking_guardian_id?: string | null;
+  booking_supplier_id?: string | null;
+  visibility_scope: string;
+  caption?: string | null;
+  media_urls: string[] | string;
+  tags: string[] | string;
+  like_count?: number;
+  comment_count?: number;
+  liked_by_me?: number;
+  created_at: string;
+}
+
+export interface FeedComment {
+  id: string;
+  post_id: string;
+  author_user_id: string;
+  author_email?: string | null;
+  parent_comment_id?: string | null;
+  content: string;
+  status: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface FriendRequest {
+  id: string;
+  requester_user_id: string;
+  requester_email?: string | null;
+  receiver_user_id: string;
+  receiver_email?: string | null;
+  status: string;
+  created_at: string;
+  responded_at?: string | null;
+}
+
+export interface FriendConnection {
+  id: string;
+  relation_type: string;
+  status: string;
+  created_at: string;
+  friend_user_id: string;
+  friend_email: string;
+  friend_role: string;
 }

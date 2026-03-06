@@ -1,11 +1,450 @@
-// TODO: S10 슬라이스에서 구현
-// GET/POST /api/v1/feeds
-// POST /api/v1/feeds/from-completion (바이럴 루프 핵심)
-// POST/DELETE /api/v1/feeds/:id/like
-// GET/POST /api/v1/feeds/:id/comments
-import type { Env } from '../types';
-import { err } from '../types';
+import type { Env, JwtPayload } from '../types';
+import { ok, created, err, newId, now } from '../types';
+import { requireAuth, requireRole, verifyJwt } from '../middleware/auth';
 
-export function handleFeeds(_request: Request, _env: Env, _url: URL): Response {
-  return err('Not implemented yet — S10에서 구현 예정', 501);
+type FeedRow = Record<string, unknown>;
+
+function toJsonArray(value: unknown): string {
+  if (!Array.isArray(value)) return '[]';
+  return JSON.stringify(value.filter((x) => typeof x === 'string').map((x) => (x as string).trim()).filter(Boolean));
+}
+
+function parseJsonArray(raw: unknown): string[] {
+  if (Array.isArray(raw)) return raw.filter((x) => typeof x === 'string') as string[];
+  if (typeof raw !== 'string' || !raw.trim()) return [];
+  try {
+    const parsed = JSON.parse(raw) as unknown;
+    if (!Array.isArray(parsed)) return [];
+    return parsed.filter((x) => typeof x === 'string') as string[];
+  } catch {
+    return [];
+  }
+}
+
+async function optionalAuth(request: Request, env: Env): Promise<JwtPayload | null> {
+  const auth = request.headers.get('Authorization');
+  if (!auth?.startsWith('Bearer ')) return null;
+  try {
+    return await verifyJwt(auth.slice(7), env.JWT_SECRET);
+  } catch {
+    return null;
+  }
+}
+
+async function friendSet(env: Env, userId: string): Promise<Set<string>> {
+  const rows = await env.DB.prepare(
+    `SELECT user_a_id, user_b_id FROM friendships
+     WHERE status = 'active' AND (user_a_id = ? OR user_b_id = ?)`
+  ).bind(userId, userId).all<{ user_a_id: string; user_b_id: string }>();
+  const set = new Set<string>();
+  for (const r of rows.results) {
+    set.add(r.user_a_id === userId ? r.user_b_id : r.user_a_id);
+  }
+  return set;
+}
+
+function canViewFeed(row: FeedRow, me: JwtPayload | null, friends: Set<string>): boolean {
+  const status = String(row.status || '');
+  if (status !== 'published') return false;
+  const isPublic = Number(row.is_public || 0) === 1;
+  const visibility = String(row.visibility_scope || 'public');
+  const author = String(row.author_user_id || '');
+
+  if (!me) return isPublic;
+  if (author === me.sub) return true;
+  if (visibility === 'public' && isPublic) return true;
+  if (visibility === 'friends_only' && friends.has(author)) return true;
+  if (visibility === 'connected_only' && friends.has(author)) return true;
+  if (visibility === 'booking_related_only') {
+    const bookingGuardian = String(row.booking_guardian_id || '');
+    const bookingSupplier = String(row.booking_supplier_id || '');
+    if (bookingGuardian === me.sub || bookingSupplier === me.sub) return true;
+    if (friends.has(author)) return true;
+  }
+  return false;
+}
+
+function normalizeFeedRow(row: FeedRow): FeedRow {
+  return {
+    ...row,
+    media_urls: parseJsonArray(row.media_urls),
+    tags: parseJsonArray(row.tags),
+  };
+}
+
+async function listFeeds(request: Request, env: Env, url: URL): Promise<Response> {
+  const me = await optionalAuth(request, env);
+  const friends = me ? await friendSet(env, me.sub) : new Set<string>();
+
+  const feedType = (url.searchParams.get('feed_type') || '').trim();
+  const businessCategoryId = (url.searchParams.get('business_category_id') || '').trim();
+  const petTypeId = (url.searchParams.get('pet_type_id') || '').trim();
+  const tab = (url.searchParams.get('tab') || 'all').trim();
+  const limit = Math.min(100, Math.max(1, Number(url.searchParams.get('limit') || 30)));
+
+  const where: string[] = [];
+  const params: (string | number)[] = [];
+  if (feedType) { where.push('f.feed_type = ?'); params.push(feedType); }
+  if (businessCategoryId) { where.push('f.business_category_id = ?'); params.push(businessCategoryId); }
+  if (petTypeId) { where.push('f.pet_type_id = ?'); params.push(petTypeId); }
+
+  const rows = await env.DB.prepare(
+    `SELECT
+      f.*,
+      u.email as author_email,
+      p.name as pet_name,
+      bc.key as business_category_key,
+      pt.key as pet_type_key,
+      bct.ko as business_category_ko,
+      ptt.ko as pet_type_ko,
+      bg.email as booking_guardian_email,
+      bs.email as booking_supplier_email,
+      b.guardian_id as booking_guardian_id,
+      b.supplier_id as booking_supplier_id,
+      CASE WHEN ? IS NULL THEN 0 ELSE EXISTS(
+        SELECT 1 FROM feed_likes fl2 WHERE fl2.feed_id = f.id AND fl2.user_id = ?
+      ) END as liked_by_me,
+      (SELECT COUNT(*) FROM feed_likes fl WHERE fl.feed_id = f.id) as like_count,
+      (SELECT COUNT(*) FROM feed_comments fc WHERE fc.post_id = f.id AND fc.status = 'active') as comment_count
+     FROM feeds f
+     LEFT JOIN users u ON u.id = f.author_user_id
+     LEFT JOIN pets p ON p.id = f.pet_id
+     LEFT JOIN master_items bc ON bc.id = f.business_category_id
+     LEFT JOIN master_items pt ON pt.id = f.pet_type_id
+     LEFT JOIN bookings b ON b.id = f.booking_id
+     LEFT JOIN users bg ON bg.id = b.guardian_id
+     LEFT JOIN users bs ON bs.id = b.supplier_id
+     LEFT JOIN master_categories bcc ON bcc.id = bc.category_id
+     LEFT JOIN i18n_translations bct
+       ON bct.key = CASE
+         WHEN bcc.key LIKE 'master.%' THEN (bcc.key || '.' || bc.key)
+         ELSE ('master.' || bcc.key || '.' || bc.key)
+       END
+     LEFT JOIN master_categories ptc ON ptc.id = pt.category_id
+     LEFT JOIN i18n_translations ptt
+       ON ptt.key = CASE
+         WHEN ptc.key LIKE 'master.%' THEN (ptc.key || '.' || pt.key)
+         ELSE ('master.' || ptc.key || '.' || pt.key)
+       END
+     ${where.length ? `WHERE ${where.join(' AND ')}` : ''}
+     ORDER BY f.created_at DESC
+     LIMIT ?`
+  ).bind(me?.sub ?? null, me?.sub ?? null, ...params, limit).all<FeedRow>();
+
+  let data = rows.results.map(normalizeFeedRow).filter((r) => canViewFeed(r, me, friends));
+
+  if (me && tab === 'friends') {
+    data = data.filter((r) => friends.has(String(r.author_user_id || '')));
+  }
+
+  return ok({ feeds: data, filters: { feed_type: feedType || null, business_category_id: businessCategoryId || null, pet_type_id: petTypeId || null, tab } });
+}
+
+async function createGuardianPost(request: Request, env: Env): Promise<Response> {
+  const auth = await requireAuth(request, env);
+  if (auth instanceof Response) return auth;
+  const me = auth as JwtPayload;
+
+  let body: Record<string, unknown>;
+  try { body = await request.json() as Record<string, unknown>; } catch { return err('Invalid JSON'); }
+
+  const feedType = (String(body.feed_type || 'guardian_post')).trim();
+  const visibility = (String(body.visibility_scope || 'public')).trim();
+  const caption = typeof body.caption === 'string' ? body.caption.trim() : null;
+  const mediaUrls = toJsonArray(body.media_urls);
+  const tags = toJsonArray(body.tags);
+
+  if (!['guardian_post', 'health_update', 'supplier_story', 'pet_milestone'].includes(feedType)) {
+    return err('invalid feed_type');
+  }
+
+  const id = newId();
+  const publicVisible = visibility === 'public' ? 1 : 0;
+  await env.DB.prepare(
+    `INSERT INTO feeds (
+      id, feed_type, author_user_id, author_role, pet_id, business_category_id, pet_type_id,
+      visibility_scope, booking_id, supplier_id, related_service_id,
+      caption, media_urls, tags,
+      publish_request_status, is_public, status, created_at, updated_at
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'none', ?, 'published', ?, ?)`
+  ).bind(
+    id,
+    feedType,
+    me.sub,
+    me.role,
+    body.pet_id ?? null,
+    body.business_category_id ?? null,
+    body.pet_type_id ?? null,
+    visibility,
+    body.booking_id ?? null,
+    body.supplier_id ?? null,
+    body.related_service_id ?? null,
+    caption,
+    mediaUrls,
+    tags,
+    publicVisible,
+    now(),
+    now(),
+  ).run();
+
+  return created({ id });
+}
+
+async function requestBookingCompletedFeed(request: Request, env: Env): Promise<Response> {
+  const auth = await requireAuth(request, env);
+  if (auth instanceof Response) return auth;
+  const me = auth as JwtPayload;
+  const roleErr = requireRole(me, ['provider']);
+  if (roleErr) return roleErr;
+
+  let body: Record<string, unknown>;
+  try { body = await request.json() as Record<string, unknown>; } catch { return err('Invalid JSON'); }
+  const bookingId = String(body.booking_id || '').trim();
+  if (!bookingId) return err('booking_id required');
+
+  const booking = await env.DB.prepare(
+    `SELECT * FROM bookings WHERE id = ? AND supplier_id = ?`
+  ).bind(bookingId, me.sub).first<Record<string, unknown>>();
+  if (!booking) return err('booking not found', 404);
+  if (!['service_completed', 'publish_requested', 'publish_rejected'].includes(String(booking.status || ''))) {
+    return err('booking must be service_completed before publish request');
+  }
+
+  const completionId = newId();
+  const mediaUrls = toJsonArray(body.media_urls);
+  const memo = typeof body.completion_memo === 'string' ? body.completion_memo.trim() : null;
+
+  await env.DB.prepare(
+    `INSERT INTO booking_completion_contents (
+      id, booking_id, supplier_id, media_urls, completion_memo, publish_status, requested_at, created_at, updated_at
+    ) VALUES (?, ?, ?, ?, ?, 'pending', ?, ?, ?)
+    ON CONFLICT(booking_id) DO UPDATE SET
+      media_urls = excluded.media_urls,
+      completion_memo = excluded.completion_memo,
+      publish_status = 'pending',
+      requested_at = excluded.requested_at,
+      updated_at = excluded.updated_at`
+  ).bind(completionId, bookingId, me.sub, mediaUrls, memo, now(), now(), now()).run();
+
+  let feed = await env.DB.prepare(
+    `SELECT id FROM feeds WHERE booking_id = ? AND feed_type = 'booking_completed'`
+  ).bind(bookingId).first<{ id: string }>();
+
+  if (!feed) {
+    const feedId = newId();
+    await env.DB.prepare(
+      `INSERT INTO feeds (
+        id, feed_type, author_user_id, author_role, pet_id, business_category_id, pet_type_id,
+        visibility_scope, booking_id, supplier_id, related_service_id,
+        caption, media_urls, tags, publish_request_status, is_public, status, created_at, updated_at
+      ) VALUES (?, 'booking_completed', ?, 'provider', ?, ?, ?, 'connected_only', ?, ?, ?, ?, ?, '[]', 'pending', 0, 'hidden', ?, ?)`
+    ).bind(
+      feedId,
+      me.sub,
+      booking.pet_id ?? null,
+      body.business_category_id ?? booking.business_category_id ?? null,
+      body.pet_type_id ?? null,
+      bookingId,
+      me.sub,
+      booking.service_id ?? null,
+      memo,
+      mediaUrls,
+      now(),
+      now(),
+    ).run();
+    feed = { id: feedId };
+  } else {
+    await env.DB.prepare(
+      `UPDATE feeds SET
+        pet_id = COALESCE(?, pet_id),
+        business_category_id = COALESCE(?, business_category_id),
+        pet_type_id = COALESCE(?, pet_type_id),
+        caption = ?,
+        media_urls = ?,
+        publish_request_status = 'pending',
+        visibility_scope = 'connected_only',
+        is_public = 0,
+        status = 'hidden',
+        updated_at = ?
+      WHERE id = ?`
+    ).bind(
+      booking.pet_id ?? null,
+      body.business_category_id ?? booking.business_category_id ?? null,
+      body.pet_type_id ?? null,
+      memo,
+      mediaUrls,
+      now(),
+      feed.id,
+    ).run();
+  }
+
+  await env.DB.prepare(`UPDATE bookings SET status = 'publish_requested', updated_at = ? WHERE id = ?`).bind(now(), bookingId).run();
+
+  return ok({ feed_id: feed.id, booking_id: bookingId, publish_request_status: 'pending' });
+}
+
+async function approveBookingCompletedFeed(request: Request, env: Env, feedId: string): Promise<Response> {
+  const auth = await requireAuth(request, env);
+  if (auth instanceof Response) return auth;
+  const me = auth as JwtPayload;
+  const roleErr = requireRole(me, ['guardian']);
+  if (roleErr) return roleErr;
+
+  let body: { approved?: boolean; action?: string; visibility_scope?: string };
+  try { body = await request.json() as { approved?: boolean; action?: string; visibility_scope?: string }; }
+  catch { return err('Invalid JSON'); }
+
+  const feed = await env.DB.prepare(`SELECT * FROM feeds WHERE id = ? AND feed_type = 'booking_completed'`).bind(feedId).first<Record<string, unknown>>();
+  if (!feed) return err('feed not found', 404);
+
+  const booking = await env.DB.prepare(`SELECT * FROM bookings WHERE id = ?`).bind(feed.booking_id ?? null).first<Record<string, unknown>>();
+  if (!booking) return err('booking not found', 404);
+  if (String(booking.guardian_id) !== me.sub) return err('forbidden', 403);
+
+  const approved = body.action ? body.action === 'approve' : !!body.approved;
+  if (approved) {
+    const visibility = (body.visibility_scope || 'public').trim();
+    await env.DB.prepare(
+      `UPDATE feeds
+       SET publish_request_status = 'approved',
+           visibility_scope = ?,
+           is_public = CASE WHEN ? = 'public' THEN 1 ELSE 0 END,
+           status = 'published',
+           updated_at = ?
+       WHERE id = ?`
+    ).bind(visibility, visibility, now(), feedId).run();
+
+    await env.DB.prepare(
+      `UPDATE booking_completion_contents
+       SET publish_status = 'approved', responded_at = ?, responded_by_guardian_id = ?, updated_at = ?
+       WHERE booking_id = ?`
+    ).bind(now(), me.sub, now(), booking.id).run();
+
+    await env.DB.prepare(`UPDATE bookings SET status = 'publish_approved', updated_at = ? WHERE id = ?`).bind(now(), booking.id).run();
+    return ok({ approved: true, feed_id: feedId });
+  }
+
+  await env.DB.prepare(
+    `UPDATE feeds
+     SET publish_request_status = 'rejected', is_public = 0, status = 'hidden', updated_at = ?
+     WHERE id = ?`
+  ).bind(now(), feedId).run();
+
+  await env.DB.prepare(
+    `UPDATE booking_completion_contents
+     SET publish_status = 'rejected', responded_at = ?, responded_by_guardian_id = ?, updated_at = ?
+     WHERE booking_id = ?`
+  ).bind(now(), me.sub, now(), booking.id).run();
+
+  await env.DB.prepare(`UPDATE bookings SET status = 'publish_rejected', updated_at = ? WHERE id = ?`).bind(now(), booking.id).run();
+  return ok({ approved: false, feed_id: feedId });
+}
+
+async function likeFeed(request: Request, env: Env, feedId: string): Promise<Response> {
+  const auth = await requireAuth(request, env);
+  if (auth instanceof Response) return auth;
+  const me = auth as JwtPayload;
+
+  if (request.method === 'POST') {
+    await env.DB.prepare(`INSERT OR IGNORE INTO feed_likes (id, feed_id, user_id, created_at) VALUES (?, ?, ?, ?)`)
+      .bind(newId(), feedId, me.sub, now()).run();
+    return ok({ liked: true });
+  }
+
+  await env.DB.prepare(`DELETE FROM feed_likes WHERE feed_id = ? AND user_id = ?`).bind(feedId, me.sub).run();
+  return ok({ liked: false });
+}
+
+async function listComments(env: Env, feedId: string): Promise<Response> {
+  const rows = await env.DB.prepare(
+    `SELECT fc.*, u.email as author_email
+     FROM feed_comments fc
+     LEFT JOIN users u ON u.id = fc.author_user_id
+     WHERE fc.post_id = ? AND fc.status = 'active'
+     ORDER BY fc.created_at ASC`
+  ).bind(feedId).all<Record<string, unknown>>();
+  return ok({ comments: rows.results });
+}
+
+async function createComment(request: Request, env: Env, feedId: string): Promise<Response> {
+  const auth = await requireAuth(request, env);
+  if (auth instanceof Response) return auth;
+  const me = auth as JwtPayload;
+
+  let body: { content?: string; parent_comment_id?: string | null };
+  try { body = await request.json() as { content?: string; parent_comment_id?: string | null }; }
+  catch { return err('Invalid JSON'); }
+
+  const content = (body.content || '').trim();
+  if (!content) return err('content required');
+
+  const id = newId();
+  await env.DB.prepare(
+    `INSERT INTO feed_comments (id, post_id, author_user_id, parent_comment_id, content, status, created_at, updated_at)
+     VALUES (?, ?, ?, ?, ?, 'active', ?, ?)`
+  ).bind(id, feedId, me.sub, body.parent_comment_id ?? null, content, now(), now()).run();
+
+  return created({ id });
+}
+
+async function updateComment(request: Request, env: Env, feedId: string, commentId: string): Promise<Response> {
+  const auth = await requireAuth(request, env);
+  if (auth instanceof Response) return auth;
+  const me = auth as JwtPayload;
+
+  const row = await env.DB.prepare(`SELECT author_user_id FROM feed_comments WHERE id = ? AND post_id = ?`).bind(commentId, feedId).first<{ author_user_id: string }>();
+  if (!row) return err('comment not found', 404);
+  if (row.author_user_id !== me.sub) return err('forbidden', 403);
+
+  let body: { content?: string };
+  try { body = await request.json() as { content?: string }; } catch { return err('Invalid JSON'); }
+  const content = (body.content || '').trim();
+  if (!content) return err('content required');
+
+  await env.DB.prepare(`UPDATE feed_comments SET content = ?, updated_at = ? WHERE id = ?`).bind(content, now(), commentId).run();
+  return ok({ updated: true });
+}
+
+async function deleteComment(request: Request, env: Env, feedId: string, commentId: string): Promise<Response> {
+  const auth = await requireAuth(request, env);
+  if (auth instanceof Response) return auth;
+  const me = auth as JwtPayload;
+
+  const row = await env.DB.prepare(`SELECT author_user_id FROM feed_comments WHERE id = ? AND post_id = ?`).bind(commentId, feedId).first<{ author_user_id: string }>();
+  if (!row) return err('comment not found', 404);
+  if (row.author_user_id !== me.sub) return err('forbidden', 403);
+
+  await env.DB.prepare(`UPDATE feed_comments SET status = 'deleted', updated_at = ? WHERE id = ?`).bind(now(), commentId).run();
+  return ok({ deleted: true });
+}
+
+export async function handleFeeds(request: Request, env: Env, url: URL): Promise<Response> {
+  const sub = url.pathname.replace('/api/v1/feeds', '');
+
+  if ((sub === '' || sub === '/') && request.method === 'GET') return listFeeds(request, env, url);
+  if ((sub === '' || sub === '/') && request.method === 'POST') return createGuardianPost(request, env);
+
+  if ((sub === '/booking-completed/request' || sub === '/booking-completed/request/') && request.method === 'POST') {
+    return requestBookingCompletedFeed(request, env);
+  }
+
+  const approveMatch = sub.match(/^\/([^/]+)\/approve$/);
+  if (approveMatch && request.method === 'POST') {
+    return approveBookingCompletedFeed(request, env, approveMatch[1]);
+  }
+
+  const likeMatch = sub.match(/^\/([^/]+)\/like$/);
+  if (likeMatch && (request.method === 'POST' || request.method === 'DELETE')) {
+    return likeFeed(request, env, likeMatch[1]);
+  }
+
+  const commentsMatch = sub.match(/^\/([^/]+)\/comments$/);
+  if (commentsMatch && request.method === 'GET') return listComments(env, commentsMatch[1]);
+  if (commentsMatch && request.method === 'POST') return createComment(request, env, commentsMatch[1]);
+
+  const commentItemMatch = sub.match(/^\/([^/]+)\/comments\/([^/]+)$/);
+  if (commentItemMatch && request.method === 'PUT') return updateComment(request, env, commentItemMatch[1], commentItemMatch[2]);
+  if (commentItemMatch && request.method === 'DELETE') return deleteComment(request, env, commentItemMatch[1], commentItemMatch[2]);
+
+  return err('Not found', 404);
 }
