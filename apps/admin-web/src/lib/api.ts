@@ -118,7 +118,7 @@ export const api = {
   master: {
     categories: {
       list: () => request<MasterCategory[]>('/api/v1/admin/master/categories'),
-      create: (data: { key: string; sort_order?: number; translations?: Record<string, string> }) =>
+      create: (data: { sort_order?: number; translations?: Record<string, string> }) =>
         request<MasterCategory>('/api/v1/admin/master/categories', { method: 'POST', body: JSON.stringify(data) }),
       update: (id: string, data: Partial<MasterCategory>) =>
         request<MasterCategory>(`/api/v1/admin/master/categories/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
@@ -172,6 +172,7 @@ export interface I18nRow {
 
 export interface MasterCategory {
   id: string; key: string; sort_order: number; is_active: number;
+  ko_name?: string | null;
   created_at: string; updated_at: string;
 }
 

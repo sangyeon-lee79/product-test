@@ -11,6 +11,34 @@ import type { JwtPayload } from '../types';
 
 const LANGS = ['ko','en','ja','zh_cn','zh_tw','es','fr','de','pt','vi','th','id_lang','ar'] as const;
 
+function randomToken(length = 6): string {
+  const chars = 'abcdefghijklmnopqrstuvwxyz0123456789';
+  const bytes = new Uint8Array(length);
+  crypto.getRandomValues(bytes);
+  let out = '';
+  for (let i = 0; i < length; i++) out += chars[bytes[i] % chars.length];
+  return out;
+}
+
+async function generateCategoryKey(env: Env): Promise<string> {
+  for (let i = 0; i < 10; i++) {
+    const candidate = `master.${randomToken(6)}`;
+    const exists = await env.DB.prepare('SELECT id FROM master_categories WHERE key = ?').bind(candidate).first();
+    if (!exists) return candidate;
+  }
+  throw new Error('Failed to generate unique category key');
+}
+
+function categoryI18nKey(categoryKey: string): string {
+  return categoryKey.startsWith('master.') ? categoryKey : `master.${categoryKey}`;
+}
+
+function itemI18nKey(categoryKey: string, itemKey: string): string {
+  return categoryKey.startsWith('master.')
+    ? `${categoryKey}.${itemKey}`
+    : `master.${categoryKey}.${itemKey}`;
+}
+
 async function upsertI18n(env: Env, i18nKey: string, translations: Record<string, string>) {
   const existing = await env.DB.prepare('SELECT id FROM i18n_translations WHERE key = ?').bind(i18nKey).first<{ id: string }>();
   const lv = LANGS.map(l => translations[l] ?? null);
@@ -72,7 +100,18 @@ export async function handleMaster(request: Request, env: Env, url: URL): Promis
       const id = idMatch?.[1];
 
       if (request.method === 'GET' && !id) {
-        const rows = await env.DB.prepare('SELECT * FROM master_categories ORDER BY sort_order, key').all();
+        const rows = await env.DB.prepare(
+          `SELECT
+             mc.*,
+             tr.ko AS ko_name
+           FROM master_categories mc
+           LEFT JOIN i18n_translations tr
+             ON tr.key = CASE
+               WHEN mc.key LIKE 'master.%' THEN mc.key
+               ELSE ('master.' || mc.key)
+             END
+           ORDER BY mc.sort_order, mc.key`
+        ).all();
         return ok(rows.results);
       }
       if (request.method === 'GET' && id) {
@@ -81,19 +120,20 @@ export async function handleMaster(request: Request, env: Env, url: URL): Promis
         return ok(row);
       }
       if (request.method === 'POST') {
-        let body: { key: string; sort_order?: number; translations?: Record<string, string> };
+        let body: { sort_order?: number; translations?: Record<string, string> };
         try { body = await request.json() as typeof body; } catch { return err('Invalid JSON'); }
-        if (!body.key) return err('key required');
-        const exists = await env.DB.prepare('SELECT id FROM master_categories WHERE key = ?').bind(body.key).first();
-        if (exists) return err('key already exists', 409, 'duplicate_key');
-        const row = { id: newId(), key: body.key, sort_order: body.sort_order ?? 0, is_active: 1, created_at: now(), updated_at: now() };
+        const koName = body.translations?.ko?.trim();
+        if (!koName) return err('ko translation required');
+
+        const autoKey = await generateCategoryKey(env);
+        const row = { id: newId(), key: autoKey, sort_order: body.sort_order ?? 0, is_active: 1, created_at: now(), updated_at: now() };
         await env.DB.prepare(
           'INSERT INTO master_categories (id,key,sort_order,is_active,created_at,updated_at) VALUES (?,?,?,?,?,?)'
         ).bind(row.id, row.key, row.sort_order, row.is_active, row.created_at, row.updated_at).run();
         if (body.translations && Object.values(body.translations).some(v => v)) {
-          await upsertI18n(env, `master.${body.key}`, body.translations);
+          await upsertI18n(env, categoryI18nKey(row.key), body.translations);
         }
-        return created(row);
+        return created({ ...row, ko_name: koName });
       }
       if (request.method === 'PUT' && id) {
         let body: { key?: string; sort_order?: number; is_active?: boolean };
@@ -157,7 +197,7 @@ export async function handleMaster(request: Request, env: Env, url: URL): Promis
         ).bind(row.id, row.category_id, row.key, row.parent_id, row.sort_order, row.is_active, row.metadata, row.created_at, row.updated_at).run();
         if (body.translations && Object.values(body.translations).some(v => v)) {
           const cat = await env.DB.prepare('SELECT key FROM master_categories WHERE id = ?').bind(body.category_id).first<{ key: string }>();
-          if (cat) await upsertI18n(env, `master.${cat.key}.${body.key}`, body.translations);
+          if (cat) await upsertI18n(env, itemI18nKey(cat.key, body.key), body.translations);
         }
         return created({ ...row, metadata: body.metadata ?? {} });
       }
