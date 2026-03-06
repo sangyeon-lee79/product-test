@@ -62,8 +62,15 @@ export default function MasterPage() {
     if (!koText) return;
     setTranslating(true);
     try {
-      const result = await api.i18n.translate(koText);
-      setTrans({ ...current, ...result.translations, ko: koText });
+      const result = await api.i18n.translate(koText, current);
+      const merged: Record<string, string> = { ...current, ko: koText };
+      for (const lang of SUPPORTED_LANGS) {
+        if (lang === 'ko') continue;
+        if ((current[lang] || '').trim()) continue;
+        const translated = result.translations[lang];
+        if (translated) merged[lang] = translated;
+      }
+      setTrans(merged);
     } catch (e) { setError(e instanceof Error ? e.message : 'Error'); }
     finally { setTranslating(false); }
   }
@@ -79,7 +86,7 @@ export default function MasterPage() {
         let translations: Record<string, string> = { ...catTrans, ko };
         const hasMissing = SUPPORTED_LANGS.some((lang) => lang !== 'ko' && !(translations[lang] || '').trim());
         if (hasMissing) {
-          const result = await api.i18n.translate(ko);
+          const result = await api.i18n.translate(ko, translations);
           translations = {
             ...result.translations,
             ...translations,
@@ -271,7 +278,6 @@ export default function MasterPage() {
                         style={{ fontSize: 13 }}
                         value={catTrans[lang] ?? ''}
                         onChange={e => setCatTrans(f => ({ ...f, [lang]: e.target.value }))}
-                        onBlur={() => { if (lang === 'ko' && catTrans.ko?.trim()) void autoTranslate(catTrans.ko.trim(), setCatTrans, catTrans); }}
                         placeholder={lang === 'ko' ? '한국어 표시명 입력 후 자동번역' : ''}
                       />
                     </div>

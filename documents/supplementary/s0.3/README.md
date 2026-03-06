@@ -66,3 +66,30 @@
 4. 코드 수정 시 점검 항목
 - 로그인 API(`POST /api/v1/auth/test-login`)와 i18n API(`GET /api/v1/i18n`)가 동일한 API Base를 사용하는지 확인.
 - 브라우저 Network 탭에서 실패 요청 URL이 `localhost`로 잘못 향하지 않는지 확인.
+
+---
+
+## 6. Google 자동번역 운영 규칙
+Admin 자동번역(`POST /api/v1/admin/i18n/translate`)은 Google Cloud Translation API를 사용한다.
+
+- 호출 시점: 화면 로딩 시 자동호출 금지. 저장 전 또는 관리자 버튼 클릭 시에만 호출.
+- source text: 항상 한국어(`ko`) 기준.
+- 저장 정책: 번역 결과는 DB에 저장하고 조회 시 저장값을 그대로 사용.
+- 재사용 정책: 동일한 한국어 원문은 `translation_memory` 캐시를 재사용.
+- 덮어쓰기 금지: 이미 관리자 입력값이 있는 언어는 자동번역으로 덮어쓰지 않음.
+- 실패 처리: 실패한 언어는 빈값 유지(관리자가 수동 입력 가능).
+- quota: 분당 요청/일일 문자수 제한을 적용.
+
+필수 환경 설정:
+1. Cloudflare Worker Secret
+- `GOOGLE_TRANSLATE_API_KEY`
+
+2. Cloudflare Worker Vars
+- `GOOGLE_TRANSLATE_RPM_LIMIT` (기본 60)
+- `GOOGLE_TRANSLATE_DAILY_CHAR_LIMIT` (기본 200000)
+
+예시:
+```bash
+cd services/api
+npx wrangler secret put GOOGLE_TRANSLATE_API_KEY
+```

@@ -11,6 +11,204 @@ import { requireAuth, requireRole } from '../middleware/auth';
 import type { JwtPayload } from '../types';
 
 const LANGS = ['ko','en','ja','zh_cn','zh_tw','es','fr','de','pt','vi','th','id_lang','ar'] as const;
+type Lang = typeof LANGS[number];
+type TargetLang = Exclude<Lang, 'ko'>;
+
+const TARGET_LANGS = LANGS.filter((l): l is TargetLang => l !== 'ko');
+const GOOGLE_LANG_MAP: Record<TargetLang, string> = {
+  en: 'en',
+  ja: 'ja',
+  zh_cn: 'zh-CN',
+  zh_tw: 'zh-TW',
+  es: 'es',
+  fr: 'fr',
+  de: 'de',
+  pt: 'pt',
+  vi: 'vi',
+  th: 'th',
+  id_lang: 'id',
+  ar: 'ar',
+};
+
+const DEFAULT_RPM_LIMIT = 60;
+const DEFAULT_DAILY_CHAR_LIMIT = 200000;
+
+type TranslationMap = Record<TargetLang, string>;
+
+interface TranslationMemoryRow {
+  source_ko: string;
+  en: string | null;
+  ja: string | null;
+  zh_cn: string | null;
+  zh_tw: string | null;
+  es: string | null;
+  fr: string | null;
+  de: string | null;
+  pt: string | null;
+  vi: string | null;
+  th: string | null;
+  id_lang: string | null;
+  ar: string | null;
+}
+
+function toInt(value: string | undefined, fallback: number): number {
+  const parsed = Number.parseInt(String(value ?? ''), 10);
+  return Number.isFinite(parsed) && parsed > 0 ? parsed : fallback;
+}
+
+function charLength(input: string): number {
+  return Array.from(input).length;
+}
+
+function getMinuteBucket(iso: string): string {
+  return `minute:${iso.slice(0, 16)}`;
+}
+
+function getDayBucket(iso: string): string {
+  return `day:${iso.slice(0, 10)}`;
+}
+
+async function consumeTranslateQuota(env: Env, chars: number): Promise<Response | null> {
+  const rpmLimit = toInt(env.GOOGLE_TRANSLATE_RPM_LIMIT, DEFAULT_RPM_LIMIT);
+  const dailyLimit = toInt(env.GOOGLE_TRANSLATE_DAILY_CHAR_LIMIT, DEFAULT_DAILY_CHAR_LIMIT);
+  const currentIso = now();
+
+  const minuteBucket = getMinuteBucket(currentIso);
+  const dayBucket = getDayBucket(currentIso);
+
+  const [minuteUsage, dayUsage] = await Promise.all([
+    env.DB.prepare('SELECT request_count FROM translation_quota_usage WHERE bucket_key = ?')
+      .bind(minuteBucket)
+      .first<{ request_count: number }>(),
+    env.DB.prepare('SELECT char_count FROM translation_quota_usage WHERE bucket_key = ?')
+      .bind(dayBucket)
+      .first<{ char_count: number }>(),
+  ]);
+
+  if ((minuteUsage?.request_count ?? 0) + 1 > rpmLimit) {
+    return err('Translation quota exceeded: requests per minute', 429, 'translate_rpm_quota');
+  }
+
+  if ((dayUsage?.char_count ?? 0) + chars > dailyLimit) {
+    return err('Translation quota exceeded: daily characters', 429, 'translate_daily_quota');
+  }
+
+  await Promise.all([
+    env.DB.prepare(
+      `INSERT INTO translation_quota_usage (bucket_key, request_count, char_count, updated_at)
+       VALUES (?, ?, ?, ?)
+       ON CONFLICT(bucket_key) DO UPDATE SET
+         request_count = request_count + excluded.request_count,
+         char_count = char_count + excluded.char_count,
+         updated_at = excluded.updated_at`
+    ).bind(minuteBucket, 1, chars, currentIso).run(),
+    env.DB.prepare(
+      `INSERT INTO translation_quota_usage (bucket_key, request_count, char_count, updated_at)
+       VALUES (?, ?, ?, ?)
+       ON CONFLICT(bucket_key) DO UPDATE SET
+         request_count = request_count + excluded.request_count,
+         char_count = char_count + excluded.char_count,
+         updated_at = excluded.updated_at`
+    ).bind(dayBucket, 1, chars, currentIso).run(),
+  ]);
+
+  return null;
+}
+
+async function loadTranslationMemory(env: Env, sourceKo: string): Promise<TranslationMemoryRow | null> {
+  return env.DB.prepare(
+    `SELECT source_ko,en,ja,zh_cn,zh_tw,es,fr,de,pt,vi,th,id_lang,ar
+     FROM translation_memory
+     WHERE source_ko = ?`
+  ).bind(sourceKo).first<TranslationMemoryRow>();
+}
+
+async function touchTranslationMemory(env: Env, sourceKo: string): Promise<void> {
+  await env.DB.prepare(
+    `UPDATE translation_memory
+     SET last_used_at = ?, use_count = use_count + 1
+     WHERE source_ko = ?`
+  ).bind(now(), sourceKo).run();
+}
+
+async function upsertTranslationMemory(env: Env, sourceKo: string, translations: Partial<TranslationMap>): Promise<void> {
+  const timestamp = now();
+  await env.DB.prepare(
+    `INSERT INTO translation_memory
+      (id, source_ko, en, ja, zh_cn, zh_tw, es, fr, de, pt, vi, th, id_lang, ar, created_at, updated_at, last_used_at, use_count)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+     ON CONFLICT(source_ko) DO UPDATE SET
+       en = COALESCE(translation_memory.en, excluded.en),
+       ja = COALESCE(translation_memory.ja, excluded.ja),
+       zh_cn = COALESCE(translation_memory.zh_cn, excluded.zh_cn),
+       zh_tw = COALESCE(translation_memory.zh_tw, excluded.zh_tw),
+       es = COALESCE(translation_memory.es, excluded.es),
+       fr = COALESCE(translation_memory.fr, excluded.fr),
+       de = COALESCE(translation_memory.de, excluded.de),
+       pt = COALESCE(translation_memory.pt, excluded.pt),
+       vi = COALESCE(translation_memory.vi, excluded.vi),
+       th = COALESCE(translation_memory.th, excluded.th),
+       id_lang = COALESCE(translation_memory.id_lang, excluded.id_lang),
+       ar = COALESCE(translation_memory.ar, excluded.ar),
+       updated_at = excluded.updated_at,
+       last_used_at = excluded.last_used_at,
+       use_count = translation_memory.use_count + 1`
+  ).bind(
+    newId(),
+    sourceKo,
+    translations.en ?? null,
+    translations.ja ?? null,
+    translations.zh_cn ?? null,
+    translations.zh_tw ?? null,
+    translations.es ?? null,
+    translations.fr ?? null,
+    translations.de ?? null,
+    translations.pt ?? null,
+    translations.vi ?? null,
+    translations.th ?? null,
+    translations.id_lang ?? null,
+    translations.ar ?? null,
+    timestamp,
+    timestamp,
+    timestamp,
+    1,
+  ).run();
+}
+
+async function translateWithGoogle(env: Env, sourceKo: string, target: TargetLang): Promise<string> {
+  const apiKey = env.GOOGLE_TRANSLATE_API_KEY?.trim();
+  if (!apiKey) throw new Error('GOOGLE_TRANSLATE_API_KEY is not configured');
+
+  const quotaErr = await consumeTranslateQuota(env, charLength(sourceKo));
+  if (quotaErr) throw quotaErr;
+
+  const endpoint = new URL('https://translation.googleapis.com/language/translate/v2');
+  endpoint.searchParams.set('key', apiKey);
+
+  const response = await fetch(endpoint.toString(), {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      q: sourceKo,
+      source: 'ko',
+      target: GOOGLE_LANG_MAP[target],
+      format: 'text',
+    }),
+  });
+
+  const json = await response.json() as {
+    data?: { translations?: Array<{ translatedText?: string }> };
+    error?: { message?: string };
+  };
+
+  if (!response.ok) {
+    throw new Error(json.error?.message || `Google Translate HTTP ${response.status}`);
+  }
+
+  const translated = json.data?.translations?.[0]?.translatedText?.trim();
+  if (!translated) throw new Error('Google Translate returned empty text');
+  return translated;
+}
 
 export async function handleI18n(request: Request, env: Env, url: URL): Promise<Response> {
   const path = url.pathname;
@@ -20,7 +218,7 @@ export async function handleI18n(request: Request, env: Env, url: URL): Promise<
   if (!isAdmin && request.method === 'GET') {
     const lang = url.searchParams.get('lang') || 'ko';
     const prefix = url.searchParams.get('prefix') || '';
-    if (!LANGS.includes(lang as typeof LANGS[number])) return err('Unsupported lang');
+    if (!LANGS.includes(lang as Lang)) return err('Unsupported lang');
 
     const col = lang as string;
     let query = `SELECT key, ${col} as value FROM i18n_translations WHERE is_active = 1`;
@@ -46,24 +244,60 @@ export async function handleI18n(request: Request, env: Env, url: URL): Promise<
 
     // 자동 번역 API (한국어 -> 나머지 언어)
     if (request.method === 'POST' && path.endsWith('/translate')) {
-      let body: { text: string };
-      try { body = await request.json() as { text: string }; } catch { return err('Invalid JSON'); }
-      if (!body.text) return err('text required');
+      let body: { text: string; existing?: Partial<Record<TargetLang, string>> };
+      try { body = await request.json() as typeof body; } catch { return err('Invalid JSON'); }
 
-      // TODO: 실제 서비스 시 Cloudflare Workers AI 또는 Google Translate API 연동
-      // 현재는 시뮬레이션: [언어코드] + 원문 형태의 mock 데이터 반환
-      const translations: Record<string, string> = {};
-      const mockPrefixes: Record<string, string> = {
-        en: '[EN]', ja: '[JA]', zh_cn: '[ZH-CN]', zh_tw: '[ZH-TW]', es: '[ES]',
-        fr: '[FR]', de: '[DE]', pt: '[PT]', vi: '[VI]', th: '[TH]', id_lang: '[ID]', ar: '[AR]'
-      };
-      
-      for (const lang of LANGS) {
-        if (lang === 'ko') continue;
-        translations[lang] = `${mockPrefixes[lang] || `[${lang}]`} ${body.text}`;
+      const sourceKo = body.text?.trim();
+      if (!sourceKo) return err('text required');
+
+      const existing = body.existing ?? {};
+      const translations = {} as TranslationMap;
+      const generated: Partial<TranslationMap> = {};
+      let reusedCount = 0;
+      let translatedCount = 0;
+
+      const memory = await loadTranslationMemory(env, sourceKo);
+
+      for (const lang of TARGET_LANGS) {
+        const adminValue = (existing[lang] || '').trim();
+        if (adminValue) {
+          translations[lang] = adminValue;
+          continue;
+        }
+
+        const cached = (memory?.[lang] || '').trim();
+        if (cached) {
+          translations[lang] = cached;
+          reusedCount += 1;
+          continue;
+        }
+
+        try {
+          const translated = await translateWithGoogle(env, sourceKo, lang);
+          translations[lang] = translated;
+          generated[lang] = translated;
+          translatedCount += 1;
+        } catch (translateError) {
+          if (translateError instanceof Response) return translateError;
+          translations[lang] = '';
+        }
       }
 
-      return ok({ translations });
+      if (Object.keys(generated).length > 0) {
+        await upsertTranslationMemory(env, sourceKo, generated);
+      } else if (memory) {
+        await touchTranslationMemory(env, sourceKo);
+      }
+
+      return ok({
+        translations,
+        meta: {
+          source: 'ko',
+          reused_count: reusedCount,
+          translated_count: translatedCount,
+          cache_hit: reusedCount > 0,
+        },
+      });
     }
 
     // GET 목록

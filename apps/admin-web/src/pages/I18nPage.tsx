@@ -48,8 +48,18 @@ export default function I18nPage() {
     
     setTranslating(true); setError('');
     try {
-      const { translations } = await api.i18n.translate(text);
-      setForm(f => ({ ...f, ...translations }));
+      const { translations } = await api.i18n.translate(text, form as Record<string, string>);
+      setForm((f) => {
+        const next = { ...f } as Record<string, string | number | undefined>;
+        for (const lang of LANGS) {
+          if (lang === 'ko') continue;
+          const existing = String((next[lang] as string | undefined) ?? '').trim();
+          if (existing) continue;
+          const translated = translations[lang];
+          if (translated) next[lang] = translated;
+        }
+        return next as Partial<I18nRow>;
+      });
     } catch (e) { setError(e instanceof Error ? e.message : 'Translation Error'); }
     finally { setTranslating(false); }
   }

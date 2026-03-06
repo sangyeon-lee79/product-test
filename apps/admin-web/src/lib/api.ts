@@ -110,8 +110,11 @@ export const api = {
       request<I18nRow>(`/api/v1/admin/i18n/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
     deactivate: (id: string) =>
       request<{ id: string; is_active: boolean }>(`/api/v1/admin/i18n/${id}`, { method: 'DELETE' }),
-    translate: (text: string) =>
-      request<{ translations: Record<string, string> }>('/api/v1/admin/i18n/translate', { method: 'POST', body: JSON.stringify({ text }) }),
+    translate: (text: string, existing?: Record<string, string>) =>
+      request<{ translations: Record<string, string>; meta?: Record<string, unknown> }>(
+        '/api/v1/admin/i18n/translate',
+        { method: 'POST', body: JSON.stringify({ text, existing }) },
+      ),
   },
 
   // Master
