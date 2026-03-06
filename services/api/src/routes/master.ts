@@ -178,8 +178,19 @@ export async function handleMaster(request: Request, env: Env, url: URL): Promis
 
       if (request.method === 'GET' && !id) {
         const categoryKey = url.searchParams.get('category_key');
-        let query = `SELECT mi.*, mc.key as category_key FROM master_items mi
-                     JOIN master_categories mc ON mi.category_id = mc.id WHERE 1=1`;
+        let query = `SELECT
+                       mi.*,
+                       mc.key as category_key,
+                       tr.ko as ko_name,
+                       tr.en, tr.ja, tr.zh_cn, tr.zh_tw, tr.es, tr.fr, tr.de, tr.pt, tr.vi, tr.th, tr.id_lang, tr.ar
+                     FROM master_items mi
+                     JOIN master_categories mc ON mi.category_id = mc.id
+                     LEFT JOIN i18n_translations tr
+                       ON tr.key = CASE
+                         WHEN mc.key LIKE 'master.%' THEN (mc.key || '.' || mi.key)
+                         ELSE ('master.' || mc.key || '.' || mi.key)
+                       END
+                     WHERE 1=1`;
         const params: (string | number)[] = [];
         if (categoryKey) { query += ' AND mc.key = ?'; params.push(categoryKey); }
         query += ' ORDER BY mi.sort_order, mi.key';
@@ -187,7 +198,21 @@ export async function handleMaster(request: Request, env: Env, url: URL): Promis
         return ok(rows.results);
       }
       if (request.method === 'GET' && id) {
-        const row = await env.DB.prepare('SELECT * FROM master_items WHERE id = ?').bind(id).first();
+        const row = await env.DB.prepare(
+          `SELECT
+             mi.*,
+             mc.key as category_key,
+             tr.ko as ko_name,
+             tr.en, tr.ja, tr.zh_cn, tr.zh_tw, tr.es, tr.fr, tr.de, tr.pt, tr.vi, tr.th, tr.id_lang, tr.ar
+           FROM master_items mi
+           JOIN master_categories mc ON mi.category_id = mc.id
+           LEFT JOIN i18n_translations tr
+             ON tr.key = CASE
+               WHEN mc.key LIKE 'master.%' THEN (mc.key || '.' || mi.key)
+               ELSE ('master.' || mc.key || '.' || mi.key)
+             END
+           WHERE mi.id = ?`
+        ).bind(id).first();
         if (!row) return err('Not found', 404);
         return ok(row);
       }
@@ -214,7 +239,7 @@ export async function handleMaster(request: Request, env: Env, url: URL): Promis
         return created({ ...row, metadata: body.metadata ?? {} });
       }
       if (request.method === 'PUT' && id) {
-        let body: { sort_order?: number; is_active?: boolean; metadata?: Record<string, unknown>; parent_id?: string | null };
+        let body: { sort_order?: number; is_active?: boolean; metadata?: Record<string, unknown>; parent_id?: string | null; translations?: Record<string, string> };
         try { body = await request.json() as typeof body; } catch { return err('Invalid JSON'); }
         const sets: string[] = ['updated_at = ?'];
         const vals: (string | number | null)[] = [now()];
@@ -225,7 +250,32 @@ export async function handleMaster(request: Request, env: Env, url: URL): Promis
         vals.push(id);
         const result = await env.DB.prepare(`UPDATE master_items SET ${sets.join(', ')} WHERE id = ?`).bind(...vals).run();
         if (result.meta.changes === 0) return err('Not found', 404);
-        return ok(await env.DB.prepare('SELECT * FROM master_items WHERE id = ?').bind(id).first());
+
+        if (body.translations && Object.values(body.translations).some(v => v)) {
+          const item = await env.DB.prepare(
+            `SELECT mi.key as item_key, mc.key as category_key
+             FROM master_items mi
+             JOIN master_categories mc ON mc.id = mi.category_id
+             WHERE mi.id = ?`
+          ).bind(id).first<{ item_key: string; category_key: string }>();
+          if (item) await upsertI18n(env, itemI18nKey(item.category_key, item.item_key), body.translations);
+        }
+
+        return ok(await env.DB.prepare(
+          `SELECT
+             mi.*,
+             mc.key as category_key,
+             tr.ko as ko_name,
+             tr.en, tr.ja, tr.zh_cn, tr.zh_tw, tr.es, tr.fr, tr.de, tr.pt, tr.vi, tr.th, tr.id_lang, tr.ar
+           FROM master_items mi
+           JOIN master_categories mc ON mi.category_id = mc.id
+           LEFT JOIN i18n_translations tr
+             ON tr.key = CASE
+               WHEN mc.key LIKE 'master.%' THEN (mc.key || '.' || mi.key)
+               ELSE ('master.' || mc.key || '.' || mi.key)
+             END
+           WHERE mi.id = ?`
+        ).bind(id).first());
       }
       if (request.method === 'DELETE' && id) {
         // 실제 삭제 시도. 외래 키 제약 조건 등으로 실패할 수 있음.

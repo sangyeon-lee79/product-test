@@ -51,6 +51,24 @@ export default function MasterPage() {
 
   function flash(msg: string) { setSuccess(msg); setTimeout(() => setSuccess(''), 3000); }
   function getCategoryLabel(cat: MasterCategory) { return cat.ko_name?.trim() || cat.key; }
+  function getItemLabel(item: MasterItem) { return item.ko_name?.trim() || item.ko?.trim() || item.key; }
+  function itemToTranslations(item: MasterItem): Record<string, string> {
+    return {
+      ko: item.ko ?? item.ko_name ?? '',
+      en: item.en ?? '',
+      ja: item.ja ?? '',
+      zh_cn: item.zh_cn ?? '',
+      zh_tw: item.zh_tw ?? '',
+      es: item.es ?? '',
+      fr: item.fr ?? '',
+      de: item.de ?? '',
+      pt: item.pt ?? '',
+      vi: item.vi ?? '',
+      th: item.th ?? '',
+      id_lang: item.id_lang ?? '',
+      ar: item.ar ?? '',
+    };
+  }
 
   // 자동번역
   async function autoTranslate(koText: string, setTrans: (t: Record<string, string>) => void, current: Record<string, string>) {
@@ -139,7 +157,21 @@ export default function MasterPage() {
         });
         flash(t('admin.master.success_item_add', '아이템이 추가되었습니다.'));
       } else if (itemModal === 'edit' && itemForm.id) {
-        await api.master.items.update(itemForm.id, { sort_order: parseInt(itemForm.sort_order), parent_id: itemForm.parent_id });
+        const ko = (itemTrans.ko || '').trim();
+        if (!ko) throw new Error('한국어 표시명은 필수입니다.');
+
+        let translations: Record<string, string> = { ...itemTrans, ko };
+        const hasMissing = SUPPORTED_LANGS.some((lang) => lang !== 'ko' && !(translations[lang] || '').trim());
+        if (hasMissing) {
+          const result = await api.i18n.translate(ko, translations);
+          translations = {
+            ...result.translations,
+            ...translations,
+            ko,
+          };
+        }
+
+        await api.master.items.update(itemForm.id, { sort_order: parseInt(itemForm.sort_order), parent_id: itemForm.parent_id, translations });
         flash(t('admin.master.success_item_edit', '아이템이 수정되었습니다.'));
       }
       setItemModal(null);
@@ -149,7 +181,7 @@ export default function MasterPage() {
   }
 
   async function handleItemDelete(item: MasterItem) {
-    if (!confirm(`"${item.key}" ${t('admin.master.confirm_delete_item', '아이템을 삭제하시겠습니까?')}`)) return;
+    if (!confirm(`"${getItemLabel(item)}" ${t('admin.master.confirm_delete_item', '아이템을 삭제하시겠습니까?')}`)) return;
     try {
       const res = await api.master.items.delete(item.id);
       if (res.deleted) {
@@ -216,7 +248,7 @@ export default function MasterPage() {
               <table>
                 <thead>
                   <tr>
-                    <th>{t('admin.common.key', '키')}</th>
+                    <th>{t('admin.master.item_name', '아이템명')}</th>
                     <th>{t('admin.master.parent', '부모')}</th>
                     <th>Sort</th>
                     <th>{t('admin.common.status', '상태')}</th>
@@ -226,13 +258,16 @@ export default function MasterPage() {
                 <tbody>
                   {items.map(item => (
                     <tr key={item.id}>
-                      <td><span className="font-mono" style={{ fontSize: 12 }}>{item.key}</span></td>
-                      <td><span style={{ fontSize: 11, color: '#666' }}>{item.parent_id ? (items.find(i => i.id === item.parent_id)?.key || item.parent_id) : '-'}</span></td>
+                      <td>
+                        <div style={{ fontWeight: 500 }}>{getItemLabel(item)}</div>
+                        <div className="font-mono" style={{ fontSize: 11, color: 'var(--text-muted)' }}>{item.key}</div>
+                      </td>
+                      <td><span style={{ fontSize: 11, color: '#666' }}>{item.parent_id ? (items.find(i => i.id === item.parent_id)?.ko_name || items.find(i => i.id === item.parent_id)?.ko || items.find(i => i.id === item.parent_id)?.key || item.parent_id) : '-'}</span></td>
                       <td>{item.sort_order}</td>
                       <td><span className={`badge ${item.is_active ? 'badge-green' : 'badge-gray'}`}>{item.is_active ? t('admin.common.active', '활성') : t('admin.common.inactive', '비활성')}</span></td>
                       <td>
                         <div className="td-actions">
-                          <button className="btn btn-secondary btn-sm" onClick={() => { setItemForm({ id: item.id, key: item.key, sort_order: String(item.sort_order), is_active: item.is_active, parent_id: item.parent_id }); setItemModal('edit'); setItemTrans(emptyTrans()); }}>{t('admin.common.edit', '편집')}</button>
+                          <button className="btn btn-secondary btn-sm" onClick={() => { setItemForm({ id: item.id, key: item.key, sort_order: String(item.sort_order), is_active: item.is_active, parent_id: item.parent_id }); setItemModal('edit'); setItemTrans(itemToTranslations(item)); }}>{t('admin.common.edit', '편집')}</button>
                           <button className="btn btn-danger btn-sm" onClick={() => handleItemDelete(item)}>{t('admin.common.delete', '삭제')}</button>
                         </div>
                       </td>
@@ -332,7 +367,7 @@ export default function MasterPage() {
                 <select className="form-input" value={itemForm.parent_id || ''} onChange={e => setItemForm(f => ({ ...f, parent_id: e.target.value || null }))}>
                   <option value="">-- {t('admin.common.none', '없음')} --</option>
                   {items.filter(i => i.id !== itemForm.id).map(i => (
-                    <option key={i.id} value={i.id}>{i.key}</option>
+                    <option key={i.id} value={i.id}>{getItemLabel(i)}</option>
                   ))}
                 </select>
               </div>
@@ -340,42 +375,40 @@ export default function MasterPage() {
                 <label className="form-label">{t('admin.common.sort_order', '정렬 순서')}</label>
                 <input className="form-input" type="number" value={itemForm.sort_order} onChange={e => setItemForm(f => ({ ...f, sort_order: e.target.value }))} />
               </div>
-              {itemModal === 'create' && (
-                <div style={{ borderTop: '1px solid var(--border)', paddingTop: 12, marginTop: 4 }}>
-                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
-                    <div style={{ fontSize: 13, fontWeight: 600 }}>{t('admin.master.translations', '표시명 (13개국어)')}</div>
-                    <button className="btn btn-secondary btn-sm" onClick={() => autoTranslate(itemTrans.ko, setItemTrans, itemTrans)} disabled={translating || !itemTrans.ko}>
-                      {translating ? '...' : t('admin.master.auto_translate', '🌐 한국어 기준 자동번역')}
-                    </button>
-                  </div>
-                  <div style={{ fontSize: 11, color: 'var(--text-muted)', marginBottom: 10 }}>
-                    키는 저장 시 시스템이 자동 생성합니다. (예: master_item.k82asd)
-                  </div>
-                  <div className="form-group" style={{ marginBottom: 10 }}>
-                    <label className="form-label">한국어 표시명 *</label>
+              <div style={{ borderTop: '1px solid var(--border)', paddingTop: 12, marginTop: 4 }}>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
+                  <div style={{ fontSize: 13, fontWeight: 600 }}>{t('admin.master.translations', '표시명 (13개국어)')}</div>
+                  <button className="btn btn-secondary btn-sm" onClick={() => autoTranslate(itemTrans.ko, setItemTrans, itemTrans)} disabled={translating || !itemTrans.ko}>
+                    {translating ? '...' : t('admin.master.auto_translate', '🌐 한국어 기준 자동번역')}
+                  </button>
+                </div>
+                <div style={{ fontSize: 11, color: 'var(--text-muted)', marginBottom: 10 }}>
+                  키는 시스템 내부 식별자이며 직접 수정할 수 없습니다.
+                </div>
+                <div className="form-group" style={{ marginBottom: 10 }}>
+                  <label className="form-label">한국어 표시명 *</label>
+                  <input
+                    className="form-input"
+                    style={{ fontSize: 13 }}
+                    value={itemTrans.ko ?? ''}
+                    onChange={e => setItemTrans(f => ({ ...f, ko: e.target.value }))}
+                    placeholder="예: Cafe, Hospital, Restaurant"
+                  />
+                </div>
+                {SUPPORTED_LANGS.filter(lang => lang !== 'ko').map(lang => (
+                  <div key={lang} className="form-group" style={{ marginBottom: 6, display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <label style={{ fontSize: 12, width: 110, flexShrink: 0, color: 'var(--text-muted)' }}>
+                      {LANG_LABELS[lang]}
+                    </label>
                     <input
                       className="form-input"
                       style={{ fontSize: 13 }}
-                      value={itemTrans.ko ?? ''}
-                      onChange={e => setItemTrans(f => ({ ...f, ko: e.target.value }))}
-                      placeholder="예: Cafe, Hospital, Restaurant"
+                      value={itemTrans[lang] ?? ''}
+                      onChange={e => setItemTrans(f => ({ ...f, [lang]: e.target.value }))}
                     />
                   </div>
-                  {SUPPORTED_LANGS.filter(lang => lang !== 'ko').map(lang => (
-                    <div key={lang} className="form-group" style={{ marginBottom: 6, display: 'flex', alignItems: 'center', gap: 8 }}>
-                      <label style={{ fontSize: 12, width: 110, flexShrink: 0, color: 'var(--text-muted)' }}>
-                        {LANG_LABELS[lang]}
-                      </label>
-                      <input
-                        className="form-input"
-                        style={{ fontSize: 13 }}
-                        value={itemTrans[lang] ?? ''}
-                        onChange={e => setItemTrans(f => ({ ...f, [lang]: e.target.value }))}
-                      />
-                    </div>
-                  ))}
-                </div>
-              )}
+                ))}
+              </div>
             </div>
             <div className="modal-footer">
               <button className="btn btn-secondary" onClick={() => setItemModal(null)}>{t('admin.common.cancel', '취소')}</button>

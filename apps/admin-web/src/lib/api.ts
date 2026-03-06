@@ -135,7 +135,7 @@ export const api = {
       },
       create: (data: { category_id: string; sort_order?: number; metadata?: Record<string, unknown>; translations?: Record<string, string>; parent_id?: string | null }) =>
         request<MasterItem>('/api/v1/admin/master/items', { method: 'POST', body: JSON.stringify(data) }),
-      update: (id: string, data: Partial<MasterItem>) =>
+      update: (id: string, data: { sort_order?: number; parent_id?: string | null; is_active?: number; metadata?: Record<string, unknown>; translations?: Record<string, string> }) =>
         request<MasterItem>(`/api/v1/admin/master/items/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
       delete: (id: string) =>
         request<{ id: string; deleted: boolean; message?: string }>(`/api/v1/admin/master/items/${id}`, { method: 'DELETE' }),
@@ -182,7 +182,11 @@ export interface MasterCategory {
 export interface MasterItem {
   id: string; category_id: string; key: string; parent_id: string | null;
   sort_order: number; is_active: number; metadata: string;
-  created_at: string; updated_at: string; category_key?: string;
+  created_at: string; updated_at: string; category_key?: string; ko_name?: string | null;
+  ko?: string | null; en?: string | null; ja?: string | null;
+  zh_cn?: string | null; zh_tw?: string | null; es?: string | null;
+  fr?: string | null; de?: string | null; pt?: string | null;
+  vi?: string | null; th?: string | null; id_lang?: string | null; ar?: string | null;
 }
 
 export interface Country {
