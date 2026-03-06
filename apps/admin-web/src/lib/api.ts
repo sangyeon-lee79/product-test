@@ -145,9 +145,9 @@ export const api = {
   // Countries
   countries: {
     list: () => request<Country[]>('/api/v1/admin/countries'),
-    create: (data: { code: string; translations: Record<string, string>; default_currency_id: string }) =>
+    create: (data: { code: string; translations: Record<string, string>; default_currency_code: string }) =>
       request<Country>('/api/v1/admin/countries', { method: 'POST', body: JSON.stringify(data) }),
-    update: (id: string, data: { sort_order?: number; is_active?: number; translations?: Record<string, string>; default_currency_id?: string }) =>
+    update: (id: string, data: { sort_order?: number; is_active?: number; translations?: Record<string, string>; default_currency_code?: string }) =>
       request<Country>(`/api/v1/admin/countries/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
     mapCurrency: (countryId: string, currencyId: string, isDefault: boolean) =>
       request(`/api/v1/admin/countries/${countryId}/currencies`, {
