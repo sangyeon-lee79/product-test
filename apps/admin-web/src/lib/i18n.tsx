@@ -1,8 +1,9 @@
 // i18n 유틸 — DB 기반 다국어 (하드코딩 제로 원칙)
 // GET /api/v1/i18n?lang={lang}&prefix=admin → { [key]: value }
 import { createContext, useContext, useEffect, useState, type ReactNode } from 'react';
+import { getApiBase } from './apiBase';
 
-const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:8787';
+const API_BASE = getApiBase();
 
 export const SUPPORTED_LANGS = ['ko','en','ja','zh_cn','zh_tw','es','fr','de','pt','vi','th','id_lang','ar'] as const;
 export type Lang = typeof SUPPORTED_LANGS[number];

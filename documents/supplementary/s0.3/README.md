@@ -42,3 +42,27 @@
 - [ ] 로컬 개발 시 API 서버가 8787 포트에서 실행 중인지 확인.
 - [ ] JWT 토큰이 유효한지 또는 `Authorization: Bearer <token>` 헤더가 포함되었는지 확인.
 - [ ] 모바일 앱의 경우 로컬 IP(예: `192.168.x.x`)로의 접근 허용 여부 확인.
+
+---
+
+## 5. Admin `Failed to fetch` 재발 방지 규칙 (2026-03-06)
+로그인/초기 i18n 로딩 실패를 막기 위해 아래를 필수로 맞춘다.
+
+1. API Base 단일화
+- Admin Web의 모든 fetch는 반드시 `apps/admin-web/src/lib/apiBase.ts`의 `getApiBase()`를 사용한다.
+- 파일별로 `localhost:8787`를 직접 하드코딩하지 않는다.
+
+2. 배포 환경 변수
+- Pages/프론트 배포 시 `VITE_API_URL`을 환경별 API URL로 반드시 설정한다.
+- 예시
+  - Staging: `https://stg-api.petlife.com`
+  - Production: `https://api.petlife.com`
+
+3. CORS 화이트리스트 동기화
+- 실제 Admin Web Origin이 Workers의 `ALLOWED_ORIGINS`에 반드시 포함되어야 한다.
+- 위치: `services/api/wrangler.jsonc` (`vars.ALLOWED_ORIGINS` 및 각 env 별 `ALLOWED_ORIGINS`).
+- 새 도메인/프리뷰 도메인 추가 시 프론트 배포보다 먼저 API CORS부터 반영한다.
+
+4. 코드 수정 시 점검 항목
+- 로그인 API(`POST /api/v1/auth/test-login`)와 i18n API(`GET /api/v1/i18n`)가 동일한 API Base를 사용하는지 확인.
+- 브라우저 Network 탭에서 실패 요청 URL이 `localhost`로 잘못 향하지 않는지 확인.

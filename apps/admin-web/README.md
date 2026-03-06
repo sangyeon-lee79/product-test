@@ -71,3 +71,20 @@ export default defineConfig([
   },
 ])
 ```
+
+## Project Notes: API/CORS
+
+### API base URL rules
+- Do not hardcode `http://localhost:8787` inside feature files.
+- Use `getApiBase()` from `src/lib/apiBase.ts` for every API call path.
+- `VITE_API_URL` is the first priority source in all environments.
+
+### Required env by environment
+- Local: no `VITE_API_URL` needed (falls back to localhost/IDX mapping).
+- Staging: `VITE_API_URL=https://stg-api.petlife.com`
+- Production: `VITE_API_URL=https://api.petlife.com`
+
+### CORS dependency
+- If login shows `Failed to fetch`, first check whether the current web origin is included in API `ALLOWED_ORIGINS`.
+- API CORS config path: `services/api/wrangler.jsonc`.
+- Keep frontend deployment domains and API `ALLOWED_ORIGINS` in sync.
