@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { api, type Booking, type FeedPost, type FriendRequest, type MasterItem, type Pet } from '../lib/api';
+import { useT } from '../lib/i18n';
 
 type FeedTab = 'all' | 'friends';
 type Mode = 'create' | 'edit';
@@ -140,8 +141,8 @@ function toOption(items: MasterItem[]): Option[] {
   });
 }
 
-function formatDate(value?: string | null): string {
-  if (!value) return '-';
+function formatDate(value?: string | null, fallback = '-'): string {
+  if (!value) return fallback;
   try {
     return new Date(value).toLocaleString();
   } catch {
@@ -149,9 +150,31 @@ function formatDate(value?: string | null): string {
   }
 }
 
-function labelOf(options: Option[], id?: string | null): string {
-  if (!id) return '-';
+function labelOf(options: Option[], id: string | null | undefined, fallback: string): string {
+  if (!id) return fallback;
   return options.find((o) => o.id === id)?.label || id;
+}
+
+function feedTypeLabel(t: (key: string, fallback?: string) => string, value: string): string {
+  const map: Record<string, string> = {
+    guardian_post: t('guardian.feed.type.guardian_post', 'Guardian Post'),
+    health_update: t('guardian.feed.type.health_update', 'Health Update'),
+    pet_milestone: t('guardian.feed.type.pet_milestone', 'Pet Milestone'),
+    supplier_story: t('guardian.feed.type.supplier_story', 'Supplier Story'),
+    booking_completed: t('guardian.feed.type.booking_completed', 'Booking Completed'),
+  };
+  return map[value] || value;
+}
+
+function visibilityLabel(t: (key: string, fallback?: string) => string, value: string): string {
+  const map: Record<string, string> = {
+    public: t('guardian.feed.visibility.public', 'Public'),
+    friends_only: t('guardian.feed.visibility.friends_only', 'Friends Only'),
+    private: t('guardian.feed.visibility.private', 'Private'),
+    connected_only: t('guardian.feed.visibility.connected_only', 'Connected Only'),
+    booking_related_only: t('guardian.feed.visibility.booking_related_only', 'Booking Related Only'),
+  };
+  return map[value] || value;
 }
 
 async function loadCategoryItems(candidates: string[]): Promise<MasterItem[]> {
@@ -167,6 +190,7 @@ async function loadCategoryItems(candidates: string[]): Promise<MasterItem[]> {
 }
 
 export default function GuardianMainPage() {
+  const t = useT();
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
@@ -233,7 +257,7 @@ export default function GuardianMainPage() {
   );
 
   const latestHealthLabel = useMemo(
-    () => labelOf(optHealthLevel, selectedPet?.health_condition_level_id),
+    () => labelOf(optHealthLevel, selectedPet?.health_condition_level_id, t('common.none', '-')),
     [optHealthLevel, selectedPet?.health_condition_level_id],
   );
 
@@ -332,7 +356,7 @@ export default function GuardianMainPage() {
       setOptCoatType(toOption(coatTypeRows));
       setOptGrooming(toOption(groomingRows));
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Guardian 화면 로딩 실패');
+      setError(e instanceof Error ? e.message : t('guardian.alert.load_failed', 'Failed to load guardian page'));
     } finally {
       setLoading(false);
     }
@@ -384,28 +408,28 @@ export default function GuardianMainPage() {
       });
       setPetModalOpen(true);
     } catch (e) {
-      setError(e instanceof Error ? e.message : '펫 상세 조회 실패');
+      setError(e instanceof Error ? e.message : t('guardian.alert.pet_detail_failed', 'Failed to load pet detail'));
     }
   }
 
   async function savePet() {
     if (!petForm.name.trim()) {
-      setError('반려동물 이름은 필수입니다.');
+      setError(t('guardian.alert.name_required', 'Pet name is required.'));
       return;
     }
     if (!petForm.pet_type_id) {
-      setError('펫 종류는 필수입니다.');
+      setError(t('guardian.alert.pet_type_required', 'Pet type is required.'));
       return;
     }
     if (petForm.microchip_no.trim()) {
       try {
         const dup = await api.pets.checkMicrochip(petForm.microchip_no.trim(), petMode === 'edit' ? activePet?.id : undefined);
         if (!dup.available) {
-          setError(dup.reason || '이미 등록된 마이크로칩 번호입니다.');
+          setError(dup.reason || t('guardian.alert.microchip_duplicate', 'This microchip number is already registered.'));
           return;
         }
       } catch (e) {
-        setError(e instanceof Error ? e.message : '마이크로칩 중복 확인 실패');
+        setError(e instanceof Error ? e.message : t('guardian.alert.microchip_check_failed', 'Microchip duplicate check failed.'));
         return;
       }
     }
@@ -443,24 +467,24 @@ export default function GuardianMainPage() {
       setPetForm(DEFAULT_PET_FORM);
       await loadAll(feedTab);
     } catch (e) {
-      setError(e instanceof Error ? e.message : '펫 저장 실패');
+      setError(e instanceof Error ? e.message : t('guardian.alert.pet_save_failed', 'Failed to save pet.'));
     }
   }
 
   async function removePet(id: string) {
-    if (!confirm('이 반려동물을 삭제하시겠습니까?')) return;
+    if (!confirm(t('guardian.alert.pet_delete_confirm', 'Do you want to delete this pet?'))) return;
     try {
       await api.pets.remove(id);
       if (selectedPetId === id) setSelectedPetId('');
       await loadAll(feedTab);
     } catch (e) {
-      setError(e instanceof Error ? e.message : '펫 삭제 실패');
+      setError(e instanceof Error ? e.message : t('guardian.alert.pet_delete_failed', 'Failed to delete pet.'));
     }
   }
 
   async function createFeedPost() {
     if (!feedCompose.caption.trim()) {
-      setError('피드 내용(caption)을 입력해주세요.');
+      setError(t('guardian.alert.feed_caption_required', 'Please enter feed content.'));
       return;
     }
     try {
@@ -476,7 +500,7 @@ export default function GuardianMainPage() {
       setFeedCompose(DEFAULT_FEED_COMPOSE);
       await loadAll(feedTab);
     } catch (e) {
-      setError(e instanceof Error ? e.message : '피드 등록 실패');
+      setError(e instanceof Error ? e.message : t('guardian.alert.feed_create_failed', 'Failed to create feed post.'));
     }
   }
 
@@ -485,7 +509,7 @@ export default function GuardianMainPage() {
       <div className="form-group">
         <label className="form-label">{label}{required ? ' *' : ''}</label>
         <select className="form-select" value={value} onChange={(e) => onChange(e.target.value)}>
-          <option value="">선택</option>
+          <option value="">{t('common.select', 'Select')}</option>
           {options.map((o) => <option key={o.id} value={o.id}>{o.label}</option>)}
         </select>
       </div>
@@ -517,21 +541,21 @@ export default function GuardianMainPage() {
       <section className="guardian-top">
         <div className="guardian-hero card">
           <div className="card-body">
-            <p className="hero-eyebrow">Petfolio | 펫폴리오</p>
-            <h2>Petfolio</h2>
-            <p className="text-muted">Your pet's life portfolio</p>
+            <p className="hero-eyebrow">{t('platform.name', 'Petfolio')}</p>
+            <h2>{t('platform.name', 'Petfolio')}</h2>
+            <p className="text-muted">{t('platform.tagline', "Your pet's life portfolio")}</p>
             <div className="hero-actions mt-3">
-              <button className="btn btn-primary" onClick={openCreatePet}>+ Add Pet</button>
-              <Link className="btn btn-secondary" to="/">Public Feed</Link>
+              <button className="btn btn-primary" onClick={openCreatePet}>+ {t('common.add_pet', 'Add Pet')}</button>
+              <Link className="btn btn-secondary" to="/">{t('guardian.main.public_feed', 'Public Feed')}</Link>
             </div>
           </div>
         </div>
 
         <div className="guardian-summary-grid">
-          <article className="card"><div className="card-body"><p className="text-sm text-muted">등록된 반려동물</p><h3>{pets.length}</h3></div></article>
-          <article className="card"><div className="card-body"><p className="text-sm text-muted">최근 건강 상태</p><h3>{latestHealthLabel}</h3></div></article>
-          <article className="card"><div className="card-body"><p className="text-sm text-muted">최근 예약 상태</p><h3>{latestBooking?.status || '-'}</h3></div></article>
-          <article className="card"><div className="card-body"><p className="text-sm text-muted">대기중 완료게시 승인</p><h3>{pendingApprovalsCount}</h3></div></article>
+          <article className="card"><div className="card-body"><p className="text-sm text-muted">{t('guardian.summary.pets_count', 'Registered Pets')}</p><h3>{pets.length}</h3></div></article>
+          <article className="card"><div className="card-body"><p className="text-sm text-muted">{t('guardian.summary.latest_health', 'Latest Health Status')}</p><h3>{latestHealthLabel}</h3></div></article>
+          <article className="card"><div className="card-body"><p className="text-sm text-muted">{t('guardian.summary.latest_booking_status', 'Latest Booking Status')}</p><h3>{latestBooking?.status || t('common.none', '-')}</h3></div></article>
+          <article className="card"><div className="card-body"><p className="text-sm text-muted">{t('guardian.summary.pending_completion_approvals', 'Pending Completion Approvals')}</p><h3>{pendingApprovalsCount}</h3></div></article>
         </div>
       </section>
 
@@ -545,70 +569,70 @@ export default function GuardianMainPage() {
             {pets.length === 0 && (
               <div className="card">
                 <div className="card-body">
-                  <h3>첫 반려동물을 등록해주세요</h3>
-                  <p className="text-muted">등록된 펫이 없으면 피드/건강/예약 연결이 제한됩니다.</p>
-                  <button className="btn btn-primary mt-2" onClick={openCreatePet}>Register your first pet</button>
+                  <h3>{t('guardian.empty.no_pets_title', 'Register your first pet')}</h3>
+                  <p className="text-muted">{t('guardian.empty.no_pets_desc', 'Without a pet profile, feed/health/booking links are limited.')}</p>
+                  <button className="btn btn-primary mt-2" onClick={openCreatePet}>{t('guardian.empty.no_pets_cta', 'Register your first pet')}</button>
                 </div>
               </div>
             )}
 
             <div className="card">
-              <div className="card-header"><div className="card-title">Create Feed Post</div></div>
+              <div className="card-header"><div className="card-title">{t('guardian.feed.create_title', 'Create Feed Post')}</div></div>
               <div className="card-body">
                 <div className="form-row col3">
                   <div className="form-group">
-                    <label className="form-label">Feed Type</label>
+                    <label className="form-label">{t('guardian.feed.feed_type', 'Feed Type')}</label>
                     <select className="form-select" value={feedCompose.feed_type} onChange={(e) => setFeedCompose((p) => ({ ...p, feed_type: e.target.value as FeedCompose['feed_type'] }))}>
-                      <option value="guardian_post">guardian_post</option>
-                      <option value="health_update">health_update</option>
-                      <option value="pet_milestone">pet_milestone</option>
-                      <option value="supplier_story">supplier_story</option>
+                      <option value="guardian_post">{t('guardian.feed.type.guardian_post', 'Guardian Post')}</option>
+                      <option value="health_update">{t('guardian.feed.type.health_update', 'Health Update')}</option>
+                      <option value="pet_milestone">{t('guardian.feed.type.pet_milestone', 'Pet Milestone')}</option>
+                      <option value="supplier_story">{t('guardian.feed.type.supplier_story', 'Supplier Story')}</option>
                     </select>
                   </div>
                   <div className="form-group">
-                    <label className="form-label">Visibility</label>
+                    <label className="form-label">{t('guardian.feed.visibility', 'Visibility')}</label>
                     <select className="form-select" value={feedCompose.visibility_scope} onChange={(e) => setFeedCompose((p) => ({ ...p, visibility_scope: e.target.value as FeedCompose['visibility_scope'] }))}>
-                      <option value="public">public</option>
-                      <option value="friends_only">friends_only</option>
-                      <option value="private">private</option>
-                      <option value="connected_only">connected_only</option>
-                      <option value="booking_related_only">booking_related_only</option>
+                      <option value="public">{t('guardian.feed.visibility.public', 'Public')}</option>
+                      <option value="friends_only">{t('guardian.feed.visibility.friends_only', 'Friends Only')}</option>
+                      <option value="private">{t('guardian.feed.visibility.private', 'Private')}</option>
+                      <option value="connected_only">{t('guardian.feed.visibility.connected_only', 'Connected Only')}</option>
+                      <option value="booking_related_only">{t('guardian.feed.visibility.booking_related_only', 'Booking Related Only')}</option>
                     </select>
                   </div>
                   <div className="form-group">
-                    <label className="form-label">Linked Pet</label>
+                    <label className="form-label">{t('guardian.feed.linked_pet', 'Linked Pet')}</label>
                     <select className="form-select" value={feedCompose.pet_id} onChange={(e) => setFeedCompose((p) => ({ ...p, pet_id: e.target.value }))}>
-                      <option value="">None</option>
+                      <option value="">{t('common.none', 'None')}</option>
                       {pets.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
                     </select>
                   </div>
                 </div>
                 <div className="form-row col2">
                   <div className="form-group">
-                    <label className="form-label">booking_id (optional)</label>
+                    <label className="form-label">{t('guardian.feed.booking_id_optional', 'booking_id (optional)')}</label>
                     <input className="form-input" value={feedCompose.booking_id} onChange={(e) => setFeedCompose((p) => ({ ...p, booking_id: e.target.value }))} />
                   </div>
                   <div className="form-group">
-                    <label className="form-label">supplier_id (optional)</label>
+                    <label className="form-label">{t('guardian.feed.supplier_id_optional', 'supplier_id (optional)')}</label>
                     <input className="form-input" value={feedCompose.supplier_id} onChange={(e) => setFeedCompose((p) => ({ ...p, supplier_id: e.target.value }))} />
                   </div>
                 </div>
                 <div className="form-group">
-                  <label className="form-label">Caption</label>
+                  <label className="form-label">{t('guardian.feed.caption', 'Caption')}</label>
                   <textarea className="form-textarea" value={feedCompose.caption} onChange={(e) => setFeedCompose((p) => ({ ...p, caption: e.target.value }))} />
                 </div>
                 <div className="form-group">
-                  <label className="form-label">Tags (comma separated)</label>
+                  <label className="form-label">{t('guardian.feed.tags', 'Tags (comma separated)')}</label>
                   <input className="form-input" value={feedCompose.tagsText} onChange={(e) => setFeedCompose((p) => ({ ...p, tagsText: e.target.value }))} />
                 </div>
-                <button className="btn btn-primary" onClick={createFeedPost}>Post</button>
+                <button className="btn btn-primary" onClick={createFeedPost}>{t('guardian.feed.post', 'Post')}</button>
               </div>
             </div>
 
             <div className="feed-toolbar card">
               <div className="feed-tabs">
-                <button className={`feed-tab ${feedTab === 'all' ? 'active' : ''}`} onClick={() => { setFeedTab('all'); loadAll('all'); }}>All</button>
-                <button className={`feed-tab ${feedTab === 'friends' ? 'active' : ''}`} onClick={() => { setFeedTab('friends'); loadAll('friends'); }}>Friends Feed</button>
+                <button className={`feed-tab ${feedTab === 'all' ? 'active' : ''}`} onClick={() => { setFeedTab('all'); loadAll('all'); }}>{t('guardian.feed.filter.all', 'All')}</button>
+                <button className={`feed-tab ${feedTab === 'friends' ? 'active' : ''}`} onClick={() => { setFeedTab('friends'); loadAll('friends'); }}>{t('guardian.feed.filter.friends', 'Friends Feed')}</button>
               </div>
             </div>
 
@@ -617,77 +641,77 @@ export default function GuardianMainPage() {
                 <article key={f.id} className="sns-card">
                   <div className="sns-card-header">
                     <div>
-                      <p className="sns-meta">{f.feed_type}</p>
-                      <h3>{f.author_email || '-'}</h3>
-                      <p className="text-sm text-muted">{formatDate(f.created_at)}</p>
+                      <p className="sns-meta">{feedTypeLabel(t, f.feed_type)}</p>
+                      <h3>{f.author_email || t('common.none', '-')}</h3>
+                      <p className="text-sm text-muted">{formatDate(f.created_at, t('common.none', '-'))}</p>
                     </div>
                     <div className="sns-badges">
-                      <span className="badge badge-blue">{f.business_category_ko || f.business_category_key || '-'}</span>
-                      <span className="badge badge-gray">{f.pet_type_ko || f.pet_type_key || '-'}</span>
-                      <span className="badge badge-green">{f.visibility_scope}</span>
+                      <span className="badge badge-blue">{f.business_category_ko || f.business_category_key || t('common.none', '-')}</span>
+                      <span className="badge badge-gray">{f.pet_type_ko || f.pet_type_key || t('common.none', '-')}</span>
+                      <span className="badge badge-green">{visibilityLabel(t, f.visibility_scope)}</span>
                     </div>
                   </div>
-                  {f.pet_name && <p className="sns-pet">Pet: {f.pet_name}</p>}
+                  {f.pet_name && <p className="sns-pet">{t('guardian.feed.pet_prefix', 'Pet')}: {f.pet_name}</p>}
                   {f.caption && <p className="sns-caption">{f.caption}</p>}
                   <div className="sns-actions">
-                    <button className="btn btn-secondary btn-sm" onClick={() => api.feeds.like(f.id).then(() => loadAll(feedTab)).catch((e) => setError(e instanceof Error ? e.message : 'like 실패'))}>
-                      Like ({f.like_count || 0})
+                    <button className="btn btn-secondary btn-sm" onClick={() => api.feeds.like(f.id).then(() => loadAll(feedTab)).catch((e) => setError(e instanceof Error ? e.message : t('guardian.alert.like_failed', 'Failed to like post')))}>
+                      {t('guardian.feed.like', 'Like')} ({f.like_count || 0})
                     </button>
-                    <button className="btn btn-secondary btn-sm" onClick={() => api.feeds.comments.list(f.id).then(() => null).catch((e) => setError(e instanceof Error ? e.message : 'comment 실패'))}>
-                      Comment ({f.comment_count || 0})
+                    <button className="btn btn-secondary btn-sm" onClick={() => api.feeds.comments.list(f.id).then(() => null).catch((e) => setError(e instanceof Error ? e.message : t('guardian.alert.comment_failed', 'Failed to load comments')))}>
+                      {t('guardian.feed.comment', 'Comment')} ({f.comment_count || 0})
                     </button>
                   </div>
                 </article>
               ))}
-              {feeds.length === 0 && <div className="card"><div className="card-body">표시할 피드가 없습니다.</div></div>}
+              {feeds.length === 0 && <div className="card"><div className="card-body">{t('guardian.feed.no_feeds', 'No feeds to display.')}</div></div>}
             </div>
           </main>
 
           <aside className="guardian-side">
             <div className="card">
-              <div className="card-header"><div className="card-title">My Pets</div></div>
+              <div className="card-header"><div className="card-title">{t('guardian.mypets.title', 'My Pets')}</div></div>
               <div className="card-body">
                 <div className="td-actions mb-4">
-                  <button className="btn btn-primary btn-sm" onClick={openCreatePet}>+ Add Pet</button>
+                  <button className="btn btn-primary btn-sm" onClick={openCreatePet}>+ {t('common.add_pet', 'Add Pet')}</button>
                 </div>
                 <div className="guardian-pet-list">
                   {pets.map((p) => (
                     <div key={p.id} className={`guardian-pet-item ${selectedPet?.id === p.id ? 'active' : ''}`}>
                       <button className="btn btn-secondary btn-sm" onClick={() => setSelectedPetId(p.id)}>{p.name}</button>
                       <div className="td-actions">
-                        <button className="btn btn-secondary btn-sm" onClick={() => openEditPet(p.id)}>Edit</button>
-                        <button className="btn btn-danger btn-sm" onClick={() => removePet(p.id)}>Delete</button>
+                        <button className="btn btn-secondary btn-sm" onClick={() => openEditPet(p.id)}>{t('common.edit', 'Edit')}</button>
+                        <button className="btn btn-danger btn-sm" onClick={() => removePet(p.id)}>{t('common.delete', 'Delete')}</button>
                       </div>
                     </div>
                   ))}
                 </div>
                 {selectedPet && (
                   <div className="guardian-pet-detail mt-3">
-                    <p><strong>기본정보</strong></p>
-                    <p className="text-sm">Type: {labelOf(optPetType, selectedPet.pet_type_id)}</p>
-                    <p className="text-sm">Breed: {labelOf(optBreed, selectedPet.breed_id)}</p>
-                    <p className="text-sm">Gender: {labelOf(optGender, selectedPet.gender_id)}</p>
-                    <p className="text-sm">Health: {labelOf(optHealthLevel, selectedPet.health_condition_level_id)}</p>
-                    <p className="text-sm">Microchip: {selectedPet.microchip_no || '-'}</p>
+                    <p><strong>{t('guardian.mypets.basic_info', 'Basic Info')}</strong></p>
+                    <p className="text-sm">{t('master.pet_type', 'Pet Type')}: {labelOf(optPetType, selectedPet.pet_type_id, t('common.none', '-'))}</p>
+                    <p className="text-sm">{t('master.pet_breed', 'Breed')}: {labelOf(optBreed, selectedPet.breed_id, t('common.none', '-'))}</p>
+                    <p className="text-sm">{t('master.pet_gender', 'Gender')}: {labelOf(optGender, selectedPet.gender_id, t('common.none', '-'))}</p>
+                    <p className="text-sm">{t('master.health_condition_level', 'Health Condition Level')}: {labelOf(optHealthLevel, selectedPet.health_condition_level_id, t('common.none', '-'))}</p>
+                    <p className="text-sm">{t('guardian.form.microchip', 'Microchip Number')}: {selectedPet.microchip_no || t('common.none', '-')}</p>
                   </div>
                 )}
               </div>
             </div>
 
             <div className="card">
-              <div className="card-header"><div className="card-title">Health / Booking Summary</div></div>
+              <div className="card-header"><div className="card-title">{t('guardian.summary.health_booking', 'Health / Booking Summary')}</div></div>
               <div className="card-body">
-                <p className="text-sm">Latest Booking: <strong>{latestBooking?.status || '-'}</strong></p>
-                <p className="text-sm">Latest Booking Time: {formatDate(latestBooking?.updated_at)}</p>
-                <p className="text-sm">Pending Completion Approvals: <strong>{pendingApprovalsCount}</strong></p>
+                <p className="text-sm">{t('guardian.summary.latest_booking', 'Latest Booking')}: <strong>{latestBooking?.status || t('common.none', '-')}</strong></p>
+                <p className="text-sm">{t('guardian.summary.latest_booking_time', 'Latest Booking Time')}: {formatDate(latestBooking?.updated_at, t('common.none', '-'))}</p>
+                <p className="text-sm">{t('guardian.summary.pending_completion_approvals', 'Pending Completion Approvals')}: <strong>{pendingApprovalsCount}</strong></p>
               </div>
             </div>
 
             <div className="card">
-              <div className="card-header"><div className="card-title">Connections</div></div>
+              <div className="card-header"><div className="card-title">{t('guardian.connections.title', 'Connections')}</div></div>
               <div className="card-body">
-                <p className="text-sm">Connected Suppliers/Friends: <strong>{friendCount}</strong></p>
-                <p className="text-sm">Pending Friend Requests: <strong>{pendingRequests.length}</strong></p>
+                <p className="text-sm">{t('guardian.connections.connected_suppliers', 'Connected Suppliers/Friends')}: <strong>{friendCount}</strong></p>
+                <p className="text-sm">{t('guardian.connections.pending_friend_requests', 'Pending Friend Requests')}: <strong>{pendingRequests.length}</strong></p>
               </div>
             </div>
           </aside>
@@ -698,79 +722,79 @@ export default function GuardianMainPage() {
         <div className="modal-overlay">
           <div className="modal guardian-pet-modal">
             <div className="modal-header">
-              <h3 className="modal-title">{petMode === 'create' ? 'Add Pet' : 'Edit Pet'}</h3>
+              <h3 className="modal-title">{petMode === 'create' ? t('guardian.modal.add_pet', 'Add Pet') : t('guardian.modal.edit_pet', 'Edit Pet')}</h3>
               <button className="modal-close" onClick={() => { setPetModalOpen(false); setActivePet(null); }}>&times;</button>
             </div>
             <div className="modal-body guardian-modal-body">
               <div className="form-row col2">
                 <div className="form-group">
-                  <label className="form-label">이름 *</label>
+                  <label className="form-label">{t('guardian.form.name', 'Name')} *</label>
                   <input className="form-input" value={petForm.name} onChange={(e) => setPetForm((p) => ({ ...p, name: e.target.value }))} />
                 </div>
                 <div className="form-group">
-                  <label className="form-label">마이크로칩 번호</label>
+                  <label className="form-label">{t('guardian.form.microchip', 'Microchip Number')}</label>
                   <input className="form-input" value={petForm.microchip_no} onChange={(e) => setPetForm((p) => ({ ...p, microchip_no: e.target.value }))} />
                 </div>
               </div>
 
               <div className="form-row col3">
-                {renderSelect('펫 종류', petForm.pet_type_id, optPetType, (v) => setPetForm((p) => ({ ...p, pet_type_id: v, breed_id: '' })), true)}
-                {renderSelect('품종', petForm.breed_id, breedOptionsFiltered, (v) => setPetForm((p) => ({ ...p, breed_id: v })))}
-                {renderSelect('성별', petForm.gender_id, optGender, (v) => setPetForm((p) => ({ ...p, gender_id: v })))}
+                {renderSelect(t('master.pet_type', 'Pet Type'), petForm.pet_type_id, optPetType, (v) => setPetForm((p) => ({ ...p, pet_type_id: v, breed_id: '' })), true)}
+                {renderSelect(t('master.pet_breed', 'Breed'), petForm.breed_id, breedOptionsFiltered, (v) => setPetForm((p) => ({ ...p, breed_id: v })))}
+                {renderSelect(t('master.pet_gender', 'Gender'), petForm.gender_id, optGender, (v) => setPetForm((p) => ({ ...p, gender_id: v })))}
               </div>
 
               <div className="form-row col3">
-                {renderSelect('중성화 여부', petForm.neuter_status_id, optNeuter, (v) => setPetForm((p) => ({ ...p, neuter_status_id: v })))}
-                {renderSelect('생애 단계', petForm.life_stage_id, optLifeStage, (v) => setPetForm((p) => ({ ...p, life_stage_id: v })))}
-                {renderSelect('체형/크기', petForm.body_size_id, optBodySize, (v) => setPetForm((p) => ({ ...p, body_size_id: v })))}
+                {renderSelect(t('master.neuter_status', 'Neutered/Spayed Status'), petForm.neuter_status_id, optNeuter, (v) => setPetForm((p) => ({ ...p, neuter_status_id: v })))}
+                {renderSelect(t('master.life_stage', 'Life Stage'), petForm.life_stage_id, optLifeStage, (v) => setPetForm((p) => ({ ...p, life_stage_id: v })))}
+                {renderSelect(t('master.body_size', 'Body Size'), petForm.body_size_id, optBodySize, (v) => setPetForm((p) => ({ ...p, body_size_id: v })))}
               </div>
 
               <div className="form-row col3">
-                {renderSelect('국가', petForm.country_id, optCountry, (v) => setPetForm((p) => ({ ...p, country_id: v })))}
-                {renderSelect('복용 약물 상태', petForm.medication_status_id, optMedication, (v) => setPetForm((p) => ({ ...p, medication_status_id: v })))}
-                {renderSelect('체중 단위', petForm.weight_unit_id, optWeightUnit, (v) => setPetForm((p) => ({ ...p, weight_unit_id: v })))}
+                {renderSelect(t('master.country', 'Country'), petForm.country_id, optCountry, (v) => setPetForm((p) => ({ ...p, country_id: v })))}
+                {renderSelect(t('master.medication_status', 'Medication Status'), petForm.medication_status_id, optMedication, (v) => setPetForm((p) => ({ ...p, medication_status_id: v })))}
+                {renderSelect(t('master.weight_unit', 'Weight Unit'), petForm.weight_unit_id, optWeightUnit, (v) => setPetForm((p) => ({ ...p, weight_unit_id: v })))}
               </div>
 
               <div className="form-row col3">
-                {renderSelect('건강 상태', petForm.health_condition_level_id, optHealthLevel, (v) => setPetForm((p) => ({ ...p, health_condition_level_id: v })))}
-                {renderSelect('활동량', petForm.activity_level_id, optActivity, (v) => setPetForm((p) => ({ ...p, activity_level_id: v })))}
-                {renderSelect('식사 유형', petForm.diet_type_id, optDiet, (v) => setPetForm((p) => ({ ...p, diet_type_id: v })))}
+                {renderSelect(t('master.health_condition_level', 'Health Condition Level'), petForm.health_condition_level_id, optHealthLevel, (v) => setPetForm((p) => ({ ...p, health_condition_level_id: v })))}
+                {renderSelect(t('master.activity_level', 'Activity Level'), petForm.activity_level_id, optActivity, (v) => setPetForm((p) => ({ ...p, activity_level_id: v })))}
+                {renderSelect(t('master.diet_type', 'Diet Type'), petForm.diet_type_id, optDiet, (v) => setPetForm((p) => ({ ...p, diet_type_id: v })))}
               </div>
 
               <div className="form-row col3">
-                {renderSelect('실내/실외', petForm.living_style_id, optLivingStyle, (v) => setPetForm((p) => ({ ...p, living_style_id: v })))}
-                {renderSelect('보호 상태', petForm.ownership_type_id, optOwnership, (v) => setPetForm((p) => ({ ...p, ownership_type_id: v })))}
-                {renderSelect('털 길이', petForm.coat_length_id, optCoatLength, (v) => setPetForm((p) => ({ ...p, coat_length_id: v })))}
+                {renderSelect(t('master.living_style', 'Living Style'), petForm.living_style_id, optLivingStyle, (v) => setPetForm((p) => ({ ...p, living_style_id: v })))}
+                {renderSelect(t('master.ownership_type', 'Ownership Type'), petForm.ownership_type_id, optOwnership, (v) => setPetForm((p) => ({ ...p, ownership_type_id: v })))}
+                {renderSelect(t('master.coat_length', 'Coat Length'), petForm.coat_length_id, optCoatLength, (v) => setPetForm((p) => ({ ...p, coat_length_id: v })))}
               </div>
 
               <div className="form-row col2">
-                {renderSelect('털 타입', petForm.coat_type_id, optCoatType, (v) => setPetForm((p) => ({ ...p, coat_type_id: v })))}
-                {renderSelect('미용 주기', petForm.grooming_cycle_id, optGrooming, (v) => setPetForm((p) => ({ ...p, grooming_cycle_id: v })))}
+                {renderSelect(t('master.coat_type', 'Coat Type'), petForm.coat_type_id, optCoatType, (v) => setPetForm((p) => ({ ...p, coat_type_id: v })))}
+                {renderSelect(t('master.grooming_cycle', 'Grooming Cycle'), petForm.grooming_cycle_id, optGrooming, (v) => setPetForm((p) => ({ ...p, grooming_cycle_id: v })))}
               </div>
 
               <div className="form-row col2">
-                {renderMultiSelect('대표 색상', petForm.color_ids, optColor, (next) => setPetForm((p) => ({ ...p, color_ids: next })))}
-                {renderMultiSelect('알러지', petForm.allergy_ids, optAllergy, (next) => setPetForm((p) => ({ ...p, allergy_ids: next })))}
+                {renderMultiSelect(t('master.pet_color', 'Primary Color'), petForm.color_ids, optColor, (next) => setPetForm((p) => ({ ...p, color_ids: next })))}
+                {renderMultiSelect(t('master.allergy_type', 'Allergy'), petForm.allergy_ids, optAllergy, (next) => setPetForm((p) => ({ ...p, allergy_ids: next })))}
               </div>
 
               <div className="form-row col2">
-                {renderMultiSelect('질병 이력', petForm.disease_history_ids, optDisease, (next) => setPetForm((p) => ({ ...p, disease_history_ids: next })))}
-                {renderMultiSelect('증상 태그', petForm.symptom_tag_ids, optSymptom, (next) => setPetForm((p) => ({ ...p, symptom_tag_ids: next })))}
+                {renderMultiSelect(t('master.disease_type', 'Disease History'), petForm.disease_history_ids, optDisease, (next) => setPetForm((p) => ({ ...p, disease_history_ids: next })))}
+                {renderMultiSelect(t('master.symptom_type', 'Symptom Tag'), petForm.symptom_tag_ids, optSymptom, (next) => setPetForm((p) => ({ ...p, symptom_tag_ids: next })))}
               </div>
 
               <div className="form-row col2">
-                {renderMultiSelect('예방접종', petForm.vaccination_ids, optVaccination, (next) => setPetForm((p) => ({ ...p, vaccination_ids: next })))}
-                {renderMultiSelect('성격/기질', petForm.temperament_ids, optTemperament, (next) => setPetForm((p) => ({ ...p, temperament_ids: next })))}
+                {renderMultiSelect(t('master.vaccination_type', 'Vaccination'), petForm.vaccination_ids, optVaccination, (next) => setPetForm((p) => ({ ...p, vaccination_ids: next })))}
+                {renderMultiSelect(t('master.temperament_type', 'Temperament'), petForm.temperament_ids, optTemperament, (next) => setPetForm((p) => ({ ...p, temperament_ids: next })))}
               </div>
 
               <div className="form-group">
-                <label className="form-label">메모</label>
+                <label className="form-label">{t('guardian.form.notes', 'Notes')}</label>
                 <textarea className="form-textarea" value={petForm.notes} onChange={(e) => setPetForm((p) => ({ ...p, notes: e.target.value }))} />
               </div>
             </div>
             <div className="modal-footer">
-              <button className="btn btn-secondary" onClick={() => setPetModalOpen(false)}>취소</button>
-              <button className="btn btn-primary" onClick={savePet}>저장</button>
+              <button className="btn btn-secondary" onClick={() => setPetModalOpen(false)}>{t('common.cancel', 'Cancel')}</button>
+              <button className="btn btn-primary" onClick={savePet}>{t('common.save', 'Save')}</button>
             </div>
           </div>
         </div>

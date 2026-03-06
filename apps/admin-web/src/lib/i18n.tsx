@@ -64,11 +64,15 @@ export function I18nProvider({ children }: { children: ReactNode }) {
     Promise.all([
       fetch(`${API_BASE}/api/v1/i18n?lang=${lang}&prefix=admin`).then(r => r.json() as Promise<{ success: boolean; data: Record<string, string> }>),
       fetch(`${API_BASE}/api/v1/i18n?lang=${lang}&prefix=platform`).then(r => r.json() as Promise<{ success: boolean; data: Record<string, string> }>),
+      fetch(`${API_BASE}/api/v1/i18n?lang=${lang}&prefix=guardian`).then(r => r.json() as Promise<{ success: boolean; data: Record<string, string> }>),
+      fetch(`${API_BASE}/api/v1/i18n?lang=${lang}&prefix=common`).then(r => r.json() as Promise<{ success: boolean; data: Record<string, string> }>),
     ])
-      .then(([adminJson, platformJson]) => {
+      .then(([adminJson, platformJson, guardianJson, commonJson]) => {
         const merged: Record<string, string> = {};
         if (adminJson.success) Object.assign(merged, adminJson.data);
         if (platformJson.success) Object.assign(merged, platformJson.data);
+        if (guardianJson.success) Object.assign(merged, guardianJson.data);
+        if (commonJson.success) Object.assign(merged, commonJson.data);
         setTrans(merged);
       })
       .catch(() => {});

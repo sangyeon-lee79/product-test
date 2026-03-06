@@ -1,0 +1,111 @@
+-- Migration 0018: Guardian main page i18n keys (seed-based rendering)
+
+WITH seed(key, page, ko, en, ja, zh_cn, zh_tw, es, fr, de, pt, vi, th, id_lang, ar) AS (
+  VALUES
+    ('common.add_pet','common','반려동물 추가','Add Pet','ペットを追加','添加宠物','新增寵物','Agregar mascota','Ajouter un animal','Haustier hinzufügen','Adicionar pet','Thêm thú cưng','เพิ่มสัตว์เลี้ยง','Tambah hewan peliharaan','إضافة حيوان أليف'),
+    ('common.cancel','common','취소','Cancel','キャンセル','取消','取消','Cancelar','Annuler','Abbrechen','Cancelar','Hủy','ยกเลิก','Batal','إلغاء'),
+    ('common.delete','common','삭제','Delete','削除','删除','刪除','Eliminar','Supprimer','Löschen','Excluir','Xóa','ลบ','Hapus','حذف'),
+    ('common.edit','common','수정','Edit','編集','编辑','編輯','Editar','Modifier','Bearbeiten','Editar','Chỉnh sửa','แก้ไข','Ubah','تعديل'),
+    ('common.none','common','없음','None','なし','无','無','Ninguno','Aucun','Keine','Nenhum','Không có','ไม่มี','Tidak ada','لا يوجد'),
+    ('common.save','common','저장','Save','保存','保存','儲存','Guardar','Enregistrer','Speichern','Salvar','Lưu','บันทึก','Simpan','حفظ'),
+    ('common.select','common','선택','Select','選択','选择','選擇','Seleccionar','Sélectionner','Auswählen','Selecionar','Chọn','เลือก','Pilih','اختيار'),
+
+    ('guardian.main.public_feed','guardian','공개 피드','Public Feed','公開フィード','公开动态','公開動態','Feed público','Fil public','Öffentlicher Feed','Feed público','Bảng feed công khai','ฟีดสาธารณะ','Feed publik','الخلاصة العامة'),
+
+    ('guardian.summary.pets_count','guardian','등록된 반려동물','Registered Pets','登録済みペット','已登记宠物','已登記寵物','Mascotas registradas','Animaux enregistrés','Registrierte Haustiere','Pets cadastrados','Thú cưng đã đăng ký','สัตว์เลี้ยงที่ลงทะเบียน','Hewan peliharaan terdaftar','الحيوانات الأليفة المسجلة'),
+    ('guardian.summary.latest_health','guardian','최근 건강 상태','Latest Health Status','最新の健康状態','最新健康状态','最新健康狀態','Estado de salud más reciente','Dernier état de santé','Neuester Gesundheitsstatus','Estado de saúde mais recente','Tình trạng sức khỏe mới nhất','สถานะสุขภาพล่าสุด','Status kesehatan terbaru','أحدث حالة صحية'),
+    ('guardian.summary.latest_booking_status','guardian','최근 예약 상태','Latest Booking Status','最新の予約状態','最新预约状态','最新預約狀態','Estado de reserva más reciente','Dernier statut de réservation','Neuester Buchungsstatus','Status de reserva mais recente','Trạng thái đặt lịch mới nhất','สถานะการจองล่าสุด','Status pemesanan terbaru','أحدث حالة حجز'),
+    ('guardian.summary.pending_completion_approvals','guardian','대기중 완료게시 승인','Pending Completion Approvals','保留中の完了投稿承認','待处理的完成发布审批','待處理的完成發佈審核','Aprobaciones de publicación pendientes','Approbations de publication en attente','Ausstehende Freigaben für Abschlussbeiträge','Aprovações pendentes de publicação','Chờ phê duyệt bài hoàn thành','รออนุมัติโพสต์งานเสร็จ','Persetujuan publikasi yang tertunda','موافقات نشر الإنجاز المعلقة'),
+    ('guardian.summary.health_booking','guardian','건강 / 예약 요약','Health / Booking Summary','健康 / 予約サマリー','健康/预约摘要','健康/預約摘要','Resumen de salud / reservas','Résumé santé / réservations','Gesundheit / Buchung Zusammenfassung','Resumo de saúde / reservas','Tóm tắt sức khỏe / đặt lịch','สรุปสุขภาพ / การจอง','Ringkasan kesehatan / pemesanan','ملخص الصحة / الحجز'),
+    ('guardian.summary.latest_booking','guardian','최근 예약','Latest Booking','最新の予約','最新预约','最新預約','Última reserva','Dernière réservation','Letzte Buchung','Última reserva','Lịch đặt gần nhất','การจองล่าสุด','Pemesanan terbaru','آخر حجز'),
+    ('guardian.summary.latest_booking_time','guardian','최근 예약 시간','Latest Booking Time','最新予約時間','最新预约时间','最新預約時間','Hora de la última reserva','Heure de la dernière réservation','Zeit der letzten Buchung','Horário da última reserva','Thời gian đặt lịch gần nhất','เวลาการจองล่าสุด','Waktu pemesanan terbaru','وقت آخر حجز'),
+
+    ('guardian.empty.no_pets_title','guardian','첫 반려동물을 등록해주세요','Register your first pet','最初のペットを登録してください','请先注册第一只宠物','請先註冊第一隻寵物','Registra tu primera mascota','Enregistrez votre premier animal','Registriere dein erstes Haustier','Cadastre seu primeiro pet','Hãy đăng ký thú cưng đầu tiên','ลงทะเบียนสัตว์เลี้ยงตัวแรกของคุณ','Daftarkan hewan peliharaan pertama Anda','سجّل أول حيوان أليف لك'),
+    ('guardian.empty.no_pets_desc','guardian','등록된 펫이 없으면 피드/건강/예약 연결이 제한됩니다.','Without a pet profile, feed, health, and booking links are limited.','ペットプロフィールがない場合、フィード・健康・予約連携が制限されます。','没有宠物档案时，动态、健康和预约联动会受限。','沒有寵物檔案時，動態、健康與預約連動會受限。','Sin perfil de mascota, la conexión de feed, salud y reservas se limita.','Sans profil animal, les liens feed, santé et réservation sont limités.','Ohne Haustierprofil sind Feed-, Gesundheits- und Buchungsverknüpfungen eingeschränkt.','Sem perfil do pet, a integração de feed, saúde e reserva fica limitada.','Nếu không có hồ sơ thú cưng, liên kết feed, sức khỏe và đặt lịch sẽ bị hạn chế.','หากไม่มีโปรไฟล์สัตว์เลี้ยง การเชื่อมโยงฟีด สุขภาพ และการจองจะถูกจำกัด','Tanpa profil hewan, tautan feed, kesehatan, dan pemesanan terbatas.','بدون ملف للحيوان الأليف تصبح روابط الخلاصة والصحة والحجز محدودة.'),
+    ('guardian.empty.no_pets_cta','guardian','첫 반려동물 등록하기','Register your first pet','最初のペットを登録','注册第一只宠物','註冊第一隻寵物','Registrar primera mascota','Enregistrer le premier animal','Erstes Haustier registrieren','Registrar primeiro pet','Đăng ký thú cưng đầu tiên','ลงทะเบียนสัตว์เลี้ยงตัวแรก','Daftarkan hewan peliharaan pertama','سجّل أول حيوان أليف'),
+
+    ('guardian.feed.create_title','guardian','피드 작성','Create Feed Post','フィード作成','创建动态','建立動態','Crear publicación','Créer une publication','Feed-Beitrag erstellen','Criar postagem','Tạo bài đăng feed','สร้างโพสต์ฟีด','Buat posting feed','إنشاء منشور في الخلاصة'),
+    ('guardian.feed.feed_type','guardian','피드 유형','Feed Type','フィード種別','动态类型','動態類型','Tipo de publicación','Type de publication','Feed-Typ','Tipo de feed','Loại bài đăng','ประเภทฟีด','Jenis feed','نوع الخلاصة'),
+    ('guardian.feed.visibility','guardian','공개 범위','Visibility','公開範囲','可见范围','可見範圍','Visibilidad','Visibilité','Sichtbarkeit','Visibilidade','Phạm vi hiển thị','การมองเห็น','Visibilitas','نطاق الرؤية'),
+    ('guardian.feed.linked_pet','guardian','연결된 반려동물','Linked Pet','連携ペット','关联宠物','關聯寵物','Mascota vinculada','Animal lié','Verknüpftes Haustier','Pet vinculado','Thú cưng liên kết','สัตว์เลี้ยงที่เชื่อมโยง','Hewan tertaut','الحيوان المرتبط'),
+    ('guardian.feed.booking_id_optional','guardian','booking_id (선택)','booking_id (optional)','booking_id（任意）','booking_id（可选）','booking_id（可選）','booking_id (opcional)','booking_id (optionnel)','booking_id (optional)','booking_id (opcional)','booking_id (tùy chọn)','booking_id (ไม่บังคับ)','booking_id (opsional)','booking_id (اختياري)'),
+    ('guardian.feed.supplier_id_optional','guardian','supplier_id (선택)','supplier_id (optional)','supplier_id（任意）','supplier_id（可选）','supplier_id（可選）','supplier_id (opcional)','supplier_id (optionnel)','supplier_id (optional)','supplier_id (opcional)','supplier_id (tùy chọn)','supplier_id (ไม่บังคับ)','supplier_id (opsional)','supplier_id (اختياري)'),
+    ('guardian.feed.caption','guardian','내용','Caption','キャプション','说明文字','說明文字','Descripción','Légende','Bildunterschrift','Legenda','Nội dung','คำบรรยาย','Keterangan','الوصف'),
+    ('guardian.feed.tags','guardian','태그 (쉼표로 구분)','Tags (comma separated)','タグ（カンマ区切り）','标签（逗号分隔）','標籤（逗號分隔）','Etiquetas (separadas por coma)','Tags (séparés par des virgules)','Tags (durch Komma getrennt)','Tags (separadas por vírgula)','Thẻ (phân tách bằng dấu phẩy)','แท็ก (คั่นด้วยจุลภาค)','Tag (dipisahkan koma)','الوسوم (مفصولة بفواصل)'),
+    ('guardian.feed.post','guardian','게시','Post','投稿','发布','發佈','Publicar','Publier','Posten','Publicar','Đăng','โพสต์','Posting','نشر'),
+    ('guardian.feed.filter.all','guardian','전체','All','すべて','全部','全部','Todos','Tous','Alle','Todos','Tất cả','ทั้งหมด','Semua','الكل'),
+    ('guardian.feed.filter.friends','guardian','친구 피드','Friends Feed','友だちフィード','好友动态','好友動態','Feed de amigos','Fil des amis','Freundes-Feed','Feed de amigos','Feed bạn bè','ฟีดเพื่อน','Feed teman','خلاصة الأصدقاء'),
+    ('guardian.feed.no_feeds','guardian','표시할 피드가 없습니다.','No feeds to display.','表示するフィードがありません。','没有可显示的动态。','沒有可顯示的動態。','No hay publicaciones para mostrar.','Aucun fil à afficher.','Keine Feeds zum Anzeigen.','Nenhum feed para exibir.','Không có feed để hiển thị.','ไม่มีฟีดให้แสดง','Tidak ada feed untuk ditampilkan.','لا توجد منشورات للعرض.'),
+    ('guardian.feed.pet_prefix','guardian','반려동물','Pet','ペット','宠物','寵物','Mascota','Animal','Haustier','Pet','Thú cưng','สัตว์เลี้ยง','Hewan peliharaan','حيوان أليف'),
+    ('guardian.feed.like','guardian','좋아요','Like','いいね','点赞','按讚','Me gusta','J''aime','Gefällt mir','Curtir','Thích','ถูกใจ','Suka','إعجاب'),
+    ('guardian.feed.comment','guardian','댓글','Comment','コメント','评论','評論','Comentar','Commenter','Kommentieren','Comentar','Bình luận','แสดงความคิดเห็น','Komentar','تعليق'),
+
+    ('guardian.feed.type.guardian_post','guardian','보호자 게시글','Guardian Post','保護者投稿','守护者帖子','守護者貼文','Publicación de guardián','Publication du guardian','Guardian-Beitrag','Postagem do guardião','Bài đăng của guardian','โพสต์ของผู้ดูแล','Posting guardian','منشور الوصي'),
+    ('guardian.feed.type.health_update','guardian','건강 업데이트','Health Update','健康アップデート','健康更新','健康更新','Actualización de salud','Mise à jour santé','Gesundheitsupdate','Atualização de saúde','Cập nhật sức khỏe','อัปเดตสุขภาพ','Pembaruan kesehatan','تحديث صحي'),
+    ('guardian.feed.type.pet_milestone','guardian','반려동물 마일스톤','Pet Milestone','ペットのマイルストーン','宠物里程碑','寵物里程碑','Hito de mascota','Jalon de l''animal','Haustier-Meilenstein','Marco do pet','Cột mốc thú cưng','เหตุการณ์สำคัญของสัตว์เลี้ยง','Tonggak hewan peliharaan','إنجاز الحيوان الأليف'),
+    ('guardian.feed.type.supplier_story','guardian','공급자 스토리','Supplier Story','サプライヤーストーリー','供应商故事','供應商故事','Historia del proveedor','Histoire du fournisseur','Anbieter-Story','História do fornecedor','Câu chuyện nhà cung cấp','เรื่องราวผู้ให้บริการ','Cerita pemasok','قصة المورّد'),
+    ('guardian.feed.type.booking_completed','guardian','예약 완료 게시물','Booking Completed','予約完了投稿','预约完成帖子','預約完成貼文','Publicación de reserva completada','Publication de réservation terminée','Beitrag zur abgeschlossenen Buchung','Post de reserva concluída','Bài đăng hoàn thành đặt lịch','โพสต์การจองเสร็จสิ้น','Posting pemesanan selesai','منشور إكمال الحجز'),
+
+    ('guardian.feed.visibility.public','guardian','전체 공개','Public','公開','公开','公開','Público','Public','Öffentlich','Público','Công khai','สาธารณะ','Publik','عام'),
+    ('guardian.feed.visibility.friends_only','guardian','친구에게만','Friends Only','友だちのみ','仅好友可见','僅好友可見','Solo amigos','Amis uniquement','Nur Freunde','Somente amigos','Chỉ bạn bè','เฉพาะเพื่อน','Hanya teman','للأصدقاء فقط'),
+    ('guardian.feed.visibility.private','guardian','비공개','Private','非公開','私密','私人','Privado','Privé','Privat','Privado','Riêng tư','ส่วนตัว','Pribadi','خاص'),
+    ('guardian.feed.visibility.connected_only','guardian','연결 사용자만','Connected Only','接続ユーザーのみ','仅连接用户','僅連結用戶','Solo conectados','Connexions uniquement','Nur verbundene Nutzer','Somente conectados','Chỉ người đã kết nối','เฉพาะผู้ที่เชื่อมต่อ','Hanya pengguna terhubung','للمستخدمين المرتبطين فقط'),
+    ('guardian.feed.visibility.booking_related_only','guardian','예약 관련 사용자만','Booking Related Only','予約関連ユーザーのみ','仅预约相关用户','僅預約相關用戶','Solo usuarios de reserva','Réservation uniquement','Nur buchungsbezogen','Somente relacionados à reserva','Chỉ người liên quan đặt lịch','เฉพาะผู้เกี่ยวข้องกับการจอง','Hanya terkait pemesanan','فقط للمستخدمين المرتبطين بالحجز'),
+
+    ('guardian.mypets.title','guardian','내 반려동물','My Pets','マイペット','我的宠物','我的寵物','Mis mascotas','Mes animaux','Meine Haustiere','Meus pets','Thú cưng của tôi','สัตว์เลี้ยงของฉัน','Hewan peliharaanku','حيواناتي الأليفة'),
+    ('guardian.mypets.basic_info','guardian','기본정보','Basic Info','基本情報','基本信息','基本資訊','Información básica','Informations de base','Grundinformationen','Informações básicas','Thông tin cơ bản','ข้อมูลพื้นฐาน','Informasi dasar','معلومات أساسية'),
+
+    ('guardian.connections.title','guardian','연결','Connections','つながり','连接','連結','Conexiones','Connexions','Verbindungen','Conexões','Kết nối','การเชื่อมต่อ','Koneksi','الاتصالات'),
+    ('guardian.connections.connected_suppliers','guardian','연결된 공급자/친구','Connected Suppliers/Friends','接続済みサプライヤー/友だち','已连接供应商/好友','已連結供應商/好友','Proveedores/amigos conectados','Fournisseurs/amis connectés','Verbundene Anbieter/Freunde','Fornecedores/amigos conectados','Nhà cung cấp/bạn bè đã kết nối','ผู้ให้บริการ/เพื่อนที่เชื่อมต่อแล้ว','Pemasok/teman terhubung','المورّدون/الأصدقاء المتصلون'),
+    ('guardian.connections.pending_friend_requests','guardian','대기중 친구 요청','Pending Friend Requests','保留中の友だち申請','待处理好友请求','待處理好友請求','Solicitudes pendientes','Demandes d''ami en attente','Ausstehende Freundschaftsanfragen','Solicitações pendentes','Yêu cầu kết bạn đang chờ','คำขอเป็นเพื่อนที่รอดำเนินการ','Permintaan pertemanan tertunda','طلبات الصداقة المعلقة'),
+
+    ('guardian.modal.add_pet','guardian','반려동물 추가','Add Pet','ペット追加','添加宠物','新增寵物','Agregar mascota','Ajouter un animal','Haustier hinzufügen','Adicionar pet','Thêm thú cưng','เพิ่มสัตว์เลี้ยง','Tambah hewan peliharaan','إضافة حيوان أليف'),
+    ('guardian.modal.edit_pet','guardian','반려동물 수정','Edit Pet','ペット編集','编辑宠物','編輯寵物','Editar mascota','Modifier l''animal','Haustier bearbeiten','Editar pet','Chỉnh sửa thú cưng','แก้ไขสัตว์เลี้ยง','Ubah hewan peliharaan','تعديل الحيوان الأليف'),
+
+    ('guardian.form.name','guardian','이름','Name','名前','姓名','姓名','Nombre','Nom','Name','Nome','Tên','ชื่อ','Nama','الاسم'),
+    ('guardian.form.microchip','guardian','마이크로칩 번호','Microchip Number','マイクロチップ番号','芯片号码','晶片號碼','Número de microchip','Numéro de micropuce','Mikrochip-Nummer','Número do microchip','Số microchip','หมายเลขไมโครชิป','Nomor microchip','رقم الشريحة'),
+    ('guardian.form.notes','guardian','메모','Notes','メモ','备注','備註','Notas','Notes','Notizen','Notas','Ghi chú','บันทึก','Catatan','ملاحظات'),
+
+    ('guardian.alert.load_failed','guardian','가디언 화면 로딩에 실패했습니다.','Failed to load guardian page.','ガーディアン画面の読み込みに失敗しました。','加载Guardian页面失败。','載入Guardian頁面失敗。','Error al cargar la página guardian.','Échec du chargement de la page guardian.','Guardian-Seite konnte nicht geladen werden.','Falha ao carregar a página guardian.','Không thể tải trang guardian.','โหลดหน้า guardian ไม่สำเร็จ','Gagal memuat halaman guardian.','فشل تحميل صفحة guardian.'),
+    ('guardian.alert.pet_detail_failed','guardian','반려동물 상세 조회에 실패했습니다.','Failed to load pet detail.','ペット詳細の取得に失敗しました。','获取宠物详情失败。','取得寵物詳情失敗。','Error al cargar detalle de mascota.','Échec du chargement du détail de l''animal.','Fehler beim Laden der Haustierdetails.','Falha ao carregar detalhes do pet.','Không thể tải chi tiết thú cưng.','โหลดรายละเอียดสัตว์เลี้ยงไม่สำเร็จ','Gagal memuat detail hewan.','فشل تحميل تفاصيل الحيوان الأليف.'),
+    ('guardian.alert.name_required','guardian','반려동물 이름은 필수입니다.','Pet name is required.','ペット名は必須です。','宠物名称为必填项。','寵物名稱為必填項。','El nombre de la mascota es obligatorio.','Le nom de l''animal est requis.','Der Haustiername ist erforderlich.','O nome do pet é obrigatório.','Tên thú cưng là bắt buộc.','ต้องกรอกชื่อสัตว์เลี้ยง','Nama hewan wajib diisi.','اسم الحيوان الأليف مطلوب.'),
+    ('guardian.alert.pet_type_required','guardian','펫 종류는 필수입니다.','Pet type is required.','ペット種別は必須です。','宠物类型为必填项。','寵物類型為必填項。','El tipo de mascota es obligatorio.','Le type d''animal est requis.','Haustierart ist erforderlich.','O tipo do pet é obrigatório.','Loại thú cưng là bắt buộc.','ต้องเลือกประเภทสัตว์เลี้ยง','Jenis hewan wajib dipilih.','نوع الحيوان الأليف مطلوب.'),
+    ('guardian.alert.microchip_duplicate','guardian','이미 등록된 마이크로칩 번호입니다.','This microchip number is already registered.','このマイクロチップ番号は既に登録されています。','该芯片号码已被注册。','該晶片號碼已被註冊。','Este número de microchip ya está registrado.','Ce numéro de micropuce est déjà enregistré.','Diese Mikrochip-Nummer ist bereits registriert.','Este número de microchip já está registrado.','Số microchip này đã được đăng ký.','หมายเลขไมโครชิปนี้ถูกลงทะเบียนแล้ว','Nomor microchip ini sudah terdaftar.','رقم الشريحة هذا مسجل بالفعل.'),
+    ('guardian.alert.microchip_check_failed','guardian','마이크로칩 중복 확인에 실패했습니다.','Microchip duplicate check failed.','マイクロチップ重複確認に失敗しました。','芯片重复检查失败。','晶片重複檢查失敗。','Error al verificar duplicado de microchip.','Échec de la vérification de doublon de micropuce.','Mikrochip-Duplikatsprüfung fehlgeschlagen.','Falha ao verificar duplicidade de microchip.','Kiểm tra trùng microchip thất bại.','ตรวจสอบความซ้ำของไมโครชิปล้มเหลว','Pemeriksaan duplikasi microchip gagal.','فشل التحقق من تكرار رقم الشريحة.'),
+    ('guardian.alert.pet_save_failed','guardian','반려동물 저장에 실패했습니다.','Failed to save pet.','ペットの保存に失敗しました。','保存宠物失败。','儲存寵物失敗。','Error al guardar mascota.','Échec de l''enregistrement de l''animal.','Speichern des Haustiers fehlgeschlagen.','Falha ao salvar pet.','Lưu thú cưng thất bại.','บันทึกสัตว์เลี้ยงไม่สำเร็จ','Gagal menyimpan hewan.','فشل حفظ الحيوان الأليف.'),
+    ('guardian.alert.pet_delete_confirm','guardian','이 반려동물을 삭제하시겠습니까?','Do you want to delete this pet?','このペットを削除しますか？','要删除这只宠物吗？','要刪除此寵物嗎？','¿Deseas eliminar esta mascota?','Voulez-vous supprimer cet animal ?','Möchtest du dieses Haustier löschen?','Deseja excluir este pet?','Bạn có muốn xóa thú cưng này không?','คุณต้องการลบสัตว์เลี้ยงตัวนี้หรือไม่?','Apakah Anda ingin menghapus hewan ini?','هل تريد حذف هذا الحيوان الأليف؟'),
+    ('guardian.alert.pet_delete_failed','guardian','반려동물 삭제에 실패했습니다.','Failed to delete pet.','ペットの削除に失敗しました。','删除宠物失败。','刪除寵物失敗。','Error al eliminar mascota.','Échec de suppression de l''animal.','Löschen des Haustiers fehlgeschlagen.','Falha ao excluir pet.','Xóa thú cưng thất bại.','ลบสัตว์เลี้ยงไม่สำเร็จ','Gagal menghapus hewan.','فشل حذف الحيوان الأليف.'),
+    ('guardian.alert.feed_caption_required','guardian','피드 내용을 입력해주세요.','Please enter feed content.','フィード内容を入力してください。','请输入动态内容。','請輸入動態內容。','Ingresa el contenido de la publicación.','Veuillez saisir le contenu de la publication.','Bitte Feed-Inhalt eingeben.','Digite o conteúdo do feed.','Vui lòng nhập nội dung bài đăng.','กรุณากรอกเนื้อหาโพสต์','Silakan masukkan konten feed.','يرجى إدخال محتوى المنشور.'),
+    ('guardian.alert.feed_create_failed','guardian','피드 등록에 실패했습니다.','Failed to create feed post.','フィード投稿の作成に失敗しました。','创建动态失败。','建立動態失敗。','Error al crear publicación.','Échec de création de publication.','Feed-Beitrag konnte nicht erstellt werden.','Falha ao criar postagem.','Tạo bài đăng thất bại.','สร้างโพสต์ไม่สำเร็จ','Gagal membuat posting feed.','فشل إنشاء المنشور.'),
+    ('guardian.alert.like_failed','guardian','좋아요 처리에 실패했습니다.','Failed to like post.','いいね処理に失敗しました。','点赞失败。','按讚失敗。','Error al dar me gusta.','Échec du like.','Gefällt mir fehlgeschlagen.','Falha ao curtir.','Thích bài viết thất bại.','กดถูกใจไม่สำเร็จ','Gagal menyukai postingan.','فشل تسجيل الإعجاب.'),
+    ('guardian.alert.comment_failed','guardian','댓글 조회에 실패했습니다.','Failed to load comments.','コメントの取得に失敗しました。','加载评论失败。','載入評論失敗。','Error al cargar comentarios.','Échec du chargement des commentaires.','Kommentare konnten nicht geladen werden.','Falha ao carregar comentários.','Không thể tải bình luận.','โหลดความคิดเห็นไม่สำเร็จ','Gagal memuat komentar.','فشل تحميل التعليقات.')
+)
+INSERT INTO i18n_translations (
+  id, key, page,
+  ko, en, ja, zh_cn, zh_tw, es, fr, de, pt, vi, th, id_lang, ar,
+  is_active, created_at, updated_at
+)
+SELECT
+  lower(hex(randomblob(16))), key, page,
+  ko, en, ja, zh_cn, zh_tw, es, fr, de, pt, vi, th, id_lang, ar,
+  1, datetime('now'), datetime('now')
+FROM seed
+ON CONFLICT(key) DO UPDATE SET
+  page = excluded.page,
+  ko = excluded.ko,
+  en = excluded.en,
+  ja = excluded.ja,
+  zh_cn = excluded.zh_cn,
+  zh_tw = excluded.zh_tw,
+  es = excluded.es,
+  fr = excluded.fr,
+  de = excluded.de,
+  pt = excluded.pt,
+  vi = excluded.vi,
+  th = excluded.th,
+  id_lang = excluded.id_lang,
+  ar = excluded.ar,
+  is_active = 1,
+  updated_at = excluded.updated_at;
+
+INSERT OR IGNORE INTO schema_migrations (version) VALUES ('0018_guardian_main_i18n_seed');
