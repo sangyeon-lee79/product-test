@@ -351,6 +351,74 @@ tbody tr:hover { background: #f8fafc; }
   background: #f9fbff;
 }
 
+/* Guardian Main */
+.guardian-page {
+  min-height: 100vh;
+  padding: 22px;
+  background:
+    radial-gradient(circle at 20% 0%, rgba(48, 120, 255, 0.13), transparent 42%),
+    #f4f8ff;
+}
+.guardian-top {
+  max-width: 1320px;
+  margin: 0 auto 16px;
+}
+.guardian-hero h2 {
+  margin-top: 6px;
+  font-size: 28px;
+}
+.guardian-summary-grid {
+  margin-top: 12px;
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 12px;
+}
+.guardian-summary-grid h3 {
+  margin-top: 4px;
+  font-size: 24px;
+}
+.guardian-layout {
+  max-width: 1320px;
+  margin: 0 auto;
+  display: grid;
+  grid-template-columns: minmax(0, 2fr) minmax(320px, 1fr);
+  gap: 14px;
+}
+.guardian-main-feed,
+.guardian-side {
+  display: grid;
+  gap: 12px;
+  align-content: start;
+}
+.guardian-pet-list {
+  display: grid;
+  gap: 8px;
+}
+.guardian-pet-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+  border: 1px solid #e2e9f5;
+  border-radius: 8px;
+  padding: 8px;
+}
+.guardian-pet-item.active {
+  border-color: #9cbef7;
+  background: #f7fbff;
+}
+.guardian-pet-detail {
+  border-top: 1px solid #e2e9f5;
+  padding-top: 10px;
+}
+.guardian-pet-modal {
+  max-width: 980px;
+}
+.guardian-modal-body {
+  max-height: 72vh;
+  overflow: auto;
+}
+
 /* Utils */
 .text-muted { color: var(--text-muted); }
 .text-sm { font-size: 12px; }
@@ -381,5 +449,17 @@ tbody tr:hover { background: #f8fafc; }
   }
   .friend-row {
     flex-direction: column;
+  }
+  .guardian-page {
+    padding: 14px;
+  }
+  .guardian-summary-grid {
+    grid-template-columns: 1fr 1fr;
+  }
+  .guardian-layout {
+    grid-template-columns: 1fr;
+  }
+  .guardian-pet-modal {
+    max-width: 100%;
   }
 }

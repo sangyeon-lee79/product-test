@@ -132,6 +132,11 @@ export const api = {
 
   // Master
   master: {
+    public: {
+      categories: () => request<Array<{ id: string; key: string; sort_order: number; is_active: number }>>('/api/v1/master/categories'),
+      items: (categoryKey: string) =>
+        request<MasterItem[]>(`/api/v1/master/items?category_key=${encodeURIComponent(categoryKey)}`),
+    },
     categories: {
       list: () => request<MasterCategory[]>('/api/v1/admin/master/categories'),
       create: (data: { sort_order?: number; translations?: Record<string, string> }) =>
@@ -182,6 +187,20 @@ export const api = {
       request<{ liked: boolean }>(`/api/v1/feeds/${feedId}/like`, { method: 'POST' }),
     unlike: (feedId: string) =>
       request<{ liked: boolean }>(`/api/v1/feeds/${feedId}/like`, { method: 'DELETE' }),
+    create: (data: {
+      feed_type: 'guardian_post' | 'health_update' | 'pet_milestone' | 'supplier_story';
+      visibility_scope: 'public' | 'friends_only' | 'private' | 'connected_only' | 'booking_related_only';
+      caption: string;
+      tags?: string[];
+      media_urls?: string[];
+      pet_id?: string | null;
+      booking_id?: string | null;
+      supplier_id?: string | null;
+      business_category_id?: string | null;
+      pet_type_id?: string | null;
+      related_service_id?: string | null;
+    }) =>
+      request<{ id: string }>('/api/v1/feeds', { method: 'POST', body: JSON.stringify(data) }),
     comments: {
       list: (feedId: string) =>
         request<{ comments: FeedComment[] }>(`/api/v1/feeds/${feedId}/comments`),
@@ -216,6 +235,22 @@ export const api = {
           body: JSON.stringify({ action }),
         }),
     },
+  },
+  pets: {
+    list: () => request<{ pets: Pet[] }>('/api/v1/pets'),
+    detail: (id: string) => request<{ pet: Pet }>(`/api/v1/pets/${id}`),
+    create: (data: Partial<Pet>) => request<{ pet: Pet }>('/api/v1/pets', { method: 'POST', body: JSON.stringify(data) }),
+    update: (id: string, data: Partial<Pet>) => request<{ pet: Pet }>(`/api/v1/pets/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
+    remove: (id: string) => request<{ deleted: boolean }>(`/api/v1/pets/${id}`, { method: 'DELETE' }),
+    checkMicrochip: (microchipNo: string, excludePetId?: string) => {
+      const q = new URLSearchParams();
+      q.set('microchip_no', microchipNo);
+      if (excludePetId) q.set('exclude_pet_id', excludePetId);
+      return request<{ available: boolean; reason?: string; pet_id?: string }>(`/api/v1/pets/check-microchip?${q.toString()}`);
+    },
+  },
+  bookings: {
+    list: () => request<{ bookings: Booking[] }>('/api/v1/bookings'),
   },
   currencies: {
     list: () => request<Currency[]>('/api/v1/admin/currencies'),
@@ -271,6 +306,57 @@ export interface Country {
 export interface Currency {
   id: string; code: string; symbol: string; name_key: string;
   decimal_places: number; is_active: number; created_at: string;
+}
+
+export interface Pet {
+  id: string;
+  guardian_id: string;
+  name: string;
+  pet_type_id: string;
+  breed_id?: string | null;
+  gender_id?: string | null;
+  neuter_status_id?: string | null;
+  life_stage_id?: string | null;
+  body_size_id?: string | null;
+  country_id?: string | null;
+  medication_status_id?: string | null;
+  weight_unit_id?: string | null;
+  health_condition_level_id?: string | null;
+  activity_level_id?: string | null;
+  diet_type_id?: string | null;
+  living_style_id?: string | null;
+  ownership_type_id?: string | null;
+  coat_length_id?: string | null;
+  coat_type_id?: string | null;
+  grooming_cycle_id?: string | null;
+  color_ids?: string[] | string;
+  allergy_ids?: string[] | string;
+  disease_history_ids?: string[] | string;
+  symptom_tag_ids?: string[] | string;
+  vaccination_ids?: string[] | string;
+  temperament_ids?: string[] | string;
+  notes?: string | null;
+  intro_text?: string | null;
+  birth_date?: string | null;
+  microchip_no?: string | null;
+  status?: string;
+  created_at?: string;
+  updated_at?: string;
+}
+
+export interface Booking {
+  id: string;
+  guardian_id: string;
+  supplier_id: string;
+  pet_id?: string | null;
+  service_id?: string | null;
+  business_category_id?: string | null;
+  status: string;
+  requested_date?: string | null;
+  requested_time?: string | null;
+  completed_at?: string | null;
+  created_at: string;
+  updated_at: string;
 }
 
 export interface FeedPost {
