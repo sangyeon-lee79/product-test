@@ -9,6 +9,8 @@ export interface Env {
   GOOGLE_TRANSLATE_RPM_LIMIT?: string;
   GOOGLE_TRANSLATE_DAILY_CHAR_LIMIT?: string;
   R2_PUBLIC_URL: string;  // R2 퍼블릭 URL (빈 문자열이면 로컬 서빙 fallback)
+  PLATFORM_NAME?: string;
+  PLATFORM_TAGLINE?: string;
   DB: D1Database;         // Cloudflare D1 (로컬 개발) / 배포 시 Hyperdrive 전환
   R2: R2Bucket;           // Cloudflare R2 미디어 스토리지 (LLD §8)
 }

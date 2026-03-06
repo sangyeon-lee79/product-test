@@ -14,7 +14,9 @@
 		"GOOGLE_TRANSLATE_SERVICE_ACCOUNT_EMAIL": "",
 		"GOOGLE_TRANSLATE_RPM_LIMIT": "60",
 		"GOOGLE_TRANSLATE_DAILY_CHAR_LIMIT": "200000",
-		"R2_PUBLIC_URL": ""
+		"R2_PUBLIC_URL": "",
+		"PLATFORM_NAME": "Petfolio",
+		"PLATFORM_TAGLINE": "Your pet's life portfolio"
 	},
 
 	// D1 로컬 SQLite (개발용 — 배포 시 Hyperdrive+PostgreSQL로 전환)
@@ -36,7 +38,9 @@
 				"JWT_SECRET": "staging-secret",
 				"GOOGLE_TRANSLATE_SERVICE_ACCOUNT_EMAIL": "",
 				"GOOGLE_TRANSLATE_RPM_LIMIT": "60",
-				"GOOGLE_TRANSLATE_DAILY_CHAR_LIMIT": "200000"
+				"GOOGLE_TRANSLATE_DAILY_CHAR_LIMIT": "200000",
+				"PLATFORM_NAME": "Petfolio",
+				"PLATFORM_TAGLINE": "Your pet's life portfolio"
 			}
 		},
 		"production": {
@@ -47,7 +51,9 @@
 				"JWT_SECRET": "REPLACE_WITH_SECURE_SECRET",
 				"GOOGLE_TRANSLATE_SERVICE_ACCOUNT_EMAIL": "",
 				"GOOGLE_TRANSLATE_RPM_LIMIT": "60",
-				"GOOGLE_TRANSLATE_DAILY_CHAR_LIMIT": "200000"
+				"GOOGLE_TRANSLATE_DAILY_CHAR_LIMIT": "200000",
+				"PLATFORM_NAME": "Petfolio",
+				"PLATFORM_TAGLINE": "Your pet's life portfolio"
 			}
 		}
 	}

@@ -2,6 +2,9 @@
 # 제품 요구사항 정의서 (Product Requirements Document)
 # Status: MVP Planning (PLAN.md 기준 정렬)
 
+Petfolio
+Your pet's life portfolio
+
 ---
 
 ## 1. 제품 개요

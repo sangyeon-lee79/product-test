@@ -517,9 +517,9 @@ export default function GuardianMainPage() {
       <section className="guardian-top">
         <div className="guardian-hero card">
           <div className="card-body">
-            <p className="hero-eyebrow">Guardian SNS Home</p>
-            <h2>반려동물 기반 SNS + 기록 홈</h2>
-            <p className="text-muted">펫 등록 상태에 따라 피드/예약/건강 데이터가 연동됩니다.</p>
+            <p className="hero-eyebrow">Petfolio | 펫폴리오</p>
+            <h2>Petfolio</h2>
+            <p className="text-muted">Your pet's life portfolio</p>
             <div className="hero-actions mt-3">
               <button className="btn btn-primary" onClick={openCreatePet}>+ Add Pet</button>
               <Link className="btn btn-secondary" to="/">Public Feed</Link>

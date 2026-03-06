@@ -199,10 +199,10 @@ export default function PublicHome() {
     <div className="public-page">
       <header className="public-hero">
         <div>
-          <p className="hero-eyebrow">Pet Lifecycle SNS Platform</p>
-          <h1>반려동물 중심의 실시간 SNS 피드</h1>
+          <p className="hero-eyebrow">Petfolio | 펫폴리오</p>
+          <h1>Petfolio</h1>
           <p className="hero-desc">
-            보호자 일상 포스트와 예약 완료 포스트를 하나의 메인 피드에서 확인하고, 연결 기반으로 소통합니다.
+            Your pet's life portfolio
           </p>
           <div className="hero-actions">
             <Link to="/login" className="btn btn-primary">Login</Link>

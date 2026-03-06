@@ -20,7 +20,7 @@ export default function Dashboard() {
   return (
     <>
       <div className="topbar">
-        <div className="topbar-title">{t('admin.dashboard.title', '분석 대시보드')}</div>
+        <div className="topbar-title">Petfolio · {t('admin.dashboard.title', '분석 대시보드')}</div>
       </div>
       <div className="content">
         <div className="form-row col3 mb-4">

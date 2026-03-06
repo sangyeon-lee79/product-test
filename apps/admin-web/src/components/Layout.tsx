@@ -25,8 +25,9 @@ export default function Layout({ children }: { children: React.ReactNode }) {
     <div className="layout">
       <aside className="sidebar">
         <div className="sidebar-logo">
-          🐾 {t('admin.login.app_name', '방울아 놀자')}
+          🐾 {t('platform.name', 'Petfolio')}
           <span>{t('admin.login.console', 'Admin Console')}</span>
+          <span className="sidebar-tagline">{t('platform.tagline', "Your pet's life portfolio")}</span>
         </div>
         <nav className="sidebar-nav">
           {NAV.map(group => (
@@ -64,6 +65,10 @@ export default function Layout({ children }: { children: React.ReactNode }) {
         </div>
       </aside>
       <main className="main">
+        <div className="brand-strip">
+          <strong>{t('platform.name', 'Petfolio')}</strong>
+          <span>{t('platform.tagline', "Your pet's life portfolio")}</span>
+        </div>
         {children}
       </main>
     </div>

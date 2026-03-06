@@ -2,6 +2,9 @@
 # Status: MVP Planning — 수직 슬라이스 구조
 # PRD.md / LLD.md 정렬 완료
 
+Petfolio
+Your pet's life portfolio
+
 체크 표기:
 [ ] 개발전
 [x] 개발완료

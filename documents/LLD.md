@@ -2,6 +2,9 @@
 # 저수준 설계서 (Low-Level Design)
 # Status: MVP Planning (PLAN.md 기준 정렬)
 
+Petfolio
+Your pet's life portfolio
+
 ---
 
 ## 1. 기술 스택

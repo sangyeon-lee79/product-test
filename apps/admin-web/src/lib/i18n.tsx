@@ -61,9 +61,16 @@ export function I18nProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     setTrans({}); // 언어 전환 시 이전 텍스트 클리어
-    fetch(`${API_BASE}/api/v1/i18n?lang=${lang}&prefix=admin`)
-      .then(r => r.json() as Promise<{ success: boolean; data: Record<string, string> }>)
-      .then(json => { if (json.success) setTrans(json.data); })
+    Promise.all([
+      fetch(`${API_BASE}/api/v1/i18n?lang=${lang}&prefix=admin`).then(r => r.json() as Promise<{ success: boolean; data: Record<string, string> }>),
+      fetch(`${API_BASE}/api/v1/i18n?lang=${lang}&prefix=platform`).then(r => r.json() as Promise<{ success: boolean; data: Record<string, string> }>),
+    ])
+      .then(([adminJson, platformJson]) => {
+        const merged: Record<string, string> = {};
+        if (adminJson.success) Object.assign(merged, adminJson.data);
+        if (platformJson.success) Object.assign(merged, platformJson.data);
+        setTrans(merged);
+      })
       .catch(() => {});
   }, [lang]);
 

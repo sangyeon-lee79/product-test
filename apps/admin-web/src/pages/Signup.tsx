@@ -85,7 +85,9 @@ export default function Signup() {
       <div className="login-card card" style={{ width: 480 }}>
         <div className="card-body">
           <div className="login-logo">
-            <h1>🐾 Join PetLife</h1>
+            <h1>🐾 Petfolio</h1>
+            <p>Your pet's life portfolio</p>
+            <p>펫폴리오</p>
             <p>Guardian / Supplier account signup</p>
           </div>
 

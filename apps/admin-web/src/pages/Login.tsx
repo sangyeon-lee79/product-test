@@ -35,7 +35,9 @@ export default function Login() {
       <div className="login-card card">
         <div className="card-body">
           <div className="login-logo">
-            <h1>🐾 {t('admin.login.app_name', '방울아 놀자')}</h1>
+            <h1>🐾 {t('platform.name', 'Petfolio')}</h1>
+            <p>{t('platform.tagline', "Your pet's life portfolio")}</p>
+            <p>펫폴리오</p>
             <p>{title}</p>
           </div>
           {error && <div className="alert alert-error">{error}</div>}

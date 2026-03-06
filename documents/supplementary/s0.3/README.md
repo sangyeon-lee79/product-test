@@ -93,6 +93,8 @@ Admin 자동번역(`POST /api/v1/admin/i18n/translate`)은 Google Cloud Translat
 - `GOOGLE_TRANSLATE_SERVICE_ACCOUNT_EMAIL`
 - `GOOGLE_TRANSLATE_RPM_LIMIT` (기본 60)
 - `GOOGLE_TRANSLATE_DAILY_CHAR_LIMIT` (기본 200000)
+- `PLATFORM_NAME` (`Petfolio`)
+- `PLATFORM_TAGLINE` (`Your pet's life portfolio`)
 
 예시:
 ```bash
