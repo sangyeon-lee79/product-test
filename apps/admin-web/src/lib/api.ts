@@ -86,9 +86,9 @@ async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
 
 export const api = {
   // Auth
-  testLogin: (email: string, role = 'admin') =>
+  testLogin: (email: string) =>
     request<{ user_id: string; role: string; access_token: string; refresh_token: string }>
-      ('/api/v1/auth/test-login', { method: 'POST', body: JSON.stringify({ email, role }) }),
+      ('/api/v1/auth/test-login', { method: 'POST', body: JSON.stringify({ email }) }),
   signup: (payload: { email: string; role: string; display_name: string; country_code: string; language?: string; timezone?: string }) =>
     request<{
       user_id: string;

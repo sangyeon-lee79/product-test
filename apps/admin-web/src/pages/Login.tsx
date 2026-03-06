@@ -1,18 +1,15 @@
 import { useMemo, useState } from 'react';
-import { Link, useLocation, useNavigate, useSearchParams } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { api, setTokens } from '../lib/api';
-import { getRoleHomePath, normalizeRole, storeRole } from '../lib/auth';
+import { getRoleHomePath, storeRole } from '../lib/auth';
 import { useT } from '../lib/i18n';
 
 export default function Login() {
   const navigate = useNavigate();
   const location = useLocation();
-  const [searchParams] = useSearchParams();
   const t = useT();
   const forcedAdmin = location.pathname === '/admin/login';
-  const initialRole = normalizeRole(searchParams.get('role'));
   const [email, setEmail] = useState(forcedAdmin ? 'admin@petlife.com' : 'guardian@petlife.com');
-  const [role, setRole] = useState<'guardian' | 'provider' | 'admin'>(forcedAdmin ? 'admin' : initialRole);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const title = useMemo(() => (forcedAdmin ? 'Admin Login' : 'Login'), [forcedAdmin]);
@@ -22,8 +19,7 @@ export default function Login() {
     setLoading(true);
     setError('');
     try {
-      const loginRole = forcedAdmin ? 'admin' : role;
-      const data = await api.testLogin(email, loginRole);
+      const data = await api.testLogin(email);
       setTokens(data.access_token, data.refresh_token);
       storeRole(data.role);
       navigate(getRoleHomePath(data.role), { replace: true });
@@ -44,16 +40,6 @@ export default function Login() {
           </div>
           {error && <div className="alert alert-error">{error}</div>}
           <form onSubmit={handleLogin}>
-            {!forcedAdmin && (
-              <div className="form-group">
-                <label className="form-label">Account Type</label>
-                <select className="form-select" value={role} onChange={e => setRole(normalizeRole(e.target.value))}>
-                  <option value="guardian">Guardian</option>
-                  <option value="provider">Supplier</option>
-                  <option value="admin">Admin</option>
-                </select>
-              </div>
-            )}
             <div className="form-group">
               <label className="form-label">Email</label>
               <input

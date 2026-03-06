@@ -21,7 +21,7 @@ export default function Signup() {
   const navigate = useNavigate();
   const [email, setEmail] = useState('guardian@petlife.com');
   const [displayName, setDisplayName] = useState('');
-  const [role, setRole] = useState<'guardian' | 'provider' | 'general'>('guardian');
+  const [role, setRole] = useState<'guardian' | 'provider'>('guardian');
   const [countryCode, setCountryCode] = useState('KR');
   const [countries, setCountries] = useState<CountryRow[]>([]);
   const [loading, setLoading] = useState(false);
@@ -63,7 +63,7 @@ export default function Signup() {
     setError('');
 
     try {
-      const apiRole = role === 'general' ? 'guardian' : roleToApiRole(role);
+      const apiRole = roleToApiRole(role);
       const data = await api.signup({
         email,
         role: apiRole,
@@ -97,7 +97,6 @@ export default function Signup() {
               <select className="form-select" value={role} onChange={e => setRole(e.target.value as typeof role)}>
                 <option value="guardian">Guardian</option>
                 <option value="provider">Supplier</option>
-                <option value="general">General User (mapped to Guardian)</option>
               </select>
             </div>
 

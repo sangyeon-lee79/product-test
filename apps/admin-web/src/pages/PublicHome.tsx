@@ -55,12 +55,12 @@ export default function PublicHome() {
           <div className="entry-card">
             <h3>Guardian</h3>
             <p>프로필, 펫 등록, 질병 기록, 피드 참여</p>
-            <Link to="/login?role=guardian" className="btn btn-primary btn-sm">Guardian 시작</Link>
+            <Link to="/login" className="btn btn-primary btn-sm">Guardian 시작</Link>
           </div>
           <div className="entry-card">
             <h3>Supplier</h3>
             <p>매장/서비스 운영, 예약 처리, 완료 사진 공유</p>
-            <Link to="/login?role=provider" className="btn btn-primary btn-sm">Supplier 시작</Link>
+            <Link to="/login" className="btn btn-primary btn-sm">Supplier 시작</Link>
           </div>
           <div className="entry-card">
             <h3>General User</h3>

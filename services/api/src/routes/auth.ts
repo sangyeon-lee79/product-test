@@ -1,5 +1,5 @@
 // S5: 인증 API — LLD §5.2, §6
-// POST /api/v1/auth/test-login   — 테스트 계정 즉시 JWT 발급
+// POST /api/v1/auth/test-login   — 테스트 로그인 (이메일 기반 role 조회)
 // POST /api/v1/auth/signup       — 회원가입 + 즉시 JWT 발급
 // POST /api/v1/auth/refresh      — 토큰 갱신
 
@@ -120,26 +120,29 @@ async function signup(request: Request, env: Env): Promise<Response> {
 // ─── test-login ───────────────────────────────────────────────────────────────
 
 async function testLogin(request: Request, env: Env): Promise<Response> {
-  let body: { email: string; role?: string };
-  try { body = await request.json() as { email: string; role?: string }; }
+  let body: { email: string };
+  try { body = await request.json() as { email: string }; }
   catch { return err('Invalid JSON body'); }
 
-  const { email, role = 'guardian' } = body;
+  const email = (body.email || '').trim().toLowerCase();
   if (!email) return err('email required');
-
-  const validRole = (['guardian', 'provider', 'admin'] as const).includes(role as JwtPayload['role'])
-    ? (role as JwtPayload['role']) : 'guardian';
 
   let user = await env.DB.prepare(
     'SELECT id, role FROM users WHERE email = ?'
   ).bind(email).first<{ id: string; role: string }>();
 
   if (!user) {
-    const id = newId();
-    await env.DB.prepare(
-      'INSERT INTO users (id, email, role, created_at, updated_at) VALUES (?, ?, ?, ?, ?)'
-    ).bind(id, email, validRole, now(), now()).run();
-    user = { id, role: validRole };
+    // Admin 계정은 공개 signup이 없으므로 내부 계정 부트스트랩 허용.
+    if (email === 'admin@petlife.com') {
+      const id = newId();
+      const ts = now();
+      await env.DB.prepare(
+        'INSERT INTO users (id, email, role, created_at, updated_at) VALUES (?, ?, ?, ?, ?)'
+      ).bind(id, email, 'admin', ts, ts).run();
+      user = { id, role: 'admin' };
+    } else {
+      return err('account not found. please signup first', 404);
+    }
   }
 
   const tokens = await issueTokens(user.id, user.role as JwtPayload['role'], env.JWT_SECRET);
