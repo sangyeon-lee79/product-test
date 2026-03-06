@@ -80,7 +80,7 @@ WITH seed(key, page, ko, en, ja, zh_cn, zh_tw, es, fr, de, pt, vi, th, id_lang, 
     ('guardian.alert.like_failed','guardian','좋아요 처리에 실패했습니다.','Failed to like post.','いいね処理に失敗しました。','点赞失败。','按讚失敗。','Error al dar me gusta.','Échec du like.','Gefällt mir fehlgeschlagen.','Falha ao curtir.','Thích bài viết thất bại.','กดถูกใจไม่สำเร็จ','Gagal menyukai postingan.','فشل تسجيل الإعجاب.'),
     ('guardian.alert.comment_failed','guardian','댓글 조회에 실패했습니다.','Failed to load comments.','コメントの取得に失敗しました。','加载评论失败。','載入評論失敗。','Error al cargar comentarios.','Échec du chargement des commentaires.','Kommentare konnten nicht geladen werden.','Falha ao carregar comentários.','Không thể tải bình luận.','โหลดความคิดเห็นไม่สำเร็จ','Gagal memuat komentar.','فشل تحميل التعليقات.')
 )
-INSERT INTO i18n_translations (
+INSERT OR REPLACE INTO i18n_translations (
   id, key, page,
   ko, en, ja, zh_cn, zh_tw, es, fr, de, pt, vi, th, id_lang, ar,
   is_active, created_at, updated_at
@@ -89,23 +89,6 @@ SELECT
   lower(hex(randomblob(16))), key, page,
   ko, en, ja, zh_cn, zh_tw, es, fr, de, pt, vi, th, id_lang, ar,
   1, datetime('now'), datetime('now')
-FROM seed
-ON CONFLICT(key) DO UPDATE SET
-  page = excluded.page,
-  ko = excluded.ko,
-  en = excluded.en,
-  ja = excluded.ja,
-  zh_cn = excluded.zh_cn,
-  zh_tw = excluded.zh_tw,
-  es = excluded.es,
-  fr = excluded.fr,
-  de = excluded.de,
-  pt = excluded.pt,
-  vi = excluded.vi,
-  th = excluded.th,
-  id_lang = excluded.id_lang,
-  ar = excluded.ar,
-  is_active = 1,
-  updated_at = excluded.updated_at;
+FROM seed;
 
 INSERT OR IGNORE INTO schema_migrations (version) VALUES ('0018_guardian_main_i18n_seed');
