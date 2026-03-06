@@ -170,13 +170,27 @@ export interface Pet {
   name: string;
   species: 'dog' | 'cat' | 'other';
   breed_id: string | null;
+  birthday: string | null;
   birth_date: string | null;
   gender: 'male' | 'female' | 'unknown' | null;
+  current_weight: number | null;
   weight_kg: number | null;
   is_neutered: boolean;
   microchip_no: string | null;
   avatar_url: string | null;
   status: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface PetWeightLog {
+  id: string;
+  pet_id: string;
+  weight_value: number;
+  weight_unit_id: string | null;
+  measured_at: string;
+  recorded_by_user_id: string;
+  notes: string | null;
   created_at: string;
   updated_at: string;
 }

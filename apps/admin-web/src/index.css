@@ -575,6 +575,26 @@ tbody tr:hover { background: #f8fafc; }
 .gallery-upload-modal {
   max-width: 620px;
 }
+.weight-summary-grid {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+.weight-chart {
+  margin-top: 12px;
+  border: 1px solid #dbe4f0;
+  border-radius: 12px;
+  overflow: hidden;
+}
+.weight-chart svg {
+  width: 100%;
+  height: auto;
+  display: block;
+}
+.weight-chart-empty {
+  margin-top: 12px;
+  border: 1px dashed #c8d6ea;
+  border-radius: 10px;
+  padding: 16px;
+}
 
 /* Utils */
 .text-muted { color: var(--text-muted); }
@@ -634,5 +654,8 @@ tbody tr:hover { background: #f8fafc; }
     border-top: 1px solid #e3ecf7;
     padding-left: 0;
     padding-top: 10px;
+  }
+  .weight-summary-grid {
+    grid-template-columns: 1fr 1fr;
   }
 }

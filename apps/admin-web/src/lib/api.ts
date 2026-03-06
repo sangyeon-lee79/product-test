@@ -242,6 +242,27 @@ export const api = {
     create: (data: Partial<Pet>) => request<{ pet: Pet }>('/api/v1/pets', { method: 'POST', body: JSON.stringify(data) }),
     update: (id: string, data: Partial<Pet>) => request<{ pet: Pet }>(`/api/v1/pets/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
     remove: (id: string) => request<{ deleted: boolean }>(`/api/v1/pets/${id}`, { method: 'DELETE' }),
+    weightLogs: {
+      list: (petId: string, params?: { range?: '1m' | '3m' | '6m' | '1y' | 'all' }) => {
+        const q = new URLSearchParams();
+        if (params?.range) q.set('range', params.range);
+        const suffix = q.toString() ? `?${q.toString()}` : '';
+        return request<{ logs: PetWeightLog[]; range: string; summary: WeightSummary }>(`/api/v1/pets/${petId}/weight-logs${suffix}`);
+      },
+      create: (petId: string, data: {
+        weight_value: number;
+        weight_unit_id?: string | null;
+        measured_at?: string;
+        notes?: string | null;
+      }) => request<{ id: string }>(`/api/v1/pets/${petId}/weight-logs`, { method: 'POST', body: JSON.stringify(data) }),
+      update: (petId: string, logId: string, data: Partial<{
+        weight_value: number;
+        weight_unit_id: string | null;
+        measured_at: string;
+        notes: string | null;
+      }>) => request<{ updated: boolean; id: string }>(`/api/v1/pets/${petId}/weight-logs/${logId}`, { method: 'PUT', body: JSON.stringify(data) }),
+      remove: (petId: string, logId: string) => request<{ deleted: boolean; id: string }>(`/api/v1/pets/${petId}/weight-logs/${logId}`, { method: 'DELETE' }),
+    },
     checkMicrochip: (microchipNo: string, excludePetId?: string) => {
       const q = new URLSearchParams();
       q.set('microchip_no', microchipNo);
@@ -383,11 +404,35 @@ export interface Pet {
   temperament_ids?: string[] | string;
   notes?: string | null;
   intro_text?: string | null;
+  birthday?: string | null;
   birth_date?: string | null;
+  current_weight?: number | null;
   microchip_no?: string | null;
+  weight_kg?: number | null;
   status?: string;
   created_at?: string;
   updated_at?: string;
+}
+
+export interface PetWeightLog {
+  id: string;
+  pet_id: string;
+  weight_value: number;
+  weight_unit_id?: string | null;
+  measured_at: string;
+  recorded_by_user_id: string;
+  notes?: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface WeightSummary {
+  latest_weight?: number | null;
+  latest_measured_at?: string | null;
+  min_weight?: number | null;
+  max_weight?: number | null;
+  delta_from_prev?: number | null;
+  weight_unit_id?: string | null;
 }
 
 export interface Booking {

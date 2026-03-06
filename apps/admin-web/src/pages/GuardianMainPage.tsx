@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
-import { api, type Booking, type FeedPost, type FriendRequest, type MasterItem, type Pet, type PetAlbumMedia } from '../lib/api';
+import { api, type Booking, type FeedPost, type FriendRequest, type MasterItem, type Pet, type PetAlbumMedia, type PetWeightLog, type WeightSummary } from '../lib/api';
 import { useT } from '../lib/i18n';
 import { getStoredRole } from '../lib/auth';
 import PetGalleryPanel from '../components/PetGalleryPanel';
@@ -8,12 +8,17 @@ import PetGalleryPanel from '../components/PetGalleryPanel';
 type FeedTab = 'all' | 'friends';
 type Mode = 'create' | 'edit';
 type PetProfileTab = 'timeline' | 'health' | 'services' | 'gallery' | 'profile';
+type WeightRange = '1m' | '3m' | '6m' | '1y' | 'all';
 
 type Option = { id: string; label: string; parentId?: string | null; metadata?: Record<string, unknown> };
 
 type PetForm = {
   name: string;
   microchip_no: string;
+  birthday: string;
+  current_weight: string;
+  current_weight_measured_at: string;
+  current_weight_notes: string;
   notes: string;
   pet_type_id: string;
   breed_id: string;
@@ -53,6 +58,10 @@ type FeedCompose = {
 const DEFAULT_PET_FORM: PetForm = {
   name: '',
   microchip_no: '',
+  birthday: '',
+  current_weight: '',
+  current_weight_measured_at: '',
+  current_weight_notes: '',
   notes: '',
   pet_type_id: '',
   breed_id: '',
@@ -210,6 +219,15 @@ export default function GuardianMainPage() {
   const [bookings, setBookings] = useState<Booking[]>([]);
   const [feeds, setFeeds] = useState<FeedPost[]>([]);
   const [albumMedia, setAlbumMedia] = useState<PetAlbumMedia[]>([]);
+  const [weightLogs, setWeightLogs] = useState<PetWeightLog[]>([]);
+  const [weightSummary, setWeightSummary] = useState<WeightSummary | null>(null);
+  const [weightRange, setWeightRange] = useState<WeightRange>('3m');
+  const [weightModalOpen, setWeightModalOpen] = useState(false);
+  const [weightForm, setWeightForm] = useState<{ value: string; measured_at: string; notes: string }>({
+    value: '',
+    measured_at: '',
+    notes: '',
+  });
   const [feedTab, setFeedTab] = useState<FeedTab>('all');
   const [petTab, setPetTab] = useState<PetProfileTab>('gallery');
   const [feedCompose, setFeedCompose] = useState<FeedCompose>(DEFAULT_FEED_COMPOSE);
@@ -392,6 +410,62 @@ export default function GuardianMainPage() {
     [feeds, selectedPet],
   );
 
+  async function loadWeightLogs(petId: string, range: WeightRange) {
+    try {
+      const res = await api.pets.weightLogs.list(petId, { range });
+      setWeightLogs(res.logs || []);
+      setWeightSummary(res.summary || null);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Failed to load weight logs');
+      setWeightLogs([]);
+      setWeightSummary(null);
+    }
+  }
+
+  useEffect(() => {
+    if (!selectedPet?.id) {
+      setWeightLogs([]);
+      setWeightSummary(null);
+      return;
+    }
+    loadWeightLogs(selectedPet.id, weightRange);
+  }, [selectedPet?.id, weightRange]);
+
+  async function createWeightLog() {
+    if (!selectedPet?.id) return;
+    const value = Number(weightForm.value);
+    if (!Number.isFinite(value) || value <= 0) {
+      setError('몸무게를 올바르게 입력해 주세요.');
+      return;
+    }
+    try {
+      await api.pets.weightLogs.create(selectedPet.id, {
+        weight_value: value,
+        weight_unit_id: selectedPet.weight_unit_id || null,
+        measured_at: weightForm.measured_at || new Date().toISOString(),
+        notes: weightForm.notes.trim() || null,
+      });
+      setWeightModalOpen(false);
+      setWeightForm({ value: '', measured_at: '', notes: '' });
+      await loadWeightLogs(selectedPet.id, weightRange);
+      await loadAll(feedTab);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Failed to add weight log');
+    }
+  }
+
+  async function removeWeightLog(logId: string) {
+    if (!selectedPet?.id) return;
+    if (!confirm('이 몸무게 기록을 삭제할까요?')) return;
+    try {
+      await api.pets.weightLogs.remove(selectedPet.id, logId);
+      await loadWeightLogs(selectedPet.id, weightRange);
+      await loadAll(feedTab);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Failed to delete weight log');
+    }
+  }
+
   function openCreatePet() {
     setPetMode('create');
     setPetForm(DEFAULT_PET_FORM);
@@ -407,6 +481,10 @@ export default function GuardianMainPage() {
       setPetForm({
         name: p.name || '',
         microchip_no: p.microchip_no || '',
+        birthday: p.birthday || p.birth_date || '',
+        current_weight: p.current_weight != null ? String(p.current_weight) : (p.weight_kg != null ? String(p.weight_kg) : ''),
+        current_weight_measured_at: '',
+        current_weight_notes: '',
         notes: p.notes || '',
         pet_type_id: p.pet_type_id || '',
         breed_id: p.breed_id || '',
@@ -459,10 +537,20 @@ export default function GuardianMainPage() {
         return;
       }
     }
+    if (petForm.current_weight.trim() && !Number.isFinite(Number(petForm.current_weight))) {
+      setError('Current weight must be a valid number.');
+      return;
+    }
 
     const payload = {
       ...petForm,
       microchip_no: petForm.microchip_no.trim() || null,
+      birthday: petForm.birthday || null,
+      birth_date: petForm.birthday || null,
+      current_weight: petForm.current_weight.trim() ? Number(petForm.current_weight) : null,
+      weight_kg: petForm.current_weight.trim() ? Number(petForm.current_weight) : null,
+      current_weight_measured_at: petForm.current_weight_measured_at || null,
+      current_weight_notes: petForm.current_weight_notes.trim() || null,
       notes: petForm.notes.trim() || null,
       breed_id: petForm.breed_id || null,
       gender_id: petForm.gender_id || null,
@@ -558,6 +646,46 @@ export default function GuardianMainPage() {
         >
           {options.map((o) => <option key={o.id} value={o.id}>{o.label}</option>)}
         </select>
+      </div>
+    );
+  }
+
+  function renderWeightTrendChart(logs: PetWeightLog[]) {
+    if (!logs.length) {
+      return <div className="weight-chart-empty text-sm text-muted">몸무게 기록이 없습니다.</div>;
+    }
+    const rows = [...logs].sort((a, b) => new Date(a.measured_at).getTime() - new Date(b.measured_at).getTime());
+    const values = rows.map((row) => Number(row.weight_value));
+    const min = Math.min(...values);
+    const max = Math.max(...values);
+    const width = 640;
+    const height = 220;
+    const pad = 28;
+    const usableW = width - pad * 2;
+    const usableH = height - pad * 2;
+    const span = Math.max(0.0001, max - min);
+    const points = rows.map((row, idx) => {
+      const x = pad + (rows.length === 1 ? usableW / 2 : (idx / (rows.length - 1)) * usableW);
+      const y = pad + (1 - ((Number(row.weight_value) - min) / span)) * usableH;
+      return { x, y, row };
+    });
+    const line = points.map((p, idx) => `${idx === 0 ? 'M' : 'L'} ${p.x} ${p.y}`).join(' ');
+
+    return (
+      <div className="weight-chart">
+        <svg viewBox={`0 0 ${width} ${height}`} role="img" aria-label="Weight trend chart">
+          <rect x="0" y="0" width={width} height={height} rx="12" fill="#f7fbff" />
+          <line x1={pad} y1={pad} x2={pad} y2={height - pad} stroke="#b8c8de" />
+          <line x1={pad} y1={height - pad} x2={width - pad} y2={height - pad} stroke="#b8c8de" />
+          <path d={line} fill="none" stroke="#1a73e8" strokeWidth="3" />
+          {points.map((p) => (
+            <circle key={p.row.id} cx={p.x} cy={p.y} r="4" fill="#1a73e8">
+              <title>{`${new Date(p.row.measured_at).toLocaleDateString()} / ${p.row.weight_value}`}</title>
+            </circle>
+          ))}
+          <text x={pad} y={16} fontSize="11" fill="#4e6487">{`max ${max.toFixed(2)}`}</text>
+          <text x={pad} y={height - 8} fontSize="11" fill="#4e6487">{`min ${min.toFixed(2)}`}</text>
+        </svg>
       </div>
     );
   }
@@ -722,16 +850,60 @@ export default function GuardianMainPage() {
 
             {petTab === 'health' && (
               <div className="card">
-                <div className="card-header"><div className="card-title">Health Updates</div></div>
+                <div className="card-header">
+                  <div className="card-title">Weight History</div>
+                  <div className="td-actions">
+                    <button className="btn btn-primary btn-sm" onClick={() => setWeightModalOpen(true)}>몸무게 추가</button>
+                  </div>
+                </div>
                 <div className="card-body">
-                  {healthFeeds.map((f) => (
-                    <article key={f.id} className="sns-card">
-                      <p className="sns-meta">{feedTypeLabel(t, f.feed_type)}</p>
-                      <p className="text-sm text-muted">{formatDate(f.created_at, t('common.none', '-'))}</p>
-                      <p>{f.caption || t('common.none', '-')}</p>
-                    </article>
-                  ))}
-                  {healthFeeds.length === 0 && <p className="text-muted">건강기록 피드가 없습니다.</p>}
+                  <div className="guardian-summary-grid weight-summary-grid">
+                    <article className="card"><div className="card-body"><p className="text-sm text-muted">현재 몸무게</p><h3>{weightSummary?.latest_weight ?? selectedPet?.current_weight ?? '-'} {selectedPet?.weight_unit_id ? '' : 'kg'}</h3></div></article>
+                    <article className="card"><div className="card-body"><p className="text-sm text-muted">최근 측정일</p><h3>{formatDate(weightSummary?.latest_measured_at, '-')}</h3></div></article>
+                    <article className="card"><div className="card-body"><p className="text-sm text-muted">최고/최저</p><h3>{weightSummary?.max_weight ?? '-'} / {weightSummary?.min_weight ?? '-'}</h3></div></article>
+                    <article className="card"><div className="card-body"><p className="text-sm text-muted">직전 대비 변화량</p><h3>{weightSummary?.delta_from_prev ?? '-'} {weightSummary?.delta_from_prev != null ? 'kg' : ''}</h3></div></article>
+                  </div>
+
+                  <div className="feed-tabs mt-2">
+                    {(['1m', '3m', '6m', '1y', 'all'] as const).map((range) => (
+                      <button
+                        key={range}
+                        className={`feed-tab ${weightRange === range ? 'active' : ''}`}
+                        onClick={() => setWeightRange(range)}
+                      >
+                        {range === 'all' ? '전체' : range}
+                      </button>
+                    ))}
+                  </div>
+
+                  {renderWeightTrendChart(weightLogs)}
+
+                  <div className="mt-3">
+                    <h4>Weight Log List</h4>
+                    <div className="guardian-pet-list">
+                      {weightLogs.map((log) => (
+                        <div key={log.id} className="guardian-pet-item">
+                          <p className="text-sm">{new Date(log.measured_at).toLocaleDateString()} · {log.weight_value} {selectedPet?.weight_unit_id ? '' : 'kg'}</p>
+                          <div className="td-actions">
+                            <button className="btn btn-danger btn-sm" onClick={() => removeWeightLog(log.id)}>삭제</button>
+                          </div>
+                        </div>
+                      ))}
+                      {weightLogs.length === 0 && <p className="text-muted">몸무게 기록이 없습니다.</p>}
+                    </div>
+                  </div>
+
+                  <div className="mt-3">
+                    <h4>Health Updates</h4>
+                    {healthFeeds.map((f) => (
+                      <article key={f.id} className="sns-card">
+                        <p className="sns-meta">{feedTypeLabel(t, f.feed_type)}</p>
+                        <p className="text-sm text-muted">{formatDate(f.created_at, t('common.none', '-'))}</p>
+                        <p>{f.caption || t('common.none', '-')}</p>
+                      </article>
+                    ))}
+                    {healthFeeds.length === 0 && <p className="text-muted">건강기록 피드가 없습니다.</p>}
+                  </div>
                 </div>
               </div>
             )}
@@ -762,6 +934,8 @@ export default function GuardianMainPage() {
                   <p className="text-sm">{t('master.pet_breed', 'Breed')}: {labelOf(optBreed, selectedPet.breed_id, t('common.none', '-'))}</p>
                   <p className="text-sm">{t('master.pet_gender', 'Gender')}: {labelOf(optGender, selectedPet.gender_id, t('common.none', '-'))}</p>
                   <p className="text-sm">{t('master.life_stage', 'Life Stage')}: {labelOf(optLifeStage, selectedPet.life_stage_id, t('common.none', '-'))}</p>
+                  <p className="text-sm">Birthday: {selectedPet.birthday || selectedPet.birth_date || t('common.none', '-')}</p>
+                  <p className="text-sm">Current Weight: {selectedPet.current_weight ?? selectedPet.weight_kg ?? t('common.none', '-')}</p>
                   <button className="btn btn-secondary mt-2" onClick={() => openEditPet(selectedPet.id)}>{t('common.edit', 'Edit')}</button>
                 </div>
               </div>
@@ -793,6 +967,8 @@ export default function GuardianMainPage() {
                     <p className="text-sm">{t('master.pet_breed', 'Breed')}: {labelOf(optBreed, selectedPet.breed_id, t('common.none', '-'))}</p>
                     <p className="text-sm">{t('master.pet_gender', 'Gender')}: {labelOf(optGender, selectedPet.gender_id, t('common.none', '-'))}</p>
                     <p className="text-sm">{t('master.health_condition_level', 'Health Condition Level')}: {labelOf(optHealthLevel, selectedPet.health_condition_level_id, t('common.none', '-'))}</p>
+                    <p className="text-sm">Birthday: {selectedPet.birthday || selectedPet.birth_date || t('common.none', '-')}</p>
+                    <p className="text-sm">Current Weight: {selectedPet.current_weight ?? selectedPet.weight_kg ?? t('common.none', '-')}</p>
                     <p className="text-sm">{t('guardian.form.microchip', 'Microchip Number')}: {selectedPet.microchip_no || t('common.none', '-')}</p>
                   </div>
                 )}
@@ -838,6 +1014,17 @@ export default function GuardianMainPage() {
                 </div>
               </div>
 
+              <div className="form-row col2">
+                <div className="form-group">
+                  <label className="form-label">Birthday</label>
+                  <input className="form-input" type="date" value={petForm.birthday} onChange={(e) => setPetForm((p) => ({ ...p, birthday: e.target.value }))} />
+                </div>
+                <div className="form-group">
+                  <label className="form-label">Current Weight</label>
+                  <input className="form-input" type="number" step="0.01" value={petForm.current_weight} onChange={(e) => setPetForm((p) => ({ ...p, current_weight: e.target.value }))} />
+                </div>
+              </div>
+
               <div className="form-row col3">
                 {renderSelect(t('master.pet_type', 'Pet Type'), petForm.pet_type_id, optPetType, (v) => setPetForm((p) => ({ ...p, pet_type_id: v, breed_id: '' })), true)}
                 {renderSelect(t('master.pet_breed', 'Breed'), petForm.breed_id, breedOptionsFiltered, (v) => setPetForm((p) => ({ ...p, breed_id: v })))}
@@ -854,6 +1041,17 @@ export default function GuardianMainPage() {
                 {renderSelect(t('master.country', 'Country'), petForm.country_id, optCountry, (v) => setPetForm((p) => ({ ...p, country_id: v })))}
                 {renderSelect(t('master.medication_status', 'Medication Status'), petForm.medication_status_id, optMedication, (v) => setPetForm((p) => ({ ...p, medication_status_id: v })))}
                 {renderSelect(t('master.weight_unit', 'Weight Unit'), petForm.weight_unit_id, optWeightUnit, (v) => setPetForm((p) => ({ ...p, weight_unit_id: v })))}
+              </div>
+
+              <div className="form-row col2">
+                <div className="form-group">
+                  <label className="form-label">Weight Measured At</label>
+                  <input className="form-input" type="datetime-local" value={petForm.current_weight_measured_at} onChange={(e) => setPetForm((p) => ({ ...p, current_weight_measured_at: e.target.value }))} />
+                </div>
+                <div className="form-group">
+                  <label className="form-label">Weight Memo</label>
+                  <input className="form-input" value={petForm.current_weight_notes} onChange={(e) => setPetForm((p) => ({ ...p, current_weight_notes: e.target.value }))} />
+                </div>
               </div>
 
               <div className="form-row col3">
@@ -896,6 +1094,50 @@ export default function GuardianMainPage() {
             <div className="modal-footer">
               <button className="btn btn-secondary" onClick={() => setPetModalOpen(false)}>{t('common.cancel', 'Cancel')}</button>
               <button className="btn btn-primary" onClick={savePet}>{t('common.save', 'Save')}</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {weightModalOpen && (
+        <div className="modal-overlay">
+          <div className="modal">
+            <div className="modal-header">
+              <h3 className="modal-title">몸무게 추가</h3>
+              <button className="modal-close" onClick={() => setWeightModalOpen(false)}>&times;</button>
+            </div>
+            <div className="modal-body">
+              <div className="form-group">
+                <label className="form-label">몸무게</label>
+                <input
+                  className="form-input"
+                  type="number"
+                  step="0.01"
+                  value={weightForm.value}
+                  onChange={(e) => setWeightForm((prev) => ({ ...prev, value: e.target.value }))}
+                />
+              </div>
+              <div className="form-group">
+                <label className="form-label">측정일</label>
+                <input
+                  className="form-input"
+                  type="datetime-local"
+                  value={weightForm.measured_at}
+                  onChange={(e) => setWeightForm((prev) => ({ ...prev, measured_at: e.target.value }))}
+                />
+              </div>
+              <div className="form-group">
+                <label className="form-label">메모</label>
+                <textarea
+                  className="form-textarea"
+                  value={weightForm.notes}
+                  onChange={(e) => setWeightForm((prev) => ({ ...prev, notes: e.target.value }))}
+                />
+              </div>
+            </div>
+            <div className="modal-footer">
+              <button className="btn btn-secondary" onClick={() => setWeightModalOpen(false)}>{t('common.cancel', 'Cancel')}</button>
+              <button className="btn btn-primary" onClick={createWeightLog}>{t('common.save', 'Save')}</button>
             </div>
           </div>
         </div>
