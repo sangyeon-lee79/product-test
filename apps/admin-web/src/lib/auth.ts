@@ -4,13 +4,41 @@ export { isLoggedIn };
 
 export function logout() {
   clearTokens();
-  window.location.href = '/login';
+}
+
+export function normalizeRole(raw?: string | null): 'admin' | 'guardian' | 'provider' {
+  const role = (raw || '').toLowerCase();
+  if (role === 'supplier') return 'provider';
+  if (role === 'admin' || role === 'provider' || role === 'guardian') return role;
+  return 'guardian';
 }
 
 export function getStoredRole(): string {
-  return localStorage.getItem('user_role') || 'admin';
+  const stored = localStorage.getItem('user_role');
+  if (stored) return normalizeRole(stored);
+  const token = localStorage.getItem('access_token');
+  if (token) {
+    try {
+      const parts = token.split('.');
+      if (parts.length === 3) {
+        const base64 = parts[1].replace(/-/g, '+').replace(/_/g, '/');
+        const json = JSON.parse(atob(base64)) as { role?: string };
+        return normalizeRole(json.role);
+      }
+    } catch {
+      // ignore decode failures and fallback to default role
+    }
+  }
+  return 'guardian';
 }
 
 export function storeRole(role: string) {
-  localStorage.setItem('user_role', role);
+  localStorage.setItem('user_role', normalizeRole(role));
+}
+
+export function getRoleHomePath(role: string): '/admin' | '/guardian' | '/supplier' {
+  const normalized = normalizeRole(role);
+  if (normalized === 'admin') return '/admin';
+  if (normalized === 'provider') return '/supplier';
+  return '/guardian';
 }

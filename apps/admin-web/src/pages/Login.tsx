@@ -1,25 +1,32 @@
-import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useMemo, useState } from 'react';
+import { Link, useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import { api, setTokens } from '../lib/api';
-import { storeRole } from '../lib/auth';
+import { getRoleHomePath, normalizeRole, storeRole } from '../lib/auth';
 import { useT } from '../lib/i18n';
 
 export default function Login() {
   const navigate = useNavigate();
+  const location = useLocation();
+  const [searchParams] = useSearchParams();
   const t = useT();
-  const [email, setEmail] = useState('admin@petlife.com');
+  const forcedAdmin = location.pathname === '/admin/login';
+  const initialRole = normalizeRole(searchParams.get('role'));
+  const [email, setEmail] = useState(forcedAdmin ? 'admin@petlife.com' : 'guardian@petlife.com');
+  const [role, setRole] = useState<'guardian' | 'provider' | 'admin'>(forcedAdmin ? 'admin' : initialRole);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const title = useMemo(() => (forcedAdmin ? 'Admin Login' : 'Login'), [forcedAdmin]);
 
   async function handleLogin(e: React.FormEvent) {
     e.preventDefault();
     setLoading(true);
     setError('');
     try {
-      const data = await api.testLogin(email, 'admin');
+      const loginRole = forcedAdmin ? 'admin' : role;
+      const data = await api.testLogin(email, loginRole);
       setTokens(data.access_token, data.refresh_token);
       storeRole(data.role);
-      navigate('/');
+      navigate(getRoleHomePath(data.role), { replace: true });
     } catch (err) {
       setError(err instanceof Error ? err.message : t('admin.login.error', '로그인 실패'));
     } finally {
@@ -33,19 +40,29 @@ export default function Login() {
         <div className="card-body">
           <div className="login-logo">
             <h1>🐾 {t('admin.login.app_name', '방울아 놀자')}</h1>
-            <p>{t('admin.login.console', 'Admin Console')}</p>
+            <p>{title}</p>
           </div>
           {error && <div className="alert alert-error">{error}</div>}
           <form onSubmit={handleLogin}>
+            {!forcedAdmin && (
+              <div className="form-group">
+                <label className="form-label">Account Type</label>
+                <select className="form-select" value={role} onChange={e => setRole(normalizeRole(e.target.value))}>
+                  <option value="guardian">Guardian</option>
+                  <option value="provider">Supplier</option>
+                  <option value="admin">Admin</option>
+                </select>
+              </div>
+            )}
             <div className="form-group">
-              <label className="form-label">{t('admin.login.email', '이메일 (테스트 로그인)')}</label>
+              <label className="form-label">Email</label>
               <input
                 className="form-input"
                 type="email"
                 value={email}
                 onChange={e => setEmail(e.target.value)}
                 required
-                placeholder="admin@petlife.com"
+                placeholder={forcedAdmin ? 'admin@petlife.com' : 'guardian@petlife.com'}
               />
             </div>
             <button className="btn btn-primary" type="submit" disabled={loading} style={{ width: '100%' }}>
@@ -53,8 +70,13 @@ export default function Login() {
             </button>
           </form>
           <p className="text-muted text-sm mt-3" style={{ textAlign: 'center' }}>
-            {t('admin.login.dev_note', '개발용 테스트 로그인 (OAuth는 S12에서 구현)')}
+            개발 환경: 테스트 로그인 사용 중
           </p>
+          {!forcedAdmin && (
+            <p className="text-sm mt-3" style={{ textAlign: 'center' }}>
+              계정이 없나요? <Link to="/signup">회원가입</Link>
+            </p>
+          )}
         </div>
       </div>
     </div>

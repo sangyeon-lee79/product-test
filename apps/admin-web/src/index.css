@@ -138,6 +138,81 @@ tbody tr:hover { background: #f8fafc; }
 .login-logo h1 { font-size: 22px; font-weight: 700; }
 .login-logo p { color: var(--text-muted); font-size: 13px; }
 
+/* Public */
+.public-page {
+  min-height: 100vh;
+  background:
+    radial-gradient(circle at 10% 10%, rgba(88, 129, 255, 0.16), transparent 38%),
+    radial-gradient(circle at 90% 0%, rgba(29, 185, 84, 0.1), transparent 35%),
+    #f6f9ff;
+  color: #16202c;
+  padding-bottom: 40px;
+}
+.public-hero {
+  max-width: 1080px;
+  margin: 0 auto;
+  padding: 80px 24px 32px;
+}
+.hero-eyebrow {
+  color: #2f67d8;
+  font-weight: 700;
+  font-size: 12px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  margin-bottom: 10px;
+}
+.public-hero h1 {
+  max-width: 760px;
+  font-size: 44px;
+  line-height: 1.15;
+  letter-spacing: -0.02em;
+}
+.hero-desc {
+  max-width: 680px;
+  margin-top: 14px;
+  color: #4e5c72;
+  font-size: 16px;
+}
+.hero-actions {
+  margin-top: 24px;
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+.public-section {
+  max-width: 1080px;
+  margin: 0 auto;
+  padding: 12px 24px;
+}
+.public-section h2 {
+  margin: 6px 0 12px;
+  font-size: 22px;
+}
+.feed-grid,
+.entry-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 14px;
+}
+.feed-card,
+.entry-card {
+  background: #ffffff;
+  border: 1px solid #dbe4f0;
+  border-radius: 12px;
+  padding: 16px;
+  box-shadow: 0 6px 18px rgba(15, 33, 58, 0.04);
+}
+.feed-card h3,
+.entry-card h3 {
+  margin: 10px 0 8px;
+  font-size: 17px;
+}
+.feed-card p,
+.entry-card p {
+  color: #5d6d84;
+  margin-bottom: 12px;
+}
+
 /* Utils */
 .text-muted { color: var(--text-muted); }
 .text-sm { font-size: 12px; }
@@ -152,3 +227,9 @@ tbody tr:hover { background: #f8fafc; }
 .spinner { width: 20px; height: 20px; border: 2px solid var(--border); border-top-color: var(--primary); border-radius: 50%; animation: spin .6s linear infinite; display: inline-block; }
 @keyframes spin { to { transform: rotate(360deg); } }
 .loading-center { display: flex; justify-content: center; align-items: center; padding: 48px; }
+
+@media (max-width: 900px) {
+  .public-hero h1 { font-size: 32px; }
+  .feed-grid,
+  .entry-grid { grid-template-columns: 1fr; }
+}

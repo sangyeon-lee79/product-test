@@ -89,6 +89,19 @@ export const api = {
   testLogin: (email: string, role = 'admin') =>
     request<{ user_id: string; role: string; access_token: string; refresh_token: string }>
       ('/api/v1/auth/test-login', { method: 'POST', body: JSON.stringify({ email, role }) }),
+  signup: (payload: { email: string; role: string; display_name: string; country_code: string; language?: string; timezone?: string }) =>
+    request<{
+      user_id: string;
+      role: string;
+      access_token: string;
+      refresh_token: string;
+      onboarding: {
+        country_code: string;
+        default_language: string;
+        default_currency_code: string | null;
+        profile_created: boolean;
+      };
+    }>('/api/v1/auth/signup', { method: 'POST', body: JSON.stringify(payload) }),
 
   // Health
   health: () => request<{ status: string; environment: string; services: Record<string, string> }>('/api/v1/health'),

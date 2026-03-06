@@ -9,15 +9,15 @@ export default function Layout({ children }: { children: React.ReactNode }) {
 
   const NAV = [
     { section: t('admin.section.dashboard', '대시보드'), items: [
-      { to: '/', icon: '📊', label: t('admin.nav.dashboard', '분석 대시보드') },
+      { to: '/admin', icon: '📊', label: t('admin.nav.dashboard', '분석 대시보드') },
     ]},
     { section: t('admin.section.data', '데이터 관리'), items: [
-      { to: '/i18n',         icon: '🌐', label: t('admin.nav.i18n',          '언어 관리') },
-      { to: '/master',       icon: '🗂', label: t('admin.nav.master',        '마스터 데이터') },
-      { to: '/countries',    icon: '🌍', label: t('admin.nav.countries',     '국가 / 통화') },
+      { to: '/admin/i18n',      icon: '🌐', label: t('admin.nav.i18n',          '언어 관리') },
+      { to: '/admin/master',    icon: '🗂', label: t('admin.nav.master',        '마스터 데이터') },
+      { to: '/admin/countries', icon: '🌍', label: t('admin.nav.countries',     '국가 / 통화') },
     ]},
     { section: t('admin.section.ads', '광고 / 운영'), items: [
-      { to: '/ads', icon: '📢', label: t('admin.nav.ads', '광고 설정') },
+      { to: '/admin/ads', icon: '📢', label: t('admin.nav.ads', '광고 설정') },
     ]},
   ];
 
@@ -36,7 +36,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
                 <NavLink
                   key={item.to}
                   to={item.to}
-                  end={item.to === '/'}
+                  end={item.to === '/admin'}
                   className={({ isActive }) => `nav-item${isActive ? ' active' : ''}`}
                 >
                   <span className="nav-icon">{item.icon}</span>
@@ -58,7 +58,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
           </select>
           <div>{getStoredRole()} {t('admin.common.account', '계정')}</div>
           <button className="nav-item" style={{ padding: '6px 0', marginTop: 4 }}
-            onClick={() => { logout(); navigate('/login'); }}>
+            onClick={() => { logout(); navigate('/login', { replace: true }); }}>
             {t('admin.common.logout', '로그아웃')}
           </button>
         </div>
