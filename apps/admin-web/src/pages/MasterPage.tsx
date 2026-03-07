@@ -307,10 +307,10 @@ export default function MasterPage() {
     try {
       if (catModal === 'create') {
         const key = (catForm.key || '').trim().replace(/^master\./, '');
-        if (!key) throw new Error('Key는 필수입니다.');
-        if (!/^[a-z0-9_]+$/.test(key)) throw new Error('Key는 소문자/숫자/언더스코어만 허용됩니다.');
+        if (!key) throw new Error(t('admin.master.error_key_required'));
+        if (!/^[a-z0-9_]+$/.test(key)) throw new Error(t('admin.master.error_key_format'));
         const ko = (catTrans.ko || '').trim();
-        if (!ko) throw new Error('한국어 표시명은 필수입니다.');
+        if (!ko) throw new Error(t('admin.master.error_ko_required'));
 
         let translations: Record<string, string> = { ...catTrans, ko };
         const hasMissing = SUPPORTED_LANGS.some((lang) => lang !== 'ko' && !(translations[lang] || '').trim());
@@ -320,14 +320,14 @@ export default function MasterPage() {
         }
         const missingLangs = findMissingTranslationLangs(translations);
         if (missingLangs.length > 0) {
-          throw new Error(`번역값이 비어 있습니다: ${missingLangs.map((lang) => (LANG_LABELS as Record<string, string>)[lang] || lang).join(', ')}`);
+          throw new Error(t('admin.master.error_missing_translations').replace('{langs}', missingLangs.map((lang) => (LANG_LABELS as Record<string, string>)[lang] || lang).join(', ')));
         }
 
         await api.master.categories.create({ key, sort_order: parseInt(catForm.sort_order, 10), translations });
         flash(t('admin.master.success_cat_add', '카테고리가 추가되었습니다.'));
       } else if (catModal === 'edit' && selectedCat) {
         const ko = (catTrans.ko || '').trim();
-        if (!ko) throw new Error('한국어 표시명은 필수입니다.');
+        if (!ko) throw new Error(t('admin.master.error_ko_required'));
 
         let translations: Record<string, string> = { ...catTrans, ko };
         const hasMissing = SUPPORTED_LANGS.some((lang) => lang !== 'ko' && !(translations[lang] || '').trim());
@@ -337,7 +337,7 @@ export default function MasterPage() {
         }
         const missingLangs = findMissingTranslationLangs(translations);
         if (missingLangs.length > 0) {
-          throw new Error(`번역값이 비어 있습니다: ${missingLangs.map((lang) => (LANG_LABELS as Record<string, string>)[lang] || lang).join(', ')}`);
+          throw new Error(t('admin.master.error_missing_translations').replace('{langs}', missingLangs.map((lang) => (LANG_LABELS as Record<string, string>)[lang] || lang).join(', ')));
         }
 
         await api.master.categories.update(selectedCat.id, {
@@ -382,11 +382,11 @@ export default function MasterPage() {
     if (!key) return;
     const category = categoryMapByKey.get(key) || null;
     if (!category) {
-      setError('대상 카테고리를 찾을 수 없습니다.');
+      setError(t('admin.master.error_target_category_not_found'));
       return;
     }
     if (level > 0 && !selectedIds[level - 1]) {
-      setError('상위 레벨을 먼저 선택해주세요.');
+      setError(t('admin.master.error_select_parent_first'));
       return;
     }
 
@@ -402,7 +402,7 @@ export default function MasterPage() {
     if (!selectedNode || !selectedNodeCategoryKey) return;
     const category = categoryMapByKey.get(selectedNodeCategoryKey) || null;
     if (!category) {
-      setError('대상 카테고리를 찾을 수 없습니다.');
+      setError(t('admin.master.error_target_category_not_found'));
       return;
     }
     const parentLevel = activeLevel - 1;
@@ -424,7 +424,7 @@ export default function MasterPage() {
     setError('');
     try {
       const ko = (itemTrans.ko || '').trim();
-      if (!ko) throw new Error('한국어 표시명은 필수입니다.');
+      if (!ko) throw new Error(t('admin.master.error_ko_required'));
 
       let translations: Record<string, string> = { ...itemTrans, ko };
       const hasMissing = SUPPORTED_LANGS.some((lang) => lang !== 'ko' && !(translations[lang] || '').trim());
@@ -434,7 +434,7 @@ export default function MasterPage() {
       }
       const missingLangs = findMissingTranslationLangs(translations);
       if (missingLangs.length > 0) {
-        throw new Error(`번역값이 비어 있습니다: ${missingLangs.map((lang) => (LANG_LABELS as Record<string, string>)[lang] || lang).join(', ')}`);
+        throw new Error(t('admin.master.error_missing_translations').replace('{langs}', missingLangs.map((lang) => (LANG_LABELS as Record<string, string>)[lang] || lang).join(', ')));
       }
 
       if (itemModal === 'create') {
@@ -489,10 +489,14 @@ export default function MasterPage() {
 
   function levelTitle(level: number): string {
     const catKey = categoryChain[level];
-    if (!catKey) return `L${level + 1}`;
+    if (!catKey) return t('admin.master.level_title').replace('{level}', String(level + 1));
     const cat = categoryMapByKey.get(catKey);
-    if (cat) return `L${level + 1} · ${getCategoryLabel(cat)}`;
-    return `L${level + 1}`;
+    if (cat) {
+      return t('admin.master.level_title_with_name')
+        .replace('{level}', String(level + 1))
+        .replace('{name}', getCategoryLabel(cat));
+    }
+    return t('admin.master.level_title').replace('{level}', String(level + 1));
   }
 
   return (
@@ -503,9 +507,7 @@ export default function MasterPage() {
       <div className="content">
         {error && <div className="alert alert-error">{error}</div>}
         {success && <div className="alert alert-success">{success}</div>}
-        <div className="alert" style={{ marginBottom: 12 }}>
-          Category → L1 → L2 → L3(Test Method) → L4(Measurement) → L5(Context)
-        </div>
+        <div className="alert" style={{ marginBottom: 12 }}>{t('admin.master.hierarchy_guide')}</div>
 
         <div className="master-explorer-grid" style={{ gridTemplateColumns: 'repeat(6, minmax(0, 1fr))' }}>
           <div className="card">
@@ -540,7 +542,7 @@ export default function MasterPage() {
                 </div>
                 <div className="master-column-list">
                   {!selectedCat && <div className="master-empty">{t('admin.master.select_hint', '카테고리를 선택하세요')}</div>}
-                  {selectedCat && level > 0 && !selectedIds[level - 1] && <div className="master-empty">L{level} 선택 필요</div>}
+                  {selectedCat && level > 0 && !selectedIds[level - 1] && <div className="master-empty">{t('admin.master.level_select_required').replace('{level}', String(level))}</div>}
                   {selectedCat && (level === 0 || selectedIds[level - 1]) && items.map((item) => (
                     <button key={item.id} className={`master-row-btn ${selectedId === item.id ? 'active' : ''}`} onClick={() => selectLevelItem(level, item.id)}>
                       <div><div className="master-row-title">{getItemLabel(item, categoryChain[level])}</div></div>
@@ -574,12 +576,12 @@ export default function MasterPage() {
               )}
               {selectedCat && (
                 <>
-                  <button className="btn btn-secondary btn-sm" onClick={() => { setCatForm({ key: selectedCat.key, sort_order: String(selectedCat.sort_order) }); setCatTrans(categoryToTranslations(selectedCat)); setCatModal('edit'); }}>{t('admin.common.edit', '카테고리 편집')}</button>
+                  <button className="btn btn-secondary btn-sm" onClick={() => { setCatForm({ key: selectedCat.key, sort_order: String(selectedCat.sort_order) }); setCatTrans(categoryToTranslations(selectedCat)); setCatModal('edit'); }}>{t('admin.master.edit_category')}</button>
                   <label className="master-toggle-row compact">
                     <span>{t('admin.common.status', '상태')}</span>
                     <input type="checkbox" checked={Boolean(selectedCat.is_active)} onChange={() => void toggleCategoryActive(selectedCat)} />
                   </label>
-                  <button className="btn btn-danger btn-sm" onClick={() => void handleCatDelete(selectedCat)}>{t('admin.common.delete', '카테고리 삭제')}</button>
+                  <button className="btn btn-danger btn-sm" onClick={() => void handleCatDelete(selectedCat)}>{t('admin.master.delete_category')}</button>
                 </>
               )}
             </div>
@@ -597,8 +599,8 @@ export default function MasterPage() {
             <div className="modal-body" style={{ maxHeight: '70vh', overflowY: 'auto' }}>
               {catModal === 'create' && (
                 <div className="form-group">
-                  <label className="form-label">Key *</label>
-                  <input className="form-input font-mono" value={catForm.key} onChange={(e) => setCatForm((f) => ({ ...f, key: e.target.value }))} placeholder="예: disease_device_type" />
+                  <label className="form-label">{t('admin.master.field_key')}</label>
+                  <input className="form-input font-mono" value={catForm.key} onChange={(e) => setCatForm((f) => ({ ...f, key: e.target.value }))} placeholder={t('admin.master.placeholder_key')} />
                 </div>
               )}
               <div className="form-group">
@@ -608,7 +610,7 @@ export default function MasterPage() {
               <div style={{ borderTop: '1px solid var(--border)', paddingTop: 12, marginTop: 4 }}>
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
                   <div style={{ fontSize: 13, fontWeight: 600 }}>{t('admin.master.translations', '표시명 (13개국어)')}</div>
-                  <button className="btn btn-secondary btn-sm" onClick={() => autoTranslate(catTrans.ko, setCatTrans, catTrans)} disabled={translating || !catTrans.ko}>{translating ? '...' : t('admin.master.auto_translate', '🌐 한국어 기준 자동번역')}</button>
+                  <button className="btn btn-secondary btn-sm" onClick={() => autoTranslate(catTrans.ko, setCatTrans, catTrans)} disabled={translating || !catTrans.ko}>{translating ? t('admin.master.loading_translate') : t('admin.master.auto_translate', '🌐 한국어 기준 자동번역')}</button>
                 </div>
                 {SUPPORTED_LANGS.map((lang) => (
                   <div key={lang} className="form-group" style={{ marginBottom: 6, display: 'flex', alignItems: 'center', gap: 8 }}>
@@ -649,7 +651,7 @@ export default function MasterPage() {
               <div className="form-group">
                 <label className="form-label">{t('admin.master.parent_item', '부모 아이템')}</label>
                 <select className="form-input" value={itemForm.parent_id || ''} onChange={(e) => setItemForm((f) => ({ ...f, parent_id: e.target.value || null }))}>
-                  <option value="">-- {t('admin.common.none', '없음')} --</option>
+                  <option value="">{t('admin.master.none_option')}</option>
                   {itemParentCandidates.filter((i) => i.id !== itemForm.id).map((i) => <option key={i.id} value={i.id}>{getItemLabel(i, itemTargetCategory ? normalizeCategoryKey(itemTargetCategory.key) : null)}</option>)}
                 </select>
               </div>
@@ -660,7 +662,7 @@ export default function MasterPage() {
               <div style={{ borderTop: '1px solid var(--border)', paddingTop: 12, marginTop: 4 }}>
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
                   <div style={{ fontSize: 13, fontWeight: 600 }}>{t('admin.master.translations', '표시명 (13개국어)')}</div>
-                  <button className="btn btn-secondary btn-sm" onClick={() => autoTranslate(itemTrans.ko, setItemTrans, itemTrans)} disabled={translating || !itemTrans.ko}>{translating ? '...' : t('admin.master.auto_translate', '🌐 한국어 기준 자동번역')}</button>
+                  <button className="btn btn-secondary btn-sm" onClick={() => autoTranslate(itemTrans.ko, setItemTrans, itemTrans)} disabled={translating || !itemTrans.ko}>{translating ? t('admin.master.loading_translate') : t('admin.master.auto_translate', '🌐 한국어 기준 자동번역')}</button>
                 </div>
                 {SUPPORTED_LANGS.map((lang) => (
                   <div key={lang} className="form-group" style={{ marginBottom: 6, display: 'flex', alignItems: 'center', gap: 8 }}>
