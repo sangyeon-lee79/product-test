@@ -575,6 +575,55 @@ tbody tr:hover { background: #f8fafc; }
 .gallery-upload-modal {
   max-width: 620px;
 }
+.gallery-upload-dropzone {
+  border: 1px dashed #b8c9e2;
+  border-radius: 10px;
+  padding: 14px;
+  display: grid;
+  gap: 10px;
+  background: #f8fbff;
+}
+.gallery-upload-file-input {
+  display: none;
+}
+.gallery-upload-preview {
+  display: grid;
+  gap: 8px;
+}
+.gallery-upload-preview img {
+  width: 100%;
+  max-height: 280px;
+  object-fit: cover;
+  border-radius: 10px;
+  border: 1px solid #dbe4f0;
+  background: #fff;
+}
+.gallery-upload-progress {
+  position: relative;
+  border: 1px solid #dbe4f0;
+  border-radius: 999px;
+  height: 24px;
+  overflow: hidden;
+  margin-bottom: 12px;
+}
+.gallery-upload-progress-bar {
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  background: linear-gradient(90deg, #5f8cff, #3db7ff);
+  transition: width 0.2s ease;
+}
+.gallery-upload-progress span {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  place-items: center;
+  height: 100%;
+  font-size: 12px;
+  font-weight: 600;
+  color: #1f3558;
+}
 .weight-summary-grid {
   grid-template-columns: repeat(4, minmax(0, 1fr));
 }

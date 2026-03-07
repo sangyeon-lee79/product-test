@@ -1,11 +1,14 @@
-import { useMemo, useState } from 'react';
+import { useMemo, useRef, useState } from 'react';
 import { api, type Booking, type Pet, type PetAlbumMedia } from '../lib/api';
+import { useT } from '../lib/i18n';
 
 export type GallerySourceType = 'profile' | 'feed' | 'booking_completed' | 'health_record' | 'manual_upload';
 type MediaFilter = 'all' | 'image' | 'video';
 type SortOrder = 'latest' | 'oldest';
-type UploadKind = 'manual_upload' | 'health_record' | 'profile';
+type UploadKind = 'manual_upload' | 'health_record' | 'profile' | 'feed' | 'booking_completed';
 type VisibilityScope = 'public' | 'friends_only' | 'private' | 'guardian_supplier_only' | 'booking_related';
+const MAX_UPLOAD_SIZE = 10 * 1024 * 1024;
+const ALLOWED_UPLOAD_TYPES = new Set(['image/jpeg', 'image/jpg', 'image/png', 'image/webp']);
 
 interface GalleryItem {
   id: string;
@@ -96,13 +99,18 @@ export default function PetGalleryPanel({
   onRefresh,
   setError,
 }: Props) {
+  const t = useT();
   const [sourceFilter, setSourceFilter] = useState<'all' | GallerySourceType>('all');
   const [mediaFilter, setMediaFilter] = useState<MediaFilter>('all');
   const [sortOrder, setSortOrder] = useState<SortOrder>('latest');
   const [selectedIndex, setSelectedIndex] = useState<number | null>(null);
 
   const [uploadOpen, setUploadOpen] = useState(false);
-  const [uploadUrl, setUploadUrl] = useState('');
+  const [uploadFile, setUploadFile] = useState<File | null>(null);
+  const [uploadPreviewUrl, setUploadPreviewUrl] = useState('');
+  const [uploadProgress, setUploadProgress] = useState(0);
+  const [uploadError, setUploadError] = useState('');
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
   const [uploadCaption, setUploadCaption] = useState('');
   const [uploadTags, setUploadTags] = useState('');
   const [uploadKind, setUploadKind] = useState<UploadKind>('manual_upload');
@@ -159,11 +167,63 @@ export default function PetGalleryPanel({
     return map;
   }, [bookings]);
 
+  function resetUploadForm() {
+    if (uploadPreviewUrl) URL.revokeObjectURL(uploadPreviewUrl);
+    setUploadFile(null);
+    setUploadPreviewUrl('');
+    setUploadProgress(0);
+    setUploadError('');
+    setUploadCaption('');
+    setUploadTags('');
+    setUploadKind('manual_upload');
+    setUploadVisibility('public');
+    if (fileInputRef.current) fileInputRef.current.value = '';
+  }
+
+  function validateUploadFile(file: File): string | null {
+    if (!ALLOWED_UPLOAD_TYPES.has(file.type.toLowerCase())) return t('guardian.pet.gallery.add_photo.error.invalid_file_type');
+    if (file.size > MAX_UPLOAD_SIZE) return t('guardian.pet.gallery.add_photo.error.file_too_large');
+    return null;
+  }
+
+  function handleFileSelected(file: File | null) {
+    if (!file) return;
+    const validationError = validateUploadFile(file);
+    if (validationError) {
+      setUploadError(validationError);
+      return;
+    }
+    setUploadError('');
+    setUploadFile(file);
+    if (uploadPreviewUrl) URL.revokeObjectURL(uploadPreviewUrl);
+    setUploadPreviewUrl(URL.createObjectURL(file));
+  }
+
+  function uploadBinary(uploadUrl: string, file: File, onProgress: (ratio: number) => void): Promise<void> {
+    return new Promise((resolve, reject) => {
+      const xhr = new XMLHttpRequest();
+      xhr.open('PUT', uploadUrl);
+      xhr.setRequestHeader('Content-Type', file.type || 'application/octet-stream');
+      xhr.upload.onprogress = (event) => {
+        if (event.lengthComputable && event.total > 0) onProgress(Math.round((event.loaded / event.total) * 100));
+      };
+      xhr.onload = () => {
+        if (xhr.status >= 200 && xhr.status < 300) {
+          onProgress(100);
+          resolve();
+          return;
+        }
+        reject(new Error(t('guardian.pet.gallery.add_photo.error.upload_failed')));
+      };
+      xhr.onerror = () => reject(new Error(t('guardian.pet.gallery.add_photo.error.upload_failed')));
+      xhr.send(file);
+    });
+  }
+
   async function submitUpload() {
     if (!selectedPet) return;
-    const mediaUrl = uploadUrl.trim();
-    if (!mediaUrl) {
-      setError('미디어 URL을 입력해 주세요.');
+    if (!uploadFile) {
+      setUploadError(t('guardian.pet.gallery.add_photo.error.file_required'));
       return;
     }
 
@@ -173,26 +233,28 @@ export default function PetGalleryPanel({
       .filter(Boolean);
 
     setSavingUpload(true);
+    setUploadError('');
     try {
+      const ext = (uploadFile.name.split('.').pop() || 'jpg').toLowerCase().replace(/[^a-z0-9]/g, '') || 'jpg';
+      const presigned = await api.storage.presignedUrl({ type: 'log_media', ext });
+      await uploadBinary(presigned.upload_url, uploadFile, (ratio) => setUploadProgress(ratio));
       await api.petAlbum.create({
         pet_id: selectedPet.id,
-        source_type: uploadKind === 'health_record' ? 'health_record' : uploadKind === 'profile' ? 'profile' : 'manual_upload',
-        media_url: mediaUrl,
-        thumbnail_url: mediaUrl,
+        source_type: uploadKind,
+        media_url: presigned.public_url,
+        thumbnail_url: presigned.public_url,
         caption: uploadCaption.trim() || null,
         tags,
         visibility_scope: uploadVisibility,
         is_primary: uploadKind === 'profile',
       });
       setUploadOpen(false);
-      setUploadUrl('');
-      setUploadCaption('');
-      setUploadTags('');
-      setUploadKind('manual_upload');
-      setUploadVisibility('public');
+      resetUploadForm();
       await onRefresh();
     } catch (e) {
-      setError(e instanceof Error ? e.message : '업로드에 실패했습니다.');
+      const message = e instanceof Error ? e.message : t('guardian.pet.gallery.add_photo.error.upload_failed');
+      setUploadError(message);
+      setError(message);
     } finally {
       setSavingUpload(false);
     }
@@ -217,7 +279,7 @@ export default function PetGalleryPanel({
       <div className="card">
         <div className="card-body">
           <h3>Gallery</h3>
-          <p className="text-muted">등록된 펫이 없어 Gallery를 표시할 수 없습니다.</p>
+          <p className="text-muted">{t('guardian.pet.gallery.empty.no_pet')}</p>
         </div>
       </div>
     );
@@ -233,7 +295,7 @@ export default function PetGalleryPanel({
             <p className="text-muted">{breedLabel} / {genderLabel} / {lifeStageLabel}</p>
             <p className="gallery-summary-meta">사진 {photoCount}장 · 영상 {videoCount}개 · 최근 업데이트: {latestUploadDate}</p>
           </div>
-          {isGuardian && <button className="btn btn-primary" onClick={() => setUploadOpen(true)}>사진 추가</button>}
+          {isGuardian && <button className="btn btn-primary" onClick={() => setUploadOpen(true)}>{t('guardian.pet.gallery.add_photo.open')}</button>}
         </header>
 
         <div className="gallery-filter-bar">
@@ -263,7 +325,7 @@ export default function PetGalleryPanel({
           <div className="gallery-empty">
             <h4>아직 사진이 없습니다.</h4>
             <p>첫 프로필 사진이나 반려동물 사진을 업로드해보세요.</p>
-            {isGuardian && <button className="btn btn-primary" onClick={() => setUploadOpen(true)}>사진 추가</button>}
+            {isGuardian && <button className="btn btn-primary" onClick={() => setUploadOpen(true)}>{t('guardian.pet.gallery.add_photo.open')}</button>}
           </div>
         ) : visibleItems.length === 0 ? (
           <div className="gallery-empty compact">선택한 유형의 사진이 없습니다.</div>
@@ -355,24 +417,69 @@ export default function PetGalleryPanel({
         <div className="modal-overlay">
           <div className="modal gallery-upload-modal">
             <div className="modal-header">
-              <h3 className="modal-title">사진 추가</h3>
-              <button className="modal-close" onClick={() => setUploadOpen(false)}>&times;</button>
+              <h3 className="modal-title">{t('guardian.pet.gallery.add_photo.title')}</h3>
+              <button className="modal-close" onClick={() => { setUploadOpen(false); resetUploadForm(); }}>&times;</button>
             </div>
             <div className="modal-body">
               <div className="form-group">
-                <label className="form-label">미디어 URL</label>
-                <input className="form-input" value={uploadUrl} onChange={(e) => setUploadUrl(e.target.value)} placeholder="https://..." />
+                <label className="form-label">{t('guardian.pet.gallery.add_photo.file')}</label>
+                <div
+                  className="gallery-upload-dropzone"
+                  onDragOver={(e) => e.preventDefault()}
+                  onDrop={(e) => {
+                    e.preventDefault();
+                    const file = e.dataTransfer.files?.[0] || null;
+                    handleFileSelected(file);
+                  }}
+                >
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    className="gallery-upload-file-input"
+                    accept="image/jpeg,image/jpg,image/png,image/webp"
+                    capture="environment"
+                    onChange={(e) => handleFileSelected(e.target.files?.[0] || null)}
+                  />
+                  <p>{t('guardian.pet.gallery.add_photo.file_hint')}</p>
+                  <button type="button" className="btn btn-secondary btn-sm" onClick={() => fileInputRef.current?.click()}>
+                    {t('guardian.pet.gallery.add_photo.select_file')}
+                  </button>
+                </div>
               </div>
+              {uploadPreviewUrl && (
+                <div className="form-group">
+                  <label className="form-label">{t('guardian.pet.gallery.add_photo.preview')}</label>
+                  <div className="gallery-upload-preview">
+                    <img src={uploadPreviewUrl} alt={t('guardian.pet.gallery.add_photo.preview_alt')} />
+                    <button type="button" className="btn btn-secondary btn-sm" onClick={resetUploadForm}>
+                      {t('guardian.pet.gallery.add_photo.reselect')}
+                    </button>
+                  </div>
+                </div>
+              )}
+              {uploadError && (
+                <div className="alert alert-error" style={{ marginBottom: 12 }}>
+                  {uploadError}
+                </div>
+              )}
+              {savingUpload && (
+                <div className="gallery-upload-progress">
+                  <div className="gallery-upload-progress-bar" style={{ width: `${uploadProgress}%` }} />
+                  <span>{t('guardian.pet.gallery.add_photo.uploading')} {uploadProgress}%</span>
+                </div>
+              )}
               <div className="form-group">
-                <label className="form-label">업로드 유형</label>
+                <label className="form-label">{t('guardian.pet.gallery.add_photo.upload_type')}</label>
                 <select className="form-select" value={uploadKind} onChange={(e) => setUploadKind(e.target.value as UploadKind)}>
-                  <option value="manual_upload">일반 앨범</option>
-                  <option value="health_record">건강기록 연결</option>
-                  <option value="profile">프로필 사진으로 설정</option>
+                  <option value="manual_upload">{t('guardian.pet.gallery.add_photo.type.manual_upload')}</option>
+                  <option value="feed">{t('guardian.pet.gallery.add_photo.type.feed')}</option>
+                  <option value="booking_completed">{t('guardian.pet.gallery.add_photo.type.booking_completed')}</option>
+                  <option value="health_record">{t('guardian.pet.gallery.add_photo.type.health_record')}</option>
+                  <option value="profile">{t('guardian.pet.gallery.add_photo.type.profile')}</option>
                 </select>
               </div>
               <div className="form-group">
-                <label className="form-label">공개 범위</label>
+                <label className="form-label">{t('guardian.pet.gallery.add_photo.visibility')}</label>
                 <select className="form-select" value={uploadVisibility} onChange={(e) => setUploadVisibility(e.target.value as VisibilityScope)}>
                   <option value="public">public</option>
                   <option value="friends_only">friends_only</option>
@@ -382,17 +489,17 @@ export default function PetGalleryPanel({
                 </select>
               </div>
               <div className="form-group">
-                <label className="form-label">캡션</label>
+                <label className="form-label">{t('guardian.pet.gallery.add_photo.caption')}</label>
                 <textarea className="form-textarea" value={uploadCaption} onChange={(e) => setUploadCaption(e.target.value)} />
               </div>
               <div className="form-group">
-                <label className="form-label">태그</label>
-                <input className="form-input" value={uploadTags} onChange={(e) => setUploadTags(e.target.value)} placeholder="cute, spring" />
+                <label className="form-label">{t('guardian.pet.gallery.add_photo.tags')}</label>
+                <input className="form-input" value={uploadTags} onChange={(e) => setUploadTags(e.target.value)} placeholder={t('guardian.pet.gallery.add_photo.tags_placeholder')} />
               </div>
             </div>
             <div className="modal-footer">
-              <button className="btn btn-secondary" onClick={() => setUploadOpen(false)}>취소</button>
-              <button className="btn btn-primary" onClick={submitUpload} disabled={savingUpload}>{savingUpload ? '저장 중...' : '저장'}</button>
+              <button className="btn btn-secondary" onClick={() => { setUploadOpen(false); resetUploadForm(); }}>{t('guardian.pet.gallery.add_photo.cancel')}</button>
+              <button className="btn btn-primary" onClick={submitUpload} disabled={savingUpload}>{savingUpload ? t('guardian.pet.gallery.add_photo.saving') : t('guardian.pet.gallery.add_photo.save')}</button>
             </div>
           </div>
         </div>

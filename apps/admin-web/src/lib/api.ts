@@ -334,6 +334,14 @@ export const api = {
       return request<{ available: boolean; reason?: string; pet_id?: string }>(`/api/v1/pets/check-microchip?${q.toString()}`);
     },
   },
+  storage: {
+    presignedUrl: (params: { type: 'user_avatar' | 'pet_avatar' | 'log_media' | 'feed_media' | 'completion_photo' | 'store_photo' | 'service_photo'; ext: string }) => {
+      const q = new URLSearchParams();
+      q.set('type', params.type);
+      q.set('ext', params.ext);
+      return request<{ upload_url: string; file_key: string; public_url: string; expires_in: number }>(`/api/v1/storage/presigned-url?${q.toString()}`);
+    },
+  },
   bookings: {
     list: () => request<{ bookings: Booking[] }>('/api/v1/bookings'),
   },
