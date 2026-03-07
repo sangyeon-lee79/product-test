@@ -9,6 +9,7 @@ type FeedTab = 'all' | 'friends';
 type Mode = 'create' | 'edit';
 type PetProfileTab = 'timeline' | 'health' | 'services' | 'gallery' | 'profile';
 type WeightRange = '1m' | '3m' | '6m' | '1y' | 'all';
+type PetWizardStep = 1 | 2 | 3 | 4 | 5;
 
 type Option = { id: string; label: string; parentId?: string | null; metadata?: Record<string, unknown> };
 
@@ -291,6 +292,7 @@ export default function GuardianMainPage() {
   const [petModalOpen, setPetModalOpen] = useState(false);
   const [petMode, setPetMode] = useState<Mode>('create');
   const [petForm, setPetForm] = useState<PetForm>(DEFAULT_PET_FORM);
+  const [petWizardStep, setPetWizardStep] = useState<PetWizardStep>(1);
 
   const [bookings, setBookings] = useState<Booking[]>([]);
   const [feeds, setFeeds] = useState<FeedPost[]>([]);
@@ -582,6 +584,7 @@ export default function GuardianMainPage() {
   function openCreatePet() {
     setPetMode('create');
     setPetForm(DEFAULT_PET_FORM);
+    setPetWizardStep(1);
     setPetModalOpen(true);
   }
 
@@ -591,6 +594,7 @@ export default function GuardianMainPage() {
       const p = res.pet;
       setPetMode('edit');
       setActivePet(p);
+      setPetWizardStep(1);
       setPetForm({
         name: p.name || '',
         microchip_no: p.microchip_no || '',
@@ -696,6 +700,32 @@ export default function GuardianMainPage() {
     } catch (e) {
       setError(uiErrorMessage(e, t('guardian.alert.pet_save_failed', '반려동물 저장에 실패했습니다.')));
     }
+  }
+
+  function closePetModal() {
+    setPetModalOpen(false);
+    setActivePet(null);
+    setPetWizardStep(1);
+  }
+
+  function gotoNextPetStep() {
+    if (petWizardStep === 1) {
+      if (!petForm.name.trim()) {
+        setError(t('guardian.alert.name_required', 'Pet name is required.'));
+        return;
+      }
+    }
+    if (petWizardStep === 2 && !petForm.pet_type_id) {
+      setError(t('guardian.alert.pet_type_required', 'Pet type is required.'));
+      return;
+    }
+    setError('');
+    setPetWizardStep((prev) => (prev < 5 ? ((prev + 1) as PetWizardStep) : prev));
+  }
+
+  function gotoPrevPetStep() {
+    setError('');
+    setPetWizardStep((prev) => (prev > 1 ? ((prev - 1) as PetWizardStep) : prev));
   }
 
   async function removePet(id: string) {
@@ -1256,100 +1286,136 @@ export default function GuardianMainPage() {
           <div className="modal guardian-pet-modal">
             <div className="modal-header">
               <h3 className="modal-title">{petMode === 'create' ? t('guardian.modal.add_pet', 'Add Pet') : t('guardian.modal.edit_pet', 'Edit Pet')}</h3>
-              <button className="modal-close" onClick={() => { setPetModalOpen(false); setActivePet(null); }}>&times;</button>
+              <button className="modal-close" onClick={closePetModal}>&times;</button>
             </div>
             <div className="modal-body guardian-modal-body">
-              <div className="form-row col2">
-                <div className="form-group">
-                  <label className="form-label">{t('guardian.form.name', 'Name')} *</label>
-                  <input className="form-input" value={petForm.name} onChange={(e) => setPetForm((p) => ({ ...p, name: e.target.value }))} />
-                </div>
-                <div className="form-group">
-                  <label className="form-label">{t('guardian.form.microchip', 'Microchip Number')}</label>
-                  <input className="form-input" value={petForm.microchip_no} onChange={(e) => setPetForm((p) => ({ ...p, microchip_no: e.target.value }))} />
-                </div>
+              <div className="pet-wizard-steps">
+                {[1, 2, 3, 4, 5].map((step) => (
+                  <button
+                    key={step}
+                    type="button"
+                    className={`pet-wizard-step ${petWizardStep === step ? 'active' : ''}`}
+                    onClick={() => setPetWizardStep(step as PetWizardStep)}
+                  >
+                    {t(`guardian.pet_wizard.step_${step}`, `STEP ${step}`)}
+                  </button>
+                ))}
               </div>
 
-              <div className="form-row col2">
-                <div className="form-group">
-                  <label className="form-label">Birthday</label>
-                  <input className="form-input" type="date" value={petForm.birthday} onChange={(e) => setPetForm((p) => ({ ...p, birthday: e.target.value }))} />
-                </div>
-                <div className="form-group">
-                  <label className="form-label">Current Weight</label>
-                  <input className="form-input" type="number" step="0.01" value={petForm.current_weight} onChange={(e) => setPetForm((p) => ({ ...p, current_weight: e.target.value }))} />
-                </div>
-              </div>
+              {petWizardStep === 1 && (
+                <>
+                  <div className="form-row col2">
+                    <div className="form-group">
+                      <label className="form-label">{t('guardian.form.name', 'Name')} *</label>
+                      <input className="form-input" value={petForm.name} onChange={(e) => setPetForm((p) => ({ ...p, name: e.target.value }))} />
+                    </div>
+                    <div className="form-group">
+                      <label className="form-label">{t('guardian.form.microchip', 'Microchip Number')}</label>
+                      <input className="form-input" value={petForm.microchip_no} onChange={(e) => setPetForm((p) => ({ ...p, microchip_no: e.target.value }))} />
+                    </div>
+                  </div>
+                  <div className="form-row col2">
+                    <div className="form-group">
+                      <label className="form-label">{t('guardian.form.birthday', 'Birthday')}</label>
+                      <input className="form-input" type="date" value={petForm.birthday} onChange={(e) => setPetForm((p) => ({ ...p, birthday: e.target.value }))} />
+                    </div>
+                    {renderSelect(t('master.country', 'Country'), petForm.country_id, optCountry, (v) => setPetForm((p) => ({ ...p, country_id: v })))}
+                  </div>
+                </>
+              )}
 
-              <div className="form-row col3">
-                {renderSelect(t('master.pet_type', 'Pet Type'), petForm.pet_type_id, optPetType, (v) => setPetForm((p) => ({ ...p, pet_type_id: v, breed_id: '' })), true)}
-                {renderSelect(t('master.pet_breed', 'Breed'), petForm.breed_id, breedOptionsFiltered, (v) => setPetForm((p) => ({ ...p, breed_id: v })))}
-                {renderSelect(t('master.pet_gender', 'Gender'), petForm.gender_id, optGender, (v) => setPetForm((p) => ({ ...p, gender_id: v })))}
-              </div>
+              {petWizardStep === 2 && (
+                <>
+                  <div className="form-row col3">
+                    {renderSelect(t('master.pet_type', 'Pet Type'), petForm.pet_type_id, optPetType, (v) => setPetForm((p) => ({ ...p, pet_type_id: v, breed_id: '' })), true)}
+                    {renderSelect(t('master.pet_breed', 'Breed'), petForm.breed_id, breedOptionsFiltered, (v) => setPetForm((p) => ({ ...p, breed_id: v })))}
+                    {renderSelect(t('master.pet_gender', 'Gender'), petForm.gender_id, optGender, (v) => setPetForm((p) => ({ ...p, gender_id: v })))}
+                  </div>
+                  <div className="form-row col3">
+                    {renderSelect(t('master.neuter_status', 'Neutered/Spayed Status'), petForm.neuter_status_id, optNeuter, (v) => setPetForm((p) => ({ ...p, neuter_status_id: v })))}
+                    {renderSelect(t('master.life_stage', 'Life Stage'), petForm.life_stage_id, optLifeStage, (v) => setPetForm((p) => ({ ...p, life_stage_id: v })))}
+                    {renderSelect(t('master.body_size', 'Body Size'), petForm.body_size_id, optBodySize, (v) => setPetForm((p) => ({ ...p, body_size_id: v })))}
+                  </div>
+                </>
+              )}
 
-              <div className="form-row col3">
-                {renderSelect(t('master.neuter_status', 'Neutered/Spayed Status'), petForm.neuter_status_id, optNeuter, (v) => setPetForm((p) => ({ ...p, neuter_status_id: v })))}
-                {renderSelect(t('master.life_stage', 'Life Stage'), petForm.life_stage_id, optLifeStage, (v) => setPetForm((p) => ({ ...p, life_stage_id: v })))}
-                {renderSelect(t('master.body_size', 'Body Size'), petForm.body_size_id, optBodySize, (v) => setPetForm((p) => ({ ...p, body_size_id: v })))}
-              </div>
+              {petWizardStep === 3 && (
+                <>
+                  <div className="form-row col2">
+                    <div className="form-group">
+                      <label className="form-label">{t('guardian.form.current_weight', 'Current Weight')}</label>
+                      <input className="form-input" type="number" step="0.01" value={petForm.current_weight} onChange={(e) => setPetForm((p) => ({ ...p, current_weight: e.target.value }))} />
+                    </div>
+                    {renderSelect(t('master.weight_unit', 'Weight Unit'), petForm.weight_unit_id, optWeightUnit, (v) => setPetForm((p) => ({ ...p, weight_unit_id: v })))}
+                  </div>
+                  <div className="form-row col2">
+                    <div className="form-group">
+                      <label className="form-label">{t('guardian.form.weight_measured_at', 'Weight Measured At')}</label>
+                      <input className="form-input" type="datetime-local" value={petForm.current_weight_measured_at} onChange={(e) => setPetForm((p) => ({ ...p, current_weight_measured_at: e.target.value }))} />
+                    </div>
+                    <div className="form-group">
+                      <label className="form-label">{t('guardian.form.weight_memo', 'Weight Memo')}</label>
+                      <input className="form-input" value={petForm.current_weight_notes} onChange={(e) => setPetForm((p) => ({ ...p, current_weight_notes: e.target.value }))} />
+                    </div>
+                  </div>
+                  <div className="form-row col3">
+                    {renderSelect(t('master.coat_length', 'Coat Length'), petForm.coat_length_id, optCoatLength, (v) => setPetForm((p) => ({ ...p, coat_length_id: v })))}
+                    {renderSelect(t('master.coat_type', 'Coat Type'), petForm.coat_type_id, optCoatType, (v) => setPetForm((p) => ({ ...p, coat_type_id: v })))}
+                    {renderSelect(t('master.grooming_cycle', 'Grooming Cycle'), petForm.grooming_cycle_id, optGrooming, (v) => setPetForm((p) => ({ ...p, grooming_cycle_id: v })))}
+                  </div>
+                  <div className="form-row col1">
+                    {renderMultiSelect(t('master.pet_color', 'Primary Color'), petForm.color_ids, optColor, (next) => setPetForm((p) => ({ ...p, color_ids: next })))}
+                  </div>
+                </>
+              )}
 
-              <div className="form-row col3">
-                {renderSelect(t('master.country', 'Country'), petForm.country_id, optCountry, (v) => setPetForm((p) => ({ ...p, country_id: v })))}
-                {renderSelect(t('master.medication_status', 'Medication Status'), petForm.medication_status_id, optMedication, (v) => setPetForm((p) => ({ ...p, medication_status_id: v })))}
-                {renderSelect(t('master.weight_unit', 'Weight Unit'), petForm.weight_unit_id, optWeightUnit, (v) => setPetForm((p) => ({ ...p, weight_unit_id: v })))}
-              </div>
+              {petWizardStep === 4 && (
+                <>
+                  <div className="form-row col3">
+                    {renderSelect(t('master.health_condition_level', 'Health Condition Level'), petForm.health_condition_level_id, optHealthLevel, (v) => setPetForm((p) => ({ ...p, health_condition_level_id: v })))}
+                    {renderSelect(t('master.activity_level', 'Activity Level'), petForm.activity_level_id, optActivity, (v) => setPetForm((p) => ({ ...p, activity_level_id: v })))}
+                    {renderSelect(t('master.diet_type', 'Diet Type'), petForm.diet_type_id, optDiet, (v) => setPetForm((p) => ({ ...p, diet_type_id: v })))}
+                  </div>
+                  <div className="form-row col3">
+                    {renderSelect(t('master.medication_status', 'Medication Status'), petForm.medication_status_id, optMedication, (v) => setPetForm((p) => ({ ...p, medication_status_id: v })))}
+                    {renderSelect(t('master.living_style', 'Living Style'), petForm.living_style_id, optLivingStyle, (v) => setPetForm((p) => ({ ...p, living_style_id: v })))}
+                    {renderSelect(t('master.ownership_type', 'Ownership Type'), petForm.ownership_type_id, optOwnership, (v) => setPetForm((p) => ({ ...p, ownership_type_id: v })))}
+                  </div>
+                  <div className="form-row col2">
+                    {renderMultiSelect(t('master.allergy_type', 'Allergy'), petForm.allergy_ids, optAllergy, (next) => setPetForm((p) => ({ ...p, allergy_ids: next })))}
+                    {renderMultiSelect(t('master.disease_type', 'Disease History'), petForm.disease_history_ids, optDisease, (next) => setPetForm((p) => ({ ...p, disease_history_ids: next })))}
+                  </div>
+                  <div className="form-row col2">
+                    {renderMultiSelect(t('master.symptom_type', 'Symptom Tag'), petForm.symptom_tag_ids, optSymptom, (next) => setPetForm((p) => ({ ...p, symptom_tag_ids: next })))}
+                    {renderMultiSelect(t('master.vaccination_type', 'Vaccination'), petForm.vaccination_ids, optVaccination, (next) => setPetForm((p) => ({ ...p, vaccination_ids: next })))}
+                  </div>
+                </>
+              )}
 
-              <div className="form-row col2">
-                <div className="form-group">
-                  <label className="form-label">Weight Measured At</label>
-                  <input className="form-input" type="datetime-local" value={petForm.current_weight_measured_at} onChange={(e) => setPetForm((p) => ({ ...p, current_weight_measured_at: e.target.value }))} />
-                </div>
-                <div className="form-group">
-                  <label className="form-label">Weight Memo</label>
-                  <input className="form-input" value={petForm.current_weight_notes} onChange={(e) => setPetForm((p) => ({ ...p, current_weight_notes: e.target.value }))} />
-                </div>
-              </div>
-
-              <div className="form-row col3">
-                {renderSelect(t('master.health_condition_level', 'Health Condition Level'), petForm.health_condition_level_id, optHealthLevel, (v) => setPetForm((p) => ({ ...p, health_condition_level_id: v })))}
-                {renderSelect(t('master.activity_level', 'Activity Level'), petForm.activity_level_id, optActivity, (v) => setPetForm((p) => ({ ...p, activity_level_id: v })))}
-                {renderSelect(t('master.diet_type', 'Diet Type'), petForm.diet_type_id, optDiet, (v) => setPetForm((p) => ({ ...p, diet_type_id: v })))}
-              </div>
-
-              <div className="form-row col3">
-                {renderSelect(t('master.living_style', 'Living Style'), petForm.living_style_id, optLivingStyle, (v) => setPetForm((p) => ({ ...p, living_style_id: v })))}
-                {renderSelect(t('master.ownership_type', 'Ownership Type'), petForm.ownership_type_id, optOwnership, (v) => setPetForm((p) => ({ ...p, ownership_type_id: v })))}
-                {renderSelect(t('master.coat_length', 'Coat Length'), petForm.coat_length_id, optCoatLength, (v) => setPetForm((p) => ({ ...p, coat_length_id: v })))}
-              </div>
-
-              <div className="form-row col2">
-                {renderSelect(t('master.coat_type', 'Coat Type'), petForm.coat_type_id, optCoatType, (v) => setPetForm((p) => ({ ...p, coat_type_id: v })))}
-                {renderSelect(t('master.grooming_cycle', 'Grooming Cycle'), petForm.grooming_cycle_id, optGrooming, (v) => setPetForm((p) => ({ ...p, grooming_cycle_id: v })))}
-              </div>
-
-              <div className="form-row col2">
-                {renderMultiSelect(t('master.pet_color', 'Primary Color'), petForm.color_ids, optColor, (next) => setPetForm((p) => ({ ...p, color_ids: next })))}
-                {renderMultiSelect(t('master.allergy_type', 'Allergy'), petForm.allergy_ids, optAllergy, (next) => setPetForm((p) => ({ ...p, allergy_ids: next })))}
-              </div>
-
-              <div className="form-row col2">
-                {renderMultiSelect(t('master.disease_type', 'Disease History'), petForm.disease_history_ids, optDisease, (next) => setPetForm((p) => ({ ...p, disease_history_ids: next })))}
-                {renderMultiSelect(t('master.symptom_type', 'Symptom Tag'), petForm.symptom_tag_ids, optSymptom, (next) => setPetForm((p) => ({ ...p, symptom_tag_ids: next })))}
-              </div>
-
-              <div className="form-row col2">
-                {renderMultiSelect(t('master.vaccination_type', 'Vaccination'), petForm.vaccination_ids, optVaccination, (next) => setPetForm((p) => ({ ...p, vaccination_ids: next })))}
-                {renderMultiSelect(t('master.temperament_type', 'Temperament'), petForm.temperament_ids, optTemperament, (next) => setPetForm((p) => ({ ...p, temperament_ids: next })))}
-              </div>
-
-              <div className="form-group">
-                <label className="form-label">{t('guardian.form.notes', 'Notes')}</label>
-                <textarea className="form-textarea" value={petForm.notes} onChange={(e) => setPetForm((p) => ({ ...p, notes: e.target.value }))} />
-              </div>
+              {petWizardStep === 5 && (
+                <>
+                  <div className="form-row col1">
+                    {renderMultiSelect(t('master.temperament_type', 'Temperament'), petForm.temperament_ids, optTemperament, (next) => setPetForm((p) => ({ ...p, temperament_ids: next })))}
+                  </div>
+                  <div className="form-group">
+                    <label className="form-label">{t('guardian.form.notes', 'Notes')}</label>
+                    <textarea className="form-textarea" value={petForm.notes} onChange={(e) => setPetForm((p) => ({ ...p, notes: e.target.value }))} />
+                  </div>
+                </>
+              )}
             </div>
             <div className="modal-footer">
-              <button className="btn btn-secondary" onClick={() => setPetModalOpen(false)}>{t('common.cancel', 'Cancel')}</button>
-              <button className="btn btn-primary" onClick={savePet}>{t('common.save', 'Save')}</button>
+              <button className="btn btn-secondary" onClick={closePetModal}>{t('common.cancel', 'Cancel')}</button>
+              <button className="btn btn-secondary" onClick={gotoPrevPetStep} disabled={petWizardStep === 1}>
+                {t('common.previous', 'Previous')}
+              </button>
+              {petWizardStep < 5 ? (
+                <button className="btn btn-primary" onClick={gotoNextPetStep}>
+                  {t('common.next', 'Next')}
+                </button>
+              ) : (
+                <button className="btn btn-primary" onClick={savePet}>{t('common.save', 'Save')}</button>
+              )}
             </div>
           </div>
         </div>

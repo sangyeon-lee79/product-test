@@ -101,6 +101,7 @@ body { background: var(--bg); color: var(--text); font-size: 14px; line-height: 
 }
 .form-textarea { resize: vertical; min-height: 80px; }
 .form-row { display: grid; gap: 12px; }
+.form-row.col1 { grid-template-columns: 1fr; }
 .form-row.col2 { grid-template-columns: 1fr 1fr; }
 .form-row.col3 { grid-template-columns: 1fr 1fr 1fr; }
 
@@ -479,6 +480,27 @@ tbody tr:hover { background: #f8fafc; }
   max-height: 72vh;
   overflow: auto;
 }
+.pet-wizard-steps {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 8px;
+  margin-bottom: 14px;
+}
+.pet-wizard-step {
+  border: 1px solid #d3deef;
+  border-radius: 8px;
+  background: #fff;
+  color: #355377;
+  font-size: 12px;
+  font-weight: 700;
+  padding: 8px 10px;
+  cursor: pointer;
+}
+.pet-wizard-step.active {
+  border-color: #7ea5f3;
+  background: #eef5ff;
+  color: #1d3f72;
+}
 .pet-profile-tabs {
   overflow-x: auto;
   white-space: nowrap;
@@ -818,6 +840,9 @@ tbody tr:hover { background: #f8fafc; }
     max-width: 100%;
   }
   .feed-compose-layout {
+    grid-template-columns: 1fr;
+  }
+  .pet-wizard-steps {
     grid-template-columns: 1fr;
   }
   .gallery-grid {
