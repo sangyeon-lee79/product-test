@@ -272,6 +272,61 @@ export const api = {
       }>) => request<{ updated: boolean; id: string }>(`/api/v1/pets/${petId}/weight-logs/${logId}`, { method: 'PUT', body: JSON.stringify(data) }),
       remove: (petId: string, logId: string) => request<{ deleted: boolean; id: string }>(`/api/v1/pets/${petId}/weight-logs/${logId}`, { method: 'DELETE' }),
     },
+    diseases: {
+      list: (petId: string) => request<{ diseases: PetDiseaseHistory[] }>(`/api/v1/pets/${petId}/diseases`),
+      create: (petId: string, data: {
+        disease_group_item_id?: string;
+        disease_item_id: string;
+        diagnosed_at?: string;
+        notes?: string | null;
+        is_active?: boolean;
+      }) => request<{ history_id?: string; created?: boolean }>(`/api/v1/pets/${petId}/diseases`, { method: 'POST', body: JSON.stringify(data) }),
+      update: (petId: string, historyId: string, data: Partial<{
+        disease_group_item_id: string | null;
+        disease_item_id: string;
+        diagnosed_at: string | null;
+        notes: string | null;
+        is_active: boolean;
+      }>) => request<{ updated: boolean; history_id: string }>(`/api/v1/pets/${petId}/diseases/${historyId}`, { method: 'PUT', body: JSON.stringify(data) }),
+      remove: (petId: string, historyId: string) => request<{ deleted: boolean; history_id?: string; disease_id?: string }>(`/api/v1/pets/${petId}/diseases/${historyId}`, { method: 'DELETE' }),
+    },
+    diseaseDevices: {
+      list: (petId: string) => request<{ devices: PetDiseaseDevice[] }>(`/api/v1/pets/${petId}/disease-devices`),
+      create: (petId: string, data: {
+        disease_item_id: string;
+        device_item_id: string;
+        serial_number?: string | null;
+        nickname?: string | null;
+        notes?: string | null;
+      }) => request<{ id: string }>(`/api/v1/pets/${petId}/disease-devices`, { method: 'POST', body: JSON.stringify(data) }),
+    },
+    glucoseLogs: {
+      list: (petId: string, params?: { range?: '1w' | '1m' | '3m' | '6m' | '1y' | 'all' }) => {
+        const q = new URLSearchParams();
+        if (params?.range) q.set('range', params.range);
+        const suffix = q.toString() ? `?${q.toString()}` : '';
+        return request<{ logs: PetGlucoseLog[]; summary: GlucoseSummary | null; range: string }>(`/api/v1/pets/${petId}/glucose-logs${suffix}`);
+      },
+      create: (petId: string, data: {
+        disease_item_id?: string;
+        device_item_id?: string | null;
+        glucose_value: number;
+        glucose_unit_item_id?: string;
+        measured_at?: string;
+        measured_context_item_id?: string | null;
+        notes?: string | null;
+      }) => request<{ id: string; judgement: { level: string | null; label: string | null } }>(`/api/v1/pets/${petId}/glucose-logs`, { method: 'POST', body: JSON.stringify(data) }),
+      update: (petId: string, logId: string, data: Partial<{
+        disease_item_id: string;
+        device_item_id: string | null;
+        glucose_value: number;
+        glucose_unit_item_id: string;
+        measured_at: string;
+        measured_context_item_id: string | null;
+        notes: string | null;
+      }>) => request<{ updated: boolean; id: string; judgement: { level: string | null; label: string | null } }>(`/api/v1/pets/${petId}/glucose-logs/${logId}`, { method: 'PUT', body: JSON.stringify(data) }),
+      remove: (petId: string, logId: string) => request<{ deleted: boolean; id: string }>(`/api/v1/pets/${petId}/glucose-logs/${logId}`, { method: 'DELETE' }),
+    },
     checkMicrochip: (microchipNo: string, excludePetId?: string) => {
       const q = new URLSearchParams();
       q.set('microchip_no', microchipNo);
@@ -442,6 +497,58 @@ export interface WeightSummary {
   max_weight?: number | null;
   delta_from_prev?: number | null;
   weight_unit_id?: string | null;
+}
+
+export interface PetDiseaseHistory {
+  id: string;
+  pet_id: string;
+  disease_group_item_id?: string | null;
+  disease_item_id: string;
+  diagnosed_at?: string | null;
+  notes?: string | null;
+  is_active: number;
+  disease_key?: string | null;
+  disease_group_key?: string | null;
+  created_at?: string;
+  updated_at?: string;
+}
+
+export interface PetDiseaseDevice {
+  id: string;
+  pet_id: string;
+  disease_item_id: string;
+  device_item_id: string;
+  serial_number?: string | null;
+  nickname?: string | null;
+  notes?: string | null;
+  is_active: number;
+  device_key?: string | null;
+  created_at: string;
+  updated_at?: string;
+}
+
+export interface PetGlucoseLog {
+  id: string;
+  pet_id: string;
+  disease_item_id: string;
+  device_item_id?: string | null;
+  glucose_value: number;
+  glucose_unit_item_id: string;
+  measured_at: string;
+  measured_context_item_id?: string | null;
+  notes?: string | null;
+  recorded_by_user_id: string;
+  judgement_level?: string | null;
+  judgement_label?: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface GlucoseSummary {
+  latest_value?: number | null;
+  latest_measured_at?: string | null;
+  latest_judgement_level?: string | null;
+  latest_judgement_label?: string | null;
 }
 
 export interface Booking {

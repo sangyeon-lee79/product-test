@@ -62,6 +62,75 @@ function itemI18nKey(categoryKey: string, itemKey: string): string {
     : `master.${categoryKey}.${itemKey}`;
 }
 
+async function resolveCategoryIdByKey(env: Env, categoryKey: string): Promise<string | null> {
+  const normalized = await hasColumn(env, 'master_categories', 'code');
+  const row = normalized
+    ? await env.DB.prepare(
+      `SELECT id
+       FROM master_categories
+       WHERE status = 'active'
+         AND (code = ? OR ('master.' || code) = ? OR REPLACE(code, 'master.', '') = ?)
+       LIMIT 1`
+    ).bind(categoryKey, categoryKey, categoryKey).first<{ id: string }>()
+    : await env.DB.prepare(
+      `SELECT id
+       FROM master_categories
+       WHERE is_active = 1 AND key = ?
+       LIMIT 1`
+    ).bind(categoryKey).first<{ id: string }>();
+  return row?.id ?? null;
+}
+
+async function listPublicItems(env: Env, categoryKey: string, parentId?: string | null): Promise<Response> {
+  const categoryId = await resolveCategoryIdByKey(env, categoryKey);
+  if (!categoryId) return err('Category not found', 404);
+  const normalized = await hasColumn(env, 'master_categories', 'code');
+  const rows = normalized
+    ? await env.DB.prepare(
+      `SELECT
+         mi.id,
+         mi.category_id,
+         mi.code AS key,
+         mi.parent_item_id AS parent_id,
+         mi.sort_order,
+         CASE WHEN mi.status = 'active' THEN 1 ELSE 0 END AS is_active,
+         mi.metadata,
+         mi.created_at,
+         mi.updated_at,
+         tr.ko AS ko_name,
+         tr.en, tr.ja, tr.zh_cn, tr.zh_tw, tr.es, tr.fr, tr.de, tr.pt, tr.vi, tr.th, tr.id_lang, tr.ar
+       FROM master_items mi
+       LEFT JOIN master_categories mc ON mc.id = mi.category_id
+       LEFT JOIN i18n_translations tr
+         ON tr.key = CASE
+           WHEN mc.code LIKE 'master.%' THEN (mc.code || '.' || mi.code)
+           ELSE ('master.' || mc.code || '.' || mi.code)
+         END
+       WHERE mi.category_id = ?
+         AND mi.status = 'active'
+         AND (? IS NULL OR mi.parent_item_id = ?)
+       ORDER BY mi.sort_order, mi.code`
+    ).bind(categoryId, parentId ?? null, parentId ?? null).all()
+    : await env.DB.prepare(
+      `SELECT
+         mi.*,
+         tr.ko AS ko_name,
+         tr.en, tr.ja, tr.zh_cn, tr.zh_tw, tr.es, tr.fr, tr.de, tr.pt, tr.vi, tr.th, tr.id_lang, tr.ar
+       FROM master_items mi
+       LEFT JOIN master_categories mc ON mc.id = mi.category_id
+       LEFT JOIN i18n_translations tr
+         ON tr.key = CASE
+           WHEN mc.key LIKE 'master.%' THEN (mc.key || '.' || mi.key)
+           ELSE ('master.' || mc.key || '.' || mi.key)
+         END
+       WHERE mi.category_id = ?
+         AND mi.is_active = 1
+         AND (? IS NULL OR mi.parent_id = ?)
+       ORDER BY mi.sort_order, mi.key`
+    ).bind(categoryId, parentId ?? null, parentId ?? null).all();
+  return ok(rows.results);
+}
+
 async function upsertI18n(env: Env, i18nKey: string, translations: Record<string, string>) {
   const existing = await env.DB.prepare('SELECT id FROM i18n_translations WHERE key = ?').bind(i18nKey).first<{ id: string }>();
   const lv = LANGS.map(l => translations[l] ?? null);
@@ -85,6 +154,54 @@ async function upsertI18n(env: Env, i18nKey: string, translations: Record<string
 export async function handleMaster(request: Request, env: Env, url: URL): Promise<Response> {
   const path = url.pathname;
   const isAdmin = path.startsWith('/api/v1/admin/master');
+
+  if (!isAdmin && path === '/api/v1/master/disease-groups' && request.method === 'GET') {
+    return listPublicItems(env, 'disease_group');
+  }
+  if (!isAdmin && path === '/api/v1/master/diseases' && request.method === 'GET') {
+    const groupId = (url.searchParams.get('group_id') || '').trim() || null;
+    return listPublicItems(env, 'disease_type', groupId);
+  }
+  if (!isAdmin && path === '/api/v1/master/disease-devices' && request.method === 'GET') {
+    const diseaseId = (url.searchParams.get('disease_id') || '').trim() || null;
+    return listPublicItems(env, 'disease_device_type', diseaseId);
+  }
+  if (!isAdmin && path === '/api/v1/master/disease-measurements' && request.method === 'GET') {
+    const diseaseId = (url.searchParams.get('disease_id') || '').trim() || null;
+    return listPublicItems(env, 'disease_measurement_type', diseaseId);
+  }
+  if (!isAdmin && path === '/api/v1/master/diet-types' && request.method === 'GET') {
+    return listPublicItems(env, 'diet_type');
+  }
+  if (!isAdmin && path === '/api/v1/master/diet-subtypes' && request.method === 'GET') {
+    const parentId = (url.searchParams.get('parent_id') || '').trim() || null;
+    return listPublicItems(env, 'diet_subtype', parentId);
+  }
+  if (!isAdmin && path === '/api/v1/master/allergy-groups' && request.method === 'GET') {
+    return listPublicItems(env, 'allergy_group');
+  }
+  if (!isAdmin && path === '/api/v1/master/allergies' && request.method === 'GET') {
+    const groupId = (url.searchParams.get('group_id') || '').trim() || null;
+    return listPublicItems(env, 'allergy_type', groupId);
+  }
+  if (!isAdmin && path === '/api/v1/master/disease-judgement-rules' && request.method === 'GET') {
+    const diseaseId = (url.searchParams.get('disease_id') || '').trim();
+    if (!diseaseId) return err('disease_id required');
+    const rows = await env.DB.prepare(
+      `SELECT
+         r.*,
+         m.code AS measurement_code,
+         c.code AS context_code,
+         u.code AS unit_code
+       FROM disease_judgement_rules r
+       LEFT JOIN master_items m ON m.id = r.measurement_item_id
+       LEFT JOIN master_items c ON c.id = r.context_item_id
+       LEFT JOIN master_items u ON u.id = r.unit_item_id
+       WHERE r.disease_item_id = ? AND r.status = 'active'
+       ORDER BY r.sort_order ASC, r.id ASC`
+    ).bind(diseaseId).all();
+    return ok(rows.results);
+  }
 
   // ─── 공개: 카테고리 목록 ──────────────────────────────────────────────────
   if (!isAdmin && path === '/api/v1/master/categories' && request.method === 'GET') {
