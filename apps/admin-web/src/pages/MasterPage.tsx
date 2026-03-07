@@ -10,6 +10,10 @@ export default function MasterPage() {
   const [items, setItems] = useState<MasterItem[]>([]);
   const [selectedCat, setSelectedCat] = useState<MasterCategory | null>(null);
   const [parentItems, setParentItems] = useState<MasterItem[]>([]);
+  const [diseaseGroups, setDiseaseGroups] = useState<MasterItem[]>([]);
+  const [diseases, setDiseases] = useState<MasterItem[]>([]);
+  const [diseaseDevices, setDiseaseDevices] = useState<MasterItem[]>([]);
+  const [treeLoading, setTreeLoading] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
@@ -44,6 +48,27 @@ export default function MasterPage() {
     } catch (e) { setError(e instanceof Error ? e.message : 'Error'); }
   }, []);
 
+  const loadDiseaseTree = useCallback(async () => {
+    setTreeLoading(true);
+    try {
+      const [groups, diseaseList, devices] = await Promise.all([
+        api.master.items.list('disease_group'),
+        api.master.items.list('disease_type'),
+        api.master.items.list('disease_device_type'),
+      ]);
+      setDiseaseGroups(groups);
+      setDiseases(diseaseList);
+      setDiseaseDevices(devices);
+    } catch (e) {
+      setDiseaseGroups([]);
+      setDiseases([]);
+      setDiseaseDevices([]);
+      setError(e instanceof Error ? e.message : 'Error');
+    } finally {
+      setTreeLoading(false);
+    }
+  }, []);
+
   const normalizeCategoryKey = useCallback((key: string) => key.replace(/^master\./, ''), []);
 
   const getParentCategoryKey = useCallback((catKey: string): string | null => {
@@ -72,6 +97,7 @@ export default function MasterPage() {
   }, [findCategoryByKey]);
 
   useEffect(() => { void loadCategories(); }, [loadCategories]);
+  useEffect(() => { void loadDiseaseTree(); }, [loadDiseaseTree]);
   useEffect(() => {
     if (selectedCat) void loadItems(selectedCat.key);
     else setItems([]);
@@ -102,6 +128,18 @@ export default function MasterPage() {
   function flash(msg: string) { setSuccess(msg); setTimeout(() => setSuccess(''), 3000); }
   function getCategoryLabel(cat: MasterCategory) { return cat.ko_name?.trim() || cat.key; }
   function getItemLabel(item: MasterItem) { return item.ko_name?.trim() || item.ko?.trim() || item.key; }
+  async function openCreateItemAtCategory(catKey: string, parentId: string | null = null) {
+    const cat = findCategoryByKey(catKey);
+    if (!cat) {
+      setError(`"${catKey}" 카테고리를 찾지 못했습니다.`);
+      return;
+    }
+    setSelectedCat(cat);
+    setItemForm({ sort_order: '0', parent_id: parentId });
+    setItemTrans(emptyTrans());
+    setItemModal('create');
+    await loadItems(cat.key);
+  }
   function parentLabel(parentId: string | null | undefined) {
     if (!parentId) return '-';
     const fromCurrent = items.find((i) => i.id === parentId);
@@ -311,6 +349,73 @@ export default function MasterPage() {
           </div>
           <div style={{ padding: '0 16px 12px', fontSize: 12, color: 'var(--text-muted)' }}>
             질병 장치 등록은 <b>disease_device_type</b>에서 아이템 추가 시 <b>부모 아이템 = 질병(disease_type)</b>으로 지정하면 됩니다.
+          </div>
+        </div>
+
+        <div className="card" style={{ marginBottom: 16 }}>
+          <div className="card-header">
+            <div className="card-title">질병군 &gt; 질병 &gt; 장치 트리</div>
+            <div style={{ display: 'flex', gap: 6 }}>
+              <button className="btn btn-secondary btn-sm" onClick={() => void loadDiseaseTree()} disabled={treeLoading}>
+                {treeLoading ? '로딩...' : '새로고침'}
+              </button>
+              <button className="btn btn-primary btn-sm" onClick={() => void openCreateItemAtCategory('disease_group', null)}>
+                + 질병군
+              </button>
+            </div>
+          </div>
+          <div style={{ padding: '12px 16px' }}>
+            {treeLoading && <div style={{ color: 'var(--text-muted)', fontSize: 13 }}>데이터를 불러오는 중입니다...</div>}
+            {!treeLoading && diseaseGroups.length === 0 && (
+              <div style={{ color: 'var(--text-muted)', fontSize: 13 }}>질병군 데이터가 없습니다.</div>
+            )}
+            {!treeLoading && diseaseGroups.length > 0 && (
+              <div style={{ display: 'grid', gap: 10 }}>
+                {diseaseGroups.map((group) => {
+                  const diseasesInGroup = diseases.filter((d) => d.parent_id === group.id);
+                  return (
+                    <div key={group.id} style={{ border: '1px solid var(--border)', borderRadius: 10, padding: 10 }}>
+                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
+                        <div style={{ fontWeight: 700 }}>{getItemLabel(group)}</div>
+                        <div style={{ display: 'flex', gap: 6 }}>
+                          <button className="btn btn-secondary btn-sm" onClick={() => void jumpToCategory('disease_group')}>열기</button>
+                          <button className="btn btn-primary btn-sm" onClick={() => void openCreateItemAtCategory('disease_type', group.id)}>+ 질병</button>
+                        </div>
+                      </div>
+                      <div style={{ marginTop: 8, display: 'grid', gap: 8 }}>
+                        {diseasesInGroup.length === 0 && (
+                          <div style={{ color: 'var(--text-muted)', fontSize: 12 }}>등록된 질병이 없습니다.</div>
+                        )}
+                        {diseasesInGroup.map((disease) => {
+                          const devicesInDisease = diseaseDevices.filter((device) => device.parent_id === disease.id);
+                          return (
+                            <div key={disease.id} style={{ border: '1px dashed var(--border)', borderRadius: 8, padding: 8, marginLeft: 12 }}>
+                              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
+                                <div style={{ fontWeight: 600 }}>{getItemLabel(disease)}</div>
+                                <div style={{ display: 'flex', gap: 6 }}>
+                                  <button className="btn btn-secondary btn-sm" onClick={() => void jumpToCategory('disease_type')}>열기</button>
+                                  <button className="btn btn-primary btn-sm" onClick={() => void openCreateItemAtCategory('disease_device_type', disease.id)}>+ 장치</button>
+                                </div>
+                              </div>
+                              <div style={{ marginTop: 6, marginLeft: 12, display: 'grid', gap: 4 }}>
+                                {devicesInDisease.length === 0 && (
+                                  <div style={{ color: 'var(--text-muted)', fontSize: 12 }}>등록된 장치가 없습니다.</div>
+                                )}
+                                {devicesInDisease.map((device) => (
+                                  <div key={device.id} style={{ fontSize: 13 }}>
+                                    - {getItemLabel(device)}
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
           </div>
         </div>
 
