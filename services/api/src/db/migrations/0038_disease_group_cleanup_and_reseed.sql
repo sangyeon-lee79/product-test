@@ -1,14 +1,21 @@
 -- 0038: Cleanup and Reseed Disease Group (L1) and Disease Type (L2)
 -- Goal: Fix mixed translation keys and ensure correct L1-L2 parent-child linking.
--- Fix: Handle all potential foreign key constraints across various tables.
+-- Fix: Handle self-referencing foreign keys (L3+ referencing L2) and external references.
 
--- 1. Try to disable foreign key checks for the duration of this migration
+-- 1. Disable foreign key checks if possible
 PRAGMA foreign_keys = OFF;
 
--- 2. Comprehensive cleanup of tables that reference master_items(id) for disease data
--- This handles constraints in pet_disease_histories, health_records, etc.
+-- 2. BREAK self-references in master_items
+-- L3, L4, L5 items might point to L2 items we are about to delete.
+-- We set their parent_item_id to NULL first to avoid FK violation.
+UPDATE master_items 
+SET parent_item_id = NULL 
+WHERE parent_item_id IN (
+    SELECT id FROM master_items 
+    WHERE category_id IN (SELECT id FROM master_categories WHERE code IN ('disease_group', 'disease_type'))
+);
 
--- From 0023
+-- 3. CLEANUP external referencing tables
 DELETE FROM pet_disease_histories 
 WHERE disease_group_item_id IN (SELECT id FROM master_items WHERE category_id IN (SELECT id FROM master_categories WHERE code IN ('disease_group', 'disease_type')))
    OR disease_item_id IN (SELECT id FROM master_items WHERE category_id IN (SELECT id FROM master_categories WHERE code IN ('disease_group', 'disease_type')));
@@ -22,18 +29,14 @@ WHERE disease_item_id IN (SELECT id FROM master_items WHERE category_id IN (SELE
 DELETE FROM disease_judgement_rules 
 WHERE disease_item_id IN (SELECT id FROM master_items WHERE category_id IN (SELECT id FROM master_categories WHERE code IN ('disease_group', 'disease_type')));
 
--- From 0021 (health_records)
--- Use a subquery to avoid errors if columns don't exist yet (though they should)
 DELETE FROM health_records 
 WHERE disease_id IN (SELECT id FROM master_items WHERE category_id IN (SELECT id FROM master_categories WHERE code IN ('disease_group', 'disease_type')));
 
--- From 0004 (pet_diseases or similar)
--- Checking if pet_diseases exists and cleaning it
 DELETE FROM pet_diseases 
 WHERE disease_id IN (SELECT id FROM master_items WHERE category_id IN (SELECT id FROM master_categories WHERE code IN ('disease_group', 'disease_type')));
 
 
--- 3. DELETE existing data for L1 (disease_group) and L2 (disease_type) from master_items
+-- 4. DELETE L1 (disease_group) and L2 (disease_type) from master_items
 DELETE FROM master_items 
 WHERE category_id IN (
     SELECT id FROM master_categories WHERE code IN ('disease_group', 'disease_type')
@@ -45,7 +48,7 @@ WHERE key LIKE 'master.disease_group.%'
    OR key LIKE 'master.disease_type.%';
 
 
--- 4. SEED L1 (disease_group)
+-- 5. SEED L1 (disease_group)
 WITH l1_data(id, code, sort_order, ko, en) AS (
   VALUES
     ('mi-dg-endocrine', 'endocrine_disease', 1, '내분비 질환', 'Endocrine Disease'),
@@ -100,7 +103,7 @@ FROM (
 ) AS t(code, ko, en);
 
 
--- 5. SEED L2 (disease_type)
+-- 6. SEED L2 (disease_type)
 WITH l2_data(id, parent_code, code, sort_order, ko, en) AS (
   VALUES
     ('mi-dt-asthma', 'respiratory_disease', 'asthma', 1, '천식', 'Asthma'),
@@ -144,5 +147,5 @@ FROM (
     ('colitis', '대장염', 'Colitis')
 ) AS t(code, ko, en);
 
--- 6. Re-enable foreign key checks
+-- 7. Restore foreign key checks
 PRAGMA foreign_keys = ON;
