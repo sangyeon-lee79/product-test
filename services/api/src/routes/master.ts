@@ -200,6 +200,61 @@ const REQUIRES_PARENT_CATEGORY_CODES = new Set([
   'allergy_type',
 ]);
 
+const EXPECTED_PARENT_CATEGORY_BY_CHILD: Record<string, string> = {
+  disease_type: 'disease_group',
+  disease_device_type: 'disease_type',
+  disease_measurement_type: 'disease_device_type',
+  disease_measurement_context: 'disease_measurement_type',
+  diet_subtype: 'diet_type',
+  allergy_type: 'allergy_group',
+};
+
+async function getParentCategoryKeyByItemId(env: Env, itemId: string): Promise<string | null> {
+  const normalized = await hasColumn(env, 'master_items', 'code');
+  const row = normalized
+    ? await env.DB.prepare(
+      `SELECT mc.code AS category_key
+       FROM master_items mi
+       JOIN master_categories mc ON mc.id = mi.category_id
+       WHERE mi.id = ?`
+    ).bind(itemId).first<{ category_key: string }>()
+    : await env.DB.prepare(
+      `SELECT mc.key AS category_key
+       FROM master_items mi
+       JOIN master_categories mc ON mc.id = mi.category_id
+       WHERE mi.id = ?`
+    ).bind(itemId).first<{ category_key: string }>();
+  return row?.category_key ? normalizeMasterKey(row.category_key) : null;
+}
+
+async function validateParentHierarchy(
+  env: Env,
+  categoryKey: string,
+  parentId?: string | null,
+): Promise<{ ok: true } | { ok: false; message: string; code: string }> {
+  const requiresParent = REQUIRES_PARENT_CATEGORY_CODES.has(categoryKey);
+  if (requiresParent && !parentId) {
+    return { ok: false, message: 'parent_id required for this category', code: 'parent_required' };
+  }
+  if (!parentId) return { ok: true };
+
+  const expectedParentCategory = EXPECTED_PARENT_CATEGORY_BY_CHILD[categoryKey];
+  if (!expectedParentCategory) return { ok: true };
+
+  const parentCategoryKey = await getParentCategoryKeyByItemId(env, parentId);
+  if (!parentCategoryKey) {
+    return { ok: false, message: 'parent item not found', code: 'parent_not_found' };
+  }
+  if (parentCategoryKey !== expectedParentCategory) {
+    return {
+      ok: false,
+      message: `invalid parent category: expected ${expectedParentCategory}, got ${parentCategoryKey}`,
+      code: 'parent_category_mismatch',
+    };
+  }
+  return { ok: true };
+}
+
 export async function handleMaster(request: Request, env: Env, url: URL): Promise<Response> {
   const path = url.pathname;
   const isAdmin = path.startsWith('/api/v1/admin/master');
@@ -658,9 +713,8 @@ export async function handleMaster(request: Request, env: Env, url: URL): Promis
           : await env.DB.prepare('SELECT key FROM master_categories WHERE id = ?').bind(body.category_id).first<{ key: string }>();
         if (!category?.key) return err('category not found', 404);
         const categoryKey = normalizeMasterKey(category.key);
-        if (REQUIRES_PARENT_CATEGORY_CODES.has(categoryKey) && !body.parent_id) {
-          return err('parent_id required for this category', 400, 'parent_required');
-        }
+        const hierarchyValidation = await validateParentHierarchy(env, categoryKey, body.parent_id ?? null);
+        if (!hierarchyValidation.ok) return err(hierarchyValidation.message, 400, hierarchyValidation.code);
 
         const autoKey = await generateItemKey(env, body.category_id);
         const i18nKey = itemI18nKey(category.key, autoKey);
@@ -690,6 +744,25 @@ export async function handleMaster(request: Request, env: Env, url: URL): Promis
       if (request.method === 'PUT' && id) {
         let body: { sort_order?: number; is_active?: boolean; metadata?: Record<string, unknown>; parent_id?: string | null; translations?: Record<string, string> };
         try { body = await request.json() as typeof body; } catch { return err('Invalid JSON'); }
+        if (body.parent_id !== undefined) {
+          const itemCategory = await (normalized
+            ? env.DB.prepare(
+              `SELECT mc.code AS category_key
+               FROM master_items mi
+               JOIN master_categories mc ON mc.id = mi.category_id
+               WHERE mi.id = ?`
+            ).bind(id).first<{ category_key: string }>()
+            : env.DB.prepare(
+              `SELECT mc.key AS category_key
+               FROM master_items mi
+               JOIN master_categories mc ON mc.id = mi.category_id
+               WHERE mi.id = ?`
+            ).bind(id).first<{ category_key: string }>());
+          if (!itemCategory?.category_key) return err('Not found', 404);
+          const categoryKey = normalizeMasterKey(itemCategory.category_key);
+          const hierarchyValidation = await validateParentHierarchy(env, categoryKey, body.parent_id ?? null);
+          if (!hierarchyValidation.ok) return err(hierarchyValidation.message, 400, hierarchyValidation.code);
+        }
         const sets: string[] = ['updated_at = ?'];
         const vals: (string | number | null)[] = [now()];
         if (body.sort_order !== undefined) { sets.push('sort_order = ?'); vals.push(body.sort_order); }

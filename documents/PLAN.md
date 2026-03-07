@@ -108,6 +108,52 @@ Your pet's life portfolio
 
 ---
 
+## 0.3 전면 동기화 기준 (문서=코드=DB=UI)
+
+### A) Master Data 표준 구조
+- 최종 탐색 구조: `Category -> L1 -> L2 -> L3 -> L4 -> L5`
+- 의미:
+  - `Category`: 카테고리 그룹
+  - `L1`: 질병군/식사유형/펫종류 등 상위 분류
+  - `L2`: 질병/세부유형
+  - `L3`: 질병장치/검사방법
+  - `L4`: 질병측정항목
+  - `L5`: 질병측정컨텍스트
+- 예시:
+  - `질병군 -> 내분비질환 -> 당뇨 -> 혈당측정기 -> 혈당수치 -> 공복`
+
+### B) i18n 표준 구조
+- 저장: DB에는 `key/code/id` 저장
+- 렌더: UI는 항상 `translation value`만 표시
+- fallback: `current_locale` 값이 없으면 `ko`
+- 금지: key/raw 문자열 직접 출력 (`master.*`, `admin.*`)
+
+### C) 자동번역 규칙
+- source는 반드시 `한국어 표시명(label_ko)`
+- source에 key 패턴(`master.*`, `admin.*`) 입력 금지
+- 번역 결과가 key와 동일/패턴값이면 저장 금지
+
+### D) 저장 Validation 규칙
+- Category/Item 생성 시 `ko` 필수
+- 13개 언어(`ko,en,ja,zh_cn,zh_tw,es,fr,de,pt,vi,th,id_lang,ar`) 모두 비어있으면 저장 금지
+- 계층 검증:
+  - `disease_type -> disease_group`
+  - `disease_device_type -> disease_type`
+  - `disease_measurement_type -> disease_device_type`
+  - `disease_measurement_context -> disease_measurement_type`
+  - `diet_subtype -> diet_type`
+  - `allergy_type -> allergy_group`
+
+### E) Seed 규칙
+- 필수: `key/code`, `label_ko`, `parent`, `level(sort/hierarchy)`
+- 금지: 프론트/백엔드 하드코딩 옵션 배열/업무 enum
+- 선택값 공급원: 반드시 Master API
+
+### F) 배포 차단 게이트
+- 배포 전 아래 쿼리 검사에서 `fail_count=0`이어야 배포 허용:
+  - `verify_master_i18n_gate.sql`
+  - `audit_i18n_quality.sql`
+
 ---
 
 ## 0. 문서 관리 / 개발 절차 (전역 규칙: 체크 대상 아님)

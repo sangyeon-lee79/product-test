@@ -21,6 +21,13 @@
   - Master 6-level UI fixed text converted to i18n keys.
   - L1~L5 label rendering uses translated value, not raw key.
   - Missing translation state shown in UI (no raw key fallback for item labels).
+  - Parent hierarchy validation added on item create/update:
+    - disease_type -> disease_group
+    - disease_device_type -> disease_type
+    - disease_measurement_type -> disease_device_type
+    - disease_measurement_context -> disease_measurement_type
+    - diet_subtype -> diet_type
+    - allergy_type -> allergy_group
 
 ## New Guardrails (Translation Required)
 - Master category/item save is no longer key-only.
@@ -38,6 +45,17 @@
 - Deployment gate added:
   - Run master i18n validation before deploy.
   - If missing translations/hierarchy violations are found, deployment must fail.
+  - Added translation quality audit query for:
+    - missing language values
+    - key literal leaks
+    - malformed disease-pattern text values
+
+## New API / Queries
+- Admin translation audit endpoint
+  - `GET /api/v1/admin/i18n/audit?prefix=master.`
+- Query files
+  - `src/db/queries/verify_master_i18n_gate.sql`
+  - `src/db/queries/audit_i18n_quality.sql`
 
 ## Recently Added Migrations
 - `0022_restore_bangul_sample.sql`

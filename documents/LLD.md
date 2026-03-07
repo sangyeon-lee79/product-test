@@ -277,26 +277,51 @@ CREATE INDEX idx_i18n_active ON i18n_translations(is_active);
 - 저장값: `key/code/id`
 - 표시값: `i18n_translations`의 locale별 label
 - 금지: UI에서 key 직접 출력
+- 렌더 공식: `display_value = translation[current_locale]`, fallback=`ko`
 - 누락 처리: key 노출 대신 누락 상태 텍스트 표시
+
+### Master 6-Level Contract
+- 관리 UI 구조: `Category | L1 | L2 | L3 | L4 | L5`
+- 질병 관리 표준 체인:
+  - `disease_group -> disease_type -> disease_device_type -> disease_measurement_type -> disease_measurement_context`
+- 예시:
+  - `질병군 -> 내분비질환 -> 당뇨 -> 혈당측정기 -> 혈당수치 -> 공복`
+- 비질병 카테고리도 동일하게 parent-child를 사용해 L1~L5로 확장 가능해야 한다.
 
 ### Master Save Contract
 - Category/Item 생성 시 key 단독 저장 금지
 - `ko + en + ja + zh_cn + zh_tw + es + fr + de + pt + vi + th + id_lang + ar` 전부 비어있지 않아야 저장 허용
 - category key 미입력 시 서버 자동 생성 허용
 - item key는 서버 자동 생성
+- 자동번역 source는 `ko(label_ko)`만 허용
+- source/translation 값이 `master.*` 또는 `admin.*` 패턴이면 저장 금지
 - hierarchy 강제:
   - `disease_type` -> parent `disease_group`
   - `disease_device_type` -> parent `disease_type`
   - `disease_measurement_type` -> parent `disease_device_type`
   - `disease_measurement_context` -> parent `disease_measurement_type`
+  - `diet_subtype` -> parent `diet_type`
+  - `allergy_type` -> parent `allergy_group`
 
 ### Pre-Deploy Gate
 - 배포 전 `verify_master_i18n_gate.sql` 검사 필수
+- 배포 전 `audit_i18n_quality.sql` 검사 필수
 - 실패 조건:
   - i18n row 누락
   - 언어 컬럼 공란
   - key literal 누출(master.* 문자열)
   - parent/level 계층 위반
+
+### Seed Contract
+- seed 입력 최소 단위:
+  - `code(key)`
+  - `label_ko`
+  - `parent_item_id`(필요 시)
+  - `sort_order/level`
+- seed에서 하드코딩 표시 문자열을 프론트 옵션으로 직접 사용하지 않는다.
+- seed 반영 후 i18n 자동 생성 경로:
+  - `label_ko`를 source로 자동번역 호출
+  - 13개 언어 row 생성 완료 시에만 운영 반영
 ```
 
 #### 질병 연결 매핑 테이블
@@ -987,6 +1012,7 @@ CREATE INDEX idx_pet_album_status ON pet_album_media(status);
 | CRUD | /api/v1/admin/master/items | 아이템 관리 |
 | CRUD | /api/v1/admin/master/disease-maps | 질병 연결 관리 |
 | CRUD | /api/v1/admin/i18n | 언어관리 |
+| GET | /api/v1/admin/i18n/audit?prefix=master. | 번역 누락/키누출 감사 |
 | CRUD | /api/v1/admin/countries | 국가 관리 |
 | CRUD | /api/v1/admin/currencies | 통화 관리 |
 | CRUD | /api/v1/admin/ads | 광고 설정 |

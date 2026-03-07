@@ -407,6 +407,86 @@ export async function handleI18n(request: Request, env: Env, url: URL): Promise<
       });
     }
 
+    // 번역 품질 감사 API
+    if (request.method === 'GET' && path.endsWith('/audit')) {
+      const scopePrefix = (url.searchParams.get('prefix') || 'master.').trim();
+      const likePattern = `${scopePrefix}%`;
+      const missingRows = await env.DB.prepare(
+        `SELECT COUNT(*) AS c
+         FROM i18n_translations
+         WHERE key LIKE ?
+           AND (
+             TRIM(COALESCE(ko, '')) = '' OR
+             TRIM(COALESCE(en, '')) = '' OR
+             TRIM(COALESCE(ja, '')) = '' OR
+             TRIM(COALESCE(zh_cn, '')) = '' OR
+             TRIM(COALESCE(zh_tw, '')) = '' OR
+             TRIM(COALESCE(es, '')) = '' OR
+             TRIM(COALESCE(fr, '')) = '' OR
+             TRIM(COALESCE(de, '')) = '' OR
+             TRIM(COALESCE(pt, '')) = '' OR
+             TRIM(COALESCE(vi, '')) = '' OR
+             TRIM(COALESCE(th, '')) = '' OR
+             TRIM(COALESCE(id_lang, '')) = '' OR
+             TRIM(COALESCE(ar, '')) = ''
+           )`
+      ).bind(likePattern).first<{ c: number }>();
+
+      const keyLiteralRows = await env.DB.prepare(
+        `SELECT COUNT(*) AS c
+         FROM i18n_translations
+         WHERE key LIKE ?
+           AND (
+             ko = key OR en = key OR ja = key OR zh_cn = key OR zh_tw = key OR
+             es = key OR fr = key OR de = key OR pt = key OR vi = key OR
+             th = key OR id_lang = key OR ar = key OR
+             ko LIKE 'master.%' OR en LIKE 'master.%' OR ja LIKE 'master.%' OR
+             zh_cn LIKE 'master.%' OR zh_tw LIKE 'master.%' OR es LIKE 'master.%' OR
+             fr LIKE 'master.%' OR de LIKE 'master.%' OR pt LIKE 'master.%' OR
+             vi LIKE 'master.%' OR th LIKE 'master.%' OR id_lang LIKE 'master.%' OR ar LIKE 'master.%'
+           )`
+      ).bind(likePattern).first<{ c: number }>();
+
+      const patternRows = await env.DB.prepare(
+        `SELECT COUNT(*) AS c
+         FROM i18n_translations
+         WHERE key LIKE ?
+           AND (
+             ko LIKE '%.disease_%' OR en LIKE '%.disease_%' OR ja LIKE '%.disease_%' OR
+             zh_cn LIKE '%.disease_%' OR zh_tw LIKE '%.disease_%' OR es LIKE '%.disease_%' OR
+             fr LIKE '%.disease_%' OR de LIKE '%.disease_%' OR pt LIKE '%.disease_%' OR
+             vi LIKE '%.disease_%' OR th LIKE '%.disease_%' OR id_lang LIKE '%.disease_%' OR ar LIKE '%.disease_%'
+           )`
+      ).bind(likePattern).first<{ c: number }>();
+
+      const samples = await env.DB.prepare(
+        `SELECT key, ko, en, ja
+         FROM i18n_translations
+         WHERE key LIKE ?
+           AND (
+             ko = key OR en = key OR ja = key OR zh_cn = key OR zh_tw = key OR
+             es = key OR fr = key OR de = key OR pt = key OR vi = key OR
+             th = key OR id_lang = key OR ar = key OR
+             ko LIKE 'master.%' OR en LIKE 'master.%' OR ja LIKE 'master.%' OR
+             zh_cn LIKE 'master.%' OR zh_tw LIKE 'master.%' OR es LIKE 'master.%' OR
+             fr LIKE 'master.%' OR de LIKE 'master.%' OR pt LIKE 'master.%' OR
+             vi LIKE 'master.%' OR th LIKE 'master.%' OR id_lang LIKE 'master.%' OR ar LIKE 'master.%'
+           )
+         ORDER BY updated_at DESC
+         LIMIT 30`
+      ).bind(likePattern).all<{ key: string; ko: string | null; en: string | null; ja: string | null }>();
+
+      return ok({
+        scope_prefix: scopePrefix,
+        summary: {
+          missing_translation_rows: missingRows?.c ?? 0,
+          key_literal_rows: keyLiteralRows?.c ?? 0,
+          disease_pattern_rows: patternRows?.c ?? 0,
+        },
+        samples: samples.results,
+      });
+    }
+
     // GET 목록
     if (request.method === 'GET' && !id) {
       const page = parseInt(url.searchParams.get('page') || '1');

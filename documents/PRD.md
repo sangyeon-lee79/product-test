@@ -53,6 +53,33 @@ Pet Life (방울아 놀자)
 - 연결형 계층 데이터(질병→증상→수치…)는 Tree-view/Graph UI 예외 허용
 - 기존 코드/데이터 삭제/초기화 금지 (수정·확장만)
 
+### 1.6 Master/i18n 통합 규격 (필수)
+- Master UI 구조: `Category | L1 | L2 | L3 | L4 | L5`
+- 질병 예시 흐름:
+  - `질병군 -> 내분비질환 -> 당뇨 -> 혈당측정기 -> 혈당수치 -> 공복`
+- UI 출력 규칙:
+  - key 저장, label 표시
+  - `display_value = translation[current_locale]`
+  - locale 누락 시 `ko` fallback
+  - key 직접 출력 금지
+- 자동번역 규칙:
+  - source는 `한국어 표시명(label_ko)`만 허용
+  - `master.*`, `admin.*` 형태 source 금지
+- 저장 검증:
+  - `ko` 필수
+  - 13개 언어 전체 번역값 필수
+  - 번역값이 key와 동일하거나 key 패턴이면 저장 금지
+- 계층 검증:
+  - `disease_type -> disease_group`
+  - `disease_device_type -> disease_type`
+  - `disease_measurement_type -> disease_device_type`
+  - `disease_measurement_context -> disease_measurement_type`
+  - `diet_subtype -> diet_type`
+  - `allergy_type -> allergy_group`
+- Seed 규칙:
+  - 필수 필드: `key/code + label_ko + parent + level`
+  - 하드코딩 금지, Master API 조회만 허용
+
 ---
 
 ## 2. 사용자 유형 & 역할
@@ -106,6 +133,13 @@ Pet Life (방울아 놀자)
 - key 옆 현재 언어값 표시: `app_title [방울아 놀자]`
 - 페이지별 사용 키 목록 + "사용중 키만" 필터
 - (선택) 자동 언어변환 버튼(Google 번역) + 수동 수정
+
+**ADM-04A: 번역 감사(Audit)**
+> Admin으로서, 배포 전 번역 누락/키노출/패턴오염을 점검하고 실패 시 배포를 차단할 수 있다.
+- 검사 조건:
+  - 언어 누락(13개 중 공란)
+  - key literal 노출(`master.*`, `admin.*`)
+  - 잘못된 패턴(`%.disease_%` 등)
 
 **ADM-05: 국가-통화 관리**
 > Admin으로서, 국가/통화 CRUD 및 국가-통화 매핑(default)을 관리할 수 있다.
