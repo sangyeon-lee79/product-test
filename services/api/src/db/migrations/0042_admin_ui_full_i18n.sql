@@ -1,7 +1,10 @@
 -- 0042: Admin UI Full i18n
--- Insert translations for Admin Web UI elements (page='admin')
+-- Insert translations for Admin Web UI elements (admin.master.*)
+-- NOTE:
+-- Existing rows may already use page='admin.master', so delete by key prefix only.
 
-DELETE FROM i18n_translations WHERE page = 'admin' AND key LIKE 'admin.master.%';
+DELETE FROM i18n_translations
+WHERE key LIKE 'admin.master.%';
 
 INSERT INTO i18n_translations (id, key, page, ko, en, ja, zh_cn, zh_tw, es, fr, de, pt, vi, th, id_lang, ar, is_active, created_at, updated_at)
 VALUES
