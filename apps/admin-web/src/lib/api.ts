@@ -113,7 +113,7 @@ export const api = {
     }>('/api/v1/auth/signup', { method: 'POST', body: JSON.stringify(payload) }),
 
   // Health
-  health: () => request<{ status: string; environment: string; services: Record<string, string> }>('/api/v1/health'),
+  health: () => request<{ status: string; environment: string; version?: string; timestamp?: string; services: Record<string, string> }>('/api/v1/health'),
 
   // i18n
   i18n: {

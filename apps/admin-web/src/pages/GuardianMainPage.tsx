@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
-import { api, type Booking, type FeedPost, type FriendRequest, type HealthMeasurementSummary, type MasterItem, type Pet, type PetAlbumMedia, type PetHealthMeasurementLog, type PetWeightLog, type WeightSummary } from '../lib/api';
+import { api, type Booking, type DeviceBrand, type DeviceManufacturer, type DeviceModel, type FeedPost, type FriendRequest, type HealthMeasurementSummary, type MasterItem, type MeasurementUnit, type Pet, type PetAlbumMedia, type PetHealthMeasurementLog, type PetWeightLog, type WeightSummary } from '../lib/api';
 import { useT } from '../lib/i18n';
 import { getStoredRole } from '../lib/auth';
 import PetGalleryPanel from '../components/PetGalleryPanel';
@@ -10,6 +10,7 @@ type Mode = 'create' | 'edit';
 type PetProfileTab = 'timeline' | 'health' | 'services' | 'gallery' | 'profile';
 type WeightRange = '7d' | '15d' | '1m' | '3m' | '6m' | '1y' | 'all';
 type PetWizardStep = 1 | 2 | 3 | 4 | 5;
+type MeasurementWizardStep = 1 | 2;
 
 type Option = { id: string; label: string; parentId?: string | null; metadata?: Record<string, unknown> };
 
@@ -302,6 +303,7 @@ export default function GuardianMainPage() {
   const [weightModalOpen, setWeightModalOpen] = useState(false);
   const [measurementModalOpen, setMeasurementModalOpen] = useState(false);
   const [editingMeasurementLogId, setEditingMeasurementLogId] = useState<string | null>(null);
+  const [measurementWizardStep, setMeasurementWizardStep] = useState<MeasurementWizardStep>(1);
   const [selectedMeasurementItemId, setSelectedMeasurementItemId] = useState('');
   const [weightForm, setWeightForm] = useState<{ value: string; measured_at: string; notes: string }>({
     value: '',
@@ -313,6 +315,9 @@ export default function GuardianMainPage() {
     device_type_item_id: string;
     measurement_item_id: string;
     measurement_context_id: string;
+    manufacturer_id: string;
+    brand_id: string;
+    model_id: string;
     value: string;
     unit_item_id: string;
     measured_at: string;
@@ -322,6 +327,9 @@ export default function GuardianMainPage() {
     device_type_item_id: '',
     measurement_item_id: '',
     measurement_context_id: '',
+    manufacturer_id: '',
+    brand_id: '',
+    model_id: '',
     value: '',
     unit_item_id: '',
     measured_at: '',
@@ -353,6 +361,10 @@ export default function GuardianMainPage() {
   const [optDiseaseDevice, setOptDiseaseDevice] = useState<Option[]>([]);
   const [optMeasurement, setOptMeasurement] = useState<Option[]>([]);
   const [optMeasurementContext, setOptMeasurementContext] = useState<Option[]>([]);
+  const [deviceManufacturers, setDeviceManufacturers] = useState<DeviceManufacturer[]>([]);
+  const [deviceBrands, setDeviceBrands] = useState<DeviceBrand[]>([]);
+  const [deviceModels, setDeviceModels] = useState<DeviceModel[]>([]);
+  const [measurementUnits, setMeasurementUnits] = useState<MeasurementUnit[]>([]);
   const [optSymptom, setOptSymptom] = useState<Option[]>([]);
   const [optVaccination, setOptVaccination] = useState<Option[]>([]);
   const [optWeightUnit, setOptWeightUnit] = useState<Option[]>([]);
@@ -378,6 +390,29 @@ export default function GuardianMainPage() {
     } catch {
       return null;
     }
+  }
+
+  function toDatetimeLocal(value?: string | null): string {
+    const date = value ? new Date(value) : new Date();
+    if (Number.isNaN(date.getTime())) return '';
+    const local = new Date(date.getTime() - date.getTimezoneOffset() * 60000);
+    return local.toISOString().slice(0, 16);
+  }
+
+  function resetMeasurementForm(nextMeasuredAt?: string) {
+    setMeasurementForm({
+      disease_item_id: '',
+      device_type_item_id: '',
+      measurement_item_id: '',
+      measurement_context_id: '',
+      manufacturer_id: '',
+      brand_id: '',
+      model_id: '',
+      value: '',
+      unit_item_id: '',
+      measured_at: nextMeasuredAt || '',
+      memo: '',
+    });
   }
 
   const currentUserId = currentUserIdFromToken();
@@ -656,6 +691,118 @@ export default function GuardianMainPage() {
     }
   }, [measurementLogs, selectedMeasurementItemId]);
 
+  const manufacturerOptions = useMemo(
+    () => deviceManufacturers
+      .filter((row) => row.status === 'active')
+      .map((row) => ({ id: row.id, label: row.name_ko || row.name_en || row.key })),
+    [deviceManufacturers],
+  );
+
+  const brandOptions = useMemo(
+    () => deviceBrands
+      .filter((row) => row.status === 'active')
+      .map((row) => ({ id: row.id, label: row.name_ko || row.name_en || row.id })),
+    [deviceBrands],
+  );
+
+  const modelOptions = useMemo(
+    () => deviceModels
+      .filter((row) => row.status === 'active')
+      .map((row) => ({ id: row.id, label: row.model_name || row.model_code || row.id })),
+    [deviceModels],
+  );
+
+  const measurementUnitOptions = useMemo(
+    () => measurementUnits
+      .filter((row) => row.status === 'active')
+      .map((row) => ({ id: row.id, label: row.symbol ? `${row.name} (${row.symbol})` : row.name })),
+    [measurementUnits],
+  );
+
+  useEffect(() => {
+    if (!measurementModalOpen) return;
+    const run = async () => {
+      try {
+        const [manufacturers, units] = await Promise.all([
+          api.devices.public.manufacturers(measurementForm.device_type_item_id || undefined),
+          api.devices.public.units(),
+        ]);
+        setDeviceManufacturers(manufacturers);
+        setMeasurementUnits(units);
+      } catch (e) {
+        setError(uiErrorMessage(e, '장치/단위 데이터를 불러오지 못했습니다.'));
+      }
+    };
+    run();
+  }, [measurementModalOpen, measurementForm.device_type_item_id]);
+
+  useEffect(() => {
+    if (!measurementModalOpen) return;
+    const run = async () => {
+      if (!measurementForm.manufacturer_id) {
+        setDeviceBrands([]);
+        return;
+      }
+      try {
+        const rows = await api.devices.public.brands(measurementForm.manufacturer_id);
+        setDeviceBrands(rows);
+      } catch (e) {
+        setError(uiErrorMessage(e, '브랜드 데이터를 불러오지 못했습니다.'));
+      }
+    };
+    run();
+  }, [measurementModalOpen, measurementForm.manufacturer_id]);
+
+  useEffect(() => {
+    if (!measurementModalOpen) return;
+    if (!measurementForm.manufacturer_id) return;
+    if (!measurementForm.brand_id) return;
+    if (deviceBrands.some((row) => row.id === measurementForm.brand_id)) return;
+    setMeasurementForm((prev) => ({ ...prev, brand_id: '', model_id: '' }));
+  }, [measurementModalOpen, deviceBrands, measurementForm.manufacturer_id, measurementForm.brand_id]);
+
+  useEffect(() => {
+    if (!measurementModalOpen) return;
+    const run = async () => {
+      if (!measurementForm.device_type_item_id && !measurementForm.manufacturer_id && !measurementForm.brand_id) {
+        setDeviceModels([]);
+        return;
+      }
+      try {
+        const rows = await api.devices.public.models({
+          device_type_id: measurementForm.device_type_item_id || undefined,
+          manufacturer_id: measurementForm.manufacturer_id || undefined,
+          brand_id: measurementForm.brand_id || undefined,
+        });
+        setDeviceModels(rows);
+      } catch (e) {
+        setError(uiErrorMessage(e, '모델 데이터를 불러오지 못했습니다.'));
+      }
+    };
+    run();
+  }, [measurementModalOpen, measurementForm.device_type_item_id, measurementForm.manufacturer_id, measurementForm.brand_id]);
+
+  useEffect(() => {
+    if (!measurementModalOpen) return;
+    if (!measurementForm.model_id) return;
+    const matchedModel = deviceModels.find((row) => row.id === measurementForm.model_id);
+    if (!matchedModel) return;
+    setMeasurementForm((prev) => ({
+      ...prev,
+      manufacturer_id: prev.manufacturer_id || matchedModel.manufacturer_id || '',
+      brand_id: prev.brand_id || matchedModel.brand_id || '',
+    }));
+  }, [measurementModalOpen, deviceModels, measurementForm.model_id]);
+
+  useEffect(() => {
+    if (!measurementModalOpen) return;
+    if (measurementForm.unit_item_id) return;
+    const defaultUnit = measurementUnitOptions[0];
+    if (defaultUnit) {
+      setMeasurementForm((prev) => ({ ...prev, unit_item_id: defaultUnit.id }));
+    }
+  }, [measurementModalOpen, measurementUnitOptions, measurementForm.unit_item_id]);
+
   async function createHealthMeasurementLog() {
     if (!selectedPet?.id) return;
     const value = Number(measurementForm.value);
@@ -663,8 +810,16 @@ export default function GuardianMainPage() {
       setError('질병을 선택해 주세요.');
       return;
     }
+    if (!measurementForm.device_type_item_id) {
+      setError('장치 유형을 선택해 주세요.');
+      return;
+    }
     if (!measurementForm.measurement_item_id) {
       setError('측정항목을 선택해 주세요.');
+      return;
+    }
+    if (!measurementForm.measured_at) {
+      setError('측정일을 입력해 주세요.');
       return;
     }
     if (!Number.isFinite(value)) {
@@ -675,6 +830,7 @@ export default function GuardianMainPage() {
       await api.pets.healthMeasurements.create(selectedPet.id, {
         disease_item_id: measurementForm.disease_item_id,
         device_type_item_id: measurementForm.device_type_item_id || null,
+        device_model_id: measurementForm.model_id || null,
         measurement_item_id: measurementForm.measurement_item_id,
         measurement_context_id: measurementForm.measurement_context_id || null,
         value,
@@ -683,16 +839,8 @@ export default function GuardianMainPage() {
         memo: measurementForm.memo.trim() || null,
       });
       setMeasurementModalOpen(false);
-      setMeasurementForm({
-        disease_item_id: '',
-        device_type_item_id: '',
-        measurement_item_id: '',
-        measurement_context_id: '',
-        value: '',
-        unit_item_id: '',
-        measured_at: '',
-        memo: '',
-      });
+      setMeasurementWizardStep(1);
+      resetMeasurementForm();
       await loadMeasurementLogs(selectedPet.id, weightRange);
       await loadAll(feedTab);
     } catch (e) {
@@ -707,8 +855,16 @@ export default function GuardianMainPage() {
       setError('질병을 선택해 주세요.');
       return;
     }
+    if (!measurementForm.device_type_item_id) {
+      setError('장치 유형을 선택해 주세요.');
+      return;
+    }
     if (!measurementForm.measurement_item_id) {
       setError('측정항목을 선택해 주세요.');
+      return;
+    }
+    if (!measurementForm.measured_at) {
+      setError('측정일을 입력해 주세요.');
       return;
     }
     if (!Number.isFinite(value)) {
@@ -719,6 +875,7 @@ export default function GuardianMainPage() {
       await api.pets.healthMeasurements.update(selectedPet.id, editingMeasurementLogId, {
         disease_item_id: measurementForm.disease_item_id,
         device_type_item_id: measurementForm.device_type_item_id || null,
+        device_model_id: measurementForm.model_id || null,
         measurement_item_id: measurementForm.measurement_item_id,
         measurement_context_id: measurementForm.measurement_context_id || null,
         value,
@@ -728,16 +885,8 @@ export default function GuardianMainPage() {
       });
       setMeasurementModalOpen(false);
       setEditingMeasurementLogId(null);
-      setMeasurementForm({
-        disease_item_id: '',
-        device_type_item_id: '',
-        measurement_item_id: '',
-        measurement_context_id: '',
-        value: '',
-        unit_item_id: '',
-        measured_at: '',
-        memo: '',
-      });
+      setMeasurementWizardStep(1);
+      resetMeasurementForm();
       await loadMeasurementLogs(selectedPet.id, weightRange);
     } catch (e) {
       setError(uiErrorMessage(e, '질병 수치 기록 수정에 실패했습니다.'));
@@ -746,16 +895,35 @@ export default function GuardianMainPage() {
 
   function openEditHealthMeasurementLog(log: PetHealthMeasurementLog) {
     setEditingMeasurementLogId(log.id);
+    const matchedModel = log.device_model_id ? deviceModels.find((m) => m.id === log.device_model_id) : null;
     setMeasurementForm({
       disease_item_id: log.disease_item_id || '',
       device_type_item_id: log.device_type_item_id || '',
       measurement_item_id: log.measurement_item_id || '',
       measurement_context_id: log.measurement_context_id || '',
+      manufacturer_id: matchedModel?.manufacturer_id || '',
+      brand_id: matchedModel?.brand_id || '',
+      model_id: log.device_model_id || '',
       value: String(log.value ?? ''),
       unit_item_id: log.unit_item_id || '',
-      measured_at: log.measured_at ? new Date(log.measured_at).toISOString().slice(0, 16) : '',
+      measured_at: toDatetimeLocal(log.measured_at),
       memo: log.memo || '',
     });
+    setMeasurementWizardStep(1);
+    setMeasurementModalOpen(true);
+  }
+
+  async function openCreateHealthMeasurementModal() {
+    setEditingMeasurementLogId(null);
+    setMeasurementWizardStep(1);
+    let measuredAt = toDatetimeLocal();
+    try {
+      const health = await api.health();
+      if (health.timestamp) measuredAt = toDatetimeLocal(health.timestamp);
+    } catch {
+      // fallback to client now
+    }
+    resetMeasurementForm(measuredAt);
     setMeasurementModalOpen(true);
   }
 
@@ -1344,7 +1512,7 @@ export default function GuardianMainPage() {
                   <div className="card-title">Health History</div>
                   <div className="td-actions">
                     <button className="btn btn-primary btn-sm" onClick={() => setWeightModalOpen(true)}>몸무게 추가</button>
-                    <button className="btn btn-secondary btn-sm" onClick={() => setMeasurementModalOpen(true)}>질병 수치 추가</button>
+                    <button className="btn btn-secondary btn-sm" onClick={openCreateHealthMeasurementModal}>질병 수치 추가</button>
                   </div>
                 </div>
                 <div className="card-body">
@@ -1712,65 +1880,136 @@ export default function GuardianMainPage() {
         <div className="modal-overlay">
           <div className="modal">
             <div className="modal-header">
-              <h3 className="modal-title">{editingMeasurementLogId ? '질병 수치 수정' : '질병 수치 추가'}</h3>
-              <button className="modal-close" onClick={() => { setMeasurementModalOpen(false); setEditingMeasurementLogId(null); }}>&times;</button>
+              <h3 className="modal-title">
+                {editingMeasurementLogId
+                  ? t('guardian.health.measurement.edit', '질병 수치 수정')
+                  : t('guardian.health.measurement.add', '질병 수치 추가')}
+              </h3>
+              <button
+                className="modal-close"
+                onClick={() => {
+                  setMeasurementModalOpen(false);
+                  setEditingMeasurementLogId(null);
+                  setMeasurementWizardStep(1);
+                }}
+              >
+                &times;
+              </button>
             </div>
             <div className="modal-body">
-              {renderSelect('질병', measurementForm.disease_item_id, diseaseOptionsForHealth, (v) => setMeasurementForm((prev) => ({
-                ...prev,
-                disease_item_id: v,
-                device_type_item_id: '',
-                measurement_item_id: '',
-                measurement_context_id: '',
-              })), true)}
-              {renderSelect('장치', measurementForm.device_type_item_id, healthDeviceOptions, (v) => setMeasurementForm((prev) => ({
-                ...prev,
-                device_type_item_id: v,
-                measurement_item_id: '',
-                measurement_context_id: '',
-              })))}
-              {renderSelect('측정항목', measurementForm.measurement_item_id, healthMeasurementOptions, (v) => setMeasurementForm((prev) => ({
-                ...prev,
-                measurement_item_id: v,
-                measurement_context_id: '',
-              })), true)}
-              {renderSelect('측정 컨텍스트', measurementForm.measurement_context_id, healthContextOptions, (v) => setMeasurementForm((prev) => ({ ...prev, measurement_context_id: v })))}
-              <div className="form-row col2">
-                <div className="form-group">
-                  <label className="form-label">수치 값</label>
-                  <input
-                    className="form-input"
-                    type="number"
-                    step="0.01"
-                    value={measurementForm.value}
-                    onChange={(e) => setMeasurementForm((prev) => ({ ...prev, value: e.target.value }))}
-                  />
-                </div>
-                {renderSelect('단위', measurementForm.unit_item_id, optWeightUnit, (v) => setMeasurementForm((prev) => ({ ...prev, unit_item_id: v })))}
+              <div className="pet-wizard-steps mb-2">
+                <button className={`pet-wizard-step ${measurementWizardStep === 1 ? 'active' : ''}`} type="button">1 / 2</button>
+                <button className={`pet-wizard-step ${measurementWizardStep === 2 ? 'active' : ''}`} type="button">2 / 2</button>
               </div>
-              <div className="form-row col2">
-                <div className="form-group">
-                  <label className="form-label">측정일</label>
-                  <input
-                    className="form-input"
-                    type="datetime-local"
-                    value={measurementForm.measured_at}
-                    onChange={(e) => setMeasurementForm((prev) => ({ ...prev, measured_at: e.target.value }))}
-                  />
-                </div>
-                <div className="form-group">
-                  <label className="form-label">메모</label>
-                  <input
-                    className="form-input"
-                    value={measurementForm.memo}
-                    onChange={(e) => setMeasurementForm((prev) => ({ ...prev, memo: e.target.value }))}
-                  />
-                </div>
-              </div>
+
+              {measurementWizardStep === 1 && (
+                <>
+                  {renderSelect(t('guardian.health.measurement.disease', '질병'), measurementForm.disease_item_id, diseaseOptionsForHealth, (v) => setMeasurementForm((prev) => ({
+                    ...prev,
+                    disease_item_id: v,
+                    device_type_item_id: '',
+                    manufacturer_id: '',
+                    brand_id: '',
+                    model_id: '',
+                    measurement_item_id: '',
+                    measurement_context_id: '',
+                  })), true)}
+                  {renderSelect(t('guardian.health.measurement.device_type', '장치 유형'), measurementForm.device_type_item_id, healthDeviceOptions, (v) => setMeasurementForm((prev) => ({
+                    ...prev,
+                    device_type_item_id: v,
+                    manufacturer_id: '',
+                    brand_id: '',
+                    model_id: '',
+                    measurement_item_id: '',
+                    measurement_context_id: '',
+                  })), true)}
+                  {renderSelect(t('guardian.health.measurement.manufacturer', '제조사'), measurementForm.manufacturer_id, manufacturerOptions, (v) => setMeasurementForm((prev) => ({
+                    ...prev,
+                    manufacturer_id: v,
+                    brand_id: '',
+                    model_id: '',
+                  })))}
+                  {renderSelect(t('guardian.health.measurement.brand', '브랜드'), measurementForm.brand_id, brandOptions, (v) => setMeasurementForm((prev) => ({
+                    ...prev,
+                    brand_id: v,
+                    model_id: '',
+                  })))}
+                  {renderSelect(t('guardian.health.measurement.model', '모델'), measurementForm.model_id, modelOptions, (v) => setMeasurementForm((prev) => ({ ...prev, model_id: v })))}
+                </>
+              )}
+
+              {measurementWizardStep === 2 && (
+                <>
+                  {renderSelect(t('guardian.health.measurement.item', '측정항목'), measurementForm.measurement_item_id, healthMeasurementOptions, (v) => setMeasurementForm((prev) => ({
+                    ...prev,
+                    measurement_item_id: v,
+                    measurement_context_id: '',
+                  })), true)}
+                  {renderSelect(t('guardian.health.measurement.context', '측정 컨텍스트'), measurementForm.measurement_context_id, healthContextOptions, (v) => setMeasurementForm((prev) => ({ ...prev, measurement_context_id: v })))}
+                  <div className="form-row col2">
+                    <div className="form-group">
+                      <label className="form-label">{t('guardian.health.measurement.value', '수치 값')} *</label>
+                      <input
+                        className="form-input"
+                        type="number"
+                        step="0.01"
+                        value={measurementForm.value}
+                        onChange={(e) => setMeasurementForm((prev) => ({ ...prev, value: e.target.value }))}
+                      />
+                    </div>
+                    {renderSelect(t('guardian.health.measurement.unit', '단위'), measurementForm.unit_item_id, measurementUnitOptions, (v) => setMeasurementForm((prev) => ({ ...prev, unit_item_id: v })))}
+                  </div>
+                  <div className="form-row col2">
+                    <div className="form-group">
+                      <label className="form-label">{t('guardian.health.measurement.measured_at', '측정일')} *</label>
+                      <input
+                        className="form-input"
+                        type="datetime-local"
+                        value={measurementForm.measured_at}
+                        onChange={(e) => setMeasurementForm((prev) => ({ ...prev, measured_at: e.target.value }))}
+                      />
+                    </div>
+                    <div className="form-group">
+                      <label className="form-label">{t('guardian.health.measurement.memo', '메모')}</label>
+                      <input
+                        className="form-input"
+                        value={measurementForm.memo}
+                        onChange={(e) => setMeasurementForm((prev) => ({ ...prev, memo: e.target.value }))}
+                      />
+                    </div>
+                  </div>
+                </>
+              )}
             </div>
             <div className="modal-footer">
-              <button className="btn btn-secondary" onClick={() => { setMeasurementModalOpen(false); setEditingMeasurementLogId(null); }}>{t('common.cancel', 'Cancel')}</button>
-              <button className="btn btn-primary" onClick={editingMeasurementLogId ? updateHealthMeasurementLog : createHealthMeasurementLog}>{t('common.save', 'Save')}</button>
+              {measurementWizardStep === 1 ? (
+                <>
+                  <button
+                    className="btn btn-secondary"
+                    onClick={() => {
+                      setMeasurementModalOpen(false);
+                      setEditingMeasurementLogId(null);
+                      setMeasurementWizardStep(1);
+                    }}
+                  >
+                    {t('common.cancel', 'Cancel')}
+                  </button>
+                  <button
+                    className="btn btn-primary"
+                    onClick={() => setMeasurementWizardStep(2)}
+                    disabled={!measurementForm.disease_item_id || !measurementForm.device_type_item_id}
+                  >
+                    {t('common.next', '다음')} &gt;
+                  </button>
+                </>
+              ) : (
+                <>
+                  <button className="btn btn-secondary" onClick={() => setMeasurementWizardStep(1)}>&lt; {t('common.previous', '이전')}</button>
+                  <button className="btn btn-primary" onClick={editingMeasurementLogId ? updateHealthMeasurementLog : createHealthMeasurementLog}>
+                    {t('common.save', 'Save')}
+                  </button>
+                </>
+              )}
             </div>
           </div>
         </div>
