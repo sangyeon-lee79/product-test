@@ -34,6 +34,7 @@ const DEFAULT_RPM_LIMIT = 60;
 const DEFAULT_DAILY_CHAR_LIMIT = 200000;
 const GOOGLE_TOKEN_AUDIENCE = 'https://oauth2.googleapis.com/token';
 const GOOGLE_TRANSLATE_SCOPE = 'https://www.googleapis.com/auth/cloud-translation';
+const KEY_LITERAL_PATTERN = /^(master|admin)\.[a-z0-9_.-]+$/i;
 
 type TranslationMap = Record<TargetLang, string>;
 
@@ -349,6 +350,9 @@ export async function handleI18n(request: Request, env: Env, url: URL): Promise<
 
       const sourceKo = body.text?.trim();
       if (!sourceKo) return err('text required');
+      if (KEY_LITERAL_PATTERN.test(sourceKo)) {
+        return err('translation source must be korean label, not key', 400, 'invalid_translate_source');
+      }
 
       const existing = body.existing ?? {};
       const translations = {} as TranslationMap;
@@ -361,6 +365,9 @@ export async function handleI18n(request: Request, env: Env, url: URL): Promise<
       for (const lang of TARGET_LANGS) {
         const adminValue = (existing[lang] || '').trim();
         if (adminValue) {
+          if (KEY_LITERAL_PATTERN.test(adminValue)) {
+            return err(`invalid translation value for ${lang}: key pattern not allowed`, 400, 'invalid_translate_value');
+          }
           translations[lang] = adminValue;
           continue;
         }

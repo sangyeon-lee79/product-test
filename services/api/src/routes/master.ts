@@ -10,6 +10,7 @@ import { requireAuth, requireRole } from '../middleware/auth';
 import type { JwtPayload } from '../types';
 
 const LANGS = ['ko','en','ja','zh_cn','zh_tw','es','fr','de','pt','vi','th','id_lang','ar'] as const;
+const KEY_LITERAL_PATTERN = /^(master|admin)\.[a-z0-9_.-]+$/i;
 async function hasColumn(env: Env, table: string, column: string): Promise<boolean> {
   const rows = await env.DB.prepare(`PRAGMA table_info(${table})`).all<{ name: string }>();
   return rows.results.some((r) => r.name === column);
@@ -178,6 +179,16 @@ function normalizeTranslations(input?: Record<string, string>): Record<string, s
 
 function missingTranslationLangs(translations: Record<string, string>): string[] {
   return LANGS.filter((lang) => !translations[lang]);
+}
+
+function hasInvalidTranslationValue(translations: Record<string, string>, i18nKey: string): string | null {
+  for (const lang of LANGS) {
+    const value = (translations[lang] || '').trim();
+    if (!value) continue;
+    if (value === i18nKey) return `translation for ${lang} matches key`;
+    if (KEY_LITERAL_PATTERN.test(value)) return `translation for ${lang} is key pattern`;
+  }
+  return null;
 }
 
 const REQUIRES_PARENT_CATEGORY_CODES = new Set([
@@ -433,6 +444,8 @@ export async function handleMaster(request: Request, env: Env, url: URL): Promis
         if (exists) return err('이미 존재하는 key 입니다.', 409, 'duplicate_key');
 
         const i18nKey = categoryI18nKey(inputKey);
+        const invalidReason = hasInvalidTranslationValue(translations, i18nKey);
+        if (invalidReason) return err(invalidReason, 400, 'invalid_translation_value');
         await upsertI18n(env, i18nKey, translations);
         const i18nReady = await hasCompleteI18n(env, i18nKey);
         if (!i18nReady) return err('i18n 생성이 완료되지 않아 저장할 수 없습니다.', 400, 'i18n_not_ready');
@@ -475,7 +488,12 @@ export async function handleMaster(request: Request, env: Env, url: URL): Promis
           const cat = normalized
             ? await env.DB.prepare('SELECT code AS key FROM master_categories WHERE id = ?').bind(id).first<{ key: string }>()
             : await env.DB.prepare('SELECT key FROM master_categories WHERE id = ?').bind(id).first<{ key: string }>();
-          if (cat?.key) await upsertI18n(env, categoryI18nKey(cat.key), translations);
+          if (cat?.key) {
+            const i18nKey = categoryI18nKey(cat.key);
+            const invalidReason = hasInvalidTranslationValue(translations, i18nKey);
+            if (invalidReason) return err(invalidReason, 400, 'invalid_translation_value');
+            await upsertI18n(env, i18nKey, translations);
+          }
         }
 
         return ok(await (normalized
@@ -646,6 +664,8 @@ export async function handleMaster(request: Request, env: Env, url: URL): Promis
 
         const autoKey = await generateItemKey(env, body.category_id);
         const i18nKey = itemI18nKey(category.key, autoKey);
+        const invalidReason = hasInvalidTranslationValue(translations, i18nKey);
+        if (invalidReason) return err(invalidReason, 400, 'invalid_translation_value');
         await upsertI18n(env, i18nKey, translations);
         const i18nReady = await hasCompleteI18n(env, i18nKey);
         if (!i18nReady) return err('i18n 생성이 완료되지 않아 저장할 수 없습니다.', 400, 'i18n_not_ready');
@@ -708,7 +728,12 @@ export async function handleMaster(request: Request, env: Env, url: URL): Promis
                JOIN master_categories mc ON mc.id = mi.category_id
                WHERE mi.id = ?`
             ).bind(id).first<{ item_key: string; category_key: string }>());
-          if (item) await upsertI18n(env, itemI18nKey(item.category_key, item.item_key), translations);
+          if (item) {
+            const i18nKey = itemI18nKey(item.category_key, item.item_key);
+            const invalidReason = hasInvalidTranslationValue(translations, i18nKey);
+            if (invalidReason) return err(invalidReason, 400, 'invalid_translation_value');
+            await upsertI18n(env, i18nKey, translations);
+          }
         }
 
         return ok(await (normalized
