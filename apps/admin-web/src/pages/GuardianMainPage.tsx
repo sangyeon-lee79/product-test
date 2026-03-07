@@ -9,7 +9,7 @@ type FeedTab = 'all' | 'friends';
 type Mode = 'create' | 'edit';
 type PetProfileTab = 'timeline' | 'health' | 'services' | 'gallery' | 'profile';
 type WeightRange = '7d' | '15d' | '1m' | '3m' | '6m' | '1y' | 'all';
-type PetWizardStep = 1 | 2 | 3 | 4 | 5;
+type PetWizardStep = 1 | 2 | 3 | 4 | 5 | 6 | 7;
 type MeasurementWizardStep = 1 | 2;
 
 type Option = { id: string; label: string; parentId?: string | null; metadata?: Record<string, unknown> };
@@ -108,6 +108,7 @@ const CATEGORY_KEYS: Record<string, string[]> = {
   country: ['master.country', 'country'],
   allergy_type: ['master.allergy_type', 'allergy_type'],
   disease_type: ['master.disease_type', 'disease_type'],
+  disease_group: ['master.disease_group', 'disease_group'],
   disease_device_type: ['master.disease_device_type', 'disease_device_type'],
   disease_measurement_type: ['master.disease_measurement_type', 'disease_measurement_type'],
   disease_measurement_context: ['master.disease_measurement_context', 'disease_measurement_context'],
@@ -291,6 +292,7 @@ export default function GuardianMainPage() {
   const [petMode, setPetMode] = useState<Mode>('create');
   const [petForm, setPetForm] = useState<PetForm>(DEFAULT_PET_FORM);
   const [petWizardStep, setPetWizardStep] = useState<PetWizardStep>(1);
+  const [selectedDiseaseGroupId, setSelectedDiseaseGroupId] = useState('');
 
   const [bookings, setBookings] = useState<Booking[]>([]);
   const [feeds, setFeeds] = useState<FeedPost[]>([]);
@@ -351,13 +353,10 @@ export default function GuardianMainPage() {
   const [optPetType, setOptPetType] = useState<Option[]>([]);
   const [optBreed, setOptBreed] = useState<Option[]>([]);
   const [optGender, setOptGender] = useState<Option[]>([]);
-  const [optNeuter, setOptNeuter] = useState<Option[]>([]);
   const [optLifeStage, setOptLifeStage] = useState<Option[]>([]);
-  const [optBodySize, setOptBodySize] = useState<Option[]>([]);
   const [optColor, setOptColor] = useState<Option[]>([]);
-  const [optCountry, setOptCountry] = useState<Option[]>([]);
-  const [optAllergy, setOptAllergy] = useState<Option[]>([]);
   const [optDisease, setOptDisease] = useState<Option[]>([]);
+  const [optDiseaseGroup, setOptDiseaseGroup] = useState<Option[]>([]);
   const [optDiseaseDevice, setOptDiseaseDevice] = useState<Option[]>([]);
   const [optMeasurement, setOptMeasurement] = useState<Option[]>([]);
   const [optMeasurementContext, setOptMeasurementContext] = useState<Option[]>([]);
@@ -365,16 +364,11 @@ export default function GuardianMainPage() {
   const [deviceBrands, setDeviceBrands] = useState<DeviceBrand[]>([]);
   const [deviceModels, setDeviceModels] = useState<DeviceModel[]>([]);
   const [measurementUnits, setMeasurementUnits] = useState<MeasurementUnit[]>([]);
-  const [optSymptom, setOptSymptom] = useState<Option[]>([]);
   const [optVaccination, setOptVaccination] = useState<Option[]>([]);
-  const [optWeightUnit, setOptWeightUnit] = useState<Option[]>([]);
   const [optHealthLevel, setOptHealthLevel] = useState<Option[]>([]);
   const [optActivity, setOptActivity] = useState<Option[]>([]);
-  const [optDiet, setOptDiet] = useState<Option[]>([]);
   const [optTemperament, setOptTemperament] = useState<Option[]>([]);
-  const [optOwnership, setOptOwnership] = useState<Option[]>([]);
   const [optCoatLength, setOptCoatLength] = useState<Option[]>([]);
-  const [optCoatType, setOptCoatType] = useState<Option[]>([]);
   const [optGrooming, setOptGrooming] = useState<Option[]>([]);
 
   function currentUserIdFromToken(): string | null {
@@ -424,6 +418,69 @@ export default function GuardianMainPage() {
     return optBreed.filter((b) => b.parentId === petForm.pet_type_id);
   }, [optBreed, petForm.pet_type_id]);
 
+  const diseaseOptionsFiltered = useMemo(() => {
+    if (!selectedDiseaseGroupId) return optDisease;
+    return optDisease.filter((d) => d.parentId === selectedDiseaseGroupId);
+  }, [optDisease, selectedDiseaseGroupId]);
+
+  const wizardTitle = useMemo(() => {
+    const dash = '-';
+    if (petWizardStep === 1) return `${t('guardian.pet_wizard.basic_info', '기본정보')} - ${dash} - ${dash}`;
+    if (petWizardStep === 2) {
+      return `${t('master.pet_type', '펫종류')} - ${labelOf(optPetType, petForm.pet_type_id, dash)} - ${labelOf(breedOptionsFiltered, petForm.breed_id, dash)}`;
+    }
+    if (petWizardStep === 3) {
+      const colorLabel = petForm.color_ids.length
+        ? `${labelOf(optColor, petForm.color_ids[0], dash)}${petForm.color_ids.length > 1 ? ` +${petForm.color_ids.length - 1}` : ''}`
+        : dash;
+      return `${t('master.pet_gender', '성별')} - ${labelOf(optGender, petForm.gender_id, dash)} - ${colorLabel}`;
+    }
+    if (petWizardStep === 4) {
+      const vaccinationLabel = petForm.vaccination_ids.length
+        ? `${labelOf(optVaccination, petForm.vaccination_ids[0], dash)}${petForm.vaccination_ids.length > 1 ? ` +${petForm.vaccination_ids.length - 1}` : ''}`
+        : dash;
+      return `${t('master.vaccination_type', '예방접종')} - ${vaccinationLabel} - ${dash}`;
+    }
+    if (petWizardStep === 5) {
+      const diseaseLabel = petForm.disease_history_ids.length
+        ? `${labelOf(diseaseOptionsFiltered, petForm.disease_history_ids[0], dash)}${petForm.disease_history_ids.length > 1 ? ` +${petForm.disease_history_ids.length - 1}` : ''}`
+        : dash;
+      return `${t('master.disease_group', '질병군')} - ${labelOf(optDiseaseGroup, selectedDiseaseGroupId, dash)} - ${diseaseLabel}`;
+    }
+    if (petWizardStep === 6) {
+      const temperamentLabel = petForm.temperament_ids.length
+        ? `${labelOf(optTemperament, petForm.temperament_ids[0], dash)}${petForm.temperament_ids.length > 1 ? ` +${petForm.temperament_ids.length - 1}` : ''}`
+        : dash;
+      return `${t('master.temperament_type', '성격기질')} - ${temperamentLabel} - ${labelOf(optActivity, petForm.activity_level_id, dash)}`;
+    }
+    return `${t('master.coat_length', '털길이')} - ${labelOf(optCoatLength, petForm.coat_length_id, dash)} - ${labelOf(optGrooming, petForm.grooming_cycle_id, dash)}`;
+  }, [
+    breedOptionsFiltered,
+    diseaseOptionsFiltered,
+    optActivity,
+    optCoatLength,
+    optColor,
+    optDiseaseGroup,
+    optGender,
+    optGrooming,
+    optPetType,
+    optTemperament,
+    optVaccination,
+    petForm.activity_level_id,
+    petForm.breed_id,
+    petForm.coat_length_id,
+    petForm.color_ids,
+    petForm.disease_history_ids,
+    petForm.gender_id,
+    petForm.grooming_cycle_id,
+    petForm.pet_type_id,
+    petForm.temperament_ids,
+    petForm.vaccination_ids,
+    petWizardStep,
+    selectedDiseaseGroupId,
+    t,
+  ]);
+
   const latestBooking = useMemo(() => {
     if (!bookings.length) return null;
     const rows = selectedPet ? bookings.filter((b) => !b.pet_id || b.pet_id === selectedPet.id) : bookings;
@@ -465,26 +522,18 @@ export default function GuardianMainPage() {
         petTypeRows,
         breedRows,
         genderRows,
-        neuterRows,
         lifeStageRows,
-        bodySizeRows,
         colorRows,
-        countryRows,
-        allergyRows,
         diseaseRows,
+        diseaseGroupRows,
         diseaseDeviceRows,
         measurementRows,
         measurementContextRows,
-        symptomRows,
         vaccinationRows,
-        weightRows,
         healthRows,
         activityRows,
-        dietRows,
         temperamentRows,
-        ownershipRows,
         coatLengthRows,
-        coatTypeRows,
         groomingRows,
       ] = await Promise.all([
         safe(api.pets.list(), { pets: [] }, 'pets.list'),
@@ -496,26 +545,18 @@ export default function GuardianMainPage() {
         loadCategoryItems(CATEGORY_KEYS.pet_type),
         loadCategoryItems(CATEGORY_KEYS.pet_breed),
         loadCategoryItems(CATEGORY_KEYS.pet_gender),
-        loadCategoryItems(CATEGORY_KEYS.neuter_status),
         loadCategoryItems(CATEGORY_KEYS.life_stage),
-        loadCategoryItems(CATEGORY_KEYS.body_size),
         loadCategoryItems(CATEGORY_KEYS.pet_color),
-        loadCategoryItems(CATEGORY_KEYS.country),
-        loadCategoryItems(CATEGORY_KEYS.allergy_type),
         loadCategoryItems(CATEGORY_KEYS.disease_type),
+        loadCategoryItems(CATEGORY_KEYS.disease_group),
         loadCategoryItems(CATEGORY_KEYS.disease_device_type),
         loadCategoryItems(CATEGORY_KEYS.disease_measurement_type),
         loadCategoryItems(CATEGORY_KEYS.disease_measurement_context),
-        loadCategoryItems(CATEGORY_KEYS.symptom_type),
         loadCategoryItems(CATEGORY_KEYS.vaccination_type),
-        loadCategoryItems(CATEGORY_KEYS.weight_unit),
         loadCategoryItems(CATEGORY_KEYS.health_condition_level),
         loadCategoryItems(CATEGORY_KEYS.activity_level),
-        loadCategoryItems(CATEGORY_KEYS.diet_type),
         loadCategoryItems(CATEGORY_KEYS.temperament_type),
-        loadCategoryItems(CATEGORY_KEYS.ownership_type),
         loadCategoryItems(CATEGORY_KEYS.coat_length),
-        loadCategoryItems(CATEGORY_KEYS.coat_type),
         loadCategoryItems(CATEGORY_KEYS.grooming_cycle),
       ]);
 
@@ -530,26 +571,18 @@ export default function GuardianMainPage() {
       setOptPetType(toOption(petTypeRows).filter((item) => !item.parentId));
       setOptBreed(toOption(breedRows).filter((item) => Boolean(item.parentId)));
       setOptGender(toOption(genderRows));
-      setOptNeuter(toOption(neuterRows));
       setOptLifeStage(toOption(lifeStageRows));
-      setOptBodySize(toOption(bodySizeRows));
       setOptColor(toOption(colorRows));
-      setOptCountry(toOption(countryRows));
-      setOptAllergy(toOption(allergyRows));
       setOptDisease(toOption(diseaseRows));
+      setOptDiseaseGroup(toOption(diseaseGroupRows));
       setOptDiseaseDevice(toOption(diseaseDeviceRows));
       setOptMeasurement(toOption(measurementRows));
       setOptMeasurementContext(toOption(measurementContextRows));
-      setOptSymptom(toOption(symptomRows));
       setOptVaccination(toOption(vaccinationRows));
-      setOptWeightUnit(toOption(weightRows));
       setOptHealthLevel(toOption(healthRows));
       setOptActivity(toOption(activityRows));
-      setOptDiet(toOption(dietRows));
       setOptTemperament(toOption(temperamentRows));
-      setOptOwnership(toOption(ownershipRows));
       setOptCoatLength(toOption(coatLengthRows));
-      setOptCoatType(toOption(coatTypeRows));
       setOptGrooming(toOption(groomingRows));
 
       if (failedApis.length > 0) {
@@ -574,6 +607,13 @@ export default function GuardianMainPage() {
     if (!petIdParam) return;
     setSelectedPetId(petIdParam);
   }, [petIdParam]);
+
+  useEffect(() => {
+    if (!petModalOpen) return;
+    if (selectedDiseaseGroupId) return;
+    const firstDisease = optDisease.find((d) => petForm.disease_history_ids.includes(d.id));
+    if (firstDisease?.parentId) setSelectedDiseaseGroupId(firstDisease.parentId);
+  }, [optDisease, petForm.disease_history_ids, petModalOpen, selectedDiseaseGroupId]);
 
   const healthFeeds = useMemo(
     () => feeds.filter((f) => f.feed_type === 'health_update' && (!selectedPet || !f.pet_id || f.pet_id === selectedPet.id)),
@@ -943,6 +983,7 @@ export default function GuardianMainPage() {
     setPetMode('create');
     setPetForm(DEFAULT_PET_FORM);
     setPetWizardStep(1);
+    setSelectedDiseaseGroupId('');
     setPetModalOpen(true);
   }
 
@@ -950,9 +991,12 @@ export default function GuardianMainPage() {
     try {
       const res = await api.pets.detail(petId);
       const p = res.pet;
+      const diseaseHistoryIds = toArray(p.disease_history_ids);
+      const firstDisease = optDisease.find((d) => diseaseHistoryIds.includes(d.id));
       setPetMode('edit');
       setActivePet(p);
       setPetWizardStep(1);
+      setSelectedDiseaseGroupId(firstDisease?.parentId || '');
       setPetForm({
         name: p.name || '',
         microchip_no: p.microchip_no || '',
@@ -969,7 +1013,7 @@ export default function GuardianMainPage() {
         body_size_id: p.body_size_id || '',
         country_id: p.country_id || '',
         allergy_ids: toArray(p.allergy_ids),
-        disease_history_ids: toArray(p.disease_history_ids),
+        disease_history_ids: diseaseHistoryIds,
         symptom_tag_ids: toArray(p.symptom_tag_ids),
         vaccination_ids: toArray(p.vaccination_ids),
         weight_unit_id: p.weight_unit_id || '',
@@ -1060,6 +1104,7 @@ export default function GuardianMainPage() {
     setPetModalOpen(false);
     setActivePet(null);
     setPetWizardStep(1);
+    setSelectedDiseaseGroupId('');
   }
 
   function gotoNextPetStep() {
@@ -1073,8 +1118,16 @@ export default function GuardianMainPage() {
       setError(t('guardian.alert.pet_type_required', 'Pet type is required.'));
       return;
     }
+    if (petWizardStep === 3 && !petForm.gender_id) {
+      setError(t('guardian.alert.gender_required', 'Gender is required.'));
+      return;
+    }
     setError('');
-    setPetWizardStep((prev) => (prev < 5 ? ((prev + 1) as PetWizardStep) : prev));
+    if (petWizardStep === 7) {
+      void savePet();
+      return;
+    }
+    setPetWizardStep((prev) => (prev < 7 ? ((prev + 1) as PetWizardStep) : prev));
   }
 
   function gotoPrevPetStep() {
@@ -1702,18 +1755,7 @@ export default function GuardianMainPage() {
               <button className="modal-close" onClick={closePetModal}>&times;</button>
             </div>
             <div className="modal-body guardian-modal-body">
-              <div className="pet-wizard-steps">
-                {[1, 2, 3, 4, 5].map((step) => (
-                  <button
-                    key={step}
-                    type="button"
-                    className={`pet-wizard-step ${petWizardStep === step ? 'active' : ''}`}
-                    onClick={() => setPetWizardStep(step as PetWizardStep)}
-                  >
-                    {t(`guardian.pet_wizard.step_${step}`, `STEP ${step}`)}
-                  </button>
-                ))}
-              </div>
+              <div className="card-title mb-2">{wizardTitle}</div>
 
               {petWizardStep === 1 && (
                 <>
@@ -1732,22 +1774,19 @@ export default function GuardianMainPage() {
                       <label className="form-label">{t('guardian.form.birthday', 'Birthday')}</label>
                       <input className="form-input" type="date" value={petForm.birthday} onChange={(e) => setPetForm((p) => ({ ...p, birthday: e.target.value }))} />
                     </div>
-                    {renderSelect(t('master.country', 'Country'), petForm.country_id, optCountry, (v) => setPetForm((p) => ({ ...p, country_id: v })))}
+                    <div className="form-group">
+                      <label className="form-label">{t('guardian.form.current_weight', 'Current Weight')}</label>
+                      <input className="form-input" type="number" step="0.01" value={petForm.current_weight} onChange={(e) => setPetForm((p) => ({ ...p, current_weight: e.target.value }))} />
+                    </div>
                   </div>
                 </>
               )}
 
               {petWizardStep === 2 && (
                 <>
-                  <div className="form-row col3">
+                  <div className="form-row col2">
                     {renderSelect(t('master.pet_type', 'Pet Type'), petForm.pet_type_id, optPetType, (v) => setPetForm((p) => ({ ...p, pet_type_id: v, breed_id: '' })), true)}
                     {renderSelect(t('master.pet_breed', 'Breed'), petForm.breed_id, breedOptionsFiltered, (v) => setPetForm((p) => ({ ...p, breed_id: v })))}
-                    {renderSelect(t('master.pet_gender', 'Gender'), petForm.gender_id, optGender, (v) => setPetForm((p) => ({ ...p, gender_id: v })))}
-                  </div>
-                  <div className="form-row col3">
-                    {renderSelect(t('master.neuter_status', 'Neutered/Spayed Status'), petForm.neuter_status_id, optNeuter, (v) => setPetForm((p) => ({ ...p, neuter_status_id: v })))}
-                    {renderSelect(t('master.life_stage', 'Life Stage'), petForm.life_stage_id, optLifeStage, (v) => setPetForm((p) => ({ ...p, life_stage_id: v })))}
-                    {renderSelect(t('master.body_size', 'Body Size'), petForm.body_size_id, optBodySize, (v) => setPetForm((p) => ({ ...p, body_size_id: v })))}
                   </div>
                 </>
               )}
@@ -1755,28 +1794,7 @@ export default function GuardianMainPage() {
               {petWizardStep === 3 && (
                 <>
                   <div className="form-row col2">
-                    <div className="form-group">
-                      <label className="form-label">{t('guardian.form.current_weight', 'Current Weight')}</label>
-                      <input className="form-input" type="number" step="0.01" value={petForm.current_weight} onChange={(e) => setPetForm((p) => ({ ...p, current_weight: e.target.value }))} />
-                    </div>
-                    {renderSelect(t('master.weight_unit', 'Weight Unit'), petForm.weight_unit_id, optWeightUnit, (v) => setPetForm((p) => ({ ...p, weight_unit_id: v })))}
-                  </div>
-                  <div className="form-row col2">
-                    <div className="form-group">
-                      <label className="form-label">{t('guardian.form.weight_measured_at', 'Weight Measured At')}</label>
-                      <input className="form-input" type="datetime-local" value={petForm.current_weight_measured_at} onChange={(e) => setPetForm((p) => ({ ...p, current_weight_measured_at: e.target.value }))} />
-                    </div>
-                    <div className="form-group">
-                      <label className="form-label">{t('guardian.form.weight_memo', 'Weight Memo')}</label>
-                      <input className="form-input" value={petForm.current_weight_notes} onChange={(e) => setPetForm((p) => ({ ...p, current_weight_notes: e.target.value }))} />
-                    </div>
-                  </div>
-                  <div className="form-row col3">
-                    {renderSelect(t('master.coat_length', 'Coat Length'), petForm.coat_length_id, optCoatLength, (v) => setPetForm((p) => ({ ...p, coat_length_id: v })))}
-                    {renderSelect(t('master.coat_type', 'Coat Type'), petForm.coat_type_id, optCoatType, (v) => setPetForm((p) => ({ ...p, coat_type_id: v })))}
-                    {renderSelect(t('master.grooming_cycle', 'Grooming Cycle'), petForm.grooming_cycle_id, optGrooming, (v) => setPetForm((p) => ({ ...p, grooming_cycle_id: v })))}
-                  </div>
-                  <div className="form-row col1">
+                    {renderSelect(t('master.pet_gender', 'Gender'), petForm.gender_id, optGender, (v) => setPetForm((p) => ({ ...p, gender_id: v })), true)}
                     {renderMultiSelect(t('master.pet_color', 'Primary Color'), petForm.color_ids, optColor, (next) => setPetForm((p) => ({ ...p, color_ids: next })))}
                   </div>
                 </>
@@ -1784,20 +1802,7 @@ export default function GuardianMainPage() {
 
               {petWizardStep === 4 && (
                 <>
-                  <div className="form-row col3">
-                    {renderSelect(t('master.health_condition_level', 'Health Condition Level'), petForm.health_condition_level_id, optHealthLevel, (v) => setPetForm((p) => ({ ...p, health_condition_level_id: v })))}
-                    {renderSelect(t('master.activity_level', 'Activity Level'), petForm.activity_level_id, optActivity, (v) => setPetForm((p) => ({ ...p, activity_level_id: v })))}
-                    {renderSelect(t('master.diet_type', 'Diet Type'), petForm.diet_type_id, optDiet, (v) => setPetForm((p) => ({ ...p, diet_type_id: v })))}
-                  </div>
-                  <div className="form-row col2">
-                    {renderSelect(t('master.ownership_type', 'Ownership Type'), petForm.ownership_type_id, optOwnership, (v) => setPetForm((p) => ({ ...p, ownership_type_id: v })))}
-                  </div>
-                  <div className="form-row col2">
-                    {renderMultiSelect(t('master.allergy_type', 'Allergy'), petForm.allergy_ids, optAllergy, (next) => setPetForm((p) => ({ ...p, allergy_ids: next })))}
-                    {renderMultiSelect(t('master.disease_type', 'Disease History'), petForm.disease_history_ids, optDisease, (next) => setPetForm((p) => ({ ...p, disease_history_ids: next })))}
-                  </div>
-                  <div className="form-row col2">
-                    {renderMultiSelect(t('master.symptom_type', 'Symptom Tag'), petForm.symptom_tag_ids, optSymptom, (next) => setPetForm((p) => ({ ...p, symptom_tag_ids: next })))}
+                  <div className="form-row col1">
                     {renderMultiSelect(t('master.vaccination_type', 'Vaccination'), petForm.vaccination_ids, optVaccination, (next) => setPetForm((p) => ({ ...p, vaccination_ids: next })))}
                   </div>
                 </>
@@ -1805,28 +1810,63 @@ export default function GuardianMainPage() {
 
               {petWizardStep === 5 && (
                 <>
-                  <div className="form-row col1">
-                    {renderMultiSelect(t('master.temperament_type', 'Temperament'), petForm.temperament_ids, optTemperament, (next) => setPetForm((p) => ({ ...p, temperament_ids: next })))}
+                  <div className="form-row col2">
+                    {renderSelect(t('master.disease_group', 'Disease Group'), selectedDiseaseGroupId, optDiseaseGroup, (v) => {
+                      setSelectedDiseaseGroupId(v);
+                      setPetForm((p) => ({
+                        ...p,
+                        disease_history_ids: p.disease_history_ids.filter((id) => !v || optDisease.find((d) => d.id === id)?.parentId === v),
+                      }));
+                    })}
+                    {renderMultiSelect(t('master.disease_type', 'Disease History'), petForm.disease_history_ids, diseaseOptionsFiltered, (next) => setPetForm((p) => ({ ...p, disease_history_ids: next })))}
                   </div>
-                  <div className="form-group">
-                    <label className="form-label">{t('guardian.form.notes', 'Notes')}</label>
-                    <textarea className="form-textarea" value={petForm.notes} onChange={(e) => setPetForm((p) => ({ ...p, notes: e.target.value }))} />
+                </>
+              )}
+
+              {petWizardStep === 6 && (
+                <>
+                  <div className="form-row col2">
+                    {renderMultiSelect(t('master.temperament_type', 'Temperament'), petForm.temperament_ids, optTemperament, (next) => setPetForm((p) => ({ ...p, temperament_ids: next })))}
+                    {renderSelect(t('master.activity_level', 'Activity Level'), petForm.activity_level_id, optActivity, (v) => setPetForm((p) => ({ ...p, activity_level_id: v })))}
+                  </div>
+                </>
+              )}
+
+              {petWizardStep === 7 && (
+                <>
+                  <div className="form-row col2">
+                    {renderSelect(t('master.coat_length', 'Coat Length'), petForm.coat_length_id, optCoatLength, (v) => setPetForm((p) => ({ ...p, coat_length_id: v })))}
+                    {renderSelect(t('master.grooming_cycle', 'Grooming Cycle'), petForm.grooming_cycle_id, optGrooming, (v) => setPetForm((p) => ({ ...p, grooming_cycle_id: v })))}
+                  </div>
+                  <div className="form-row col1">
+                    <div className="form-group">
+                      <label className="form-label">{t('guardian.form.notes', 'Notes')}</label>
+                      <textarea className="form-textarea" value={petForm.notes} onChange={(e) => setPetForm((p) => ({ ...p, notes: e.target.value }))} />
+                    </div>
                   </div>
                 </>
               )}
             </div>
             <div className="modal-footer">
+              <div style={{ display: 'flex', gap: 6, marginRight: 'auto', flexWrap: 'wrap' }}>
+                {[1, 2, 3, 4, 5, 6, 7].map((step) => (
+                  <button
+                    key={step}
+                    type="button"
+                    className={`btn btn-secondary ${petWizardStep === step ? 'active' : ''}`}
+                    onClick={() => setPetWizardStep(step as PetWizardStep)}
+                  >
+                    {step}
+                  </button>
+                ))}
+              </div>
               <button className="btn btn-secondary" onClick={closePetModal}>{t('common.cancel', 'Cancel')}</button>
               <button className="btn btn-secondary" onClick={gotoPrevPetStep} disabled={petWizardStep === 1}>
                 {t('common.previous', 'Previous')}
               </button>
-              {petWizardStep < 5 ? (
-                <button className="btn btn-primary" onClick={gotoNextPetStep}>
-                  {t('common.next', 'Next')}
-                </button>
-              ) : (
-                <button className="btn btn-primary" onClick={savePet}>{t('common.save', 'Save')}</button>
-              )}
+              <button className="btn btn-primary" onClick={gotoNextPetStep}>
+                {t('common.next', 'Next')}
+              </button>
             </div>
           </div>
         </div>
