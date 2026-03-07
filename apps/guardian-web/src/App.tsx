@@ -200,7 +200,12 @@ async function api<T>(path: string, init: RequestInit = {}, token?: string): Pro
     ...(init.headers as Record<string, string> | undefined),
   };
   if (token) headers.Authorization = `Bearer ${token}`;
-  const res = await fetch(`${API_BASE}${path}`, { ...init, headers });
+  let res: Response;
+  try {
+    res = await fetch(`${API_BASE}${path}`, { ...init, headers });
+  } catch {
+    throw new Error('데이터를 불러오지 못했습니다. 잠시 후 다시 시도해주세요.');
+  }
   const text = await res.text();
   let json: ApiResp<T> | null = null;
   if (text) {
@@ -212,7 +217,10 @@ async function api<T>(path: string, init: RequestInit = {}, token?: string): Pro
   }
   if (!res.ok) {
     const apiError = json && !json.success ? json.error : '';
-    throw new Error(apiError || `HTTP ${res.status}`);
+    if (apiError) throw new Error(apiError);
+    if (res.status >= 500) throw new Error('서버 응답이 지연되고 있습니다. 잠시 후 다시 시도해주세요.');
+    if (res.status === 404) throw new Error('요청한 데이터를 찾을 수 없습니다.');
+    throw new Error('요청을 처리하지 못했습니다. 잠시 후 다시 시도해주세요.');
   }
   if (!json || !json.success) throw new Error('Invalid response');
   return json.data;

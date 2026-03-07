@@ -27,6 +27,17 @@ export default function Signup() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
+  function uiErrorMessage(err: unknown, fallback: string): string {
+    if (err instanceof Error) {
+      const msg = err.message || '';
+      if (msg.includes('Failed to fetch') || msg.includes('NetworkError')) {
+        return '데이터를 불러오지 못했습니다. 잠시 후 다시 시도해주세요.';
+      }
+      return msg;
+    }
+    return fallback;
+  }
+
   useEffect(() => {
     let mounted = true;
     async function loadCountries() {
@@ -43,7 +54,7 @@ export default function Signup() {
         }
       } catch (e) {
         if (!mounted) return;
-        setError(e instanceof Error ? e.message : 'Failed to load countries');
+        setError(uiErrorMessage(e, '국가 목록을 불러오지 못했습니다.'));
       }
     }
     void loadCountries();
@@ -74,7 +85,7 @@ export default function Signup() {
       storeRole(data.role);
       navigate(getRoleHomePath(data.role), { replace: true });
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Signup failed');
+      setError(uiErrorMessage(e, '회원가입에 실패했습니다.'));
     } finally {
       setLoading(false);
     }

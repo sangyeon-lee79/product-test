@@ -14,6 +14,17 @@ export default function Login() {
   const [error, setError] = useState('');
   const title = useMemo(() => (forcedAdmin ? 'Admin Login' : 'Login'), [forcedAdmin]);
 
+  function uiErrorMessage(err: unknown): string {
+    if (err instanceof Error) {
+      const msg = err.message || '';
+      if (msg.includes('Failed to fetch') || msg.includes('NetworkError')) {
+        return '데이터를 불러오지 못했습니다. 잠시 후 다시 시도해주세요.';
+      }
+      return msg;
+    }
+    return t('admin.login.error', '로그인에 실패했습니다.');
+  }
+
   async function handleLogin(e: React.FormEvent) {
     e.preventDefault();
     setLoading(true);
@@ -24,7 +35,7 @@ export default function Login() {
       storeRole(data.role);
       navigate(getRoleHomePath(data.role), { replace: true });
     } catch (err) {
-      setError(err instanceof Error ? err.message : t('admin.login.error', '로그인 실패'));
+      setError(uiErrorMessage(err));
     } finally {
       setLoading(false);
     }

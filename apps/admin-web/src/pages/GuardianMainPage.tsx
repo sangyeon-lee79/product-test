@@ -189,6 +189,17 @@ function visibilityLabel(t: (key: string, fallback?: string) => string, value: s
   return map[value] || value;
 }
 
+function uiErrorMessage(error: unknown, fallback: string): string {
+  if (error instanceof Error) {
+    const msg = error.message || '';
+    if (msg.includes('Failed to fetch') || msg.includes('NetworkError')) {
+      return '데이터를 불러오지 못했습니다. 잠시 후 다시 시도해주세요.';
+    }
+    return msg;
+  }
+  return fallback;
+}
+
 async function loadCategoryItems(candidates: string[]): Promise<MasterItem[]> {
   for (const key of candidates) {
     try {
@@ -291,6 +302,16 @@ export default function GuardianMainPage() {
     setLoading(true);
     setError('');
     try {
+      const failedApis: string[] = [];
+      const safe = async <T,>(promise: Promise<T>, fallback: T, name: string): Promise<T> => {
+        try {
+          return await promise;
+        } catch {
+          failedApis.push(name);
+          return fallback;
+        }
+      };
+
       const [
         petsRes,
         bookingsRes,
@@ -322,12 +343,12 @@ export default function GuardianMainPage() {
         coatTypeRows,
         groomingRows,
       ] = await Promise.all([
-        api.pets.list(),
-        api.bookings.list(),
-        api.friends.list(),
-        api.friends.requests.list('inbox'),
-        api.feeds.list({ tab, limit: 30 }),
-        api.petAlbum.list({ include_pending: true, limit: 400 }).catch(() => ({ media: [] })),
+        safe(api.pets.list(), { pets: [] }, 'pets.list'),
+        safe(api.bookings.list(), { bookings: [] }, 'bookings.list'),
+        safe(api.friends.list(), { friends: [] }, 'friends.list'),
+        safe(api.friends.requests.list('inbox'), { requests: [], scope: 'inbox' }, 'friends.requests'),
+        safe(api.feeds.list({ tab, limit: 30 }), { feeds: [] }, 'feeds.list'),
+        safe(api.petAlbum.list({ include_pending: true, limit: 400 }), { media: [] }, 'petAlbum.list'),
         loadCategoryItems(CATEGORY_KEYS.pet_type),
         loadCategoryItems(CATEGORY_KEYS.pet_breed),
         loadCategoryItems(CATEGORY_KEYS.pet_gender),
@@ -384,8 +405,12 @@ export default function GuardianMainPage() {
       setOptCoatLength(toOption(coatLengthRows));
       setOptCoatType(toOption(coatTypeRows));
       setOptGrooming(toOption(groomingRows));
+
+      if (failedApis.length > 0) {
+        setError('일부 데이터를 불러오지 못했습니다. 잠시 후 다시 시도해주세요.');
+      }
     } catch (e) {
-      setError(e instanceof Error ? e.message : t('guardian.alert.load_failed', 'Failed to load guardian page'));
+      setError(uiErrorMessage(e, t('guardian.alert.load_failed', '데이터를 불러오지 못했습니다.')));
     } finally {
       setLoading(false);
     }
@@ -416,7 +441,7 @@ export default function GuardianMainPage() {
       setWeightLogs(res.logs || []);
       setWeightSummary(res.summary || null);
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Failed to load weight logs');
+      setError(uiErrorMessage(e, '몸무게 기록을 불러오지 못했습니다.'));
       setWeightLogs([]);
       setWeightSummary(null);
     }
@@ -450,7 +475,7 @@ export default function GuardianMainPage() {
       await loadWeightLogs(selectedPet.id, weightRange);
       await loadAll(feedTab);
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Failed to add weight log');
+      setError(uiErrorMessage(e, '몸무게 기록 추가에 실패했습니다.'));
     }
   }
 
@@ -462,7 +487,7 @@ export default function GuardianMainPage() {
       await loadWeightLogs(selectedPet.id, weightRange);
       await loadAll(feedTab);
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Failed to delete weight log');
+      setError(uiErrorMessage(e, '몸무게 기록 삭제에 실패했습니다.'));
     }
   }
 
@@ -512,7 +537,7 @@ export default function GuardianMainPage() {
       });
       setPetModalOpen(true);
     } catch (e) {
-      setError(e instanceof Error ? e.message : t('guardian.alert.pet_detail_failed', 'Failed to load pet detail'));
+      setError(uiErrorMessage(e, t('guardian.alert.pet_detail_failed', '펫 상세를 불러오지 못했습니다.')));
     }
   }
 
@@ -533,7 +558,7 @@ export default function GuardianMainPage() {
           return;
         }
       } catch (e) {
-        setError(e instanceof Error ? e.message : t('guardian.alert.microchip_check_failed', 'Microchip duplicate check failed.'));
+        setError(uiErrorMessage(e, t('guardian.alert.microchip_check_failed', '마이크로칩 중복 확인에 실패했습니다.')));
         return;
       }
     }
@@ -581,7 +606,7 @@ export default function GuardianMainPage() {
       setPetForm(DEFAULT_PET_FORM);
       await loadAll(feedTab);
     } catch (e) {
-      setError(e instanceof Error ? e.message : t('guardian.alert.pet_save_failed', 'Failed to save pet.'));
+      setError(uiErrorMessage(e, t('guardian.alert.pet_save_failed', '반려동물 저장에 실패했습니다.')));
     }
   }
 
@@ -592,7 +617,7 @@ export default function GuardianMainPage() {
       if (selectedPetId === id) setSelectedPetId('');
       await loadAll(feedTab);
     } catch (e) {
-      setError(e instanceof Error ? e.message : t('guardian.alert.pet_delete_failed', 'Failed to delete pet.'));
+      setError(uiErrorMessage(e, t('guardian.alert.pet_delete_failed', '반려동물 삭제에 실패했습니다.')));
     }
   }
 
@@ -614,7 +639,7 @@ export default function GuardianMainPage() {
       setFeedCompose(DEFAULT_FEED_COMPOSE);
       await loadAll(feedTab);
     } catch (e) {
-      setError(e instanceof Error ? e.message : t('guardian.alert.feed_create_failed', 'Failed to create feed post.'));
+      setError(uiErrorMessage(e, t('guardian.alert.feed_create_failed', '피드 등록에 실패했습니다.')));
     }
   }
 
@@ -834,10 +859,10 @@ export default function GuardianMainPage() {
                       {f.pet_name && <p className="sns-pet">{t('guardian.feed.pet_prefix', 'Pet')}: {f.pet_name}</p>}
                       {f.caption && <p className="sns-caption">{f.caption}</p>}
                       <div className="sns-actions">
-                        <button className="btn btn-secondary btn-sm" onClick={() => api.feeds.like(f.id).then(() => loadAll(feedTab)).catch((e) => setError(e instanceof Error ? e.message : t('guardian.alert.like_failed', 'Failed to like post')))}>
+                        <button className="btn btn-secondary btn-sm" onClick={() => api.feeds.like(f.id).then(() => loadAll(feedTab)).catch((e) => setError(uiErrorMessage(e, t('guardian.alert.like_failed', '좋아요 처리에 실패했습니다.'))))}>
                           {t('guardian.feed.like', 'Like')} ({f.like_count || 0})
                         </button>
-                        <button className="btn btn-secondary btn-sm" onClick={() => api.feeds.comments.list(f.id).then(() => null).catch((e) => setError(e instanceof Error ? e.message : t('guardian.alert.comment_failed', 'Failed to load comments')))}>
+                        <button className="btn btn-secondary btn-sm" onClick={() => api.feeds.comments.list(f.id).then(() => null).catch((e) => setError(uiErrorMessage(e, t('guardian.alert.comment_failed', '댓글을 불러오지 못했습니다.'))))}>
                           {t('guardian.feed.comment', 'Comment')} ({f.comment_count || 0})
                         </button>
                       </div>

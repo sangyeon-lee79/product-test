@@ -42,6 +42,17 @@ function formatDate(iso?: string | null): string {
   }
 }
 
+function uiErrorMessage(error: unknown, fallback: string): string {
+  if (error instanceof Error) {
+    const msg = error.message || '';
+    if (msg.includes('Failed to fetch') || msg.includes('NetworkError')) {
+      return '데이터를 불러오지 못했습니다. 잠시 후 다시 시도해주세요.';
+    }
+    return msg;
+  }
+  return fallback;
+}
+
 export default function PublicHome() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -67,15 +78,13 @@ export default function PublicHome() {
     setLoading(true);
     setError('');
     try {
-      const [listRes, optionRes] = await Promise.all([
-        api.feeds.list({
-          tab: nextTab,
-          business_category_id: nextBusiness || undefined,
-          pet_type_id: nextPetType || undefined,
-          limit: 40,
-        }),
-        api.feeds.list({ limit: 100 }),
-      ]);
+      const listRes = await api.feeds.list({
+        tab: nextTab,
+        business_category_id: nextBusiness || undefined,
+        pet_type_id: nextPetType || undefined,
+        limit: 40,
+      });
+      const optionRes = await api.feeds.list({ limit: 100 }).catch(() => ({ feeds: [] as FeedPost[] }));
 
       const base = listRes.feeds || [];
       const all = optionRes.feeds || [];
@@ -98,7 +107,7 @@ export default function PublicHome() {
       setBusinessOptions(Array.from(businessMap.entries()).map(([id, label]) => ({ id, label })));
       setPetTypeOptions(Array.from(petTypeMap.entries()).map(([id, label]) => ({ id, label })));
     } catch (e) {
-      setError(e instanceof Error ? e.message : '피드 로딩 실패');
+      setError(uiErrorMessage(e, '피드 데이터를 불러오지 못했습니다.'));
     } finally {
       setLoading(false);
     }
@@ -118,7 +127,7 @@ export default function PublicHome() {
       }
       await loadFeed();
     } catch (e) {
-      setError(e instanceof Error ? e.message : '좋아요 처리 실패');
+      setError(uiErrorMessage(e, '좋아요 처리에 실패했습니다.'));
     }
   }
 
@@ -130,7 +139,7 @@ export default function PublicHome() {
       const res = await api.feeds.comments.list(feedId);
       setCommentMap((prev) => ({ ...prev, [feedId]: res.comments || [] }));
     } catch (e) {
-      setError(e instanceof Error ? e.message : '댓글 조회 실패');
+      setError(uiErrorMessage(e, '댓글을 불러오지 못했습니다.'));
     }
   }
 
@@ -145,7 +154,7 @@ export default function PublicHome() {
       setCommentInput((prev) => ({ ...prev, [feedId]: '' }));
       await loadFeed();
     } catch (e) {
-      setError(e instanceof Error ? e.message : '댓글 등록 실패');
+      setError(uiErrorMessage(e, '댓글 등록에 실패했습니다.'));
     }
   }
 
@@ -159,7 +168,7 @@ export default function PublicHome() {
       setEditingCommentId(null);
       setEditingContent('');
     } catch (e) {
-      setError(e instanceof Error ? e.message : '댓글 수정 실패');
+      setError(uiErrorMessage(e, '댓글 수정에 실패했습니다.'));
     }
   }
 
@@ -170,7 +179,7 @@ export default function PublicHome() {
       setCommentMap((prev) => ({ ...prev, [feedId]: res.comments || [] }));
       await loadFeed();
     } catch (e) {
-      setError(e instanceof Error ? e.message : '댓글 삭제 실패');
+      setError(uiErrorMessage(e, '댓글 삭제에 실패했습니다.'));
     }
   }
 
@@ -191,7 +200,7 @@ export default function PublicHome() {
       }
       setFriendEmail('');
     } catch (e) {
-      setFriendMessage(e instanceof Error ? e.message : '친구 요청 실패');
+      setFriendMessage(uiErrorMessage(e, '친구 요청 처리에 실패했습니다.'));
     }
   }
 

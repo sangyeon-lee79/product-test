@@ -51,7 +51,12 @@ async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
   if (token) headers['Authorization'] = `Bearer ${token}`;
 
   const url = `${API_BASE}${path}`;
-  const res = await fetch(url, { ...options, headers });
+  let res: Response;
+  try {
+    res = await fetch(url, { ...options, headers });
+  } catch {
+    throw new Error('데이터를 불러오지 못했습니다. 잠시 후 다시 시도해주세요.');
+  }
 
   const contentType = res.headers.get('content-type') || '';
   const raw = await res.text();
@@ -61,10 +66,10 @@ async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
       try {
         json = JSON.parse(raw) as { success?: boolean; data?: T; error?: string };
       } catch {
-        throw new Error(`API JSON 파싱 실패 (${res.status}) - ${url}`);
+        throw new Error('서버 응답을 해석하지 못했습니다. 잠시 후 다시 시도해주세요.');
       }
     } else {
-      throw new Error(`API 응답 형식 오류 (${res.status}) - ${url}`);
+      throw new Error('서버 응답 형식이 올바르지 않습니다. 잠시 후 다시 시도해주세요.');
     }
   }
 
@@ -75,12 +80,16 @@ async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
   }
 
   if (!res.ok) {
-    throw new Error(json?.error || `HTTP ${res.status} - ${url}`);
+    if (json?.error) throw new Error(json.error);
+    if (res.status >= 500) throw new Error('서버 응답이 지연되고 있습니다. 잠시 후 다시 시도해주세요.');
+    if (res.status === 404) throw new Error('요청한 데이터를 찾을 수 없습니다.');
+    if (res.status === 403) throw new Error('해당 작업 권한이 없습니다.');
+    throw new Error('요청을 처리하지 못했습니다. 잠시 후 다시 시도해주세요.');
   }
   if (!json) {
-    throw new Error(`API 빈 응답 (${res.status}) - ${url}`);
+    throw new Error('서버 응답 형식을 확인하지 못했습니다.');
   }
-  if (!json.success) throw new Error(json.error || `HTTP ${res.status} - ${url}`);
+  if (!json.success) throw new Error(json.error || '요청 처리에 실패했습니다.');
   return json.data as T;
 }
 

@@ -132,8 +132,12 @@ async function testLogin(request: Request, env: Env): Promise<Response> {
   ).bind(email).first<{ id: string; role: string }>();
 
   if (!user) {
+    if (email === 'guardian@petlife.com') {
+      user = await ensureBangulGuardianSample(env);
+    }
+
     // Admin 계정은 공개 signup이 없으므로 내부 계정 부트스트랩 허용.
-    if (email === 'admin@petlife.com') {
+    if (!user && email === 'admin@petlife.com') {
       const id = newId();
       const ts = now();
       await env.DB.prepare(
@@ -141,12 +145,89 @@ async function testLogin(request: Request, env: Env): Promise<Response> {
       ).bind(id, email, 'admin', ts, ts).run();
       user = { id, role: 'admin' };
     } else {
-      return err('account not found. please signup first', 404);
+      if (!user) return err('account not found. please signup first', 404);
     }
   }
 
   const tokens = await issueTokens(user.id, user.role as JwtPayload['role'], env.JWT_SECRET);
   return created({ user_id: user.id, role: user.role, ...tokens });
+}
+
+async function ensureBangulGuardianSample(env: Env): Promise<{ id: string; role: string } | null> {
+  const ts = now();
+  const existing = await env.DB.prepare(
+    'SELECT id, role FROM users WHERE email = ?'
+  ).bind('guardian@petlife.com').first<{ id: string; role: string }>();
+  const userId = existing?.id || newId();
+
+  if (!existing) {
+    await env.DB.prepare(
+      'INSERT INTO users (id, email, role, created_at, updated_at) VALUES (?, ?, ?, ?, ?)'
+    ).bind(userId, 'guardian@petlife.com', 'guardian', ts, ts).run();
+  } else if (existing.role !== 'guardian') {
+    await env.DB.prepare('UPDATE users SET role = ?, updated_at = ? WHERE id = ?').bind('guardian', ts, userId).run();
+  }
+
+  await env.DB.prepare(
+    `INSERT OR IGNORE INTO user_profiles (
+      id, user_id, handle, display_name, avatar_url, bio, bio_translations,
+      country_id, language, timezone, interests, created_at, updated_at
+    ) VALUES (?, ?, ?, ?, ?, ?, '{}', NULL, 'ko', 'Asia/Seoul', '[]', ?, ?)`
+  ).bind(newId(), userId, null, '방울맘', 'https://placehold.co/320x320?text=Bangul', '방울이와 함께하는 일상 기록', ts, ts).run();
+
+  await env.DB.prepare(
+    `UPDATE user_profiles
+     SET display_name = COALESCE(display_name, '방울맘'),
+         avatar_url = COALESCE(avatar_url, 'https://placehold.co/320x320?text=Bangul'),
+         bio = COALESCE(bio, '방울이와 함께하는 일상 기록'),
+         updated_at = ?
+     WHERE user_id = ?`
+  ).bind(ts, userId).run();
+
+  const pet = await env.DB.prepare(
+    `SELECT id FROM pets
+     WHERE guardian_id = ? AND name = '방울' AND status != 'deleted'
+     LIMIT 1`
+  ).bind(userId).first<{ id: string }>();
+
+  if (!pet) {
+    const petId = newId();
+    await env.DB.prepare(`
+      INSERT INTO pets (
+        id, guardian_id, name, species, pet_type_id, breed_id, gender_id, neuter_status_id,
+        life_stage_id, body_size_id, country_id, medication_status_id, weight_unit_id,
+        health_condition_level_id, activity_level_id, diet_type_id, living_style_id,
+        ownership_type_id, coat_length_id, coat_type_id, grooming_cycle_id,
+        color_ids, allergy_ids, disease_history_ids, symptom_tag_ids, vaccination_ids,
+        temperament_ids, notes, intro_text, birthday, birth_date, current_weight, weight_kg, microchip_no,
+        avatar_url, is_neutered, status, created_at, updated_at
+      ) VALUES (
+        ?, ?, '방울', 'dog', ?, ?, ?, NULL,
+        NULL, NULL, NULL, NULL, ?,
+        NULL, NULL, NULL, NULL,
+        NULL, NULL, NULL, NULL,
+        '[]', '[]', '[]', '[]', '[]',
+        '[]', '샘플 반려동물 데이터', '포메라니안 방울이', '2021-03-15', '2021-03-15', 4.2, 4.2, 'BANGUL-0001',
+        'https://placehold.co/600x600?text=Bangul', 0, 'active', ?, ?
+      )
+    `).bind(
+      petId,
+      userId,
+      await findMasterItemId(env, 'dog'),
+      await findMasterItemId(env, 'pomeranian'),
+      await findMasterItemId(env, 'female'),
+      await findMasterItemId(env, 'kg'),
+      ts,
+      ts,
+    ).run();
+  }
+
+  return { id: userId, role: 'guardian' };
+}
+
+async function findMasterItemId(env: Env, key: string): Promise<string | null> {
+  const row = await env.DB.prepare('SELECT id FROM master_items WHERE key = ? LIMIT 1').bind(key).first<{ id: string }>();
+  return row?.id ?? null;
 }
 
 // ─── refresh ──────────────────────────────────────────────────────────────────
