@@ -1,9 +1,23 @@
 # Pet Lifecycle SNS Platform — LLD.md
 # 저수준 설계서 (Low-Level Design)
-# Status: MVP Planning (PLAN.md 기준 정렬)
+# Status: MVP In Progress (2026-03-07 동기화)
 
 Petfolio
 Your pet's life portfolio
+
+---
+
+## 0. 구현 동기화 노트 (2026-03-07)
+
+- 본 문서는 초기 MVP 설계안을 유지하되, 아래 항목은 실제 구현 기준으로 갱신한다.
+- 신규 반영:
+  - `pet_album_media` + `/api/v1/pet-album` (Gallery 통합 저장소/API)
+  - `pets.birthday`, `pets.current_weight` (직접입력 확장)
+  - `pet_weight_logs` + `/api/v1/pets/:id/weight-logs` (시계열 몸무게)
+  - 예약 완료 공개요청/승인 플로우: `booking_completion_contents`, `feeds/:id/approve`, `bookings/:id/completion-request`
+- 참고:
+  - 이 저장소의 실제 DDL 소스는 `services/api/src/db/migrations/*.sql`
+  - 일부 구간은 설계안(PostgreSQL 스타일)과 구현(SQLite 호환) 표기가 공존한다.
 
 ---
 
@@ -50,6 +64,7 @@ Your pet's life portfolio
                     │  /pets            │
                     │  /logs            │
                     │  /feeds           │
+                    │  /pet-album       │
                     │  /providers       │
                     │  /bookings        │
                     └────┬────┬────┬────┘
@@ -146,6 +161,7 @@ pet-life/
 │       │   │   ├── pets.ts
 │       │   │   ├── logs.ts
 │       │   │   ├── feeds.ts
+│       │   │   ├── petAlbum.ts
 │       │   │   ├── providers.ts
 │       │   │   └── bookings.ts
 │       │   ├── services/
@@ -180,15 +196,18 @@ ad_slots
 [Guardian 영역]
 users ──< user_profiles
      ──< pets ──< pet_diseases
+               ──< pet_weight_logs
                ──< logs ──< log_values
                         ──< log_media
      ──< feeds ──< feed_likes
                ──< feed_comments
+               ──< booking_completion_contents
+     pets ──< pet_album_media
 
 [Provider 영역]
 users ──< stores ──< store_industries (다중)
                   ──< services ──< service_discounts
-                  ──< bookings ──< booking_completions
+                  ──< bookings ──< booking_completion_contents
 ```
 
 ### 4.2 Admin 테이블
@@ -406,8 +425,12 @@ CREATE TABLE pets (
     birth_date      DATE,
     gender          VARCHAR(10),                -- 'male' | 'female' | 'unknown'
     weight_kg       DECIMAL(5,2),
+    current_weight  DECIMAL(5,2),               -- 최신값 캐시
+    weight_unit_id  UUID REFERENCES master_items(id),
     is_neutered     BOOLEAN DEFAULT FALSE,
     microchip_no    VARCHAR(50),
+    birthday        DATE,                       -- YYYY-MM-DD, birth_date와 호환
+    notes           TEXT,
     avatar_url      VARCHAR(500),
     status          VARCHAR(20) DEFAULT 'active',
     created_at      TIMESTAMPTZ DEFAULT NOW(),
@@ -415,6 +438,24 @@ CREATE TABLE pets (
 );
 
 CREATE INDEX idx_pets_guardian ON pets(guardian_id);
+```
+
+#### pet_weight_logs (몸무게 이력, 시계열)
+```sql
+CREATE TABLE pet_weight_logs (
+    id                  UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    pet_id              UUID NOT NULL REFERENCES pets(id) ON DELETE CASCADE,
+    weight_value        DECIMAL(6,3) NOT NULL,
+    weight_unit_id      UUID REFERENCES master_items(id),
+    measured_at         TIMESTAMPTZ NOT NULL,
+    recorded_by_user_id UUID NOT NULL REFERENCES users(id),
+    notes               TEXT,
+    created_at          TIMESTAMPTZ DEFAULT NOW(),
+    updated_at          TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE INDEX idx_pet_weight_logs_pet_measured ON pet_weight_logs(pet_id, measured_at DESC);
+CREATE INDEX idx_pet_weight_logs_recorded_by ON pet_weight_logs(recorded_by_user_id, created_at DESC);
 ```
 
 #### pet_diseases (펫-질병 연결, 복수)
@@ -497,25 +538,29 @@ CREATE INDEX idx_log_media_log ON log_media(log_id);
 ```sql
 CREATE TABLE feeds (
     id              UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    author_id       UUID NOT NULL REFERENCES users(id),
+    feed_type       VARCHAR(30) NOT NULL,           -- guardian_post|booking_completed|health_update...
+    author_user_id  UUID NOT NULL REFERENCES users(id),
+    author_role     VARCHAR(20) NOT NULL,           -- guardian|provider|admin
     pet_id          UUID REFERENCES pets(id),
-    content         TEXT,
-    content_translations JSONB DEFAULT '{}',
-    media_urls      TEXT[] DEFAULT '{}',         -- R2 URLs
+    business_category_id UUID REFERENCES master_items(id),
+    pet_type_id     UUID REFERENCES master_items(id),
+    visibility_scope VARCHAR(30) DEFAULT 'public',  -- public|friends_only|private|connected_only|booking_related_only
+    booking_id      UUID REFERENCES bookings(id),
+    supplier_id     UUID REFERENCES users(id),
+    related_service_id UUID,
+    caption         TEXT,
+    media_urls      TEXT[] DEFAULT '{}',            -- R2 URLs
     tags            TEXT[] DEFAULT '{}',
     like_count      INT DEFAULT 0,
     comment_count   INT DEFAULT 0,
-    -- 바이럴 루프: 완료사진 공유 시
-    source_type     VARCHAR(20),                 -- 'booking_completion' | NULL
-    source_id       UUID,                        -- booking_completions.id
-    provider_store_id UUID REFERENCES stores(id),
-    visibility      VARCHAR(20) DEFAULT 'public',
-    status          VARCHAR(20) DEFAULT 'active',
+    publish_request_status VARCHAR(20) DEFAULT 'none', -- none|pending|approved|rejected
+    is_public       BOOLEAN DEFAULT FALSE,
+    status          VARCHAR(20) DEFAULT 'draft',  -- draft|published|hidden|deleted
     created_at      TIMESTAMPTZ DEFAULT NOW(),
     updated_at      TIMESTAMPTZ DEFAULT NOW()
 );
 
-CREATE INDEX idx_feeds_author ON feeds(author_id);
+CREATE INDEX idx_feeds_author ON feeds(author_user_id);
 CREATE INDEX idx_feeds_created ON feeds(created_at DESC);
 CREATE INDEX idx_feeds_tags ON feeds USING GIN(tags);
 ```
@@ -532,15 +577,16 @@ CREATE TABLE feed_likes (
 
 CREATE TABLE feed_comments (
     id          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    feed_id     UUID NOT NULL REFERENCES feeds(id) ON DELETE CASCADE,
-    user_id     UUID NOT NULL REFERENCES users(id),
+    post_id     UUID NOT NULL REFERENCES feeds(id) ON DELETE CASCADE,
+    author_user_id UUID NOT NULL REFERENCES users(id),
     content     TEXT NOT NULL,
-    parent_id   UUID REFERENCES feed_comments(id),
+    parent_comment_id UUID REFERENCES feed_comments(id),
     status      VARCHAR(20) DEFAULT 'active',
-    created_at  TIMESTAMPTZ DEFAULT NOW()
+    created_at  TIMESTAMPTZ DEFAULT NOW(),
+    updated_at  TIMESTAMPTZ DEFAULT NOW()
 );
 
-CREATE INDEX idx_feed_comments_feed ON feed_comments(feed_id, created_at);
+CREATE INDEX idx_feed_comments_feed ON feed_comments(post_id, created_at);
 ```
 
 ### 4.4 Provider 테이블
@@ -619,36 +665,71 @@ CREATE INDEX idx_discounts_service ON service_discounts(service_id);
 ```sql
 CREATE TABLE bookings (
     id              UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    store_id        UUID NOT NULL REFERENCES stores(id),
-    service_id      UUID NOT NULL REFERENCES services(id),
     guardian_id     UUID NOT NULL REFERENCES users(id),
+    supplier_id     UUID NOT NULL REFERENCES users(id),
     pet_id          UUID REFERENCES pets(id),
-    status          VARCHAR(20) DEFAULT 'requested',
-                    -- 'requested' | 'accepted' | 'completed' | 'cancelled'
+    service_id      UUID,
+    business_category_id UUID REFERENCES master_items(id),
+    status          VARCHAR(30) DEFAULT 'created',
+                    -- 'created' | 'in_progress' | 'service_completed'
+                    -- | 'publish_requested' | 'publish_approved' | 'publish_rejected' | 'cancelled'
     requested_date  DATE,
     requested_time  TIME,
     notes           TEXT,
+    completed_at    TIMESTAMPTZ,
     created_at      TIMESTAMPTZ DEFAULT NOW(),
     updated_at      TIMESTAMPTZ DEFAULT NOW()
 );
 
-CREATE INDEX idx_bookings_store ON bookings(store_id, status);
 CREATE INDEX idx_bookings_guardian ON bookings(guardian_id);
+CREATE INDEX idx_bookings_supplier ON bookings(supplier_id);
 ```
 
-#### booking_completions (완료사진 + 바이럴)
+#### booking_completion_contents (완료사진 + 공개요청)
 ```sql
-CREATE TABLE booking_completions (
+CREATE TABLE booking_completion_contents (
     id              UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    booking_id      UUID NOT NULL REFERENCES bookings(id),
-    photo_urls      TEXT[] DEFAULT '{}',         -- R2 URLs
-    message         TEXT,
-    is_shared       BOOLEAN DEFAULT FALSE,       -- Guardian이 피드 공유 여부
-    shared_feed_id  UUID REFERENCES feeds(id),
-    created_at      TIMESTAMPTZ DEFAULT NOW()
+    booking_id      UUID NOT NULL UNIQUE REFERENCES bookings(id),
+    supplier_id     UUID NOT NULL REFERENCES users(id),
+    media_urls      TEXT[] DEFAULT '{}',         -- R2 URLs
+    completion_memo TEXT,
+    publish_status  VARCHAR(20) DEFAULT 'pending', -- pending|approved|rejected
+    requested_at    TIMESTAMPTZ DEFAULT NOW(),
+    responded_at    TIMESTAMPTZ,
+    responded_by_guardian_id UUID REFERENCES users(id),
+    created_at      TIMESTAMPTZ DEFAULT NOW(),
+    updated_at      TIMESTAMPTZ DEFAULT NOW()
 );
 
-CREATE INDEX idx_completions_booking ON booking_completions(booking_id);
+CREATE INDEX idx_completions_booking ON booking_completion_contents(booking_id);
+```
+
+#### pet_album_media (통합 Gallery 저장소)
+```sql
+CREATE TABLE pet_album_media (
+    id                  UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    pet_id              UUID NOT NULL REFERENCES pets(id) ON DELETE CASCADE,
+    source_type         VARCHAR(30) NOT NULL, -- profile|feed|booking_completed|health_record|manual_upload
+    source_id           UUID,
+    booking_id          UUID REFERENCES bookings(id),
+    media_type          VARCHAR(20) DEFAULT 'image', -- image|video
+    media_url           VARCHAR(500) NOT NULL,
+    thumbnail_url       VARCHAR(500),
+    caption             TEXT,
+    tags                TEXT[] DEFAULT '{}',
+    uploaded_by_user_id UUID NOT NULL REFERENCES users(id),
+    visibility_scope    VARCHAR(30) DEFAULT 'private', -- public|friends_only|private|guardian_supplier_only|booking_related
+    is_primary          BOOLEAN DEFAULT FALSE,
+    sort_order          INT DEFAULT 0,
+    status              VARCHAR(20) DEFAULT 'active', -- active|pending|hidden|deleted
+    created_at          TIMESTAMPTZ DEFAULT NOW(),
+    updated_at          TIMESTAMPTZ DEFAULT NOW(),
+    UNIQUE(pet_id, source_type, source_id, media_url)
+);
+
+CREATE INDEX idx_pet_album_pet_created ON pet_album_media(pet_id, created_at DESC);
+CREATE INDEX idx_pet_album_source ON pet_album_media(source_type, source_id);
+CREATE INDEX idx_pet_album_status ON pet_album_media(status);
 ```
 
 ---
@@ -768,6 +849,15 @@ CREATE INDEX idx_completions_booking ON booking_completions(booking_id);
 | PUT | /api/v1/pets/:petId/logs/:id | 기록 수정 |
 | DELETE | /api/v1/pets/:petId/logs/:id | 기록 삭제 |
 | POST | /api/v1/pets/:petId/logs/sync | 오프라인 동기화 (배치) |
+| GET | /api/v1/pets/:id/weight-logs?range=1m\|3m\|6m\|1y\|all | 몸무게 이력 + 요약 |
+| POST | /api/v1/pets/:id/weight-logs | 몸무게 기록 추가 |
+| PUT | /api/v1/pets/:id/weight-logs/:logId | 몸무게 기록 수정 |
+| DELETE | /api/v1/pets/:id/weight-logs/:logId | 몸무게 기록 삭제 |
+| GET | /api/v1/pet-album?pet_id=&source_type=&media_type=&sort= | 펫 앨범 조회 |
+| POST | /api/v1/pet-album | 펫 앨범 미디어 생성 |
+| GET | /api/v1/pet-album/:id | 펫 앨범 미디어 상세 |
+| PUT | /api/v1/pet-album/:id | 펫 앨범 미디어 수정 |
+| DELETE | /api/v1/pet-album/:id | 펫 앨범 미디어 삭제(soft) |
 
 #### POST /api/v1/pets/:petId/logs (질병 기록 생성)
 ```json
@@ -841,33 +931,12 @@ CREATE INDEX idx_completions_booking ON booking_completions(booking_id);
 |--------|----------|------|
 | GET | /api/v1/feeds | 피드 목록 |
 | POST | /api/v1/feeds | 피드 작성 |
-| POST | /api/v1/feeds/from-completion | 완료사진 1-click 공유 |
+| POST | /api/v1/feeds/booking-completed/request | 공급자 완료게시물 공개요청 |
+| POST | /api/v1/feeds/:id/approve | Guardian 승인/거절 |
 | POST | /api/v1/feeds/:id/like | 좋아요 |
 | DELETE | /api/v1/feeds/:id/like | 좋아요 취소 |
 | GET | /api/v1/feeds/:id/comments | 댓글 목록 |
 | POST | /api/v1/feeds/:id/comments | 댓글 작성 |
-
-#### POST /api/v1/feeds/from-completion (바이럴 루프)
-```json
-// Request
-{
-  "completion_id": "uuid",
-  "caption": "우리 방울이 미용 완료! 🐾",
-  "tags": ["grooming", "pomeranian"]
-}
-
-// Response 201 — 자동으로 매장 링크, 완료 사진 포함
-{
-  "id": "uuid",
-  "media_urls": ["https://media.petlife.com/completions/..."],
-  "provider_store": {
-    "id": "uuid",
-    "name": "해피 펫 미용실",
-    "link": "https://petlife.com/stores/uuid"
-  },
-  "created_at": "..."
-}
-```
 
 ### 5.6 Provider API (Phase C4)
 
@@ -880,10 +949,10 @@ CREATE INDEX idx_completions_booking ON booking_completions(booking_id);
 | POST | /api/v1/stores/:id/services | 서비스 등록 |
 | PUT | /api/v1/services/:id | 서비스 수정 |
 | POST | /api/v1/services/:id/discounts | 할인 등록 |
-| GET | /api/v1/stores/:id/bookings | 예약 목록 |
-| PUT | /api/v1/bookings/:id/accept | 예약 수락 |
-| PUT | /api/v1/bookings/:id/complete | 예약 완료 |
-| POST | /api/v1/bookings/:id/completion | 완료사진 업로드 |
+| GET | /api/v1/bookings | Guardian/Provider 예약 목록 |
+| POST | /api/v1/bookings | Guardian 예약 생성 |
+| PUT | /api/v1/bookings/:id/status | 상태 전이 (created→in_progress→...) |
+| POST | /api/v1/bookings/:id/completion-request | 완료사진 업로드 + 공개요청 |
 
 ### 5.7 Admin API
 

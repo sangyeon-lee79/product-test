@@ -319,6 +319,102 @@ async function createGuardianPost(request: Request, env: Env): Promise<Response>
   return created({ id });
 }
 
+async function shareFromCompletion(request: Request, env: Env): Promise<Response> {
+  const auth = await requireAuth(request, env);
+  if (auth instanceof Response) return auth;
+  const me = auth as JwtPayload;
+  const roleErr = requireRole(me, ['guardian']);
+  if (roleErr) return roleErr;
+
+  let body: Record<string, unknown>;
+  try { body = await request.json() as Record<string, unknown>; } catch { return err('Invalid JSON'); }
+
+  const completionId = String(body.completion_id || '').trim();
+  const bookingId = String(body.booking_id || '').trim();
+  if (!completionId && !bookingId) return err('completion_id or booking_id required');
+
+  const completion = completionId
+    ? await env.DB.prepare(
+      `SELECT c.*, b.id AS booking_id, b.guardian_id, b.supplier_id, b.pet_id, b.service_id
+       FROM booking_completion_contents c
+       INNER JOIN bookings b ON b.id = c.booking_id
+       WHERE c.id = ?`
+    ).bind(completionId).first<Record<string, unknown>>()
+    : await env.DB.prepare(
+      `SELECT c.*, b.id AS booking_id, b.guardian_id, b.supplier_id, b.pet_id, b.service_id
+       FROM booking_completion_contents c
+       INNER JOIN bookings b ON b.id = c.booking_id
+       WHERE c.booking_id = ?`
+    ).bind(bookingId).first<Record<string, unknown>>();
+
+  if (!completion) return err('completion not found', 404);
+  if (String(completion.guardian_id || '') !== me.sub) return err('forbidden', 403);
+  if (String(completion.publish_status || '') !== 'approved') {
+    return err('completion must be approved first');
+  }
+
+  const mediaUrls = parseJsonArray(completion.media_urls);
+  if (!mediaUrls.length) return err('completion has no media');
+
+  const caption = typeof body.caption === 'string'
+    ? body.caption.trim()
+    : (typeof completion.completion_memo === 'string' ? completion.completion_memo : null);
+  const visibility = (String(body.visibility_scope || 'public')).trim();
+  if (!['public', 'friends_only', 'private'].includes(visibility)) return err('invalid visibility_scope');
+
+  const inputTags = parseJsonArray(body.tags);
+  const tags = Array.from(new Set([
+    ...inputTags,
+    'source:booking_completed',
+    `completion:${String(completion.id || '')}`,
+  ].filter(Boolean)));
+  const tagsJson = JSON.stringify(tags);
+
+  const id = newId();
+  const timestamp = now();
+  await env.DB.prepare(
+    `INSERT INTO feeds (
+      id, feed_type, author_user_id, author_role, pet_id, business_category_id, pet_type_id,
+      visibility_scope, booking_id, supplier_id, related_service_id,
+      caption, media_urls, tags, publish_request_status, is_public, status, created_at, updated_at
+    ) VALUES (?, 'guardian_post', ?, 'guardian', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'none', ?, 'published', ?, ?)`
+  ).bind(
+    id,
+    me.sub,
+    completion.pet_id ?? null,
+    body.business_category_id ?? null,
+    body.pet_type_id ?? null,
+    visibility,
+    completion.booking_id ?? null,
+    completion.supplier_id ?? null,
+    completion.service_id ?? null,
+    caption,
+    JSON.stringify(mediaUrls),
+    tagsJson,
+    visibility === 'public' ? 1 : 0,
+    timestamp,
+    timestamp,
+  ).run();
+
+  await upsertAlbumFromFeed(env, {
+    feedId: id,
+    petId: (completion.pet_id as string | null) ?? null,
+    bookingId: (completion.booking_id as string | null) ?? null,
+    feedType: 'guardian_post',
+    mediaUrls,
+    caption,
+    tags,
+    authorUserId: me.sub,
+    visibilityScope: visibility,
+    feedStatus: 'published',
+    publishRequestStatus: 'none',
+    createdAt: timestamp,
+    updatedAt: timestamp,
+  });
+
+  return created({ id, source: 'booking_completion', booking_id: completion.booking_id ?? null });
+}
+
 async function requestBookingCompletedFeed(request: Request, env: Env): Promise<Response> {
   const auth = await requireAuth(request, env);
   if (auth instanceof Response) return auth;
@@ -582,6 +678,9 @@ export async function handleFeeds(request: Request, env: Env, url: URL): Promise
 
   if ((sub === '' || sub === '/') && request.method === 'GET') return listFeeds(request, env, url);
   if ((sub === '' || sub === '/') && request.method === 'POST') return createGuardianPost(request, env);
+  if ((sub === '/from-completion' || sub === '/from-completion/') && request.method === 'POST') {
+    return shareFromCompletion(request, env);
+  }
 
   if ((sub === '/booking-completed/request' || sub === '/booking-completed/request/') && request.method === 'POST') {
     return requestBookingCompletedFeed(request, env);

@@ -1,10 +1,8 @@
 // LLD §4 전체 DB 스키마 타입 정의
-// 실제 쿼리는 각 라우트에서 env.DB (Hyperdrive) 를 통해 실행
-// 각 슬라이스에서 해당 테이블 마이그레이션 추가
 
 // ─── Admin 영역 (S1~S4) ───────────────────────────────────────────────
 
-// S1: LLD §4.2 i18n_translations
+// S1: i18n_translations
 export interface I18nTranslation {
   id: string;
   key: string;
@@ -27,67 +25,35 @@ export interface I18nTranslation {
   updated_at: string;
 }
 
-// S2: LLD §4.2 master_categories
+// S2: master_categories
 export interface MasterCategory {
   id: string;
-  key: string; // 'industry'|'breed'|'disease'|'symptom'|'metric'|'unit'|'log_type'|'interest'|'country_ref'|'ad_slot'
+  code: string;
+  name: string | null;
+  description: string | null;
+  parent_id: string | null;
   sort_order: number;
-  is_active: boolean;
+  status: 'active' | 'inactive';
   created_at: string;
   updated_at: string;
 }
 
-// S2: LLD §4.2 master_items
+// S2: master_items
 export interface MasterItem {
   id: string;
   category_id: string;
-  key: string;
-  parent_id: string | null;
+  parent_item_id: string | null;
+  code: string;
+  name: string | null;
+  description: string | null;
   sort_order: number;
-  is_active: boolean;
+  status: 'active' | 'inactive';
   metadata: Record<string, unknown>;
   created_at: string;
   updated_at: string;
 }
 
-// S3: LLD §4.2 매핑 테이블
-export interface DiseaseSymptomMap {
-  id: string;
-  disease_id: string;
-  symptom_id: string;
-  is_required: boolean;
-  sort_order: number;
-  is_active: boolean;
-}
-
-export interface SymptomMetricMap {
-  id: string;
-  symptom_id: string;
-  metric_id: string;
-  is_required: boolean;
-  sort_order: number;
-  is_active: boolean;
-}
-
-export interface MetricUnitMap {
-  id: string;
-  metric_id: string;
-  unit_id: string;
-  is_default: boolean;
-  sort_order: number;
-  is_active: boolean;
-}
-
-export interface MetricLogtypeMap {
-  id: string;
-  metric_id: string;
-  logtype_id: string;
-  is_default: boolean;
-  sort_order: number;
-  is_active: boolean;
-}
-
-// S4: LLD §4.2 countries / currencies
+// S4: countries / currencies
 export interface Country {
   id: string;
   code: string;
@@ -114,26 +80,9 @@ export interface CountryCurrencyMap {
   is_default: boolean;
 }
 
-// S11: LLD §4.2 ad_config / ad_slots
-export interface AdConfig {
-  id: string;
-  global_enabled: boolean;
-  updated_at: string;
-}
-
-export interface AdSlot {
-  id: string;
-  slot_key: string;
-  ad_unit_id: string | null;
-  is_enabled: boolean;
-  no_health_zone: boolean; // 건강/질병 화면 차단 플래그
-  impression_count: number;
-  updated_at: string;
-}
-
 // ─── Guardian 영역 (S5~S7) ───────────────────────────────────────────
 
-// S5: LLD §4.3 users
+// S5: users
 export interface User {
   id: string;
   email: string | null;
@@ -146,7 +95,7 @@ export interface User {
   updated_at: string;
 }
 
-// S6: LLD §4.3 user_profiles
+// S6: user_profiles
 export interface UserProfile {
   id: string;
   user_id: string;
@@ -163,26 +112,49 @@ export interface UserProfile {
   updated_at: string;
 }
 
-// S6: LLD §4.3 pets
+// S6: pets
 export interface Pet {
   id: string;
-  guardian_id: string;
+  guardian_user_id: string;
   name: string;
-  species: 'dog' | 'cat' | 'other';
+  microchip_number: string | null;
+  pet_type_id: string | null;
   breed_id: string | null;
-  birthday: string | null;
+  gender_id: string | null;
+  life_stage_id: string | null;
+  body_size_id: string | null;
+  country_id: string | null;
+  diet_type_id: string | null;
+  coat_length_id: string | null;
+  coat_type_id: string | null;
+  activity_level_id: string | null;
+  health_level_id: string | null;
   birth_date: string | null;
-  gender: 'male' | 'female' | 'unknown' | null;
-  current_weight: number | null;
   weight_kg: number | null;
   is_neutered: boolean;
-  microchip_no: string | null;
   avatar_url: string | null;
   status: string;
   created_at: string;
   updated_at: string;
+  // Legacy fields for backward compatibility during migration
+  gender_legacy?: string | null;
+  species_legacy?: string | null;
 }
 
+// Health Records
+export interface HealthRecord {
+  id: string;
+  pet_id: string;
+  record_type: 'symptom' | 'disease' | 'vaccination' | 'checkup' | 'weight';
+  symptom_id: string | null;
+  disease_id: string | null;
+  description: string | null;
+  recorded_at: string;
+  created_by_user_id: string;
+  created_at: string;
+}
+
+// Pet Weight Logs (keeping for detailed tracking, though weight is also in HealthRecord type)
 export interface PetWeightLog {
   id: string;
   pet_id: string;
@@ -195,102 +167,68 @@ export interface PetWeightLog {
   updated_at: string;
 }
 
-// S6: LLD §4.3 pet_diseases
-export interface PetDisease {
-  id: string;
-  pet_id: string;
-  disease_id: string;
-  diagnosed_at: string | null;
-  notes: string | null;
-  is_active: boolean;
-  created_at: string;
-}
+// ─── Feed 영역 ───────────────────────────────────────────────────────
 
-// S7: LLD §4.3 logs
-export interface Log {
+export interface FeedPost {
   id: string;
-  pet_id: string;
-  author_id: string;
-  logtype_id: string;
-  event_date: string;
-  event_time: string | null;
-  title: string | null;
-  notes: string | null;
-  metadata: Record<string, unknown>;
-  is_synced: boolean;
-  sync_version: number;
-  status: string;
+  author_user_id: string;
+  author_role: 'guardian' | 'provider' | 'admin';
+  feed_type: 'guardian_post' | 'booking_completed' | 'health_update' | 'supplier_story' | 'pet_milestone';
+  visibility_scope: 'public' | 'friends_only' | 'private';
+  caption: string | null;
+  status: 'published' | 'hidden' | 'deleted';
   created_at: string;
   updated_at: string;
 }
 
-// S7: LLD §4.3 log_values
-export interface LogValue {
+export interface FeedPostPet {
   id: string;
-  log_id: string;
-  metric_id: string;
-  unit_id: string;
-  numeric_value: number | null;
-  text_value: string | null;
-  sort_order: number;
-  created_at: string;
-}
-
-// S7: LLD §4.3 log_media
-export interface LogMedia {
-  id: string;
-  log_id: string;
-  media_url: string;
-  media_type: string;
-  thumbnail_url: string | null;
-  sort_order: number;
-  created_at: string;
-}
-
-// S10: LLD §4.3 feeds
-export interface Feed {
-  id: string;
-  author_id: string;
-  pet_id: string | null;
-  content: string | null;
-  content_translations: Record<string, string>;
-  media_urls: string[];
-  tags: string[];
-  like_count: number;
-  comment_count: number;
-  source_type: 'booking_completion' | null;
-  source_id: string | null;
-  provider_store_id: string | null;
-  visibility: string;
-  status: string;
-  created_at: string;
-  updated_at: string;
-}
-
-// S10: unified pet album media
-export interface PetAlbumMedia {
-  id: string;
+  post_id: string;
   pet_id: string;
-  source_type: 'profile' | 'feed' | 'booking_completed' | 'health_record' | 'manual_upload';
-  source_id: string | null;
-  booking_id: string | null;
+  sort_order: number;
+}
+
+export interface FeedMedia {
+  id: string;
+  post_id: string;
   media_type: 'image' | 'video';
   media_url: string;
   thumbnail_url: string | null;
-  caption: string | null;
-  tags: string[];
-  uploaded_by_user_id: string;
-  visibility_scope: 'public' | 'friends_only' | 'private' | 'guardian_supplier_only' | 'booking_related';
-  is_primary: boolean;
   sort_order: number;
-  status: 'active' | 'pending' | 'hidden' | 'deleted';
+}
+
+export interface FeedComment {
+  id: string;
+  post_id: string;
+  author_user_id: string;
+  parent_comment_id: string | null;
+  content: string;
+  status: 'active' | 'deleted';
   created_at: string;
   updated_at: string;
 }
 
-// ─── Provider 영역 (S9~S10) ──────────────────────────────────────────
+export interface FeedLike {
+  id: string;
+  post_id: string;
+  user_id: string;
+  created_at: string;
+}
 
-// S9: LLD §4.4 stores
+export interface FeedPublishRequest {
+  id: string;
+  booking_id: string;
+  supplier_id: string;
+  guardian_id: string;
+  content: string | null;
+  media_urls: string; // JSON array
+  status: 'pending' | 'approved' | 'rejected';
+  created_at: string;
+  approved_at: string | null;
+}
+
+// ─── Provider 영역 ───────────────────────────────────────────────────
+
 export interface Store {
   id: string;
   owner_id: string;
@@ -310,7 +248,6 @@ export interface Store {
   updated_at: string;
 }
 
-// S9: LLD §4.4 services
 export interface Service {
   id: string;
   store_id: string;
@@ -327,28 +264,17 @@ export interface Service {
   updated_at: string;
 }
 
-// S10: LLD §4.4 bookings
 export interface Booking {
   id: string;
-  store_id: string;
-  service_id: string;
+  supplier_id: string;
   guardian_id: string;
   pet_id: string | null;
-  status: 'requested' | 'accepted' | 'completed' | 'cancelled';
+  service_id: string | null;
+  status: 'created' | 'in_progress' | 'service_completed' | 'publish_requested' | 'publish_approved' | 'publish_rejected' | 'cancelled';
   requested_date: string | null;
   requested_time: string | null;
   notes: string | null;
+  completed_at: string | null;
   created_at: string;
   updated_at: string;
-}
-
-// S10: LLD §4.4 booking_completions
-export interface BookingCompletion {
-  id: string;
-  booking_id: string;
-  photo_urls: string[];
-  message: string | null;
-  is_shared: boolean;
-  shared_feed_id: string | null;
-  created_at: string;
 }

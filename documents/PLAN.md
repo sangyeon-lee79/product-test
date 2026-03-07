@@ -11,6 +11,23 @@ Your pet's life portfolio
 
 ---
 
+## 0.1 개발 현황 업데이트 (2026-03-07)
+
+최근 코드 반영 기준 요약:
+
+- [x] Pet Album 통합 저장소 추가: `pet_album_media` + `/api/v1/pet-album` (조회/생성/수정/삭제)
+- [x] Feed/Booking 완료 승인 흐름과 Pet Album 자동 연동
+- [x] My Pet 직접입력 확장: `birthday`, `current_weight`
+- [x] 몸무게 이력 테이블 추가: `pet_weight_logs`
+- [x] 몸무게 API 추가: `GET/POST/PUT/DELETE /api/v1/pets/:id/weight-logs` + `range` 필터
+- [x] Guardian Web Health 탭: 몸무게 추이(기간 필터/요약/그래프/기록 추가)
+
+주의:
+- 아래 슬라이스 체크박스는 "원래 MVP 목표 기준"을 유지하며,
+  최근 구현된 선행/대체 항목은 각 슬라이스에 별도 표기한다.
+
+---
+
 ## 0. 문서 관리 / 개발 절차 (전역 규칙: 체크 대상 아님)
 
 - 문서는 /documents 폴더에서만 관리: PLAN.md / PRD.md / LLD.md
@@ -337,6 +354,8 @@ DB 테이블/마이그레이션
 [x] user_profiles 테이블 (handle UNIQUE, display_name, avatar_url, bio, bio_translations, country_id, language, timezone, interests[])
 [x] pets 테이블 (guardian_id, name, species, breed_id, birth_date, gender, weight_kg, is_neutered, microchip_no, avatar_url)
 [x] pet_diseases 테이블 (pet_id, disease_id, diagnosed_at, notes, is_active)
+[x] pets 확장 컬럼 (2026-03-07): `birthday`, `current_weight` (기존 birth_date/weight_kg와 호환)
+[x] pet_weight_logs 테이블 추가 (시계열 몸무게 기록)
 
 
 
@@ -351,6 +370,11 @@ DB 테이블/마이그레이션
 [x] CRUD /api/v1/pets — 펫 CRUD (복수)
 [x] POST /api/v1/pets/:id/diseases — 펫 질병 연결
 [x] DELETE /api/v1/pets/:id/diseases/:diseaseId — 질병 연결 해제
+[x] `POST/PUT /api/v1/pets` 에 `birthday`, `current_weight` 저장 연동
+[x] `GET /api/v1/pets/:id/weight-logs?range=1m|3m|6m|1y|all`
+[x] `POST /api/v1/pets/:id/weight-logs`
+[x] `PUT /api/v1/pets/:id/weight-logs/:log_id`
+[x] `DELETE /api/v1/pets/:id/weight-logs/:log_id`
 
 ## S6-3. Mobile UI
 [ ] Guardian 프로필 폼
@@ -370,6 +394,8 @@ DB 테이블/마이그레이션
 ## S6-4. Guardian Web UI
 [x] 프로필 편집 폼 (동일 API)
 [x] 펫 등록/수정 폼 (동일 API)
+[x] 펫 등록/수정 직접 입력 확장: 이름/마이크로칩/생일/몸무게/메모
+[x] Health 탭 몸무게 섹션: 기간필터(1m/3m/6m/1y/all), 추이 그래프, 요약값, 기록 추가/삭제
 
 ## S6-5. 테스트 데이터 & 검증
 [ ] 테스트 Guardian 프로필 입력 (handle: @bangul_mom)
@@ -537,37 +563,40 @@ DB 테이블/마이그레이션
 > PRD §3.3 PRV-04~05, §3.2 GRD-07~08 | LLD §4.4 bookings, booking_completions, §4.3 feeds
 
 ## S10-1. DB
-[ ] bookings 테이블 (store_id, service_id, guardian_id, pet_id, status, requested_date/time, notes)
-[ ] booking_completions 테이블 (booking_id, photo_urls[], message, is_shared, shared_feed_id)
-[ ] feeds 테이블 (author_id, pet_id, content, content_translations, media_urls[], tags[], like_count, comment_count, source_type, source_id, provider_store_id)
-[ ] feed_likes 테이블 (feed_id, user_id, UNIQUE)
-[ ] feed_comments 테이블 (feed_id, user_id, content, parent_id)
+[x] bookings 테이블 (현재 스키마 기준: guardian_id/supplier_id/pet_id/status 등)
+[x] booking_completion_contents 테이블 (publish 요청/승인 워크플로우)
+[x] feeds 테이블 (feed_type/visibility/media/tags/approve 흐름 포함)
+[x] feed_likes 테이블 (feed_id, user_id, UNIQUE)
+[x] feed_comments 테이블 (post_id, author_user_id, parent_comment_id)
+[x] pet_album_media 테이블 (완료사진/피드/프로필/건강기록 통합 앨범)
 
 ## S10-2. API — 예약
-[ ] POST /api/v1/stores/:storeId/bookings — Guardian 예약 요청
+[x] POST /api/v1/stores/:storeId/bookings — Guardian 예약 요청
 [ ] GET /api/v1/stores/:id/bookings — Provider 예약 목록
-[ ] GET /api/v1/bookings — Guardian 내 예약 목록
-[ ] PUT /api/v1/bookings/:id/accept — Provider 수락
-[ ] PUT /api/v1/bookings/:id/complete — Provider 완료
-[ ] POST /api/v1/bookings/:id/completion — 완료사진 업로드
+[x] GET /api/v1/bookings — Guardian/Provider 내 예약 목록
+[x] PUT /api/v1/bookings/:id/status — 상태 전이 (created→in_progress→service_completed...)
+[x] POST /api/v1/bookings/:id/completion-request — 완료사진 업로드 + 공개요청
 
 ## S10-3. API — 피드 + 바이럴
-[ ] GET /api/v1/feeds — 피드 목록
-[ ] POST /api/v1/feeds — 피드 작성
-[ ] POST /api/v1/feeds/from-completion — 🔥 1-click 바이럴 공유
+[x] GET /api/v1/feeds — 피드 목록
+[x] POST /api/v1/feeds — 피드 작성
+[x] POST /api/v1/feeds/from-completion — 🔥 1-click 바이럴 공유
     - completion_id → 자동: 완료사진 + 매장 링크(provider_store_id) 포함
-[ ] POST /api/v1/feeds/:id/like / DELETE (좋아요)
-[ ] GET /api/v1/feeds/:id/comments / POST (댓글)
+[x] POST /api/v1/feeds/:id/like / DELETE (좋아요)
+[x] GET /api/v1/feeds/:id/comments / POST (댓글)
+[x] POST /api/v1/feeds/booking-completed/request — 공급자 완료게시물 공개요청
+[x] POST /api/v1/feeds/:id/approve — Guardian 승인/거절
+[x] 예약완료 승인 시 `pet_album_media` 상태 반영 (pending→active/hidden)
 
 ## S10-4. Mobile UI — 전체 플로우
-[ ] Guardian: 예약 요청 폼 (매장/서비스 선택 + 날짜/시간)
-[ ] Guardian: 예약 상태 확인 (requested→accepted→completed)
-[ ] Provider: 예약 수신 목록 + 수락 버튼
-[ ] Provider: 완료 처리 + 완료사진 업로드 (R2 → completions/{bookingId}/)
-[ ] Guardian: 완료 알림 + 완료사진 수신
-[ ] Guardian: 🔥 1-click 피드 공유 버튼 → POST /feeds/from-completion
+[x] Guardian: 예약 요청 폼 (매장/서비스 선택 + 날짜/시간)
+[x] Guardian: 예약 상태 확인 (requested→accepted→completed)
+[x] Provider: 예약 수신 목록 + 수락 버튼
+[x] Provider: 완료 처리 + 완료사진 업로드 (R2 → completions/{bookingId}/)
+[x] Guardian: 완료 알림 + 완료사진 수신
+[x] Guardian: 🔥 1-click 피드 공유 버튼 → POST /feeds/from-completion
     - 매장 링크 자동 포함 확인
-[ ] 피드 리스트 + 좋아요/댓글
+[x] 피드 리스트 + 좋아요/댓글
 
 ## S10-5. Guardian Web UI (최소)
 [ ] 피드 보기 (옵션)
@@ -682,6 +711,10 @@ DB 테이블/마이그레이션
 [ ] S10: 예약 → 완료 → 1-click 피드 공유 바이럴 루프
 [ ] S11: 광고(건강 화면 미노출) + 통계 대시보드
 [ ] S12: OAuth 전환 + 하드코딩 제로 + E2E 통과
+
+진행 메모 (2026-03-07):
+- S10은 DB/핵심 API(booking status, completion-request, approve, feed like/comment)가 선행 구현되어 "부분완료" 상태.
+- S6는 기본 완료 상태이며, `birthday/current_weight/weight logs/health chart` 확장까지 반영됨.
 
 ---
 

@@ -1,9 +1,25 @@
 # Pet Lifecycle SNS Platform — PRD.md
 # 제품 요구사항 정의서 (Product Requirements Document)
-# Status: MVP Planning (PLAN.md 기준 정렬)
+# Status: MVP In Progress (2026-03-07 동기화)
 
 Petfolio
 Your pet's life portfolio
+
+---
+
+## 0. 개발 현황 동기화 (2026-03-07)
+
+### 0.1 현재 반영 완료 (PLAN.md 기준)
+- Pet Album 통합 저장소: `pet_album_media` + `/api/v1/pet-album` CRUD
+- Feed/Booking 완료 승인 흐름과 Pet Album 자동 연동
+- My Pet 직접입력 확장: 이름/마이크로칩/생일/몸무게/메모
+- `pets` 확장: `birthday`, `current_weight` (기존 `birth_date`, `weight_kg`와 호환)
+- 몸무게 시계열 이력: `pet_weight_logs`
+- 몸무게 API: `GET/POST/PUT/DELETE /api/v1/pets/:id/weight-logs` + `range`
+- Guardian Web Health 탭: 몸무게 기간 필터/요약/추이 그래프/기록 추가
+
+### 0.2 진행 중/잔여
+- 모바일/웹 공통 피드 리스트 + 좋아요/댓글 UX 일관화 및 실기기 QA
 
 ---
 
@@ -114,7 +130,10 @@ Pet Life (방울아 놀자)
 > Guardian으로서, @handle(유니크), 국가, 관심사(마스터 선택), 소개(언어변환 옵션), 사진을 설정할 수 있다.
 
 **GRD-03: 펫 등록/관리**
-> Guardian으로서, 펫을 다중 등록하고 견종/질병 선택, 마이크로칩을 등록할 수 있다.
+> Guardian으로서, 펫을 다중 등록하고 견종/질병 선택과 함께 이름/마이크로칩/생일/몸무게/메모를 직접 입력해 관리할 수 있다.
+
+**GRD-03A: 몸무게 이력 관리**
+> Guardian으로서, 몸무게를 날짜별로 누적 기록하고 기간(1m/3m/6m/1y/all)별 추이를 그래프로 확인할 수 있다.
 
 **GRD-04: 질병 기록 (핵심 MVP)**
 > Guardian으로서, 펫의 질병 관련 기록을 LogType 템플릿에 따라 입력할 수 있다.
@@ -139,6 +158,9 @@ Pet Life (방울아 놀자)
 
 **GRD-08: Provider 서비스 예약**
 > Guardian으로서, Provider 매장/서비스를 조회하고 예약 요청/상태 확인을 할 수 있다.
+
+**GRD-09: Pet Gallery (Instagram-style)**
+> Guardian으로서, 프로필/피드/예약완료/건강기록/수동업로드 미디어를 하나의 Gallery 탭에서 source_type 기반으로 필터링해 조회할 수 있다.
 
 ---
 
@@ -213,6 +235,8 @@ Pet Life (방울아 놀자)
 | API-15 | Provider Service CRUD (가격/사진/할인) | P1 |
 | API-16 | Booking CRUD (요청/수락/완료) | P1 |
 | API-17 | 완료사진 전송 + 피드 공유 메타데이터 | P1 |
+| API-18 | Pet Album CRUD + source_type 필터 | P1 |
+| API-19 | Pet Weight Logs CRUD + range 조회 | P0 |
 
 ### 4.4 Phase D — Guardian Mobile (Flutter)
 
@@ -229,6 +253,8 @@ Pet Life (방울아 놀자)
 | MOB-09 | 피드 리스트/작성 (사진=R2) | P1 |
 | MOB-10 | Provider 매장/서비스 보기 + 예약 | P1 |
 | MOB-11 | 완료사진 수신 → 1-click 피드 공유 | P1 |
+| MOB-12 | Pet Profile Gallery 탭 (Instagram-style grid) | P1 |
+| MOB-13 | Health 탭 몸무게 이력/그래프 | P1 |
 
 ### 4.5 Phase E — Guardian Web (React)
 
@@ -242,6 +268,9 @@ Pet Life (방울아 놀자)
 | WEB-06 | 타임라인/리스트 보기 | P0 |
 | WEB-07 | 피드 보기/작성 (옵션) | P2 |
 | WEB-08 | 예약 상태 확인 (옵션) | P2 |
+| WEB-09 | My Pet 직접입력 확장 (생일/몸무게/메모) | P0 |
+| WEB-10 | 몸무게 이력 입력 + 추이 그래프 | P0 |
+| WEB-11 | Pet Gallery 탭 + source_type 필터 | P1 |
 
 ### 4.6 Phase F — Provider (Mobile 우선)
 
@@ -328,7 +357,7 @@ Pet Life (방울아 놀자)
 ├── 검색 (매장/서비스)
 ├── 내 펫
 │   ├── 펫 리스트
-│   ├── 펫 프로필 + 타임라인
+│   ├── 펫 프로필 + 타임라인 + Gallery
 │   ├── 기록 입력 (LogType 선택)
 │   │   ├── 혈당 기록
 │   │   ├── 인슐린 기록
@@ -337,7 +366,8 @@ Pet Life (방울아 놀자)
 │   │   ├── 운동 기록
 │   │   ├── 이벤트 기록
 │   │   └── 검사/병원 기록
-│   └── 위험 경고 (저혈당/급락)
+│   ├── 위험 경고 (저혈당/급락)
+│   └── Health (몸무게 이력/추이)
 ├── 예약
 │   ├── 예약 요청
 │   └── 상태 확인
@@ -354,6 +384,8 @@ Pet Life (방울아 놀자)
 로그인
 ├── 프로필 설정
 ├── 펫 등록/수정
+├── 몸무게 이력/추이 (Health)
+├── 펫 Gallery
 ├── 질병 기록 입력 (LogType 템플릿)
 ├── 검사결과 업로드/조회
 ├── 타임라인 보기
@@ -393,6 +425,7 @@ Pet Life (방울아 놀자)
 | 5 | Provider: 서비스/할인/완료사진 → 1-click 피드 공유 파이프라인 | F |
 | 6 | 하드코딩 텍스트 제로 — t(key) 달성 | 전체 |
 | 7 | 건강 기록 화면 광고 미노출 정책 적용 | G |
+| 8 | My Pet 생일/몸무게 이력 + Pet Gallery 통합 조회 동작 | C+D+E |
 
 ---
 

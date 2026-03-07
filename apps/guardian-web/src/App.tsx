@@ -93,6 +93,38 @@ type PetForm = {
   intro_text: string;
 };
 
+type Booking = {
+  id: string;
+  guardian_id: string;
+  supplier_id: string;
+  pet_id: string | null;
+  service_id: string | null;
+  business_category_id: string | null;
+  status: string;
+  requested_date: string | null;
+  requested_time: string | null;
+  notes: string | null;
+  created_at: string;
+};
+
+type AlbumMedia = {
+  id: string;
+  pet_id: string;
+  source_type: string;
+  source_id: string | null;
+  booking_id: string | null;
+  media_type: string;
+  media_url: string;
+  thumbnail_url: string | null;
+  caption: string | null;
+  tags: string[];
+  uploaded_by_user_id: string;
+  visibility_scope: string;
+  is_primary: number;
+  status: string;
+  created_at: string;
+};
+
 const CATEGORY_KEYS = {
   pet_type: 'pet_type',
   pet_breed: 'pet_breed',
@@ -230,6 +262,20 @@ export default function App() {
 
   const [pets, setPets] = useState<Pet[]>([]);
   const [petForm, setPetForm] = useState<PetForm>(emptyPetForm);
+  const [bookings, setBookings] = useState<Booking[]>([]);
+  const [selectedPetId, setSelectedPetId] = useState('');
+  const [albumSourceType, setAlbumSourceType] = useState('');
+  const [albumMediaType, setAlbumMediaType] = useState('');
+  const [albumSort, setAlbumSort] = useState<'latest' | 'oldest'>('latest');
+  const [albumMedia, setAlbumMedia] = useState<AlbumMedia[]>([]);
+  const [albumLoading, setAlbumLoading] = useState(false);
+  const [selectedMedia, setSelectedMedia] = useState<AlbumMedia | null>(null);
+  const [modalCaption, setModalCaption] = useState('');
+  const [bookingSupplierId, setBookingSupplierId] = useState('');
+  const [bookingPetId, setBookingPetId] = useState('');
+  const [bookingDate, setBookingDate] = useState('');
+  const [bookingTime, setBookingTime] = useState('');
+  const [bookingNotes, setBookingNotes] = useState('');
 
   const masterById = useMemo(() => {
     const all = Object.values(master).flat();
@@ -295,7 +341,15 @@ export default function App() {
         setProfile({ ...me.profile, interests: me.profile.interests || [] });
       }
       const petData = await api<{ pets: Pet[] }>('/api/v1/pets', {}, token);
-      setPets(petData.pets || []);
+      const loadedPets = petData.pets || [];
+      setPets(loadedPets);
+      if (!selectedPetId && loadedPets.length) {
+        setSelectedPetId(loadedPets[0].id);
+        setBookingPetId(loadedPets[0].id);
+      }
+
+      const bookingData = await api<{ bookings: Booking[] }>('/api/v1/bookings', {}, token);
+      setBookings(bookingData.bookings || []);
     } catch (e) {
       setMessage(e instanceof Error ? e.message : 'Load failed');
     } finally {
@@ -306,6 +360,32 @@ export default function App() {
   useEffect(() => {
     void loadAll();
   }, [token]);
+
+  useEffect(() => {
+    if (!token || !selectedPetId) {
+      setAlbumMedia([]);
+      return;
+    }
+    let cancelled = false;
+    setAlbumLoading(true);
+    void api<{ media: AlbumMedia[] }>(
+      `/api/v1/pet-album?pet_id=${encodeURIComponent(selectedPetId)}&include_pending=true${albumSourceType ? `&source_type=${encodeURIComponent(albumSourceType)}` : ''}${albumMediaType ? `&media_type=${encodeURIComponent(albumMediaType)}` : ''}&sort=${albumSort}&limit=180`,
+      {},
+      token,
+    )
+      .then((res) => {
+        if (!cancelled) setAlbumMedia(res.media || []);
+      })
+      .catch((e) => {
+        if (!cancelled) setMessage(e instanceof Error ? e.message : 'Failed to load gallery');
+      })
+      .finally(() => {
+        if (!cancelled) setAlbumLoading(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [token, selectedPetId, albumSourceType, albumMediaType, albumSort]);
 
   function toggleInterest(id: string) {
     setProfile((p) => ({
@@ -511,6 +591,114 @@ export default function App() {
     }
   }
 
+  async function createBookingRequest() {
+    if (!token) return;
+    if (!bookingSupplierId.trim()) {
+      setMessage('Supplier ID is required.');
+      return;
+    }
+    setLoading(true);
+    setMessage('');
+    try {
+      await api('/api/v1/bookings', {
+        method: 'POST',
+        body: JSON.stringify({
+          supplier_id: bookingSupplierId.trim(),
+          pet_id: bookingPetId || null,
+          requested_date: bookingDate || null,
+          requested_time: bookingTime || null,
+          notes: bookingNotes || null,
+        }),
+      }, token);
+      setMessage('Booking requested.');
+      setBookingDate('');
+      setBookingTime('');
+      setBookingNotes('');
+      const data = await api<{ bookings: Booking[] }>('/api/v1/bookings', {}, token);
+      setBookings(data.bookings || []);
+    } catch (e) {
+      setMessage(e instanceof Error ? e.message : 'Booking request failed');
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function shareApprovedCompletion(bookingId: string) {
+    if (!token) return;
+    setLoading(true);
+    setMessage('');
+    try {
+      await api('/api/v1/feeds/from-completion', {
+        method: 'POST',
+        body: JSON.stringify({ booking_id: bookingId, visibility_scope: 'public' }),
+      }, token);
+      setMessage('Shared completion feed created.');
+    } catch (e) {
+      setMessage(e instanceof Error ? e.message : 'Share failed');
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function updateAlbumCaption() {
+    if (!token || !selectedMedia) return;
+    setLoading(true);
+    setMessage('');
+    try {
+      await api(`/api/v1/pet-album/${selectedMedia.id}`, {
+        method: 'PUT',
+        body: JSON.stringify({ caption: modalCaption }),
+      }, token);
+      setAlbumMedia((rows) => rows.map((x) => (x.id === selectedMedia.id ? { ...x, caption: modalCaption } : x)));
+      setSelectedMedia((prev) => (prev ? { ...prev, caption: modalCaption } : prev));
+      setMessage('Caption updated.');
+    } catch (e) {
+      setMessage(e instanceof Error ? e.message : 'Update failed');
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function deleteAlbumItem() {
+    if (!token || !selectedMedia) return;
+    if (!window.confirm('Delete this media?')) return;
+    setLoading(true);
+    setMessage('');
+    try {
+      await api(`/api/v1/pet-album/${selectedMedia.id}`, { method: 'DELETE' }, token);
+      setAlbumMedia((rows) => rows.filter((x) => x.id !== selectedMedia.id));
+      setSelectedMedia(null);
+      setMessage('Media deleted.');
+    } catch (e) {
+      setMessage(e instanceof Error ? e.message : 'Delete failed');
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function approveBookingMedia(action: 'approve' | 'reject') {
+    if (!token || !selectedMedia?.source_id) return;
+    setLoading(true);
+    setMessage('');
+    try {
+      await api(`/api/v1/feeds/${selectedMedia.source_id}/approve`, {
+        method: 'POST',
+        body: JSON.stringify({
+          action,
+          visibility_scope: action === 'approve' ? 'public' : undefined,
+        }),
+      }, token);
+      const nextStatus = action === 'approve' ? 'active' : 'hidden';
+      setAlbumMedia((rows) => rows.map((x) => (x.id === selectedMedia.id ? { ...x, status: nextStatus } : x)));
+      setSelectedMedia((prev) => (prev ? { ...prev, status: nextStatus } : prev));
+      setMessage(action === 'approve' ? 'Booking media approved.' : 'Booking media rejected.');
+    } catch (e) {
+      setMessage(e instanceof Error ? e.message : 'Approve/Reject failed');
+    } finally {
+      setLoading(false);
+    }
+  }
+
   function logout() {
     localStorage.removeItem('guardian_access_token');
     setToken('');
@@ -696,6 +884,126 @@ export default function App() {
           </div>
         </div>
       </section>
+
+      <section className="panel">
+        <h2>Booking Request (Guardian)</h2>
+        <div className="grid2">
+          <div>
+            <label>Supplier User ID *</label>
+            <input value={bookingSupplierId} onChange={(e) => setBookingSupplierId(e.target.value)} placeholder="provider user id" />
+          </div>
+          <div>
+            <label>Pet</label>
+            <select value={bookingPetId} onChange={(e) => setBookingPetId(e.target.value)}>
+              <option value="">Select pet</option>
+              {pets.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
+            </select>
+          </div>
+          <div>
+            <label>Requested Date</label>
+            <input type="date" value={bookingDate} onChange={(e) => setBookingDate(e.target.value)} />
+          </div>
+          <div>
+            <label>Requested Time</label>
+            <input type="time" value={bookingTime} onChange={(e) => setBookingTime(e.target.value)} />
+          </div>
+        </div>
+        <label>Notes</label>
+        <textarea rows={2} value={bookingNotes} onChange={(e) => setBookingNotes(e.target.value)} />
+        <div className="row">
+          <button disabled={loading} onClick={() => void createBookingRequest()}>Create Booking</button>
+        </div>
+        <div className="pet-list">
+          {bookings.map((b) => (
+            <div key={b.id} className="pet-card">
+              <p className="muted">Booking: {b.id}</p>
+              <p className="muted">Status: {b.status}</p>
+              <p className="muted">Pet: {b.pet_id || '-'}</p>
+              <p className="muted">Supplier: {b.supplier_id}</p>
+              <div className="row">
+                <button onClick={() => void shareApprovedCompletion(b.id)}>Share Approved Completion</button>
+              </div>
+            </div>
+          ))}
+        </div>
+      </section>
+
+      <section className="panel">
+        <h2>Gallery</h2>
+        <div className="row">
+          <select value={selectedPetId} onChange={(e) => setSelectedPetId(e.target.value)}>
+            <option value="">Select pet</option>
+            {pets.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
+          </select>
+          <select value={albumSourceType} onChange={(e) => setAlbumSourceType(e.target.value)}>
+            <option value="">All Source</option>
+            <option value="feed">Feed</option>
+            <option value="booking_completed">Booking</option>
+            <option value="health_record">Health</option>
+            <option value="profile">Profile</option>
+            <option value="manual_upload">Manual</option>
+          </select>
+          <select value={albumMediaType} onChange={(e) => setAlbumMediaType(e.target.value)}>
+            <option value="">Image + Video</option>
+            <option value="image">Image Only</option>
+            <option value="video">Video Only</option>
+          </select>
+          <select value={albumSort} onChange={(e) => setAlbumSort(e.target.value as 'latest' | 'oldest')}>
+            <option value="latest">Latest</option>
+            <option value="oldest">Oldest</option>
+          </select>
+        </div>
+        {albumLoading && <p className="muted">Loading gallery...</p>}
+        {!albumLoading && (
+          <div className="album-grid">
+            {albumMedia.map((m) => (
+              <button
+                key={m.id}
+                className="album-tile"
+                onClick={() => {
+                  setSelectedMedia(m);
+                  setModalCaption(m.caption || '');
+                }}
+              >
+                <img src={m.thumbnail_url || m.media_url} alt={m.caption || m.source_type} />
+                <span className="badge">{m.source_type}</span>
+                <span className="status">{m.status}</span>
+              </button>
+            ))}
+          </div>
+        )}
+      </section>
+
+      {selectedMedia && (
+        <div className="modal-backdrop" onClick={() => setSelectedMedia(null)}>
+          <div className="modal-card" onClick={(e) => e.stopPropagation()}>
+            <div className="modal-media-wrap">
+              <img className="modal-media" src={selectedMedia.media_url} alt={selectedMedia.caption || selectedMedia.source_type} />
+            </div>
+            <div className="modal-meta">
+              <p><strong>Source:</strong> {selectedMedia.source_type}</p>
+              <p><strong>Status:</strong> {selectedMedia.status}</p>
+              <p><strong>Visibility:</strong> {selectedMedia.visibility_scope}</p>
+              <p><strong>Created:</strong> {selectedMedia.created_at}</p>
+              <label>Caption</label>
+              <textarea rows={3} value={modalCaption} onChange={(e) => setModalCaption(e.target.value)} />
+              <div className="row">
+                <button onClick={() => void updateAlbumCaption()}>Save Caption</button>
+                <button className="danger" onClick={() => void deleteAlbumItem()}>Delete</button>
+              </div>
+              {selectedMedia.source_type === 'booking_completed' && selectedMedia.status === 'pending' && (
+                <div className="row">
+                  <button onClick={() => void approveBookingMedia('approve')}>Approve</button>
+                  <button className="danger" onClick={() => void approveBookingMedia('reject')}>Reject</button>
+                </div>
+              )}
+              <div className="row">
+                <button onClick={() => setSelectedMedia(null)}>Close</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </main>
   );
 }

@@ -148,10 +148,92 @@ button.danger {
   margin: 0 0 8px;
 }
 
+.album-grid {
+  margin-top: 12px;
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.album-tile {
+  position: relative;
+  border: 1px solid #d7deea;
+  background: #ffffff;
+  padding: 0;
+  overflow: hidden;
+}
+
+.album-tile img {
+  width: 100%;
+  aspect-ratio: 1 / 1;
+  object-fit: cover;
+  display: block;
+}
+
+.album-tile .badge,
+.album-tile .status {
+  position: absolute;
+  font-size: 11px;
+  line-height: 1;
+  padding: 4px 6px;
+  border-radius: 6px;
+  background: rgba(0, 0, 0, 0.65);
+  color: #fff;
+}
+
+.album-tile .badge {
+  top: 6px;
+  left: 6px;
+}
+
+.album-tile .status {
+  bottom: 6px;
+  right: 6px;
+}
+
+.modal-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(8, 15, 30, 0.65);
+  display: grid;
+  place-items: center;
+  padding: 16px;
+}
+
+.modal-card {
+  width: min(980px, 100%);
+  max-height: calc(100vh - 32px);
+  overflow: auto;
+  border-radius: 12px;
+  background: #fff;
+  border: 1px solid #d6dceb;
+  display: grid;
+  grid-template-columns: 1.2fr 0.8fr;
+}
+
+.modal-media-wrap {
+  background: #f4f7ff;
+  display: grid;
+  place-items: center;
+  padding: 12px;
+}
+
+.modal-media {
+  width: 100%;
+  max-height: 72vh;
+  object-fit: contain;
+}
+
+.modal-meta {
+  padding: 14px;
+}
+
 @media (max-width: 900px) {
   .grid2,
   .pet-layout,
-  .check-grid {
+  .check-grid,
+  .album-grid,
+  .modal-card {
     grid-template-columns: 1fr;
   }
 
