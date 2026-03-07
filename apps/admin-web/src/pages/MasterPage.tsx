@@ -13,8 +13,15 @@ export default function MasterPage() {
   const [selectedSubItemId, setSelectedSubItemId] = useState('');
   const [parentItems, setParentItems] = useState<MasterItem[]>([]);
   const [diseaseGroups, setDiseaseGroups] = useState<MasterItem[]>([]);
-  const [diseases, setDiseases] = useState<MasterItem[]>([]);
+  const [diseaseMeasurements, setDiseaseMeasurements] = useState<MasterItem[]>([]);
   const [diseaseDevices, setDiseaseDevices] = useState<MasterItem[]>([]);
+  const [diseaseContexts, setDiseaseContexts] = useState<MasterItem[]>([]);
+  const [diseaseJudgements, setDiseaseJudgements] = useState<MasterItem[]>([]);
+  const [selectedDiseaseGroupId, setSelectedDiseaseGroupId] = useState('');
+  const [selectedDiseaseMeasurementId, setSelectedDiseaseMeasurementId] = useState('');
+  const [selectedDiseaseDeviceId, setSelectedDiseaseDeviceId] = useState('');
+  const [selectedDiseaseContextId, setSelectedDiseaseContextId] = useState('');
+  const [selectedDiseaseJudgementId, setSelectedDiseaseJudgementId] = useState('');
   const [treeLoading, setTreeLoading] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -53,18 +60,24 @@ export default function MasterPage() {
   const loadDiseaseTree = useCallback(async () => {
     setTreeLoading(true);
     try {
-      const [groups, diseaseList, devices] = await Promise.all([
+      const [groups, measurementTypes, devices, contexts, judgements] = await Promise.all([
         api.master.items.list('disease_group'),
-        api.master.items.list('disease_type'),
+        api.master.items.list('disease_measurement_type'),
         api.master.items.list('disease_device_type'),
+        api.master.items.list('disease_measurement_context'),
+        api.master.items.list('disease_judgement_rule_type'),
       ]);
       setDiseaseGroups(groups);
-      setDiseases(diseaseList);
+      setDiseaseMeasurements(measurementTypes);
       setDiseaseDevices(devices);
+      setDiseaseContexts(contexts);
+      setDiseaseJudgements(judgements);
     } catch (e) {
       setDiseaseGroups([]);
-      setDiseases([]);
+      setDiseaseMeasurements([]);
       setDiseaseDevices([]);
+      setDiseaseContexts([]);
+      setDiseaseJudgements([]);
       setError(e instanceof Error ? e.message : 'Error');
     } finally {
       setTreeLoading(false);
@@ -93,15 +106,6 @@ export default function MasterPage() {
     return categories.find((cat) => normalizeCategoryKey(cat.key) === normalized) ?? null;
   }, [categories, normalizeCategoryKey]);
 
-  const jumpToCategory = useCallback((catKey: string) => {
-    const target = findCategoryByKey(catKey);
-    if (!target) {
-      setError(`${t('admin.master.error_category_not_found')} (${catKey})`);
-      return;
-    }
-    setSelectedCat(target);
-  }, [findCategoryByKey, t]);
-
   useEffect(() => { void loadCategories(); }, [loadCategories]);
   useEffect(() => { void loadDiseaseTree(); }, [loadDiseaseTree]);
   useEffect(() => {
@@ -113,6 +117,19 @@ export default function MasterPage() {
     setSelectedItemId('');
     setSelectedSubItemId('');
   }, [selectedCat?.id]);
+
+  useEffect(() => {
+    setSelectedDiseaseMeasurementId('');
+    setSelectedDiseaseDeviceId('');
+    setSelectedDiseaseContextId('');
+    setSelectedDiseaseJudgementId('');
+  }, [selectedDiseaseGroupId]);
+
+  useEffect(() => {
+    setSelectedDiseaseDeviceId('');
+    setSelectedDiseaseContextId('');
+    setSelectedDiseaseJudgementId('');
+  }, [selectedDiseaseMeasurementId]);
 
   useEffect(() => {
     async function loadParentItems() {
@@ -387,6 +404,35 @@ export default function MasterPage() {
     [subItems, selectedSubItemId],
   );
   const optionTarget = selectedSubItem || selectedItem;
+  const selectedDiseaseMeasurement = useMemo(
+    () => diseaseMeasurements.find((item) => item.id === selectedDiseaseMeasurementId) || null,
+    [diseaseMeasurements, selectedDiseaseMeasurementId],
+  );
+  const selectedDiseaseDevice = useMemo(
+    () => diseaseDevices.find((item) => item.id === selectedDiseaseDeviceId) || null,
+    [diseaseDevices, selectedDiseaseDeviceId],
+  );
+  const selectedDiseaseContext = useMemo(
+    () => diseaseContexts.find((item) => item.id === selectedDiseaseContextId) || null,
+    [diseaseContexts, selectedDiseaseContextId],
+  );
+  const selectedDiseaseJudgement = useMemo(
+    () => diseaseJudgements.find((item) => item.id === selectedDiseaseJudgementId) || null,
+    [diseaseJudgements, selectedDiseaseJudgementId],
+  );
+  const diseaseMeasurementsFiltered = useMemo(() => {
+    if (!selectedDiseaseGroupId) return diseaseMeasurements;
+    return diseaseMeasurements.filter((item) => item.parent_id === selectedDiseaseGroupId);
+  }, [diseaseMeasurements, selectedDiseaseGroupId]);
+  const diseaseDevicesFiltered = useMemo(() => {
+    if (!selectedDiseaseMeasurementId) return diseaseDevices;
+    return diseaseDevices.filter((item) => item.parent_id === selectedDiseaseMeasurementId);
+  }, [diseaseDevices, selectedDiseaseMeasurementId]);
+  const diseaseContextsFiltered = useMemo(() => {
+    if (!selectedDiseaseMeasurementId) return diseaseContexts;
+    return diseaseContexts.filter((item) => item.parent_id === selectedDiseaseMeasurementId);
+  }, [diseaseContexts, selectedDiseaseMeasurementId]);
+  const diseaseOptionTarget = selectedDiseaseContext || selectedDiseaseDevice || selectedDiseaseJudgement || selectedDiseaseMeasurement;
 
   return (
     <>
@@ -399,88 +445,148 @@ export default function MasterPage() {
 
         <div className="card" style={{ marginBottom: 16 }}>
           <div className="card-header">
-            <div className="card-title">{t('admin.master.disease_nav_title')}</div>
+            <div className="card-title">질병군 → 질병측정항목 → 질병장치 → 질병측정컨텍스트 → 기타</div>
+            <button className="btn btn-secondary btn-sm" onClick={() => void loadDiseaseTree()} disabled={treeLoading}>
+              {treeLoading ? t('admin.common.loading', 'Loading...') : t('admin.common.refresh', 'Refresh')}
+            </button>
           </div>
-          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', padding: '12px 16px' }}>
-            <button className="btn btn-secondary btn-sm" onClick={() => jumpToCategory('disease_group')}>{t('admin.master.nav_disease_group')}</button>
-            <button className="btn btn-secondary btn-sm" onClick={() => jumpToCategory('disease_type')}>{t('admin.master.nav_disease_type')}</button>
-            <button className="btn btn-secondary btn-sm" onClick={() => jumpToCategory('disease_device_type')}>{t('admin.master.nav_disease_device_type')}</button>
-            <button className="btn btn-secondary btn-sm" onClick={() => jumpToCategory('disease_measurement_type')}>{t('admin.master.nav_disease_measurement_type')}</button>
-            <button className="btn btn-secondary btn-sm" onClick={() => jumpToCategory('disease_measurement_context')}>{t('admin.master.nav_disease_measurement_context')}</button>
-            <button className="btn btn-secondary btn-sm" onClick={() => jumpToCategory('diet_type')}>{t('admin.master.nav_diet_type')}</button>
-            <button className="btn btn-secondary btn-sm" onClick={() => jumpToCategory('diet_subtype')}>{t('admin.master.nav_diet_subtype')}</button>
-            <button className="btn btn-secondary btn-sm" onClick={() => jumpToCategory('allergy_group')}>{t('admin.master.nav_allergy_group')}</button>
-            <button className="btn btn-secondary btn-sm" onClick={() => jumpToCategory('allergy_type')}>{t('admin.master.nav_allergy_type')}</button>
-          </div>
-          <div style={{ padding: '0 16px 12px', fontSize: 12, color: 'var(--text-muted)' }}>
-            {t('admin.master.disease_nav_desc_prefix')} <b>disease_device_type</b>{t('admin.master.disease_nav_desc_middle')} <b>{t('admin.master.parent', '부모')}</b>{t('admin.master.disease_nav_desc_suffix')}
-          </div>
-        </div>
-
-        <div className="card" style={{ marginBottom: 16 }}>
-          <div className="card-header">
-            <div className="card-title">{t('admin.master.disease_tree_title')}</div>
-            <div style={{ display: 'flex', gap: 6 }}>
-              <button className="btn btn-secondary btn-sm" onClick={() => void loadDiseaseTree()} disabled={treeLoading}>
-                {treeLoading ? t('admin.common.loading', 'Loading...') : t('admin.common.refresh', 'Refresh')}
-              </button>
-              <button className="btn btn-primary btn-sm" onClick={() => void openCreateItemAtCategory('disease_group', null)}>
-                {t('admin.master.tree_add_group')}
-              </button>
-            </div>
-          </div>
-          <div style={{ padding: '12px 16px' }}>
-            {treeLoading && <div style={{ color: 'var(--text-muted)', fontSize: 13 }}>{t('admin.master.tree_loading')}</div>}
-            {!treeLoading && diseaseGroups.length === 0 && (
-              <div style={{ color: 'var(--text-muted)', fontSize: 13 }}>{t('admin.master.tree_no_group')}</div>
-            )}
-            {!treeLoading && diseaseGroups.length > 0 && (
-              <div style={{ display: 'grid', gap: 10 }}>
-                {diseaseGroups.map((group) => {
-                  const diseasesInGroup = diseases.filter((d) => d.parent_id === group.id);
-                  return (
-                    <div key={group.id} style={{ border: '1px solid var(--border)', borderRadius: 10, padding: 10 }}>
-                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
-                        <div style={{ fontWeight: 700 }}>{getItemLabel(group)}</div>
-                        <div style={{ display: 'flex', gap: 6 }}>
-                          <button className="btn btn-secondary btn-sm" onClick={() => void jumpToCategory('disease_group')}>{t('admin.common.open', 'Open')}</button>
-                          <button className="btn btn-primary btn-sm" onClick={() => void openCreateItemAtCategory('disease_type', group.id)}>{t('admin.master.tree_add_disease')}</button>
-                        </div>
-                      </div>
-                      <div style={{ marginTop: 8, display: 'grid', gap: 8 }}>
-                        {diseasesInGroup.length === 0 && (
-                          <div style={{ color: 'var(--text-muted)', fontSize: 12 }}>{t('admin.master.tree_no_disease')}</div>
-                        )}
-                        {diseasesInGroup.map((disease) => {
-                          const devicesInDisease = diseaseDevices.filter((device) => device.parent_id === disease.id);
-                          return (
-                            <div key={disease.id} style={{ border: '1px dashed var(--border)', borderRadius: 8, padding: 8, marginLeft: 12 }}>
-                              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
-                                <div style={{ fontWeight: 600 }}>{getItemLabel(disease)}</div>
-                                <div style={{ display: 'flex', gap: 6 }}>
-                                  <button className="btn btn-secondary btn-sm" onClick={() => void jumpToCategory('disease_type')}>{t('admin.common.open', 'Open')}</button>
-                                  <button className="btn btn-primary btn-sm" onClick={() => void openCreateItemAtCategory('disease_device_type', disease.id)}>{t('admin.master.tree_add_device')}</button>
-                                </div>
-                              </div>
-                              <div style={{ marginTop: 6, marginLeft: 12, display: 'grid', gap: 4 }}>
-                                {devicesInDisease.length === 0 && (
-                                  <div style={{ color: 'var(--text-muted)', fontSize: 12 }}>{t('admin.master.tree_no_device')}</div>
-                                )}
-                                {devicesInDisease.map((device) => (
-                                  <div key={device.id} style={{ fontSize: 13 }}>
-                                    - {getItemLabel(device)}
-                                  </div>
-                                ))}
-                              </div>
-                            </div>
-                          );
-                        })}
-                      </div>
-                    </div>
-                  );
-                })}
+          <div className="master-disease-grid">
+            <section className="master-disease-col">
+              <header>
+                <h4>질병군</h4>
+                <button className="btn btn-primary btn-sm" onClick={() => void openCreateItemAtCategory('disease_group', null)}>+ 추가</button>
+              </header>
+              <div className="master-column-list">
+                {diseaseGroups.map((item) => (
+                  <button
+                    key={item.id}
+                    className={`master-row-btn ${selectedDiseaseGroupId === item.id ? 'active' : ''}`}
+                    onClick={() => setSelectedDiseaseGroupId(item.id)}
+                  >
+                    <div className="master-row-title">{getItemLabel(item)}</div>
+                  </button>
+                ))}
+                {!diseaseGroups.length && <div className="master-empty">데이터 없음</div>}
               </div>
-            )}
+            </section>
+
+            <section className="master-disease-col">
+              <header>
+                <h4>질병측정항목</h4>
+                <button
+                  className="btn btn-primary btn-sm"
+                  disabled={!selectedDiseaseGroupId}
+                  onClick={() => void openCreateItemAtCategory('disease_measurement_type', selectedDiseaseGroupId || null)}
+                >
+                  + 추가
+                </button>
+              </header>
+              <div className="master-column-list">
+                {diseaseMeasurementsFiltered.map((item) => (
+                  <button
+                    key={item.id}
+                    className={`master-row-btn ${selectedDiseaseMeasurementId === item.id ? 'active' : ''}`}
+                    onClick={() => setSelectedDiseaseMeasurementId(item.id)}
+                  >
+                    <div className="master-row-title">{getItemLabel(item)}</div>
+                  </button>
+                ))}
+                {!diseaseMeasurementsFiltered.length && <div className="master-empty">데이터 없음</div>}
+              </div>
+            </section>
+
+            <section className="master-disease-col">
+              <header>
+                <h4>질병장치</h4>
+                <button
+                  className="btn btn-primary btn-sm"
+                  disabled={!selectedDiseaseMeasurementId}
+                  onClick={() => void openCreateItemAtCategory('disease_device_type', selectedDiseaseMeasurementId || null)}
+                >
+                  + 추가
+                </button>
+              </header>
+              <div className="master-column-list">
+                {diseaseDevicesFiltered.map((item) => (
+                  <button
+                    key={item.id}
+                    className={`master-row-btn ${selectedDiseaseDeviceId === item.id ? 'active' : ''}`}
+                    onClick={() => setSelectedDiseaseDeviceId(item.id)}
+                  >
+                    <div className="master-row-title">{getItemLabel(item)}</div>
+                  </button>
+                ))}
+                {!diseaseDevicesFiltered.length && <div className="master-empty">데이터 없음</div>}
+              </div>
+            </section>
+
+            <section className="master-disease-col">
+              <header>
+                <h4>질병측정컨텍스트</h4>
+                <button
+                  className="btn btn-primary btn-sm"
+                  disabled={!selectedDiseaseMeasurementId}
+                  onClick={() => void openCreateItemAtCategory('disease_measurement_context', selectedDiseaseMeasurementId || null)}
+                >
+                  + 추가
+                </button>
+              </header>
+              <div className="master-column-list">
+                {diseaseContextsFiltered.map((item) => (
+                  <button
+                    key={item.id}
+                    className={`master-row-btn ${selectedDiseaseContextId === item.id ? 'active' : ''}`}
+                    onClick={() => setSelectedDiseaseContextId(item.id)}
+                  >
+                    <div className="master-row-title">{getItemLabel(item)}</div>
+                  </button>
+                ))}
+                {!diseaseContextsFiltered.length && <div className="master-empty">데이터 없음</div>}
+              </div>
+            </section>
+
+            <section className="master-disease-col">
+              <header>
+                <h4>기타</h4>
+                <button className="btn btn-primary btn-sm" onClick={() => void openCreateItemAtCategory('disease_judgement_rule_type', null)}>+ 추가</button>
+              </header>
+              <div className="master-column-list">
+                {diseaseJudgements.map((item) => (
+                  <button
+                    key={item.id}
+                    className={`master-row-btn ${selectedDiseaseJudgementId === item.id ? 'active' : ''}`}
+                    onClick={() => setSelectedDiseaseJudgementId(item.id)}
+                  >
+                    <div className="master-row-title">{getItemLabel(item)}</div>
+                  </button>
+                ))}
+                {!diseaseJudgements.length && <div className="master-empty">데이터 없음</div>}
+              </div>
+              <div className="master-option-panel">
+                <div className="master-option-row">
+                  <div className="master-row-sub">측정항목</div>
+                  <div className="master-row-title">{selectedDiseaseMeasurement ? getItemLabel(selectedDiseaseMeasurement) : '-'}</div>
+                </div>
+                <div className="master-option-row">
+                  <div className="master-row-sub">장치</div>
+                  <div className="master-row-title">{selectedDiseaseDevice ? getItemLabel(selectedDiseaseDevice) : '-'}</div>
+                </div>
+                <div className="master-option-row">
+                  <div className="master-row-sub">컨텍스트</div>
+                  <div className="master-row-title">{selectedDiseaseContext ? getItemLabel(selectedDiseaseContext) : '-'}</div>
+                </div>
+                <div className="master-option-row">
+                  <div className="master-row-sub">판단기준</div>
+                  <div className="master-row-title">{selectedDiseaseJudgement ? getItemLabel(selectedDiseaseJudgement) : '-'}</div>
+                </div>
+                {diseaseOptionTarget && (
+                  <div className="td-actions">
+                    <button className="btn btn-secondary btn-sm" onClick={() => openEditItem(diseaseOptionTarget)}>편집</button>
+                    <button className="btn btn-danger btn-sm" onClick={() => void handleItemDelete(diseaseOptionTarget)}>삭제</button>
+                  </div>
+                )}
+              </div>
+            </section>
           </div>
         </div>
 
