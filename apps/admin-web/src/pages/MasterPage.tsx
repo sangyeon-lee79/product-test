@@ -62,6 +62,7 @@ export default function MasterPage() {
         'coat_type',
         'activity_level',
         'neuter_status',
+        'pet_color',
         'living_style',
         'grooming_cycle',
         'weight_unit',
@@ -105,7 +106,7 @@ export default function MasterPage() {
     if (key === 'pet_type') return ['pet_type', 'pet_type', null, null, null];
     if (key === 'coat_length') return ['coat_length', 'grooming_cycle', null, null, null];
     if (key === 'temperament_type') return ['temperament_type', 'activity_level', null, null, null];
-    if (key === 'gender') return ['gender', 'neuter_status', null, null, null];
+    if (key === 'gender') return ['gender', 'pet_color', null, null, null];
     if (key === 'body_size') return ['body_size', 'weight_unit', null, null, null];
     if (key === 'diet_type') return ['diet_type', 'diet_subtype', null, null, null];
     if (key === 'allergy_group') return ['allergy_group', 'allergy_type', null, null, null];
