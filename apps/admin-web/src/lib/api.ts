@@ -148,7 +148,7 @@ export const api = {
     },
     categories: {
       list: () => request<MasterCategory[]>('/api/v1/admin/master/categories'),
-      create: (data: { sort_order?: number; translations?: Record<string, string> }) =>
+      create: (data: { key: string; sort_order?: number; translations?: Record<string, string> }) =>
         request<MasterCategory>('/api/v1/admin/master/categories', { method: 'POST', body: JSON.stringify(data) }),
       update: (id: string, data: { sort_order?: number; is_active?: number; translations?: Record<string, string> }) =>
         request<MasterCategory>(`/api/v1/admin/master/categories/${id}`, { method: 'PUT', body: JSON.stringify(data) }),

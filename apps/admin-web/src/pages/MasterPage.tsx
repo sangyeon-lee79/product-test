@@ -20,7 +20,7 @@ export default function MasterPage() {
 
   // Category modal
   const [catModal, setCatModal] = useState<'create' | 'edit' | null>(null);
-  const [catForm, setCatForm] = useState<{ sort_order: string }>({ sort_order: '0' });
+  const [catForm, setCatForm] = useState<{ key: string; sort_order: string }>({ key: '', sort_order: '0' });
   const [catTrans, setCatTrans] = useState<Record<string, string>>(emptyTrans());
   const [catSaving, setCatSaving] = useState(false);
 
@@ -126,7 +126,10 @@ export default function MasterPage() {
   }, [selectedCat, getParentCategoryKey]);
 
   function flash(msg: string) { setSuccess(msg); setTimeout(() => setSuccess(''), 3000); }
-  function getCategoryLabel(cat: MasterCategory) { return cat.ko_name?.trim() || cat.key; }
+  function getCategoryLabel(cat: MasterCategory) {
+    const translated = t(`master.${cat.key.replace(/^master\./, '')}`, '');
+    return cat.ko_name?.trim() || translated || t('admin.master.unnamed_category', '이름 없음');
+  }
   function getItemLabel(item: MasterItem) { return item.ko_name?.trim() || item.ko?.trim() || item.key; }
   async function openCreateItemAtCategory(catKey: string, parentId: string | null = null) {
     const cat = findCategoryByKey(catKey);
@@ -206,6 +209,9 @@ export default function MasterPage() {
     setCatSaving(true); setError('');
     try {
       if (catModal === 'create') {
+        const key = (catForm.key || '').trim().replace(/^master\./, '');
+        if (!key) throw new Error('Key는 필수입니다.');
+        if (!/^[a-z0-9_]+$/.test(key)) throw new Error('Key는 소문자/숫자/언더스코어만 허용됩니다.');
         const ko = (catTrans.ko || '').trim();
         if (!ko) throw new Error('한국어 표시명은 필수입니다.');
 
@@ -220,7 +226,7 @@ export default function MasterPage() {
           };
         }
 
-        await api.master.categories.create({ sort_order: parseInt(catForm.sort_order), translations });
+        await api.master.categories.create({ key, sort_order: parseInt(catForm.sort_order), translations });
         flash(t('admin.master.success_cat_add', '카테고리가 추가되었습니다.'));
       } else if (catModal === 'edit' && selectedCat) {
         const ko = (catTrans.ko || '').trim();
@@ -424,7 +430,7 @@ export default function MasterPage() {
           <div className="card">
             <div className="card-header">
               <div className="card-title">{t('admin.master.categories', '카테고리')}</div>
-              <button className="btn btn-primary btn-sm" onClick={() => { setCatForm({ sort_order: '0' }); setCatTrans(emptyTrans()); setCatModal('create'); }}>{t('admin.master.add_category', '+ 추가')}</button>
+              <button className="btn btn-primary btn-sm" onClick={() => { setCatForm({ key: '', sort_order: '0' }); setCatTrans(emptyTrans()); setCatModal('create'); }}>{t('admin.master.add_category', '+ 추가')}</button>
             </div>
             {loading ? <div className="loading-center"><span className="spinner" /></div> : (
               <div>
@@ -436,7 +442,6 @@ export default function MasterPage() {
                     onClick={() => setSelectedCat(cat)}>
                     <div>
                       <div style={{ fontWeight: 500, fontSize: 13 }}>{getCategoryLabel(cat)}</div>
-                      <div style={{ fontSize: 11, color: 'var(--text-muted)', fontFamily: 'monospace' }}>{cat.key}</div>
                       <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>sort: {cat.sort_order}</div>
                     </div>
                     <div style={{ display: 'flex', gap: 4 }}>
@@ -445,7 +450,7 @@ export default function MasterPage() {
                       </span>
                       <button className="btn btn-secondary btn-sm" onClick={e => {
                         e.stopPropagation();
-                        setCatForm({ sort_order: String(cat.sort_order) });
+                        setCatForm({ key: cat.key, sort_order: String(cat.sort_order) });
                         setCatTrans(categoryToTranslations(cat));
                         setSelectedCat(cat);
                         setCatModal('edit');
@@ -519,10 +524,15 @@ export default function MasterPage() {
             </div>
             <div className="modal-body" style={{ maxHeight: '70vh', overflowY: 'auto' }}>
               {error && <div className="alert alert-error">{error}</div>}
-              {catModal === 'edit' && selectedCat && (
+              {catModal === 'create' && (
                 <div className="form-group">
-                  <label className="form-label">{t('admin.common.key', '키')}</label>
-                  <input className="form-input font-mono" value={selectedCat.key} readOnly />
+                  <label className="form-label">Key *</label>
+                  <input
+                    className="form-input font-mono"
+                    value={catForm.key}
+                    onChange={e => setCatForm(f => ({ ...f, key: e.target.value }))}
+                    placeholder="예: disease_device_type"
+                  />
                 </div>
               )}
               <div className="form-group">

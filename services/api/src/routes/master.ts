@@ -24,16 +24,12 @@ function randomToken(length = 6): string {
   return out;
 }
 
-async function generateCategoryKey(env: Env): Promise<string> {
-  const normalized = await hasColumn(env, 'master_categories', 'code');
-  for (let i = 0; i < 10; i++) {
-    const candidate = `master.${randomToken(6)}`;
-    const exists = normalized
-      ? await env.DB.prepare('SELECT id FROM master_categories WHERE code = ?').bind(candidate).first()
-      : await env.DB.prepare('SELECT id FROM master_categories WHERE key = ?').bind(candidate).first();
-    if (!exists) return candidate;
-  }
-  throw new Error('Failed to generate unique category key');
+function normalizeMasterKey(raw: string): string {
+  return raw.trim().replace(/^master\./, '');
+}
+
+function isValidMasterKey(raw: string): boolean {
+  return /^[a-z0-9_]+$/.test(raw);
 }
 
 async function generateItemKey(env: Env, categoryId: string): Promise<string> {
@@ -375,13 +371,20 @@ export async function handleMaster(request: Request, env: Env, url: URL): Promis
         return ok(row);
       }
       if (request.method === 'POST') {
-        let body: { sort_order?: number; translations?: Record<string, string> };
+        let body: { key?: string; sort_order?: number; translations?: Record<string, string> };
         try { body = await request.json() as typeof body; } catch { return err('Invalid JSON'); }
+        const inputKey = normalizeMasterKey(String(body.key || ''));
+        if (!inputKey) return err('key required');
+        if (!isValidMasterKey(inputKey)) return err('invalid key format');
         const koName = body.translations?.ko?.trim();
-        if (!koName) return err('ko translation required');
+        if (!koName) return err('한국어 표시명을 입력해야 카테고리를 생성할 수 있습니다.');
 
-        const autoKey = await generateCategoryKey(env);
-        const row = { id: newId(), key: autoKey, sort_order: body.sort_order ?? 0, is_active: 1, created_at: now(), updated_at: now() };
+        const exists = normalized
+          ? await env.DB.prepare('SELECT id FROM master_categories WHERE code = ? LIMIT 1').bind(inputKey).first<{ id: string }>()
+          : await env.DB.prepare('SELECT id FROM master_categories WHERE key = ? LIMIT 1').bind(inputKey).first<{ id: string }>();
+        if (exists) return err('이미 존재하는 key 입니다.', 409, 'duplicate_key');
+
+        const row = { id: newId(), key: inputKey, sort_order: body.sort_order ?? 0, is_active: 1, created_at: now(), updated_at: now() };
         if (normalized) {
           await env.DB.prepare(
             "INSERT INTO master_categories (id,code,sort_order,status,created_at,updated_at) VALUES (?,?,?,'active',?,?)"
@@ -391,9 +394,7 @@ export async function handleMaster(request: Request, env: Env, url: URL): Promis
             'INSERT INTO master_categories (id,key,sort_order,is_active,created_at,updated_at) VALUES (?,?,?,?,?,?)'
           ).bind(row.id, row.key, row.sort_order, row.is_active, row.created_at, row.updated_at).run();
         }
-        if (body.translations && Object.values(body.translations).some(v => v)) {
-          await upsertI18n(env, categoryI18nKey(row.key), body.translations);
-        }
+        await upsertI18n(env, categoryI18nKey(row.key), body.translations ?? { ko: koName });
         return created({ ...row, ko_name: koName });
       }
       if (request.method === 'PUT' && id) {
