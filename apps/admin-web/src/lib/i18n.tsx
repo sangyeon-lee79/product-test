@@ -85,11 +85,27 @@ export function I18nProvider({ children }: { children: ReactNode }) {
     setLangState(l);
   };
 
+  const missingByLang: Record<Lang, string> = {
+    ko: '번역 누락',
+    en: 'Missing translation',
+    ja: '翻訳不足',
+    zh_cn: '缺少翻译',
+    zh_tw: '缺少翻譯',
+    es: 'Falta traduccion',
+    fr: 'Traduction manquante',
+    de: 'Fehlende Uebersetzung',
+    pt: 'Traducao ausente',
+    vi: 'Thieu ban dich',
+    th: 'ไม่มีคำแปล',
+    id_lang: 'Terjemahan tidak ada',
+    ar: 'ترجمة مفقودة',
+  };
+
   const t = (key: string, fallback?: string) => {
     const value = trans[key];
     if (value !== undefined && value !== null && String(value).trim() !== '') return value;
     if (fallback !== undefined) return fallback;
-    return key;
+    return missingByLang[lang] || 'Missing translation';
   };
 
   return (

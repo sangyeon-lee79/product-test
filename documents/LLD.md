@@ -272,6 +272,31 @@ CREATE TABLE i18n_translations (
 
 CREATE INDEX idx_i18n_page ON i18n_translations(page);
 CREATE INDEX idx_i18n_active ON i18n_translations(is_active);
+
+### i18n Rendering Contract
+- 저장값: `key/code/id`
+- 표시값: `i18n_translations`의 locale별 label
+- 금지: UI에서 key 직접 출력
+- 누락 처리: key 노출 대신 누락 상태 텍스트 표시
+
+### Master Save Contract
+- Category/Item 생성 시 key 단독 저장 금지
+- `ko + en + ja + zh_cn + zh_tw + es + fr + de + pt + vi + th + id_lang + ar` 전부 비어있지 않아야 저장 허용
+- category key 미입력 시 서버 자동 생성 허용
+- item key는 서버 자동 생성
+- hierarchy 강제:
+  - `disease_type` -> parent `disease_group`
+  - `disease_device_type` -> parent `disease_type`
+  - `disease_measurement_type` -> parent `disease_device_type`
+  - `disease_measurement_context` -> parent `disease_measurement_type`
+
+### Pre-Deploy Gate
+- 배포 전 `verify_master_i18n_gate.sql` 검사 필수
+- 실패 조건:
+  - i18n row 누락
+  - 언어 컬럼 공란
+  - key literal 누출(master.* 문자열)
+  - parent/level 계층 위반
 ```
 
 #### 질병 연결 매핑 테이블

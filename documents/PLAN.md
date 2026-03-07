@@ -258,6 +258,18 @@ DB 테이블/마이그레이션
 [x] Admin Web — i18n 훅/유틸
 [ ] Guardian Web — i18n 훅/유틸
 
+## I18N Hard Rules (Mandatory)
+- 하드코딩 텍스트 금지: 버튼, 컬럼명, placeholder, 안내문구, 상태값, validation/error, empty state 전부 i18n key 사용.
+- key 직접 출력 금지: UI는 항상 번역 label 표시. 번역 누락 시 key 대신 "번역 누락" 상태 표시.
+- Master category/item 저장 조건:
+  - key only 저장 금지
+  - 한국어 표시명 + 13개 언어 i18n 레코드 완성 후 저장
+  - item 생성은 key 자동 생성(서버), category는 key 미입력 시 자동 생성 허용
+- Seed 필수 구조: `key + ko + parent relation + level-consistent hierarchy`.
+- 배포 차단 게이트:
+  - `npm run check:i18n:master` 통과 전 배포 금지
+  - 누락 번역/계층 위반 발견 시 배포 실패 처리
+
 ## S1-5. Seed 데이터 & 검증
 [ ] 13개국어 전체 기초 i18n 키 Seed 보강 (ja, zh_cn, zh_tw, es, fr, de, pt, vi, th, id_lang, ar)
 [x] 기초 i18n 키 Seed (API로 직접 입력)

@@ -48,6 +48,18 @@ async function generateItemKey(env: Env, categoryId: string): Promise<string> {
   throw new Error('Failed to generate unique item key');
 }
 
+async function generateCategoryKey(env: Env): Promise<string> {
+  const normalized = await hasColumn(env, 'master_categories', 'code');
+  for (let i = 0; i < 10; i++) {
+    const candidate = `cat_${randomToken(8)}`;
+    const exists = normalized
+      ? await env.DB.prepare('SELECT id FROM master_categories WHERE code = ?').bind(candidate).first()
+      : await env.DB.prepare('SELECT id FROM master_categories WHERE key = ?').bind(candidate).first();
+    if (!exists) return candidate;
+  }
+  throw new Error('Failed to generate unique category key');
+}
+
 function categoryI18nKey(categoryKey: string): string {
   return categoryKey.startsWith('master.') ? categoryKey : `master.${categoryKey}`;
 }
@@ -167,6 +179,15 @@ function normalizeTranslations(input?: Record<string, string>): Record<string, s
 function missingTranslationLangs(translations: Record<string, string>): string[] {
   return LANGS.filter((lang) => !translations[lang]);
 }
+
+const REQUIRES_PARENT_CATEGORY_CODES = new Set([
+  'disease_type',
+  'disease_device_type',
+  'disease_measurement_type',
+  'disease_measurement_context',
+  'diet_subtype',
+  'allergy_type',
+]);
 
 export async function handleMaster(request: Request, env: Env, url: URL): Promise<Response> {
   const path = url.pathname;
@@ -397,8 +418,8 @@ export async function handleMaster(request: Request, env: Env, url: URL): Promis
       if (request.method === 'POST') {
         let body: { key?: string; sort_order?: number; translations?: Record<string, string> };
         try { body = await request.json() as typeof body; } catch { return err('Invalid JSON'); }
-        const inputKey = normalizeMasterKey(String(body.key || ''));
-        if (!inputKey) return err('key required');
+        const providedKey = normalizeMasterKey(String(body.key || ''));
+        const inputKey = providedKey || await generateCategoryKey(env);
         if (!isValidMasterKey(inputKey)) return err('invalid key format');
         const translations = normalizeTranslations(body.translations);
         const koName = translations.ko;
@@ -618,6 +639,10 @@ export async function handleMaster(request: Request, env: Env, url: URL): Promis
           ? await env.DB.prepare('SELECT code AS key FROM master_categories WHERE id = ?').bind(body.category_id).first<{ key: string }>()
           : await env.DB.prepare('SELECT key FROM master_categories WHERE id = ?').bind(body.category_id).first<{ key: string }>();
         if (!category?.key) return err('category not found', 404);
+        const categoryKey = normalizeMasterKey(category.key);
+        if (REQUIRES_PARENT_CATEGORY_CODES.has(categoryKey) && !body.parent_id) {
+          return err('parent_id required for this category', 400, 'parent_required');
+        }
 
         const autoKey = await generateItemKey(env, body.category_id);
         const i18nKey = itemI18nKey(category.key, autoKey);

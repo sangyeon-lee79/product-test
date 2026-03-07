@@ -307,8 +307,7 @@ export default function MasterPage() {
     try {
       if (catModal === 'create') {
         const key = (catForm.key || '').trim().replace(/^master\./, '');
-        if (!key) throw new Error(t('admin.master.err_required'));
-        if (!/^[a-z0-9_]+$/.test(key)) throw new Error(t('admin.master.err_key_fmt'));
+        if (key && !/^[a-z0-9_]+$/.test(key)) throw new Error(t('admin.master.err_key_fmt'));
         const ko = (catTrans.ko || '').trim();
         if (!ko) throw new Error(t('admin.master.err_required'));
 
@@ -323,7 +322,11 @@ export default function MasterPage() {
           throw new Error(t('admin.master.err_trans_missing').replace('{langs}', missingLangs.map((lang) => (LANG_LABELS as Record<string, string>)[lang] || lang).join(', ')));
         }
 
-        await api.master.categories.create({ key, sort_order: parseInt(catForm.sort_order, 10), translations });
+        await api.master.categories.create({
+          key: key || undefined,
+          sort_order: parseInt(catForm.sort_order, 10),
+          translations,
+        });
         flash(t('admin.master.msg_success'));
       } else if (catModal === 'edit' && selectedCat) {
         const ko = (catTrans.ko || '').trim();
@@ -467,7 +470,7 @@ export default function MasterPage() {
     if (!selectedNode) return;
     if (!confirm(`"${getItemLabel(selectedNode, selectedNodeCategoryKey)}" ${t('admin.master.msg_confirm_delete')}`)) return;
     try {
-      const res = await api.master.items.delete(selectedNode.id);
+      await api.master.items.delete(selectedNode.id);
       flash(t('admin.master.msg_success'));
       await loadChainItems();
       setSelectedIds(Array(MAX_LEVEL).fill(''));
