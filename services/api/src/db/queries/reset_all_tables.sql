@@ -1,0 +1,37 @@
+PRAGMA foreign_keys = OFF;
+
+DROP TABLE IF EXISTS feed_media;
+DROP TABLE IF EXISTS feed_post_pets;
+DROP TABLE IF EXISTS feed_posts;
+DROP TABLE IF EXISTS feed_publish_requests;
+DROP TABLE IF EXISTS health_records;
+DROP TABLE IF EXISTS feeds;
+DROP TABLE IF EXISTS feed_likes;
+DROP TABLE IF EXISTS feed_comments;
+DROP TABLE IF EXISTS booking_completion_contents;
+DROP TABLE IF EXISTS bookings;
+DROP TABLE IF EXISTS pet_album_media;
+DROP TABLE IF EXISTS pet_weight_logs;
+DROP TABLE IF EXISTS pet_diseases;
+DROP TABLE IF EXISTS pets;
+DROP TABLE IF EXISTS friendships;
+DROP TABLE IF EXISTS friend_requests;
+DROP TABLE IF EXISTS user_profiles;
+DROP TABLE IF EXISTS users;
+DROP TABLE IF EXISTS countries;
+DROP TABLE IF EXISTS currencies;
+DROP TABLE IF EXISTS country_currency_map;
+DROP TABLE IF EXISTS ad_slots;
+DROP TABLE IF EXISTS ad_config;
+DROP TABLE IF EXISTS disease_symptom_map;
+DROP TABLE IF EXISTS symptom_metric_map;
+DROP TABLE IF EXISTS metric_unit_map;
+DROP TABLE IF EXISTS metric_logtype_map;
+DROP TABLE IF EXISTS translation_memory;
+DROP TABLE IF EXISTS translation_quota_usage;
+DROP TABLE IF EXISTS i18n_translations;
+DROP TABLE IF EXISTS master_items;
+DROP TABLE IF EXISTS master_categories;
+DROP TABLE IF EXISTS schema_migrations;
+
+PRAGMA foreign_keys = ON;
