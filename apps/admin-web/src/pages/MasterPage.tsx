@@ -52,9 +52,12 @@ export default function MasterPage() {
     () => [
       'disease_group',
       'disease_measurement_type',
+      'disease_measurement',
       'disease_device_type',
+      'disease_device',
       'disease_measurement_context',
       'disease_judgement_rule_type',
+      'disease_judgement_rule',
     ],
     [],
   );
@@ -64,24 +67,12 @@ export default function MasterPage() {
       'life_stage',
       'diet_subtype',
       'disease_type',
-      'disease_measurement_type',
-      'disease_device_type',
-      'disease_measurement_context',
-      'disease_judgement_rule_type',
-      'disease_device',
-      'disease_measurement',
-      'disease_judgement_rule',
     ]),
     [],
   );
   const visibleCategories = useMemo(
     () => categories
-      .filter((cat) => {
-        const key = normalizeCategoryKey(cat.key);
-        if (hiddenCategoryKeys.has(key)) return false;
-        if (key.startsWith('disease_') && key !== 'disease_group') return false;
-        return true;
-      })
+      .filter((cat) => !hiddenCategoryKeys.has(normalizeCategoryKey(cat.key)))
       .sort((a, b) => {
         const aKey = normalizeCategoryKey(a.key);
         const bKey = normalizeCategoryKey(b.key);
