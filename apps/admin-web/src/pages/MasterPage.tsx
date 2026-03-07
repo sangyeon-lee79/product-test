@@ -9,6 +9,7 @@ export default function MasterPage() {
   const [categories, setCategories] = useState<MasterCategory[]>([]);
   const [items, setItems] = useState<MasterItem[]>([]);
   const [selectedCat, setSelectedCat] = useState<MasterCategory | null>(null);
+  const [parentItems, setParentItems] = useState<MasterItem[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
@@ -43,15 +44,72 @@ export default function MasterPage() {
     } catch (e) { setError(e instanceof Error ? e.message : 'Error'); }
   }, []);
 
+  const normalizeCategoryKey = useCallback((key: string) => key.replace(/^master\./, ''), []);
+
+  const getParentCategoryKey = useCallback((catKey: string): string | null => {
+    const normalized = normalizeCategoryKey(catKey);
+    if (normalized === 'disease_type') return 'disease_group';
+    if (normalized === 'disease_device_type') return 'disease_type';
+    if (normalized === 'disease_measurement_type') return 'disease_type';
+    if (normalized === 'disease_measurement_context') return 'disease_measurement_type';
+    if (normalized === 'diet_subtype') return 'diet_type';
+    if (normalized === 'allergy_type') return 'allergy_group';
+    return null;
+  }, [normalizeCategoryKey]);
+
+  const findCategoryByKey = useCallback((catKey: string) => {
+    const normalized = normalizeCategoryKey(catKey);
+    return categories.find((cat) => normalizeCategoryKey(cat.key) === normalized) ?? null;
+  }, [categories, normalizeCategoryKey]);
+
+  const jumpToCategory = useCallback((catKey: string) => {
+    const target = findCategoryByKey(catKey);
+    if (!target) {
+      setError(`"${catKey}" 카테고리를 찾지 못했습니다.`);
+      return;
+    }
+    setSelectedCat(target);
+  }, [findCategoryByKey]);
+
   useEffect(() => { void loadCategories(); }, [loadCategories]);
   useEffect(() => {
     if (selectedCat) void loadItems(selectedCat.key);
     else setItems([]);
   }, [selectedCat, loadItems]);
 
+  useEffect(() => {
+    async function loadParentItems() {
+      if (!selectedCat) {
+        setParentItems([]);
+        return;
+      }
+      const parentCategoryKey = getParentCategoryKey(selectedCat.key);
+      if (!parentCategoryKey) {
+        setParentItems([]);
+        return;
+      }
+      try {
+        const data = await api.master.items.list(parentCategoryKey);
+        setParentItems(data);
+      } catch (e) {
+        setParentItems([]);
+        setError(e instanceof Error ? e.message : 'Error');
+      }
+    }
+    void loadParentItems();
+  }, [selectedCat, getParentCategoryKey]);
+
   function flash(msg: string) { setSuccess(msg); setTimeout(() => setSuccess(''), 3000); }
   function getCategoryLabel(cat: MasterCategory) { return cat.ko_name?.trim() || cat.key; }
   function getItemLabel(item: MasterItem) { return item.ko_name?.trim() || item.ko?.trim() || item.key; }
+  function parentLabel(parentId: string | null | undefined) {
+    if (!parentId) return '-';
+    const fromCurrent = items.find((i) => i.id === parentId);
+    if (fromCurrent) return getItemLabel(fromCurrent);
+    const fromParent = parentItems.find((i) => i.id === parentId);
+    if (fromParent) return getItemLabel(fromParent);
+    return parentId;
+  }
   function categoryToTranslations(cat: MasterCategory): Record<string, string> {
     return {
       ko: cat.ko ?? cat.ko_name ?? '',
@@ -236,6 +294,26 @@ export default function MasterPage() {
         {error && <div className="alert alert-error">{error}</div>}
         {success && <div className="alert alert-success">{success}</div>}
 
+        <div className="card" style={{ marginBottom: 16 }}>
+          <div className="card-header">
+            <div className="card-title">질병/식단/알러지 빠른 이동</div>
+          </div>
+          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', padding: '12px 16px' }}>
+            <button className="btn btn-secondary btn-sm" onClick={() => jumpToCategory('disease_group')}>질병군</button>
+            <button className="btn btn-secondary btn-sm" onClick={() => jumpToCategory('disease_type')}>질병</button>
+            <button className="btn btn-secondary btn-sm" onClick={() => jumpToCategory('disease_device_type')}>질병 장치</button>
+            <button className="btn btn-secondary btn-sm" onClick={() => jumpToCategory('disease_measurement_type')}>측정 항목</button>
+            <button className="btn btn-secondary btn-sm" onClick={() => jumpToCategory('disease_measurement_context')}>측정 컨텍스트</button>
+            <button className="btn btn-secondary btn-sm" onClick={() => jumpToCategory('diet_type')}>식단 상위</button>
+            <button className="btn btn-secondary btn-sm" onClick={() => jumpToCategory('diet_subtype')}>식단 하위</button>
+            <button className="btn btn-secondary btn-sm" onClick={() => jumpToCategory('allergy_group')}>알러지 그룹</button>
+            <button className="btn btn-secondary btn-sm" onClick={() => jumpToCategory('allergy_type')}>알러지 타입</button>
+          </div>
+          <div style={{ padding: '0 16px 12px', fontSize: 12, color: 'var(--text-muted)' }}>
+            질병 장치 등록은 <b>disease_device_type</b>에서 아이템 추가 시 <b>부모 아이템 = 질병(disease_type)</b>으로 지정하면 됩니다.
+          </div>
+        </div>
+
         <div style={{ display: 'grid', gridTemplateColumns: '280px 1fr', gap: 16 }}>
           {/* 카테고리 패널 */}
           <div className="card">
@@ -302,7 +380,7 @@ export default function MasterPage() {
                         <div style={{ fontWeight: 500 }}>{getItemLabel(item)}</div>
                         <div className="font-mono" style={{ fontSize: 11, color: 'var(--text-muted)' }}>{item.key}</div>
                       </td>
-                      <td><span style={{ fontSize: 11, color: '#666' }}>{item.parent_id ? (items.find(i => i.id === item.parent_id)?.ko_name || items.find(i => i.id === item.parent_id)?.ko || items.find(i => i.id === item.parent_id)?.key || item.parent_id) : '-'}</span></td>
+                      <td><span style={{ fontSize: 11, color: '#666' }}>{parentLabel(item.parent_id)}</span></td>
                       <td>{item.sort_order}</td>
                       <td><span className={`badge ${item.is_active ? 'badge-green' : 'badge-gray'}`}>{item.is_active ? t('admin.common.active', '활성') : t('admin.common.inactive', '비활성')}</span></td>
                       <td>
@@ -404,10 +482,15 @@ export default function MasterPage() {
                 <label className="form-label">{t('admin.master.parent_item', '부모 아이템')}</label>
                 <select className="form-input" value={itemForm.parent_id || ''} onChange={e => setItemForm(f => ({ ...f, parent_id: e.target.value || null }))}>
                   <option value="">-- {t('admin.common.none', '없음')} --</option>
-                  {items.filter(i => i.id !== itemForm.id).map(i => (
+                  {(getParentCategoryKey(selectedCat?.key || '') ? parentItems : items).filter(i => i.id !== itemForm.id).map(i => (
                     <option key={i.id} value={i.id}>{getItemLabel(i)}</option>
                   ))}
                 </select>
+                {getParentCategoryKey(selectedCat?.key || '') && (
+                  <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 6 }}>
+                    부모는 `{getParentCategoryKey(selectedCat?.key || '')}` 카테고리에서 선택됩니다.
+                  </div>
+                )}
               </div>
               <div className="form-group">
                 <label className="form-label">{t('admin.common.sort_order', '정렬 순서')}</label>
