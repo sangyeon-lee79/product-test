@@ -88,6 +88,18 @@ function sourceLabel(source: GallerySourceType): string {
   return map[source];
 }
 
+function fileToDataUrl(file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => {
+      if (typeof reader.result === 'string') resolve(reader.result);
+      else reject(new Error('invalid_file_data'));
+    };
+    reader.onerror = () => reject(new Error('file_read_failed'));
+    reader.readAsDataURL(file);
+  });
+}
+
 export default function PetGalleryPanel({
   selectedPet,
   mediaItems,
@@ -213,7 +225,14 @@ export default function PetGalleryPanel({
           resolve();
           return;
         }
-        reject(new Error(t('guardian.pet.gallery.add_photo.error.upload_failed')));
+        let serverMessage = '';
+        try {
+          const parsed = JSON.parse(xhr.responseText) as { error?: string; code?: string };
+          serverMessage = parsed.error || parsed.code || '';
+        } catch {
+          serverMessage = xhr.statusText || '';
+        }
+        reject(new Error(serverMessage || t('guardian.pet.gallery.add_photo.error.upload_failed')));
       };
       xhr.onerror = () => reject(new Error(t('guardian.pet.gallery.add_photo.error.upload_failed')));
       xhr.send(file);
@@ -236,13 +255,23 @@ export default function PetGalleryPanel({
     setUploadError('');
     try {
       const ext = (uploadFile.name.split('.').pop() || 'jpg').toLowerCase().replace(/[^a-z0-9]/g, '') || 'jpg';
-      const presigned = await api.storage.presignedUrl({ type: 'log_media', ext });
-      await uploadBinary(presigned.upload_url, uploadFile, (ratio) => setUploadProgress(ratio));
+      let mediaUrl = '';
+      try {
+        const presigned = await api.storage.presignedUrl({ type: 'log_media', ext });
+        await uploadBinary(presigned.upload_url, uploadFile, (ratio) => setUploadProgress(ratio));
+        mediaUrl = presigned.public_url;
+      } catch (uploadError) {
+        const message = uploadError instanceof Error ? uploadError.message : '';
+        const isStorageUnavailable = /Storage not configured|no_r2|storage/i.test(message);
+        if (!isStorageUnavailable) throw uploadError;
+        mediaUrl = await fileToDataUrl(uploadFile);
+      }
       await api.petAlbum.create({
         pet_id: selectedPet.id,
         source_type: uploadKind,
-        media_url: presigned.public_url,
-        thumbnail_url: presigned.public_url,
+        media_type: 'image',
+        media_url: mediaUrl,
+        thumbnail_url: mediaUrl,
         caption: uploadCaption.trim() || null,
         tags,
         visibility_scope: uploadVisibility,
@@ -252,7 +281,12 @@ export default function PetGalleryPanel({
       resetUploadForm();
       await onRefresh();
     } catch (e) {
-      const message = e instanceof Error ? e.message : t('guardian.pet.gallery.add_photo.error.upload_failed');
+      const raw = e instanceof Error ? e.message : '';
+      let message = t('guardian.pet.gallery.add_photo.error.upload_failed');
+      if (/10MB|file size|max/i.test(raw)) message = t('guardian.pet.gallery.add_photo.error.file_too_large');
+      else if (/JPG|JPEG|PNG|WEBP|type/i.test(raw)) message = t('guardian.pet.gallery.add_photo.error.invalid_file_type');
+      else if (/Storage not configured|no_r2|storage/i.test(raw)) message = t('guardian.pet.gallery.add_photo.error.storage_unavailable');
+      else if (/Network|fetch|CORS|Failed to fetch/i.test(raw)) message = t('guardian.pet.gallery.add_photo.error.network');
       setUploadError(message);
       setError(message);
     } finally {

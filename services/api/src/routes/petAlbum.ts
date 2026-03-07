@@ -270,6 +270,7 @@ async function createAlbumMedia(request: Request, env: Env): Promise<Response> {
            updated_at = ?
        WHERE pet_id = ? AND source_type = 'profile' AND status = 'active'`
     ).bind(id, now(), petId).run();
+    await env.DB.prepare(`UPDATE pets SET avatar_url = ?, updated_at = ? WHERE id = ?`).bind(mediaUrl, now(), petId).run();
   }
 
   const saved = await env.DB.prepare('SELECT * FROM pet_album_media WHERE id = ?').bind(id).first<AlbumRow>();
@@ -358,6 +359,10 @@ async function updateAlbumMedia(request: Request, env: Env, id: string): Promise
            updated_at = ?
        WHERE pet_id = ? AND source_type = 'profile' AND status = 'active'`
     ).bind(id, now(), row.pet_id).run();
+    const primary = await env.DB.prepare(
+      `SELECT media_url FROM pet_album_media WHERE id = ? LIMIT 1`
+    ).bind(id).first<{ media_url: string }>();
+    await env.DB.prepare(`UPDATE pets SET avatar_url = ?, updated_at = ? WHERE id = ?`).bind(primary?.media_url ?? null, now(), row.pet_id).run();
   }
 
   const updated = await env.DB.prepare('SELECT * FROM pet_album_media WHERE id = ?').bind(id).first<AlbumRow>();
@@ -398,6 +403,10 @@ async function deleteAlbumMedia(request: Request, env: Env, id: string): Promise
 
     if (next?.id) {
       await env.DB.prepare(`UPDATE pet_album_media SET is_primary = 1, updated_at = ? WHERE id = ?`).bind(now(), next.id).run();
+      const nextPrimary = await env.DB.prepare(`SELECT media_url FROM pet_album_media WHERE id = ?`).bind(next.id).first<{ media_url: string }>();
+      await env.DB.prepare(`UPDATE pets SET avatar_url = ?, updated_at = ? WHERE id = ?`).bind(nextPrimary?.media_url ?? null, now(), row.pet_id).run();
+    } else {
+      await env.DB.prepare(`UPDATE pets SET avatar_url = NULL, updated_at = ? WHERE id = ?`).bind(now(), row.pet_id).run();
     }
   }
 
