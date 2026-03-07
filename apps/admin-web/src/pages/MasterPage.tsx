@@ -154,19 +154,15 @@ export default function MasterPage() {
     return cat.ko_name?.trim() || translated || t('admin.master.unnamed_category', '이름 없음');
   }
 
-  function getItemLabel(item: MasterItem) {
-    const catKey = normalizeCategoryKey(selectedCat?.key || '');
-    if (catKey === 'disease_group') {
-      const translated = t(`master.disease_group.${item.key}`, '');
+  function getItemLabel(item: MasterItem, preferredCategoryKey?: string | null) {
+    const preferred = (preferredCategoryKey || '').trim();
+    if (preferred) {
+      const translated = t(`master.${preferred}.${item.key}`, '');
       if (translated) return translated;
     }
-    if (catKey === 'disease_type') {
-      const translated = t(`master.disease_type.${item.key}`, '');
-      if (translated) return translated;
-    }
-    // Fallback for sub-levels of disease_group or other categories
+
     if (item.category_id) {
-      const targetCat = categories.find(c => c.id === item.category_id);
+      const targetCat = categories.find((c) => c.id === item.category_id);
       if (targetCat) {
         const itemCatKey = normalizeCategoryKey(targetCat.key);
         const translated = t(`master.${itemCatKey}.${item.key}`, '');
@@ -174,7 +170,11 @@ export default function MasterPage() {
       }
     }
 
-    return item.ko_name?.trim() || item.ko?.trim() || item.key;
+    const ko = item.ko_name?.trim() || item.ko?.trim();
+    if (ko) return ko;
+
+    // key raw 노출 방지: 최소한 사람이 읽을 수 있는 형태로 표시
+    return item.key.replace(/_/g, ' ');
   }
 
   function flash(msg: string) {
@@ -450,7 +450,7 @@ export default function MasterPage() {
 
   async function handleDeleteSelectedItem() {
     if (!selectedNode) return;
-    if (!confirm(`"${getItemLabel(selectedNode)}" ${t('admin.master.confirm_delete_item', '아이템을 삭제하시겠습니까?')}`)) return;
+    if (!confirm(`"${getItemLabel(selectedNode, selectedNodeCategoryKey)}" ${t('admin.master.confirm_delete_item', '아이템을 삭제하시겠습니까?')}`)) return;
     try {
       const res = await api.master.items.delete(selectedNode.id);
       flash(res.deleted ? t('admin.master.success_done', '삭제되었습니다.') : t('admin.master.success_deactivated', '다른 데이터에서 사용 중이라 비활성화되었습니다.'));
@@ -528,7 +528,7 @@ export default function MasterPage() {
                   {selectedCat && level > 0 && !selectedIds[level - 1] && <div className="master-empty">L{level} 선택 필요</div>}
                   {selectedCat && (level === 0 || selectedIds[level - 1]) && items.map((item) => (
                     <button key={item.id} className={`master-row-btn ${selectedId === item.id ? 'active' : ''}`} onClick={() => selectLevelItem(level, item.id)}>
-                      <div><div className="master-row-title">{getItemLabel(item)}</div></div>
+                      <div><div className="master-row-title">{getItemLabel(item, categoryChain[level])}</div></div>
                       <span className={`badge ${item.is_active ? 'badge-green' : 'badge-gray'}`}>{item.is_active ? t('admin.common.active', '활성') : t('admin.common.inactive', '비활성')}</span>
                     </button>
                   ))}
@@ -548,7 +548,7 @@ export default function MasterPage() {
               {!selectedNode && <div className="master-empty">{t('admin.master.select_item_first', '아이템을 먼저 선택하세요')}</div>}
               {selectedNode && (
                 <>
-                  <div className="master-row-title">{getItemLabel(selectedNode)}</div>
+                  <div className="master-row-title">{getItemLabel(selectedNode, selectedNodeCategoryKey)}</div>
                   <label className="master-toggle-row compact">
                     <span>{t('admin.common.status', '상태')}</span>
                     <input type="checkbox" checked={Boolean(selectedNode.is_active)} onChange={() => void toggleSelectedItemActive()} />
@@ -635,7 +635,7 @@ export default function MasterPage() {
                 <label className="form-label">{t('admin.master.parent_item', '부모 아이템')}</label>
                 <select className="form-input" value={itemForm.parent_id || ''} onChange={(e) => setItemForm((f) => ({ ...f, parent_id: e.target.value || null }))}>
                   <option value="">-- {t('admin.common.none', '없음')} --</option>
-                  {itemParentCandidates.filter((i) => i.id !== itemForm.id).map((i) => <option key={i.id} value={i.id}>{getItemLabel(i)}</option>)}
+                  {itemParentCandidates.filter((i) => i.id !== itemForm.id).map((i) => <option key={i.id} value={i.id}>{getItemLabel(i, itemTargetCategory ? normalizeCategoryKey(itemTargetCategory.key) : null)}</option>)}
                 </select>
               </div>
               <div className="form-group">
