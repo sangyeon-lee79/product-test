@@ -63,13 +63,15 @@ export function I18nProvider({ children }: { children: ReactNode }) {
     setTrans({}); // 언어 전환 시 이전 텍스트 클리어
     Promise.all([
       fetch(`${API_BASE}/api/v1/i18n?lang=${lang}&prefix=admin`).then(r => r.json() as Promise<{ success: boolean; data: Record<string, string> }>),
+      fetch(`${API_BASE}/api/v1/i18n?lang=${lang}&prefix=master`).then(r => r.json() as Promise<{ success: boolean; data: Record<string, string> }>),
       fetch(`${API_BASE}/api/v1/i18n?lang=${lang}&prefix=platform`).then(r => r.json() as Promise<{ success: boolean; data: Record<string, string> }>),
       fetch(`${API_BASE}/api/v1/i18n?lang=${lang}&prefix=guardian`).then(r => r.json() as Promise<{ success: boolean; data: Record<string, string> }>),
       fetch(`${API_BASE}/api/v1/i18n?lang=${lang}&prefix=common`).then(r => r.json() as Promise<{ success: boolean; data: Record<string, string> }>),
     ])
-      .then(([adminJson, platformJson, guardianJson, commonJson]) => {
+      .then(([adminJson, masterJson, platformJson, guardianJson, commonJson]) => {
         const merged: Record<string, string> = {};
         if (adminJson.success) Object.assign(merged, adminJson.data);
+        if (masterJson.success) Object.assign(merged, masterJson.data);
         if (platformJson.success) Object.assign(merged, platformJson.data);
         if (guardianJson.success) Object.assign(merged, guardianJson.data);
         if (commonJson.success) Object.assign(merged, commonJson.data);
@@ -83,7 +85,12 @@ export function I18nProvider({ children }: { children: ReactNode }) {
     setLangState(l);
   };
 
-  const t = (key: string, fallback?: string) => trans[key] || fallback || key;
+  const t = (key: string, fallback?: string) => {
+    const value = trans[key];
+    if (value !== undefined && value !== null && String(value).trim() !== '') return value;
+    if (fallback !== undefined) return fallback;
+    return key;
+  };
 
   return (
     <I18nContext.Provider value={{ t, lang, setLang }}>
