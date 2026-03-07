@@ -137,7 +137,7 @@ async function listAlbum(request: Request, env: Env, url: URL): Promise<Response
     where.push('pam.pet_id = ?');
     params.push(petId);
   } else if (me?.role === 'guardian') {
-    where.push('p.guardian_id = ?');
+    where.push('p.guardian_user_id = ?');
     params.push(me.sub);
   }
 
@@ -160,7 +160,7 @@ async function listAlbum(request: Request, env: Env, url: URL): Promise<Response
   const rows = await env.DB.prepare(
     `SELECT
       pam.*,
-      p.guardian_id AS pet_guardian_id,
+      p.guardian_user_id AS pet_guardian_id,
       u.email AS uploaded_by_email,
       b.guardian_id AS booking_guardian_id,
       b.supplier_id AS booking_supplier_id
@@ -191,7 +191,7 @@ async function createAlbumMedia(request: Request, env: Env): Promise<Response> {
   const petId = String(body.pet_id || '').trim();
   if (!petId) return err('pet_id required');
 
-  const pet = await env.DB.prepare("SELECT id, guardian_id FROM pets WHERE id = ? AND status != 'deleted'").bind(petId).first<{ id: string; guardian_id: string }>();
+  const pet = await env.DB.prepare("SELECT id, guardian_user_id AS guardian_id FROM pets WHERE id = ? AND status != 'deleted'").bind(petId).first<{ id: string; guardian_id: string }>();
   if (!pet) return err('pet not found', 404);
 
   const sourceType = String(body.source_type || '').trim() || 'manual_upload';
@@ -282,7 +282,7 @@ async function updateAlbumMedia(request: Request, env: Env, id: string): Promise
   const me = auth as JwtPayload;
 
   const row = await env.DB.prepare(
-    `SELECT pam.*, p.guardian_id AS pet_guardian_id
+    `SELECT pam.*, p.guardian_user_id AS pet_guardian_id
      FROM pet_album_media pam
      INNER JOIN pets p ON p.id = pam.pet_id
      WHERE pam.id = ?`
@@ -370,7 +370,7 @@ async function deleteAlbumMedia(request: Request, env: Env, id: string): Promise
   const me = auth as JwtPayload;
 
   const row = await env.DB.prepare(
-    `SELECT pam.*, p.guardian_id AS pet_guardian_id
+    `SELECT pam.*, p.guardian_user_id AS pet_guardian_id
      FROM pet_album_media pam
      INNER JOIN pets p ON p.id = pam.pet_id
      WHERE pam.id = ?`
@@ -409,7 +409,7 @@ async function getAlbumMedia(request: Request, env: Env, id: string): Promise<Re
   const friends = me ? await friendSet(env, me.sub) : new Set<string>();
 
   const row = await env.DB.prepare(
-    `SELECT pam.*, p.guardian_id AS pet_guardian_id, u.email AS uploaded_by_email,
+    `SELECT pam.*, p.guardian_user_id AS pet_guardian_id, u.email AS uploaded_by_email,
             b.guardian_id AS booking_guardian_id, b.supplier_id AS booking_supplier_id
      FROM pet_album_media pam
      INNER JOIN pets p ON p.id = pam.pet_id

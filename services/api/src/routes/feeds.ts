@@ -3,6 +3,12 @@ import { ok, created, err, newId, now } from '../types';
 import { requireAuth, requireRole, verifyJwt } from '../middleware/auth';
 
 type FeedRow = Record<string, unknown>;
+async function hasTable(env: Env, table: string): Promise<boolean> {
+  const row = await env.DB.prepare(
+    "SELECT name FROM sqlite_master WHERE type='table' AND name = ? LIMIT 1"
+  ).bind(table).first<{ name: string }>();
+  return Boolean(row?.name);
+}
 
 function toJsonArray(value: unknown): string {
   if (!Array.isArray(value)) return '[]';
@@ -193,6 +199,54 @@ async function listFeeds(request: Request, env: Env, url: URL): Promise<Response
   const petTypeId = (url.searchParams.get('pet_type_id') || '').trim();
   const tab = (url.searchParams.get('tab') || 'all').trim();
   const limit = Math.min(100, Math.max(1, Number(url.searchParams.get('limit') || 30)));
+
+  const hasFeedPosts = await hasTable(env, 'feed_posts');
+  if (hasFeedPosts) {
+    const where: string[] = [];
+    const params: (string | number)[] = [];
+    if (feedType) { where.push('f.feed_type = ?'); params.push(feedType); }
+    const rows = await env.DB.prepare(
+      `SELECT
+        f.*,
+        u.email as author_email,
+        p.name as pet_name,
+        NULL as business_category_key,
+        NULL as pet_type_key,
+        NULL as business_category_ko,
+        NULL as pet_type_ko,
+        NULL as booking_guardian_email,
+        NULL as booking_supplier_email,
+        NULL as booking_guardian_id,
+        NULL as booking_supplier_id,
+        CASE WHEN ? IS NULL THEN 0 ELSE EXISTS(
+          SELECT 1 FROM feed_likes fl2 WHERE fl2.post_id = f.id AND fl2.user_id = ?
+        ) END as liked_by_me,
+        (SELECT COUNT(*) FROM feed_likes fl WHERE fl.post_id = f.id) as like_count,
+        (SELECT COUNT(*) FROM feed_comments fc WHERE fc.post_id = f.id AND fc.status = 'active') as comment_count,
+        CASE WHEN f.visibility_scope = 'public' THEN 1 ELSE 0 END as is_public,
+        COALESCE((SELECT json_group_array(fm.media_url) FROM feed_media fm WHERE fm.post_id = f.id ORDER BY fm.sort_order), '[]') as media_urls,
+        '[]' as tags,
+        'none' as publish_request_status
+       FROM feed_posts f
+       LEFT JOIN users u ON u.id = f.author_user_id
+       LEFT JOIN pets p ON p.id = (
+         SELECT fp2.pet_id
+         FROM feed_post_pets fp2
+         WHERE fp2.post_id = f.id
+         ORDER BY fp2.sort_order ASC, fp2.id ASC
+         LIMIT 1
+       )
+       ${where.length ? `WHERE ${where.join(' AND ')}` : ''}
+       ORDER BY datetime(f.created_at) DESC
+       LIMIT ?`
+    ).bind(me?.sub ?? null, me?.sub ?? null, ...params, limit).all<FeedRow>();
+
+    let data = rows.results.map(normalizeFeedRow).filter((r) => canViewFeed(r, me, friends));
+    if (me && tab === 'friends') {
+      data = data.filter((r) => friends.has(String(r.author_user_id || '')));
+    }
+    return ok({ feeds: data, filters: { feed_type: feedType || null, business_category_id: businessCategoryId || null, pet_type_id: petTypeId || null, tab } });
+  }
 
   const where: string[] = [];
   const params: (string | number)[] = [];

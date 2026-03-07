@@ -71,7 +71,7 @@ function rangeStartByKey(range: string): string | null {
 }
 
 async function findMicrochipOwner(env: Env, microchipNo: string, excludePetId?: string) {
-  const baseQuery = "SELECT id, guardian_id FROM pets WHERE microchip_no = ? AND status != 'deleted'";
+  const baseQuery = "SELECT id, guardian_user_id AS guardian_id FROM pets WHERE microchip_number = ? AND status != 'deleted'";
   if (excludePetId) {
     return env.DB.prepare(`${baseQuery} AND id != ? LIMIT 1`).bind(microchipNo, excludePetId).first<{ id: string; guardian_id: string }>();
   }
@@ -170,7 +170,7 @@ async function checkMicrochip(env: Env, payload: JwtPayload, url: URL): Promise<
 
 async function assertPetOwner(env: Env, payload: JwtPayload, petId: string) {
   return env.DB.prepare(
-    "SELECT id, guardian_id, weight_unit_id FROM pets WHERE id = ? AND guardian_id = ? AND status != 'deleted'"
+    "SELECT id, guardian_user_id AS guardian_id, NULL AS weight_unit_id FROM pets WHERE id = ? AND guardian_user_id = ? AND status != 'deleted'"
   ).bind(petId, payload.sub).first<{ id: string; guardian_id: string; weight_unit_id: string | null }>();
 }
 
@@ -185,12 +185,10 @@ async function syncPetCurrentWeightFromLogs(env: Env, petId: string): Promise<vo
 
   await env.DB.prepare(
     `UPDATE pets
-     SET current_weight = ?, weight_kg = ?, weight_unit_id = COALESCE(?, weight_unit_id), updated_at = ?
+     SET weight_kg = ?, updated_at = ?
      WHERE id = ?`
   ).bind(
     latest?.weight_value ?? null,
-    latest?.weight_value ?? null,
-    latest?.weight_unit_id ?? null,
     now(),
     petId,
   ).run();
@@ -200,7 +198,7 @@ async function syncPetCurrentWeightFromLogs(env: Env, petId: string): Promise<vo
 
 async function listPets(env: Env, payload: JwtPayload): Promise<Response> {
   const pets = await env.DB.prepare(
-    "SELECT * FROM pets WHERE guardian_id = ? AND status != 'deleted' ORDER BY created_at ASC"
+    "SELECT * FROM pets WHERE guardian_user_id = ? AND status != 'deleted' ORDER BY created_at ASC"
   ).bind(payload.sub).all<Record<string, unknown>>();
 
   const result = await Promise.all(
@@ -321,7 +319,7 @@ async function createPet(request: Request, env: Env, payload: JwtPayload): Promi
 
 async function getPet(env: Env, payload: JwtPayload, petId: string): Promise<Response> {
   const pet = await env.DB.prepare(
-    "SELECT * FROM pets WHERE id = ? AND guardian_id = ? AND status != 'deleted'"
+    "SELECT * FROM pets WHERE id = ? AND guardian_user_id = ? AND status != 'deleted'"
   ).bind(petId, payload.sub).first<Record<string, unknown>>();
   if (!pet) return err('Pet not found', 404, 'not_found');
   return ok({ pet: await attachDiseases(env, normalizePetRecord(pet)) });
@@ -449,7 +447,7 @@ async function updatePet(request: Request, env: Env, payload: JwtPayload, petId:
 
 async function deletePet(env: Env, payload: JwtPayload, petId: string): Promise<Response> {
   const pet = await env.DB.prepare(
-    "SELECT id FROM pets WHERE id = ? AND guardian_id = ? AND status != 'deleted'"
+    "SELECT id FROM pets WHERE id = ? AND guardian_user_id = ? AND status != 'deleted'"
   ).bind(petId, payload.sub).first();
   if (!pet) return err('Pet not found', 404, 'not_found');
 
@@ -608,7 +606,7 @@ async function deleteWeightLog(env: Env, payload: JwtPayload, petId: string, log
 
 async function addDisease(request: Request, env: Env, payload: JwtPayload, petId: string): Promise<Response> {
   const pet = await env.DB.prepare(
-    "SELECT id FROM pets WHERE id = ? AND guardian_id = ? AND status != 'deleted'"
+    "SELECT id FROM pets WHERE id = ? AND guardian_user_id = ? AND status != 'deleted'"
   ).bind(petId, payload.sub).first();
   if (!pet) return err('Pet not found', 404, 'not_found');
 
@@ -640,7 +638,7 @@ async function addDisease(request: Request, env: Env, payload: JwtPayload, petId
 
 async function removeDisease(env: Env, payload: JwtPayload, petId: string, diseaseId: string): Promise<Response> {
   const pet = await env.DB.prepare(
-    "SELECT id FROM pets WHERE id = ? AND guardian_id = ? AND status != 'deleted'"
+    "SELECT id FROM pets WHERE id = ? AND guardian_user_id = ? AND status != 'deleted'"
   ).bind(petId, payload.sub).first();
   if (!pet) return err('Pet not found', 404, 'not_found');
 
@@ -655,16 +653,9 @@ async function removeDisease(env: Env, payload: JwtPayload, petId: string, disea
 async function attachDiseases(env: Env, pet: Record<string, unknown>) {
   const diseases = await env.DB.prepare(`
     SELECT pd.id, pd.disease_id, pd.diagnosed_at, pd.notes, pd.is_active,
-           mi.key AS disease_key,
-           tr.ko AS disease_ko_name
+           NULL AS disease_key,
+           NULL AS disease_ko_name
     FROM pet_diseases pd
-    LEFT JOIN master_items mi ON mi.id = pd.disease_id
-    LEFT JOIN master_categories mc ON mc.id = mi.category_id
-    LEFT JOIN i18n_translations tr
-      ON tr.key = CASE
-        WHEN mc.key LIKE 'master.%' THEN (mc.key || '.' || mi.key)
-        ELSE ('master.' || mc.key || '.' || mi.key)
-      END
     WHERE pd.pet_id = ?
     ORDER BY pd.created_at ASC
   `).bind(pet.id).all<Record<string, unknown>>();
