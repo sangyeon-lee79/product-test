@@ -210,6 +210,8 @@ export const api = {
       related_service_id?: string | null;
     }) =>
       request<{ id: string }>('/api/v1/feeds', { method: 'POST', body: JSON.stringify(data) }),
+    remove: (feedId: string) =>
+      request<{ deleted: boolean; id: string }>(`/api/v1/feeds/${feedId}`, { method: 'DELETE' }),
     comments: {
       list: (feedId: string) =>
         request<{ comments: FeedComment[] }>(`/api/v1/feeds/${feedId}/comments`),

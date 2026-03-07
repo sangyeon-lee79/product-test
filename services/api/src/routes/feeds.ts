@@ -916,6 +916,53 @@ async function deleteComment(request: Request, env: Env, feedId: string, comment
   return ok({ deleted: true });
 }
 
+async function deleteFeed(request: Request, env: Env, feedId: string): Promise<Response> {
+  const auth = await requireAuth(request, env);
+  if (auth instanceof Response) return auth;
+  const me = auth as JwtPayload;
+
+  const timestamp = now();
+  const hasFeedPosts = await hasTable(env, 'feed_posts');
+  if (hasFeedPosts) {
+    const post = await env.DB.prepare(
+      `SELECT id, author_user_id FROM feed_posts WHERE id = ?`
+    ).bind(feedId).first<{ id: string; author_user_id: string }>();
+    if (!post) return err('feed not found', 404);
+    if (post.author_user_id !== me.sub && me.role !== 'admin') return err('forbidden', 403);
+
+    await env.DB.prepare(
+      `UPDATE feed_posts SET status = 'deleted', updated_at = ? WHERE id = ?`
+    ).bind(timestamp, feedId).run();
+
+    if (await hasColumn(env, 'feed_media', 'status')) {
+      await env.DB.prepare(
+        `UPDATE feed_media SET status = 'deleted' WHERE post_id = ?`
+      ).bind(feedId).run();
+    }
+  } else {
+    const legacy = await env.DB.prepare(
+      `SELECT id, author_user_id FROM feeds WHERE id = ?`
+    ).bind(feedId).first<{ id: string; author_user_id: string }>();
+    if (!legacy) return err('feed not found', 404);
+    if (legacy.author_user_id !== me.sub && me.role !== 'admin') return err('forbidden', 403);
+
+    await env.DB.prepare(
+      `UPDATE feeds SET status = 'deleted', updated_at = ? WHERE id = ?`
+    ).bind(timestamp, feedId).run();
+  }
+
+  const likeKey = await hasColumn(env, 'feed_likes', 'post_id') ? 'post_id' : 'feed_id';
+  await env.DB.prepare(`DELETE FROM feed_likes WHERE ${likeKey} = ?`).bind(feedId).run();
+  await env.DB.prepare(`UPDATE feed_comments SET status = 'deleted', updated_at = ? WHERE post_id = ?`).bind(timestamp, feedId).run();
+  await env.DB.prepare(
+    `UPDATE pet_album_media
+     SET status = 'deleted', updated_at = ?
+     WHERE source_id = ? AND source_type IN ('feed', 'profile', 'health_record', 'manual_upload', 'booking_completed')`
+  ).bind(timestamp, feedId).run();
+
+  return ok({ deleted: true, id: feedId });
+}
+
 export async function handleFeeds(request: Request, env: Env, url: URL): Promise<Response> {
   const sub = url.pathname.replace('/api/v1/feeds', '');
 
@@ -937,6 +984,11 @@ export async function handleFeeds(request: Request, env: Env, url: URL): Promise
   const likeMatch = sub.match(/^\/([^/]+)\/like$/);
   if (likeMatch && (request.method === 'POST' || request.method === 'DELETE')) {
     return likeFeed(request, env, likeMatch[1]);
+  }
+
+  const feedItemMatch = sub.match(/^\/([^/]+)$/);
+  if (feedItemMatch && request.method === 'DELETE') {
+    return deleteFeed(request, env, feedItemMatch[1]);
   }
 
   const commentsMatch = sub.match(/^\/([^/]+)\/comments$/);

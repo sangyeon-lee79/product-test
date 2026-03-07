@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback, useMemo } from 'react';
 import { api, type MasterCategory, type MasterItem } from '../lib/api';
 import { useT, SUPPORTED_LANGS, LANG_LABELS } from '../lib/i18n';
 
@@ -9,6 +9,8 @@ export default function MasterPage() {
   const [categories, setCategories] = useState<MasterCategory[]>([]);
   const [items, setItems] = useState<MasterItem[]>([]);
   const [selectedCat, setSelectedCat] = useState<MasterCategory | null>(null);
+  const [selectedItemId, setSelectedItemId] = useState('');
+  const [selectedSubItemId, setSelectedSubItemId] = useState('');
   const [parentItems, setParentItems] = useState<MasterItem[]>([]);
   const [diseaseGroups, setDiseaseGroups] = useState<MasterItem[]>([]);
   const [diseases, setDiseases] = useState<MasterItem[]>([]);
@@ -104,6 +106,11 @@ export default function MasterPage() {
   }, [selectedCat, loadItems]);
 
   useEffect(() => {
+    setSelectedItemId('');
+    setSelectedSubItemId('');
+  }, [selectedCat?.id]);
+
+  useEffect(() => {
     async function loadParentItems() {
       if (!selectedCat) {
         setParentItems([]);
@@ -131,6 +138,32 @@ export default function MasterPage() {
     return cat.ko_name?.trim() || translated || t('admin.master.unnamed_category', '이름 없음');
   }
   function getItemLabel(item: MasterItem) { return item.ko_name?.trim() || item.ko?.trim() || item.key; }
+  function openEditItem(item: MasterItem) {
+    setItemForm({ id: item.id, key: item.key, sort_order: String(item.sort_order), is_active: item.is_active, parent_id: item.parent_id });
+    setItemModal('edit');
+    setItemTrans(itemToTranslations(item));
+  }
+
+  async function toggleItemActive(item: MasterItem) {
+    if (!selectedCat) return;
+    try {
+      await api.master.items.update(item.id, { is_active: item.is_active ? 0 : 1 });
+      await loadItems(selectedCat.key);
+      flash(t('admin.master.success_done', '처리되었습니다.'));
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Error');
+    }
+  }
+
+  async function toggleCategoryActive(cat: MasterCategory) {
+    try {
+      await api.master.categories.update(cat.id, { is_active: cat.is_active ? 0 : 1 });
+      await loadCategories();
+      flash(t('admin.master.success_done', '처리되었습니다.'));
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Error');
+    }
+  }
   async function openCreateItemAtCategory(catKey: string, parentId: string | null = null) {
     const cat = findCategoryByKey(catKey);
     if (!cat) {
@@ -329,6 +362,28 @@ export default function MasterPage() {
     } catch (e) { setError(e instanceof Error ? e.message : 'Error'); }
   }
 
+  const hasExternalParentCategory = useMemo(
+    () => Boolean(getParentCategoryKey(selectedCat?.key || '')),
+    [getParentCategoryKey, selectedCat?.key],
+  );
+  const topLevelItems = useMemo(() => {
+    if (hasExternalParentCategory) return parentItems;
+    return items.filter((item) => !item.parent_id);
+  }, [hasExternalParentCategory, items, parentItems]);
+  const selectedItem = useMemo(
+    () => topLevelItems.find((item) => item.id === selectedItemId) || null,
+    [topLevelItems, selectedItemId],
+  );
+  const subItems = useMemo(() => {
+    if (!selectedItem) return [];
+    return items.filter((item) => item.parent_id === selectedItem.id);
+  }, [items, selectedItem]);
+  const selectedSubItem = useMemo(
+    () => subItems.find((item) => item.id === selectedSubItemId) || null,
+    [subItems, selectedSubItemId],
+  );
+  const optionTarget = selectedSubItem || selectedItem;
+
   return (
     <>
       <div className="topbar">
@@ -425,90 +480,170 @@ export default function MasterPage() {
           </div>
         </div>
 
-        <div style={{ display: 'grid', gridTemplateColumns: '280px 1fr', gap: 16 }}>
-          {/* 카테고리 패널 */}
+        <div className="master-explorer-grid">
           <div className="card">
             <div className="card-header">
               <div className="card-title">{t('admin.master.categories', '카테고리')}</div>
-              <button className="btn btn-primary btn-sm" onClick={() => { setCatForm({ key: '', sort_order: '0' }); setCatTrans(emptyTrans()); setCatModal('create'); }}>{t('admin.master.add_category', '+ 추가')}</button>
+              <button className="btn btn-primary btn-sm" onClick={() => { setCatForm({ key: '', sort_order: '0' }); setCatTrans(emptyTrans()); setCatModal('create'); }}>{t('admin.master.add_category', '+ 카테고리 추가')}</button>
             </div>
             {loading ? <div className="loading-center"><span className="spinner" /></div> : (
-              <div>
-                {categories.map(cat => (
-                  <div key={cat.id}
-                    style={{ padding: '10px 16px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-                      background: selectedCat?.id === cat.id ? '#ebf8ff' : 'transparent',
-                      borderBottom: '1px solid var(--border)' }}
-                    onClick={() => setSelectedCat(cat)}>
+              <div className="master-column-list">
+                {categories.map((cat) => (
+                  <button
+                    key={cat.id}
+                    className={`master-row-btn ${selectedCat?.id === cat.id ? 'active' : ''}`}
+                    onClick={() => setSelectedCat(cat)}
+                  >
                     <div>
-                      <div style={{ fontWeight: 500, fontSize: 13 }}>{getCategoryLabel(cat)}</div>
-                      <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>sort: {cat.sort_order}</div>
+                      <div className="master-row-title">{getCategoryLabel(cat)}</div>
+                      <div className="master-row-sub font-mono">{cat.key}</div>
                     </div>
-                    <div style={{ display: 'flex', gap: 4 }}>
-                      <span className={`badge ${cat.is_active ? 'badge-green' : 'badge-gray'}`} style={{ fontSize: 10 }}>
-                        {cat.is_active ? t('admin.common.active', '활성') : t('admin.common.inactive', '비활성')}
-                      </span>
-                      <button className="btn btn-secondary btn-sm" onClick={e => {
-                        e.stopPropagation();
-                        setCatForm({ key: cat.key, sort_order: String(cat.sort_order) });
-                        setCatTrans(categoryToTranslations(cat));
-                        setSelectedCat(cat);
-                        setCatModal('edit');
-                      }}>✏</button>
-                      <button className="btn btn-danger btn-sm" onClick={e => { e.stopPropagation(); handleCatDelete(cat); }}>✕</button>
-                    </div>
-                  </div>
+                    <span className={`badge ${cat.is_active ? 'badge-green' : 'badge-gray'}`}>{cat.is_active ? t('admin.common.active', '활성') : t('admin.common.inactive', '비활성')}</span>
+                  </button>
                 ))}
-                {categories.length === 0 && <div style={{ padding: 24, textAlign: 'center', color: 'var(--text-muted)', fontSize: 13 }}>{t('admin.master.no_category', '카테고리 없음')}</div>}
+                {categories.length === 0 && <div className="master-empty">{t('admin.master.no_category', '카테고리 없음')}</div>}
               </div>
             )}
           </div>
 
-          {/* 아이템 패널 */}
           <div className="card">
             <div className="card-header">
-              <div className="card-title">{selectedCat ? `${getCategoryLabel(selectedCat)} 아이템` : t('admin.master.select_hint', '카테고리를 선택하세요')}</div>
+              <div className="card-title">{selectedCat ? t('admin.master.items', '아이템') : t('admin.master.select_hint', '카테고리를 선택하세요')}</div>
               {selectedCat && (
-                <button className="btn btn-primary btn-sm" onClick={() => { setItemForm({ sort_order: '0', parent_id: null }); setItemTrans(emptyTrans()); setItemModal('create'); }}>{t('admin.master.add_item', '+ 아이템 추가')}</button>
+                <button
+                  className="btn btn-primary btn-sm"
+                  disabled={hasExternalParentCategory && !selectedItem}
+                  onClick={() => {
+                    const parent = hasExternalParentCategory ? selectedItem?.id || null : null;
+                    setItemForm({ sort_order: '0', parent_id: parent });
+                    setItemTrans(emptyTrans());
+                    setItemModal('create');
+                  }}
+                >
+                  {t('admin.master.add_item', '+ 아이템 추가')}
+                </button>
               )}
             </div>
-            <div className="table-wrap">
-              <table>
-                <thead>
-                  <tr>
-                    <th>{t('admin.master.item_name', '아이템명')}</th>
-                    <th>{t('admin.master.parent', '부모')}</th>
-                    <th>Sort</th>
-                    <th>{t('admin.common.status', '상태')}</th>
-                    <th>{t('admin.common.action', '작업')}</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {items.map(item => (
-                    <tr key={item.id}>
-                      <td>
-                        <div style={{ fontWeight: 500 }}>{getItemLabel(item)}</div>
-                        <div className="font-mono" style={{ fontSize: 11, color: 'var(--text-muted)' }}>{item.key}</div>
-                      </td>
-                      <td><span style={{ fontSize: 11, color: '#666' }}>{parentLabel(item.parent_id)}</span></td>
-                      <td>{item.sort_order}</td>
-                      <td><span className={`badge ${item.is_active ? 'badge-green' : 'badge-gray'}`}>{item.is_active ? t('admin.common.active', '활성') : t('admin.common.inactive', '비활성')}</span></td>
-                      <td>
-                        <div className="td-actions">
-                          <button className="btn btn-secondary btn-sm" onClick={() => { setItemForm({ id: item.id, key: item.key, sort_order: String(item.sort_order), is_active: item.is_active, parent_id: item.parent_id }); setItemModal('edit'); setItemTrans(itemToTranslations(item)); }}>{t('admin.common.edit', '편집')}</button>
-                          <button className="btn btn-danger btn-sm" onClick={() => handleItemDelete(item)}>{t('admin.common.delete', '삭제')}</button>
-                        </div>
-                      </td>
-                    </tr>
-                  ))}
-                  {items.length === 0 && selectedCat && (
-                    <tr><td colSpan={5} style={{ textAlign: 'center', padding: 24, color: 'var(--text-muted)' }}>{t('admin.master.no_item', '아이템이 없습니다')}</td></tr>
-                  )}
-                  {!selectedCat && (
-                    <tr><td colSpan={5} style={{ textAlign: 'center', padding: 32, color: 'var(--text-muted)' }}>← {t('admin.master.select_hint', '카테고리를 선택하세요')}</td></tr>
-                  )}
-                </tbody>
-              </table>
+            <div className="master-column-list">
+              {!selectedCat && <div className="master-empty">← {t('admin.master.select_hint', '카테고리를 선택하세요')}</div>}
+              {selectedCat && topLevelItems.map((item) => (
+                <button
+                  key={item.id}
+                  className={`master-row-btn ${selectedItemId === item.id ? 'active' : ''}`}
+                  onClick={() => {
+                    setSelectedItemId(item.id);
+                    setSelectedSubItemId('');
+                  }}
+                >
+                  <div>
+                    <div className="master-row-title">{getItemLabel(item)}</div>
+                    <div className="master-row-sub font-mono">{item.key}</div>
+                  </div>
+                  <span className={`badge ${item.is_active ? 'badge-green' : 'badge-gray'}`}>{item.is_active ? t('admin.common.active', '활성') : t('admin.common.inactive', '비활성')}</span>
+                </button>
+              ))}
+              {selectedCat && topLevelItems.length === 0 && <div className="master-empty">{t('admin.master.no_item', '아이템이 없습니다')}</div>}
+            </div>
+          </div>
+
+          <div className="card">
+            <div className="card-header">
+              <div className="card-title">{t('admin.master.sub_items', '하위 아이템')}</div>
+              {selectedCat && selectedItem && (
+                <button
+                  className="btn btn-primary btn-sm"
+                  onClick={() => {
+                    setItemForm({ sort_order: '0', parent_id: selectedItem.id });
+                    setItemTrans(emptyTrans());
+                    setItemModal('create');
+                  }}
+                >
+                  {t('admin.master.add_sub_item', '+ 하위아이템 추가')}
+                </button>
+              )}
+            </div>
+            <div className="master-column-list">
+              {!selectedItem && <div className="master-empty">{t('admin.master.select_item_first', '아이템을 먼저 선택하세요')}</div>}
+              {selectedItem && subItems.map((item) => (
+                <button
+                  key={item.id}
+                  className={`master-row-btn ${selectedSubItemId === item.id ? 'active' : ''}`}
+                  onClick={() => setSelectedSubItemId(item.id)}
+                >
+                  <div>
+                    <div className="master-row-title">{getItemLabel(item)}</div>
+                    <div className="master-row-sub font-mono">{item.key}</div>
+                  </div>
+                  <span className={`badge ${item.is_active ? 'badge-green' : 'badge-gray'}`}>{item.is_active ? t('admin.common.active', '활성') : t('admin.common.inactive', '비활성')}</span>
+                </button>
+              ))}
+              {selectedItem && subItems.length === 0 && <div className="master-empty">{t('admin.master.no_sub_item', '하위 아이템이 없습니다')}</div>}
+            </div>
+          </div>
+
+          <div className="card">
+            <div className="card-header">
+              <div className="card-title">{t('admin.master.options', '기타')}</div>
+            </div>
+            <div className="master-option-panel">
+              {!selectedCat && <div className="master-empty">{t('admin.master.select_hint', '카테고리를 선택하세요')}</div>}
+              {selectedCat && !optionTarget && (
+                <div className="master-empty">{t('admin.master.select_item_first', '아이템을 먼저 선택하세요')}</div>
+              )}
+              {selectedCat && optionTarget && (
+                <>
+                  <div className="master-option-row">
+                    <div className="master-row-sub">{t('admin.master.item_name', '아이템명')}</div>
+                    <div className="master-row-title">{getItemLabel(optionTarget)}</div>
+                  </div>
+                  <div className="master-option-row">
+                    <div className="master-row-sub">{t('admin.common.key', '키')}</div>
+                    <div className="master-row-title font-mono">{optionTarget.key}</div>
+                  </div>
+                  <div className="master-option-row">
+                    <div className="master-row-sub">{t('admin.master.parent', '부모')}</div>
+                    <div className="master-row-title">{parentLabel(optionTarget.parent_id)}</div>
+                  </div>
+                  <div className="master-option-row">
+                    <div className="master-row-sub">{t('admin.common.sort_order', '정렬')}</div>
+                    <div className="master-row-title">{optionTarget.sort_order}</div>
+                  </div>
+                  <label className="master-toggle-row">
+                    <span>{t('admin.common.status', '상태')}</span>
+                    <input
+                      type="checkbox"
+                      checked={Boolean(optionTarget.is_active)}
+                      onChange={() => void toggleItemActive(optionTarget)}
+                    />
+                  </label>
+                  <div className="td-actions">
+                    <button className="btn btn-secondary btn-sm" onClick={() => openEditItem(optionTarget)}>{t('admin.common.edit', '편집')}</button>
+                    <button className="btn btn-danger btn-sm" onClick={() => void handleItemDelete(optionTarget)}>{t('admin.common.delete', '삭제')}</button>
+                  </div>
+                </>
+              )}
+              {selectedCat && (
+                <div className="master-option-cat">
+                  <div className="master-row-sub">{t('admin.master.category_options', '카테고리 설정')}</div>
+                  <div className="td-actions">
+                    <button
+                      className="btn btn-secondary btn-sm"
+                      onClick={() => {
+                        setCatForm({ key: selectedCat.key, sort_order: String(selectedCat.sort_order) });
+                        setCatTrans(categoryToTranslations(selectedCat));
+                        setCatModal('edit');
+                      }}
+                    >
+                      {t('admin.common.edit', '편집')}
+                    </button>
+                    <label className="master-toggle-row compact">
+                      <span>{t('admin.common.status', '상태')}</span>
+                      <input type="checkbox" checked={Boolean(selectedCat.is_active)} onChange={() => void toggleCategoryActive(selectedCat)} />
+                    </label>
+                    <button className="btn btn-danger btn-sm" onClick={() => void handleCatDelete(selectedCat)}>{t('admin.common.delete', '삭제')}</button>
+                  </div>
+                </div>
+              )}
             </div>
           </div>
         </div>

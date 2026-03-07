@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { api, type Booking, type FeedPost, type FriendRequest, type MasterItem, type Pet, type PetAlbumMedia, type PetWeightLog, type WeightSummary } from '../lib/api';
 import { useT } from '../lib/i18n';
@@ -51,8 +51,6 @@ type FeedCompose = {
   caption: string;
   tagsText: string;
   pet_id: string;
-  booking_id: string;
-  supplier_id: string;
 };
 
 const DEFAULT_PET_FORM: PetForm = {
@@ -94,9 +92,12 @@ const DEFAULT_FEED_COMPOSE: FeedCompose = {
   caption: '',
   tagsText: '',
   pet_id: '',
-  booking_id: '',
-  supplier_id: '',
 };
+
+const MAX_UPLOAD_SIZE = 10 * 1024 * 1024;
+const ALLOWED_UPLOAD_TYPES = new Set(['image/jpeg', 'image/jpg', 'image/png', 'image/webp']);
+const FEED_MAX_EDGE = 1080;
+const FEED_MAX_MB = 0.5;
 
 const CATEGORY_KEYS: Record<string, string[]> = {
   pet_type: ['master.pet_type', 'pet_type'],
@@ -189,6 +190,70 @@ function visibilityLabel(t: (key: string, fallback?: string) => string, value: s
   return map[value] || value;
 }
 
+function fileToDataUrl(file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => {
+      if (typeof reader.result === 'string') resolve(reader.result);
+      else reject(new Error('invalid_file_data'));
+    };
+    reader.onerror = () => reject(new Error('file_read_failed'));
+    reader.readAsDataURL(file);
+  });
+}
+
+function sanitizePathSegment(value: string): string {
+  return value.replace(/[^a-zA-Z0-9_-]/g, '');
+}
+
+function loadImageElement(file: File): Promise<HTMLImageElement> {
+  return new Promise((resolve, reject) => {
+    const objectUrl = URL.createObjectURL(file);
+    const image = new Image();
+    image.onload = () => {
+      URL.revokeObjectURL(objectUrl);
+      resolve(image);
+    };
+    image.onerror = () => {
+      URL.revokeObjectURL(objectUrl);
+      reject(new Error('image_decode_failed'));
+    };
+    image.src = objectUrl;
+  });
+}
+
+async function compressImageFile(
+  file: File,
+  options: { maxEdge: number; maxSizeMB: number; preferredType?: 'image/jpeg' | 'image/webp' },
+): Promise<File> {
+  const image = await loadImageElement(file);
+  const longEdge = Math.max(image.naturalWidth, image.naturalHeight);
+  const scale = longEdge > options.maxEdge ? options.maxEdge / longEdge : 1;
+  const width = Math.max(1, Math.round(image.naturalWidth * scale));
+  const height = Math.max(1, Math.round(image.naturalHeight * scale));
+  const canvas = document.createElement('canvas');
+  canvas.width = width;
+  canvas.height = height;
+  const ctx = canvas.getContext('2d');
+  if (!ctx) throw new Error('canvas_not_supported');
+  ctx.drawImage(image, 0, 0, width, height);
+
+  const outputType = options.preferredType ?? 'image/jpeg';
+  const targetBytes = options.maxSizeMB * 1024 * 1024;
+  const qualities = [0.82, 0.75, 0.68, 0.6];
+
+  for (const quality of qualities) {
+    const blob = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, outputType, quality));
+    if (!blob) continue;
+    if (blob.size <= targetBytes || quality === qualities[qualities.length - 1]) {
+      const ext = outputType === 'image/webp' ? 'webp' : 'jpg';
+      const filename = `${file.name.replace(/\.[^.]+$/, '')}_${options.maxEdge}.${ext}`;
+      return new File([blob], filename, { type: outputType, lastModified: Date.now() });
+    }
+  }
+  throw new Error('image_compress_failed');
+}
+
 function uiErrorMessage(error: unknown, fallback: string): string {
   if (error instanceof Error) {
     const msg = error.message || '';
@@ -242,6 +307,12 @@ export default function GuardianMainPage() {
   const [feedTab, setFeedTab] = useState<FeedTab>('all');
   const [petTab, setPetTab] = useState<PetProfileTab>('gallery');
   const [feedCompose, setFeedCompose] = useState<FeedCompose>(DEFAULT_FEED_COMPOSE);
+  const [feedImageFile, setFeedImageFile] = useState<File | null>(null);
+  const [feedImagePreviewUrl, setFeedImagePreviewUrl] = useState('');
+  const [feedUploadProgress, setFeedUploadProgress] = useState(0);
+  const [feedUploadError, setFeedUploadError] = useState('');
+  const [isPostingFeed, setIsPostingFeed] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
 
   const [friendCount, setFriendCount] = useState(0);
   const [pendingRequests, setPendingRequests] = useState<FriendRequest[]>([]);
@@ -269,6 +340,23 @@ export default function GuardianMainPage() {
   const [optCoatLength, setOptCoatLength] = useState<Option[]>([]);
   const [optCoatType, setOptCoatType] = useState<Option[]>([]);
   const [optGrooming, setOptGrooming] = useState<Option[]>([]);
+
+  function currentUserIdFromToken(): string | null {
+    const token = localStorage.getItem('access_token');
+    if (!token) return null;
+    const parts = token.split('.');
+    if (parts.length < 2) return null;
+    try {
+      const base64 = parts[1].replace(/-/g, '+').replace(/_/g, '/');
+      const padded = base64 + '='.repeat((4 - (base64.length % 4)) % 4);
+      const payload = JSON.parse(atob(padded)) as { sub?: string };
+      return payload.sub || null;
+    } catch {
+      return null;
+    }
+  }
+
+  const currentUserId = currentUserIdFromToken();
 
   const selectedPet = useMemo(() => pets.find((p) => p.id === selectedPetId) || pets[0] || null, [pets, selectedPetId]);
 
@@ -419,6 +507,10 @@ export default function GuardianMainPage() {
   useEffect(() => {
     loadAll();
   }, []);
+
+  useEffect(() => () => {
+    if (feedImagePreviewUrl) URL.revokeObjectURL(feedImagePreviewUrl);
+  }, [feedImagePreviewUrl]);
 
   useEffect(() => {
     if (!petIdParam) return;
@@ -621,25 +713,121 @@ export default function GuardianMainPage() {
     }
   }
 
+  function validateFeedImage(file: File): string | null {
+    if (!ALLOWED_UPLOAD_TYPES.has(file.type.toLowerCase())) return 'JPG/PNG/WEBP 파일만 업로드할 수 있습니다.';
+    if (file.size > MAX_UPLOAD_SIZE) return '파일 크기는 10MB 이하여야 합니다.';
+    return null;
+  }
+
+  function resetFeedImage() {
+    if (feedImagePreviewUrl) URL.revokeObjectURL(feedImagePreviewUrl);
+    setFeedImageFile(null);
+    setFeedImagePreviewUrl('');
+    setFeedUploadProgress(0);
+    setFeedUploadError('');
+    if (fileInputRef.current) fileInputRef.current.value = '';
+  }
+
+  function handleFeedImageSelected(file: File | null) {
+    if (!file) return;
+    const validationError = validateFeedImage(file);
+    if (validationError) {
+      setFeedUploadError(validationError);
+      return;
+    }
+    setFeedUploadError('');
+    setFeedImageFile(file);
+    if (feedImagePreviewUrl) URL.revokeObjectURL(feedImagePreviewUrl);
+    setFeedImagePreviewUrl(URL.createObjectURL(file));
+  }
+
+  function uploadBinary(uploadUrl: string, file: File, onProgress: (ratio: number) => void): Promise<void> {
+    return new Promise((resolve, reject) => {
+      const xhr = new XMLHttpRequest();
+      xhr.open('PUT', uploadUrl);
+      xhr.setRequestHeader('Content-Type', file.type || 'application/octet-stream');
+      xhr.upload.onprogress = (event) => {
+        if (event.lengthComputable && event.total > 0) onProgress(event.loaded / event.total);
+      };
+      xhr.onload = () => {
+        if (xhr.status >= 200 && xhr.status < 300) {
+          onProgress(1);
+          resolve();
+          return;
+        }
+        reject(new Error(xhr.statusText || 'upload_failed'));
+      };
+      xhr.onerror = () => reject(new Error('upload_failed'));
+      xhr.send(file);
+    });
+  }
+
   async function createFeedPost() {
     if (!feedCompose.caption.trim()) {
       setError(t('guardian.alert.feed_caption_required', 'Please enter feed content.'));
       return;
     }
+    setIsPostingFeed(true);
+    setFeedUploadError('');
     try {
+      const mediaUrls: string[] = [];
+      if (feedImageFile) {
+        try {
+          const compressed = await compressImageFile(feedImageFile, {
+            maxEdge: FEED_MAX_EDGE,
+            maxSizeMB: FEED_MAX_MB,
+            preferredType: 'image/jpeg',
+          });
+          const petSeg = sanitizePathSegment(feedCompose.pet_id || selectedPet?.id || 'pet');
+          const presigned = await api.storage.presignedUrl({
+            type: 'log_media',
+            ext: 'jpg',
+            subdir: `feed/${petSeg}`,
+          });
+          await uploadBinary(presigned.upload_url, compressed, (ratio) => setFeedUploadProgress(Math.round(ratio * 100)));
+          mediaUrls.push(presigned.public_url);
+        } catch (uploadError) {
+          const raw = uploadError instanceof Error ? uploadError.message : '';
+          const isStorageUnavailable = /Storage not configured|no_r2|storage/i.test(raw);
+          if (isStorageUnavailable) {
+            mediaUrls.push(await fileToDataUrl(feedImageFile));
+          } else {
+            throw uploadError;
+          }
+        }
+      }
       await api.feeds.create({
         feed_type: feedCompose.feed_type,
         visibility_scope: feedCompose.visibility_scope,
         caption: feedCompose.caption.trim(),
         tags: feedCompose.tagsText.split(',').map((v) => v.trim()).filter(Boolean),
         pet_id: feedCompose.pet_id || null,
-        booking_id: feedCompose.booking_id || null,
-        supplier_id: feedCompose.supplier_id || null,
+        media_urls: mediaUrls,
       });
       setFeedCompose(DEFAULT_FEED_COMPOSE);
+      resetFeedImage();
       await loadAll(feedTab);
     } catch (e) {
-      setError(uiErrorMessage(e, t('guardian.alert.feed_create_failed', '피드 등록에 실패했습니다.')));
+      const raw = e instanceof Error ? e.message : '';
+      let message = uiErrorMessage(e, t('guardian.alert.feed_create_failed', '피드 등록에 실패했습니다.'));
+      if (/10MB|file size|max/i.test(raw)) message = '파일 크기가 너무 큽니다.';
+      else if (/JPG|JPEG|PNG|WEBP|type/i.test(raw)) message = '지원하지 않는 파일 형식입니다.';
+      else if (/Storage not configured|no_r2|storage/i.test(raw)) message = '저장소 연결에 실패했습니다.';
+      else if (/upload/i.test(raw)) message = '업로드 중 오류가 발생했습니다.';
+      setFeedUploadError(message);
+      setError(message);
+    } finally {
+      setIsPostingFeed(false);
+    }
+  }
+
+  async function removeFeedPost(feedId: string) {
+    if (!confirm('정말 이 게시글을 삭제하시겠습니까?')) return;
+    try {
+      await api.feeds.remove(feedId);
+      await loadAll(feedTab);
+    } catch (e) {
+      setError(uiErrorMessage(e, '게시글 삭제에 실패했습니다.'));
     }
   }
 
@@ -784,53 +972,90 @@ export default function GuardianMainPage() {
                 <div className="card">
                   <div className="card-header"><div className="card-title">{t('guardian.feed.create_title', 'Create Feed Post')}</div></div>
                   <div className="card-body">
-                    <div className="form-row col3">
-                      <div className="form-group">
-                        <label className="form-label">{t('guardian.feed.feed_type', 'Feed Type')}</label>
-                        <select className="form-select" value={feedCompose.feed_type} onChange={(e) => setFeedCompose((p) => ({ ...p, feed_type: e.target.value as FeedCompose['feed_type'] }))}>
-                          <option value="guardian_post">{t('guardian.feed.type.guardian_post', 'Guardian Post')}</option>
-                          <option value="health_update">{t('guardian.feed.type.health_update', 'Health Update')}</option>
-                          <option value="pet_milestone">{t('guardian.feed.type.pet_milestone', 'Pet Milestone')}</option>
-                          <option value="supplier_story">{t('guardian.feed.type.supplier_story', 'Supplier Story')}</option>
-                        </select>
+                    <div className="feed-compose-layout">
+                      <div className="feed-compose-media">
+                        <label className="form-label">{t('guardian.feed.photo_upload', '사진 업로드')}</label>
+                        <div
+                          className="gallery-upload-dropzone"
+                          onDragOver={(e) => e.preventDefault()}
+                          onDrop={(e) => {
+                            e.preventDefault();
+                            const file = e.dataTransfer.files?.[0] || null;
+                            handleFeedImageSelected(file);
+                          }}
+                        >
+                          <input
+                            ref={fileInputRef}
+                            type="file"
+                            className="gallery-upload-file-input"
+                            accept="image/jpeg,image/jpg,image/png,image/webp"
+                            capture="environment"
+                            onChange={(e) => handleFeedImageSelected(e.target.files?.[0] || null)}
+                          />
+                          <p>{t('guardian.feed.photo_hint', '드래그 앤 드롭 또는 파일 선택')}</p>
+                          <button type="button" className="btn btn-secondary btn-sm" onClick={() => fileInputRef.current?.click()}>
+                            {t('guardian.feed.photo_select', '사진 선택')}
+                          </button>
+                        </div>
+                        {feedImagePreviewUrl && (
+                          <div className="feed-compose-preview">
+                            <img src={feedImagePreviewUrl} alt={t('guardian.feed.photo_preview', '업로드 미리보기')} />
+                            <button type="button" className="btn btn-secondary btn-sm" onClick={resetFeedImage}>
+                              {t('guardian.feed.photo_reselect', '다시 선택')}
+                            </button>
+                          </div>
+                        )}
+                        {feedUploadError && <div className="alert alert-error mt-2">{feedUploadError}</div>}
+                        {isPostingFeed && feedUploadProgress > 0 && (
+                          <div className="gallery-upload-progress mt-2">
+                            <div className="gallery-upload-progress-bar" style={{ width: `${feedUploadProgress}%` }} />
+                            <span>{t('guardian.feed.uploading', '업로드 중')} {feedUploadProgress}%</span>
+                          </div>
+                        )}
                       </div>
-                      <div className="form-group">
-                        <label className="form-label">{t('guardian.feed.visibility', 'Visibility')}</label>
-                        <select className="form-select" value={feedCompose.visibility_scope} onChange={(e) => setFeedCompose((p) => ({ ...p, visibility_scope: e.target.value as FeedCompose['visibility_scope'] }))}>
-                          <option value="public">{t('guardian.feed.visibility.public', 'Public')}</option>
-                          <option value="friends_only">{t('guardian.feed.visibility.friends_only', 'Friends Only')}</option>
-                          <option value="private">{t('guardian.feed.visibility.private', 'Private')}</option>
-                          <option value="connected_only">{t('guardian.feed.visibility.connected_only', 'Connected Only')}</option>
-                          <option value="booking_related_only">{t('guardian.feed.visibility.booking_related_only', 'Booking Related Only')}</option>
-                        </select>
-                      </div>
-                      <div className="form-group">
-                        <label className="form-label">{t('guardian.feed.linked_pet', 'Linked Pet')}</label>
-                        <select className="form-select" value={feedCompose.pet_id} onChange={(e) => setFeedCompose((p) => ({ ...p, pet_id: e.target.value }))}>
-                          <option value="">{t('common.none', 'None')}</option>
-                          {pets.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
-                        </select>
+
+                      <div className="feed-compose-fields">
+                        <div className="form-row col2">
+                          <div className="form-group">
+                            <label className="form-label">{t('guardian.feed.feed_type', 'Feed Type')}</label>
+                            <select className="form-select" value={feedCompose.feed_type} onChange={(e) => setFeedCompose((p) => ({ ...p, feed_type: e.target.value as FeedCompose['feed_type'] }))}>
+                              <option value="guardian_post">{t('guardian.feed.type.guardian_post', 'Guardian Post')}</option>
+                              <option value="health_update">{t('guardian.feed.type.health_update', 'Health Update')}</option>
+                              <option value="pet_milestone">{t('guardian.feed.type.pet_milestone', 'Pet Milestone')}</option>
+                              <option value="supplier_story">{t('guardian.feed.type.supplier_story', 'Supplier Story')}</option>
+                            </select>
+                          </div>
+                          <div className="form-group">
+                            <label className="form-label">{t('guardian.feed.visibility', 'Visibility')}</label>
+                            <select className="form-select" value={feedCompose.visibility_scope} onChange={(e) => setFeedCompose((p) => ({ ...p, visibility_scope: e.target.value as FeedCompose['visibility_scope'] }))}>
+                              <option value="public">{t('guardian.feed.visibility.public', 'Public')}</option>
+                              <option value="friends_only">{t('guardian.feed.visibility.friends_only', 'Friends Only')}</option>
+                              <option value="private">{t('guardian.feed.visibility.private', 'Private')}</option>
+                              <option value="connected_only">{t('guardian.feed.visibility.connected_only', 'Connected Only')}</option>
+                              <option value="booking_related_only">{t('guardian.feed.visibility.booking_related_only', 'Booking Related Only')}</option>
+                            </select>
+                          </div>
+                        </div>
+                        <div className="form-group">
+                          <label className="form-label">{t('guardian.feed.linked_pet', 'Linked Pet')}</label>
+                          <select className="form-select" value={feedCompose.pet_id} onChange={(e) => setFeedCompose((p) => ({ ...p, pet_id: e.target.value }))}>
+                            <option value="">{t('common.none', 'None')}</option>
+                            {pets.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
+                          </select>
+                        </div>
+                        <div className="form-group">
+                          <label className="form-label">{t('guardian.feed.caption', 'Caption')}</label>
+                          <textarea className="form-textarea" value={feedCompose.caption} onChange={(e) => setFeedCompose((p) => ({ ...p, caption: e.target.value }))} />
+                        </div>
+                        <div className="form-group">
+                          <label className="form-label">{t('guardian.feed.tags', 'Tags (comma separated)')}</label>
+                          <input className="form-input" value={feedCompose.tagsText} onChange={(e) => setFeedCompose((p) => ({ ...p, tagsText: e.target.value }))} />
+                        </div>
+                        <button className="btn btn-primary" disabled={isPostingFeed} onClick={createFeedPost}>
+                          {isPostingFeed ? t('guardian.feed.posting', '게시 중...') : t('guardian.feed.post', 'Post')}
+                        </button>
                       </div>
                     </div>
-                    <div className="form-row col2">
-                      <div className="form-group">
-                        <label className="form-label">{t('guardian.feed.booking_id_optional', 'booking_id (optional)')}</label>
-                        <input className="form-input" value={feedCompose.booking_id} onChange={(e) => setFeedCompose((p) => ({ ...p, booking_id: e.target.value }))} />
-                      </div>
-                      <div className="form-group">
-                        <label className="form-label">{t('guardian.feed.supplier_id_optional', 'supplier_id (optional)')}</label>
-                        <input className="form-input" value={feedCompose.supplier_id} onChange={(e) => setFeedCompose((p) => ({ ...p, supplier_id: e.target.value }))} />
-                      </div>
-                    </div>
-                    <div className="form-group">
-                      <label className="form-label">{t('guardian.feed.caption', 'Caption')}</label>
-                      <textarea className="form-textarea" value={feedCompose.caption} onChange={(e) => setFeedCompose((p) => ({ ...p, caption: e.target.value }))} />
-                    </div>
-                    <div className="form-group">
-                      <label className="form-label">{t('guardian.feed.tags', 'Tags (comma separated)')}</label>
-                      <input className="form-input" value={feedCompose.tagsText} onChange={(e) => setFeedCompose((p) => ({ ...p, tagsText: e.target.value }))} />
-                    </div>
-                    <button className="btn btn-primary" onClick={createFeedPost}>{t('guardian.feed.post', 'Post')}</button>
                   </div>
                 </div>
 
@@ -850,14 +1075,24 @@ export default function GuardianMainPage() {
                           <h3>{f.author_email || t('common.none', '-')}</h3>
                           <p className="text-sm text-muted">{formatDate(f.created_at, t('common.none', '-'))}</p>
                         </div>
-                        <div className="sns-badges">
-                          <span className="badge badge-blue">{f.business_category_ko || f.business_category_key || t('common.none', '-')}</span>
-                          <span className="badge badge-gray">{f.pet_type_ko || f.pet_type_key || t('common.none', '-')}</span>
-                          <span className="badge badge-green">{visibilityLabel(t, f.visibility_scope)}</span>
+                        <div className="sns-card-right">
+                          <div className="sns-badges">
+                            <span className="badge badge-green">{visibilityLabel(t, f.visibility_scope)}</span>
+                          </div>
+                          {currentUserId && f.author_user_id === currentUserId && (
+                            <button className="btn btn-danger btn-sm" onClick={() => removeFeedPost(f.id)}>
+                              {t('common.delete', 'Delete')}
+                            </button>
+                          )}
                         </div>
                       </div>
                       {f.pet_name && <p className="sns-pet">{t('guardian.feed.pet_prefix', 'Pet')}: {f.pet_name}</p>}
                       {f.caption && <p className="sns-caption">{f.caption}</p>}
+                      {Array.isArray(f.media_urls) && f.media_urls[0] && (
+                        <div className="sns-feed-image-wrap">
+                          <img className="sns-feed-image" src={f.media_urls[0]} alt={f.caption || 'feed'} loading="lazy" />
+                        </div>
+                      )}
                       <div className="sns-actions">
                         <button className="btn btn-secondary btn-sm" onClick={() => api.feeds.like(f.id).then(() => loadAll(feedTab)).catch((e) => setError(uiErrorMessage(e, t('guardian.alert.like_failed', '좋아요 처리에 실패했습니다.'))))}>
                           {t('guardian.feed.like', 'Like')} ({f.like_count || 0})
