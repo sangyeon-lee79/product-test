@@ -48,9 +48,25 @@ export default function MasterPage() {
 
 
   const normalizeCategoryKey = useCallback((key: string) => key.replace(/^master\./, ''), []);
+  const categoryPriority = useMemo<Record<string, number>>(() => ({
+    disease_group: 1,
+    disease_measurement_type: 2,
+    disease_device_type: 3,
+    disease_measurement_context: 4,
+    disease_judgement_rule_type: 5,
+  }), []);
   const visibleCategories = useMemo(
-    () => categories.filter((cat) => normalizeCategoryKey(cat.key) !== 'pet_breed'),
-    [categories, normalizeCategoryKey],
+    () => categories
+      .filter((cat) => normalizeCategoryKey(cat.key) !== 'pet_breed')
+      .sort((a, b) => {
+        const aKey = normalizeCategoryKey(a.key);
+        const bKey = normalizeCategoryKey(b.key);
+        const aPriority = categoryPriority[aKey] ?? 999;
+        const bPriority = categoryPriority[bKey] ?? 999;
+        if (aPriority !== bPriority) return aPriority - bPriority;
+        return (a.sort_order ?? 0) - (b.sort_order ?? 0) || aKey.localeCompare(bKey);
+      }),
+    [categories, normalizeCategoryKey, categoryPriority],
   );
 
   const getParentCategoryKey = useCallback((catKey: string): string | null => {
@@ -346,6 +362,9 @@ export default function MasterPage() {
       <div className="content">
         {error && <div className="alert alert-error">{error}</div>}
         {success && <div className="alert alert-success">{success}</div>}
+        <div className="alert" style={{ marginBottom: 12 }}>
+          질병군 → 질병측정항목 → 질병장치 → 질병측정컨텍스트 → 기타
+        </div>
 
         <div className="master-explorer-grid">
           <div className="card">
