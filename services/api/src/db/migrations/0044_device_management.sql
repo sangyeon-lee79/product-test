@@ -128,19 +128,20 @@ INSERT OR IGNORE INTO device_models (id, device_type_id, manufacturer_id, brand_
   ('mod-onetouch-select', 'dt-glucose-meter', 'dm-lifescan', 'db-onetouch',  'OneTouch Select Plus',   'OTSP',    'LifeScan OneTouch Select Plus blood glucose meter', 'active', datetime('now'), datetime('now'));
 
 -- ─── Backfill master_items.device_type_id for existing L3 items ────────────
+-- 원격 DB는 정규화 스키마(code 컬럼) 사용
 UPDATE master_items
 SET device_type_id = 'dt-glucose-meter'
-WHERE (key = 'glucose_meter' OR key LIKE '%glucose_meter%')
+WHERE (code = 'glucose_meter' OR code LIKE '%glucose_meter%')
   AND device_type_id IS NULL;
 
 UPDATE master_items
 SET device_type_id = 'dt-cgm'
-WHERE (key = 'continuous_glucose_monitor' OR key LIKE '%cgm%' OR key LIKE '%continuous_glucose%')
+WHERE (code = 'continuous_glucose_monitor' OR code LIKE '%cgm%' OR code LIKE '%continuous_glucose%')
   AND device_type_id IS NULL;
 
 UPDATE master_items
 SET device_type_id = 'dt-insulin-pen'
-WHERE (key = 'insulin_pen' OR key LIKE '%insulin_pen%')
+WHERE (code = 'insulin_pen' OR code LIKE '%insulin_pen%')
   AND device_type_id IS NULL;
 
 -- ─── Seed: measurement_units ───────────────────────────────────────────────
