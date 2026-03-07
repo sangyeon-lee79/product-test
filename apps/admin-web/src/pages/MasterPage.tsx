@@ -155,7 +155,7 @@ export default function MasterPage() {
 
   function getCategoryLabel(cat: MasterCategory) {
     const translated = t(`master.${normalizeCategoryKey(cat.key)}`, '');
-    return cat.ko_name?.trim() || translated || t('');
+    return cat.ko_name?.trim() || translated || t('admin.master.missing_translation');
   }
 
   function getItemLabel(item: MasterItem, preferredCategoryKey?: string | null) {
@@ -177,7 +177,7 @@ export default function MasterPage() {
     const ko = item.ko_name?.trim() || item.ko?.trim();
     if (ko) return ko;
 
-    return t('');
+    return t('admin.master.missing_translation');
   }
 
   function flash(msg: string) {
@@ -307,10 +307,10 @@ export default function MasterPage() {
     try {
       if (catModal === 'create') {
         const key = (catForm.key || '').trim().replace(/^master\./, '');
-        if (!key) throw new Error(t('admin.master.error_key_required'));
-        if (!/^[a-z0-9_]+$/.test(key)) throw new Error(t('admin.master.error_key_format'));
+        if (!key) throw new Error(t('admin.master.err_required'));
+        if (!/^[a-z0-9_]+$/.test(key)) throw new Error(t('admin.master.err_key_fmt'));
         const ko = (catTrans.ko || '').trim();
-        if (!ko) throw new Error(t('admin.master.error_ko_required'));
+        if (!ko) throw new Error(t('admin.master.err_required'));
 
         let translations: Record<string, string> = { ...catTrans, ko };
         const hasMissing = SUPPORTED_LANGS.some((lang) => lang !== 'ko' && !(translations[lang] || '').trim());
@@ -320,14 +320,14 @@ export default function MasterPage() {
         }
         const missingLangs = findMissingTranslationLangs(translations);
         if (missingLangs.length > 0) {
-          throw new Error(t('admin.master.error_missing_translations').replace('{langs}', missingLangs.map((lang) => (LANG_LABELS as Record<string, string>)[lang] || lang).join(', ')));
+          throw new Error(t('admin.master.err_trans_missing').replace('{langs}', missingLangs.map((lang) => (LANG_LABELS as Record<string, string>)[lang] || lang).join(', ')));
         }
 
         await api.master.categories.create({ key, sort_order: parseInt(catForm.sort_order, 10), translations });
-        flash(t(''));
+        flash(t('admin.master.msg_success'));
       } else if (catModal === 'edit' && selectedCat) {
         const ko = (catTrans.ko || '').trim();
-        if (!ko) throw new Error(t('admin.master.error_ko_required'));
+        if (!ko) throw new Error(t('admin.master.err_required'));
 
         let translations: Record<string, string> = { ...catTrans, ko };
         const hasMissing = SUPPORTED_LANGS.some((lang) => lang !== 'ko' && !(translations[lang] || '').trim());
@@ -337,14 +337,14 @@ export default function MasterPage() {
         }
         const missingLangs = findMissingTranslationLangs(translations);
         if (missingLangs.length > 0) {
-          throw new Error(t('admin.master.error_missing_translations').replace('{langs}', missingLangs.map((lang) => (LANG_LABELS as Record<string, string>)[lang] || lang).join(', ')));
+          throw new Error(t('admin.master.err_trans_missing').replace('{langs}', missingLangs.map((lang) => (LANG_LABELS as Record<string, string>)[lang] || lang).join(', ')));
         }
 
         await api.master.categories.update(selectedCat.id, {
           sort_order: parseInt(catForm.sort_order, 10),
           translations,
         });
-        flash(t(''));
+        flash(t('admin.master.msg_success'));
       }
       setCatModal(null);
       await loadCategories();
@@ -356,10 +356,10 @@ export default function MasterPage() {
   }
 
   async function handleCatDelete(cat: MasterCategory) {
-    if (!confirm(`"${getCategoryLabel(cat)}" ${t('')}`)) return;
+    if (!confirm(`"${getCategoryLabel(cat)}" ${t('admin.master.msg_confirm_delete')}`)) return;
     try {
       await api.master.categories.delete(cat.id);
-      flash(t(''));
+      flash(t('admin.master.msg_success'));
       if (selectedCat?.id === cat.id) setSelectedCat(null);
       await loadCategories();
     } catch (e) {
@@ -371,7 +371,7 @@ export default function MasterPage() {
     try {
       await api.master.categories.update(cat.id, { is_active: cat.is_active ? 0 : 1 });
       await loadCategories();
-      flash(t(''));
+      flash(t('admin.master.msg_success'));
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Error');
     }
@@ -382,11 +382,11 @@ export default function MasterPage() {
     if (!key) return;
     const category = categoryMapByKey.get(key) || null;
     if (!category) {
-      setError(t('admin.master.error_target_category_not_found'));
+      setError(t('admin.master.error_target_cat_not_found'));
       return;
     }
     if (level > 0 && !selectedIds[level - 1]) {
-      setError(t('admin.master.error_select_parent_first'));
+      setError(t('admin.master.select_parent_req'));
       return;
     }
 
@@ -402,7 +402,7 @@ export default function MasterPage() {
     if (!selectedNode || !selectedNodeCategoryKey) return;
     const category = categoryMapByKey.get(selectedNodeCategoryKey) || null;
     if (!category) {
-      setError(t('admin.master.error_target_category_not_found'));
+      setError(t('admin.master.error_target_cat_not_found'));
       return;
     }
     const parentLevel = activeLevel - 1;
@@ -424,7 +424,7 @@ export default function MasterPage() {
     setError('');
     try {
       const ko = (itemTrans.ko || '').trim();
-      if (!ko) throw new Error(t('admin.master.error_ko_required'));
+      if (!ko) throw new Error(t('admin.master.err_required'));
 
       let translations: Record<string, string> = { ...itemTrans, ko };
       const hasMissing = SUPPORTED_LANGS.some((lang) => lang !== 'ko' && !(translations[lang] || '').trim());
@@ -434,7 +434,7 @@ export default function MasterPage() {
       }
       const missingLangs = findMissingTranslationLangs(translations);
       if (missingLangs.length > 0) {
-        throw new Error(t('admin.master.error_missing_translations').replace('{langs}', missingLangs.map((lang) => (LANG_LABELS as Record<string, string>)[lang] || lang).join(', ')));
+        throw new Error(t('admin.master.err_trans_missing').replace('{langs}', missingLangs.map((lang) => (LANG_LABELS as Record<string, string>)[lang] || lang).join(', ')));
       }
 
       if (itemModal === 'create') {
@@ -444,14 +444,14 @@ export default function MasterPage() {
           translations,
           parent_id: itemForm.parent_id || undefined,
         });
-        flash(t(''));
+        flash(t('admin.master.msg_success'));
       } else if (itemModal === 'edit' && itemForm.id) {
         await api.master.items.update(itemForm.id, {
           sort_order: parseInt(itemForm.sort_order, 10),
           parent_id: itemForm.parent_id,
           translations,
         });
-        flash(t(''));
+        flash(t('admin.master.msg_success'));
       }
 
       setItemModal(null);
@@ -465,10 +465,10 @@ export default function MasterPage() {
 
   async function handleDeleteSelectedItem() {
     if (!selectedNode) return;
-    if (!confirm(`"${getItemLabel(selectedNode, selectedNodeCategoryKey)}" ${t('')}`)) return;
+    if (!confirm(`"${getItemLabel(selectedNode, selectedNodeCategoryKey)}" ${t('admin.master.msg_confirm_delete')}`)) return;
     try {
       const res = await api.master.items.delete(selectedNode.id);
-      flash(res.deleted ? t('') : t(''));
+      flash(t('admin.master.msg_success'));
       await loadChainItems();
       setSelectedIds(Array(MAX_LEVEL).fill(''));
     } catch (e) {
@@ -481,7 +481,7 @@ export default function MasterPage() {
     try {
       await api.master.items.update(selectedNode.id, { is_active: selectedNode.is_active ? 0 : 1 });
       await loadChainItems();
-      flash(t(''));
+      flash(t('admin.master.msg_success'));
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Error');
     }
@@ -492,7 +492,7 @@ export default function MasterPage() {
     if (!catKey) return t('admin.master.level_title').replace('{level}', String(level + 1));
     const cat = categoryMapByKey.get(catKey);
     if (cat) {
-      return t('admin.master.level_title_with_name')
+      return t('admin.master.level_title_named')
         .replace('{level}', String(level + 1))
         .replace('{name}', getCategoryLabel(cat));
     }
@@ -502,18 +502,18 @@ export default function MasterPage() {
   return (
     <>
       <div className="topbar">
-        <div className="topbar-title">🗂 {t('')}</div>
+        <div className="topbar-title">🗂 {t('admin.master.title')}</div>
       </div>
       <div className="content">
         {error && <div className="alert alert-error">{error}</div>}
         {success && <div className="alert alert-success">{success}</div>}
-        <div className="alert" style={{ marginBottom: 12 }}>{t('admin.master.hierarchy_guide')}</div>
+        <div className="alert" style={{ marginBottom: 12 }}>{t('admin.master.guide')}</div>
 
         <div className="master-explorer-grid" style={{ gridTemplateColumns: 'repeat(6, minmax(0, 1fr))' }}>
           <div className="card">
             <div className="card-header">
-              <div className="card-title">{t('')}</div>
-              <button className="btn btn-primary btn-sm" onClick={() => { setCatForm({ key: '', sort_order: '0' }); setCatTrans(emptyTrans()); setCatModal('create'); }}>{t('')}</button>
+              <div className="card-title">{t('admin.master.cat_list')}</div>
+              <button className="btn btn-primary btn-sm" onClick={() => { setCatForm({ key: '', sort_order: '0' }); setCatTrans(emptyTrans()); setCatModal('create'); }}>{t('admin.master.btn_add')}</button>
             </div>
             {loading ? (
               <div className="loading-center"><span className="spinner" /></div>
@@ -522,10 +522,10 @@ export default function MasterPage() {
                 {visibleCategories.map((cat) => (
                   <button key={cat.id} className={`master-row-btn ${selectedCat?.id === cat.id ? 'active' : ''}`} onClick={() => setSelectedCat(cat)}>
                     <div><div className="master-row-title">{getCategoryLabel(cat)}</div></div>
-                    <span className={`badge ${cat.is_active ? 'badge-green' : 'badge-gray'}`}>{cat.is_active ? t('') : t('')}</span>
+                    <span className={`badge ${cat.is_active ? 'badge-green' : 'badge-gray'}`}>{cat.is_active ? t('admin.master.active') : t('admin.master.inactive')}</span>
                   </button>
                 ))}
-                {visibleCategories.length === 0 && <div className="master-empty">{t('')}</div>}
+                {visibleCategories.length === 0 && <div className="master-empty">{t('admin.master.empty_cat')}</div>}
               </div>
             )}
           </div>
@@ -538,18 +538,18 @@ export default function MasterPage() {
               <div className="card" key={`level-${level}`}>
                 <div className="card-header">
                   <div className="card-title">{levelTitle(level)}</div>
-                  {canAdd && <button className="btn btn-primary btn-sm" onClick={() => openCreateAtLevel(level)}>+ {t('')}</button>}
+                  {canAdd && <button className="btn btn-primary btn-sm" onClick={() => openCreateAtLevel(level)}>+ {t('admin.master.btn_add')}</button>}
                 </div>
                 <div className="master-column-list">
-                  {!selectedCat && <div className="master-empty">{t('')}</div>}
+                  {!selectedCat && <div className="master-empty">{t('admin.master.empty_cat')}</div>}
                   {selectedCat && level > 0 && !selectedIds[level - 1] && <div className="master-empty">{t('admin.master.level_select_required').replace('{level}', String(level))}</div>}
                   {selectedCat && (level === 0 || selectedIds[level - 1]) && items.map((item) => (
                     <button key={item.id} className={`master-row-btn ${selectedId === item.id ? 'active' : ''}`} onClick={() => selectLevelItem(level, item.id)}>
                       <div><div className="master-row-title">{getItemLabel(item, categoryChain[level])}</div></div>
-                      <span className={`badge ${item.is_active ? 'badge-green' : 'badge-gray'}`}>{item.is_active ? t('') : t('')}</span>
+                      <span className={`badge ${item.is_active ? 'badge-green' : 'badge-gray'}`}>{item.is_active ? t('admin.master.active') : t('admin.master.inactive')}</span>
                     </button>
                   ))}
-                  {selectedCat && (level === 0 || selectedIds[level - 1]) && items.length === 0 && <div className="master-empty">{t('')}</div>}
+                  {selectedCat && (level === 0 || selectedIds[level - 1]) && items.length === 0 && <div className="master-empty">{t('admin.master.empty_item')}</div>}
                 </div>
               </div>
             );
@@ -559,29 +559,29 @@ export default function MasterPage() {
         {selectedCat && (
           <div className="card" style={{ marginTop: 12 }}>
             <div className="card-header">
-              <div className="card-title">{t('')}</div>
+              <div className="card-title">{t('admin.master.item_detail')}</div>
             </div>
             <div className="table-wrap" style={{ padding: 12, display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
-              {!selectedNode && <div className="master-empty">{t('')}</div>}
+              {!selectedNode && <div className="master-empty">{t('admin.master.empty_item')}</div>}
               {selectedNode && (
                 <>
                   <div className="master-row-title">{getItemLabel(selectedNode, selectedNodeCategoryKey)}</div>
                   <label className="master-toggle-row compact">
-                    <span>{t('')}</span>
+                    <span>{t('admin.master.active')}</span>
                     <input type="checkbox" checked={Boolean(selectedNode.is_active)} onChange={() => void toggleSelectedItemActive()} />
                   </label>
-                  <button className="btn btn-secondary btn-sm" onClick={openEditSelectedItem}>{t('')}</button>
-                  <button className="btn btn-danger btn-sm" onClick={() => void handleDeleteSelectedItem()}>{t('')}</button>
+                  <button className="btn btn-secondary btn-sm" onClick={openEditSelectedItem}>{t('admin.master.btn_edit')}</button>
+                  <button className="btn btn-danger btn-sm" onClick={() => void handleDeleteSelectedItem()}>{t('admin.master.btn_delete')}</button>
                 </>
               )}
               {selectedCat && (
                 <>
-                  <button className="btn btn-secondary btn-sm" onClick={() => { setCatForm({ key: selectedCat.key, sort_order: String(selectedCat.sort_order) }); setCatTrans(categoryToTranslations(selectedCat)); setCatModal('edit'); }}>{t('admin.master.edit_category')}</button>
+                  <button className="btn btn-secondary btn-sm" onClick={() => { setCatForm({ key: selectedCat.key, sort_order: String(selectedCat.sort_order) }); setCatTrans(categoryToTranslations(selectedCat)); setCatModal('edit'); }}>{t('admin.master.cat_edit')}</button>
                   <label className="master-toggle-row compact">
-                    <span>{t('')}</span>
+                    <span>{t('admin.master.active')}</span>
                     <input type="checkbox" checked={Boolean(selectedCat.is_active)} onChange={() => void toggleCategoryActive(selectedCat)} />
                   </label>
-                  <button className="btn btn-danger btn-sm" onClick={() => void handleCatDelete(selectedCat)}>{t('admin.master.delete_category')}</button>
+                  <button className="btn btn-danger btn-sm" onClick={() => void handleCatDelete(selectedCat)}>{t('admin.master.btn_delete')}</button>
                 </>
               )}
             </div>
@@ -593,24 +593,24 @@ export default function MasterPage() {
         <div className="modal-overlay" onClick={(e) => e.target === e.currentTarget && setCatModal(null)}>
           <div className="modal" style={{ maxWidth: 560 }}>
             <div className="modal-header">
-              <div className="modal-title">{catModal === 'create' ? t('') : t('')}</div>
+              <div className="modal-title">{catModal === 'create' ? t('admin.master.cat_create') : t('admin.master.cat_edit')}</div>
               <button className="modal-close" onClick={() => setCatModal(null)}>×</button>
             </div>
             <div className="modal-body" style={{ maxHeight: '70vh', overflowY: 'auto' }}>
               {catModal === 'create' && (
                 <div className="form-group">
                   <label className="form-label">{t('admin.master.field_key')}</label>
-                  <input className="form-input font-mono" value={catForm.key} onChange={(e) => setCatForm((f) => ({ ...f, key: e.target.value }))} placeholder={t('admin.master.placeholder_key')} />
+                  <input className="form-input font-mono" value={catForm.key} onChange={(e) => setCatForm((f) => ({ ...f, key: e.target.value }))} placeholder={t('admin.master.ph_key')} />
                 </div>
               )}
               <div className="form-group">
-                <label className="form-label">{t('')}</label>
+                <label className="form-label">{t('admin.master.field_sort')}</label>
                 <input className="form-input" type="number" value={catForm.sort_order} onChange={(e) => setCatForm((f) => ({ ...f, sort_order: e.target.value }))} />
               </div>
               <div style={{ borderTop: '1px solid var(--border)', paddingTop: 12, marginTop: 4 }}>
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
-                  <div style={{ fontSize: 13, fontWeight: 600 }}>{t('')}</div>
-                  <button className="btn btn-secondary btn-sm" onClick={() => autoTranslate(catTrans.ko, setCatTrans, catTrans)} disabled={translating || !catTrans.ko}>{translating ? t('admin.master.loading_translate') : t('')}</button>
+                  <div style={{ fontSize: 13, fontWeight: 600 }}>{t('admin.master.btn_trans_auto')}</div>
+                  <button className="btn btn-secondary btn-sm" onClick={() => autoTranslate(catTrans.ko, setCatTrans, catTrans)} disabled={translating || !catTrans.ko}>{translating ? t('admin.master.loading_trans') : t('admin.master.btn_trans_auto')}</button>
                 </div>
                 {SUPPORTED_LANGS.map((lang) => (
                   <div key={lang} className="form-group" style={{ marginBottom: 6, display: 'flex', alignItems: 'center', gap: 8 }}>
@@ -623,8 +623,8 @@ export default function MasterPage() {
               </div>
             </div>
             <div className="modal-footer">
-              <button className="btn btn-secondary" onClick={() => setCatModal(null)}>{t('')}</button>
-              <button className="btn btn-primary" onClick={() => void handleCatSave()} disabled={catSaving}>{t('')}</button>
+              <button className="btn btn-secondary" onClick={() => setCatModal(null)}>{t('admin.master.btn_cancel')}</button>
+              <button className="btn btn-primary" onClick={() => void handleCatSave()} disabled={catSaving}>{t('admin.master.btn_save')}</button>
             </div>
           </div>
         </div>
@@ -634,35 +634,35 @@ export default function MasterPage() {
         <div className="modal-overlay" onClick={(e) => e.target === e.currentTarget && setItemModal(null)}>
           <div className="modal" style={{ maxWidth: 560 }}>
             <div className="modal-header">
-              <div className="modal-title">{itemModal === 'create' ? t('') : t('')}</div>
+              <div className="modal-title">{itemModal === 'create' ? t('admin.master.item_create') : t('admin.master.item_edit')}</div>
               <button className="modal-close" onClick={() => setItemModal(null)}>×</button>
             </div>
             <div className="modal-body" style={{ maxHeight: '70vh', overflowY: 'auto' }}>
               <div className="form-group">
-                <label className="form-label">{t('')}</label>
+                <label className="form-label">{t('admin.master.field_category')}</label>
                 <input className="form-input" value={itemTargetCategory ? getCategoryLabel(itemTargetCategory) : ''} readOnly />
               </div>
               {itemModal === 'edit' && itemForm.key && (
                 <div className="form-group">
-                  <label className="form-label">{t('')}</label>
+                  <label className="form-label">{t('admin.master.field_key')}</label>
                   <input className="form-input font-mono" value={itemForm.key} readOnly />
                 </div>
               )}
               <div className="form-group">
-                <label className="form-label">{t('')}</label>
+                <label className="form-label">{t('admin.master.field_parent')}</label>
                 <select className="form-input" value={itemForm.parent_id || ''} onChange={(e) => setItemForm((f) => ({ ...f, parent_id: e.target.value || null }))}>
-                  <option value="">{t('admin.master.none_option')}</option>
+                  <option value="">{t('admin.master.opt_none')}</option>
                   {itemParentCandidates.filter((i) => i.id !== itemForm.id).map((i) => <option key={i.id} value={i.id}>{getItemLabel(i, itemTargetCategory ? normalizeCategoryKey(itemTargetCategory.key) : null)}</option>)}
                 </select>
               </div>
               <div className="form-group">
-                <label className="form-label">{t('')}</label>
+                <label className="form-label">{t('admin.master.field_sort')}</label>
                 <input className="form-input" type="number" value={itemForm.sort_order} onChange={(e) => setItemForm((f) => ({ ...f, sort_order: e.target.value }))} />
               </div>
               <div style={{ borderTop: '1px solid var(--border)', paddingTop: 12, marginTop: 4 }}>
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
-                  <div style={{ fontSize: 13, fontWeight: 600 }}>{t('')}</div>
-                  <button className="btn btn-secondary btn-sm" onClick={() => autoTranslate(itemTrans.ko, setItemTrans, itemTrans)} disabled={translating || !itemTrans.ko}>{translating ? t('admin.master.loading_translate') : t('')}</button>
+                  <div style={{ fontSize: 13, fontWeight: 600 }}>{t('admin.master.btn_trans_auto')}</div>
+                  <button className="btn btn-secondary btn-sm" onClick={() => autoTranslate(itemTrans.ko, setItemTrans, itemTrans)} disabled={translating || !itemTrans.ko}>{translating ? t('admin.master.loading_trans') : t('admin.master.btn_trans_auto')}</button>
                 </div>
                 {SUPPORTED_LANGS.map((lang) => (
                   <div key={lang} className="form-group" style={{ marginBottom: 6, display: 'flex', alignItems: 'center', gap: 8 }}>
@@ -675,8 +675,8 @@ export default function MasterPage() {
               </div>
             </div>
             <div className="modal-footer">
-              <button className="btn btn-secondary" onClick={() => setItemModal(null)}>{t('')}</button>
-              <button className="btn btn-primary" onClick={() => void handleItemSave()} disabled={itemSaving}>{t('')}</button>
+              <button className="btn btn-secondary" onClick={() => setItemModal(null)}>{t('admin.master.btn_cancel')}</button>
+              <button className="btn btn-primary" onClick={() => void handleItemSave()} disabled={itemSaving}>{t('admin.master.btn_save')}</button>
             </div>
           </div>
         </div>
