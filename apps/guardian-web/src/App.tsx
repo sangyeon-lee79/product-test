@@ -14,6 +14,45 @@ type MasterItem = {
   metadata?: string;
 };
 
+type LogValue = {
+  id?: string;
+  metric_id: string;
+  metric_code?: string;
+  unit_id: string;
+  unit_code?: string;
+  numeric_value: number | null;
+  text_value?: string | null;
+};
+
+type LogMedia = {
+  id?: string;
+  media_url: string;
+  media_type: string;
+};
+
+type GlucoseAlert = {
+  type: string;
+  severity: 'critical' | 'warning';
+  message_key: string;
+  value: number;
+  threshold: number;
+  unit: string;
+};
+
+type HealthLog = {
+  id: string;
+  pet_id: string;
+  logtype_id: string;
+  logtype_code?: string;
+  event_date: string;
+  event_time?: string | null;
+  title?: string | null;
+  notes?: string | null;
+  values: LogValue[];
+  media: LogMedia[];
+  created_at: string;
+};
+
 type Profile = {
   id?: string;
   handle: string | null;
@@ -149,6 +188,9 @@ const CATEGORY_KEYS = {
   coat_type: 'coat_type',
   grooming_cycle: 'grooming_cycle',
   interest: 'interest',
+  log_type: 'log_type',
+  disease_measurement_type: 'disease_measurement_type',
+  weight_unit_measure: 'measurement_units',
 } as const;
 
 const emptyPetForm: PetForm = {
@@ -285,6 +327,22 @@ export default function App() {
   const [bookingTime, setBookingTime] = useState('');
   const [bookingNotes, setBookingNotes] = useState('');
 
+  // ─── Health Log state ───────────────────────────────────────────────────────
+  const [logs, setLogs] = useState<HealthLog[]>([]);
+  const [logLoading, setLogLoading] = useState(false);
+  const [logPetId, setLogPetId] = useState('');
+  const [logAlert, setLogAlert] = useState<GlucoseAlert | null>(null);
+  const [logForm, setLogForm] = useState({
+    logtype_id: '',
+    event_date: new Date().toISOString().slice(0, 10),
+    event_time: '',
+    title: '',
+    notes: '',
+    numeric_value: '',
+    metric_id: '',
+    unit_id: '',
+  });
+
   const masterById = useMemo(() => {
     const all = Object.values(master).flat();
     return Object.fromEntries(all.map((x) => [x.id, x]));
@@ -368,6 +426,21 @@ export default function App() {
   useEffect(() => {
     void loadAll();
   }, [token]);
+
+  // Load health logs when logPetId changes
+  useEffect(() => {
+    if (!token || !logPetId) {
+      setLogs([]);
+      return;
+    }
+    let cancelled = false;
+    setLogLoading(true);
+    void api<{ logs: HealthLog[] }>(`/api/v1/pets/${encodeURIComponent(logPetId)}/logs?limit=50`, {}, token)
+      .then((res) => { if (!cancelled) setLogs(res.logs || []); })
+      .catch((e) => { if (!cancelled) setMessage(e instanceof Error ? e.message : 'Failed to load logs'); })
+      .finally(() => { if (!cancelled) setLogLoading(false); });
+    return () => { cancelled = true; };
+  }, [token, logPetId]);
 
   useEffect(() => {
     if (!token || !selectedPetId) {
@@ -596,6 +669,62 @@ export default function App() {
       setMessage(e instanceof Error ? e.message : 'Delete failed');
     } finally {
       setLoading(false);
+    }
+  }
+
+  async function saveLog() {
+    if (!token || !logPetId) return;
+    if (!logForm.logtype_id) { setMessage('기록 유형을 선택하세요.'); return; }
+    if (!logForm.event_date) { setMessage('날짜를 입력하세요.'); return; }
+
+    setLogLoading(true);
+    setMessage('');
+    setLogAlert(null);
+    try {
+      const values: LogValue[] = [];
+      if (logForm.metric_id && logForm.unit_id && logForm.numeric_value) {
+        values.push({
+          metric_id: logForm.metric_id,
+          unit_id: logForm.unit_id,
+          numeric_value: Number(logForm.numeric_value),
+        });
+      }
+      const payload = {
+        logtype_id: logForm.logtype_id,
+        event_date: logForm.event_date,
+        event_time: logForm.event_time || null,
+        title: logForm.title || null,
+        notes: logForm.notes || null,
+        values,
+      };
+      const res = await api<HealthLog & { alert?: GlucoseAlert }>(
+        `/api/v1/pets/${encodeURIComponent(logPetId)}/logs`,
+        { method: 'POST', body: JSON.stringify(payload) },
+        token,
+      );
+      if (res.alert) setLogAlert(res.alert);
+      setLogs((prev) => [res as HealthLog, ...prev]);
+      setLogForm((f) => ({ ...f, title: '', notes: '', numeric_value: '', event_time: '' }));
+      setMessage('기록이 저장되었습니다.');
+    } catch (e) {
+      setMessage(e instanceof Error ? e.message : 'Save failed');
+    } finally {
+      setLogLoading(false);
+    }
+  }
+
+  async function removeLog(logId: string) {
+    if (!token || !logPetId) return;
+    if (!window.confirm('이 기록을 삭제하시겠습니까?')) return;
+    setLogLoading(true);
+    try {
+      await api(`/api/v1/pets/${encodeURIComponent(logPetId)}/logs/${encodeURIComponent(logId)}`, { method: 'DELETE' }, token);
+      setLogs((prev) => prev.filter((l) => l.id !== logId));
+      setMessage('기록이 삭제되었습니다.');
+    } catch (e) {
+      setMessage(e instanceof Error ? e.message : 'Delete failed');
+    } finally {
+      setLogLoading(false);
     }
   }
 
@@ -978,6 +1107,118 @@ export default function App() {
                 <span className="status">{m.status}</span>
               </button>
             ))}
+          </div>
+        )}
+      </section>
+
+      {/* ─── Health Log ─────────────────────────────────────────────────── */}
+      <section className="panel">
+        <h2>건강 기록</h2>
+
+        {/* Pet selector */}
+        <div className="row">
+          <select value={logPetId} onChange={(e) => { setLogPetId(e.target.value); setLogAlert(null); }}>
+            <option value="">반려동물 선택</option>
+            {pets.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
+          </select>
+        </div>
+
+        {logAlert && (
+          <div className={`alert-banner alert-${logAlert.severity}`}>
+            <strong>{logAlert.severity === 'critical' ? '⚠️ 긴급' : '⚠️ 주의'}</strong>{' '}
+            {logAlert.type === 'low_glucose_critical' && '긴급 저혈당 경고'}
+            {logAlert.type === 'low_glucose_warning' && '저혈당 주의'}
+            {logAlert.type === 'high_glucose_warning' && '고혈당 주의'}
+            {logAlert.type === 'rapid_drop' && '혈당 급락 경고'}
+            {' — '}{logAlert.value.toFixed(1)} {logAlert.unit}
+            <button className="alert-close" onClick={() => setLogAlert(null)}>×</button>
+          </div>
+        )}
+
+        {logPetId && (
+          <div className="log-layout">
+            {/* Add form */}
+            <div className="log-form panel">
+              <h3>기록 추가</h3>
+              <div className="grid2">
+                <div>
+                  <label>기록 유형 *</label>
+                  <select value={logForm.logtype_id} onChange={(e) => setLogForm((f) => ({ ...f, logtype_id: e.target.value }))}>
+                    <option value="">선택</option>
+                    {(master[CATEGORY_KEYS.log_type] || []).map((x) => (
+                      <option key={x.id} value={x.id}>{x.ko_name || x.en || x.key}</option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label>날짜 *</label>
+                  <input type="date" value={logForm.event_date} onChange={(e) => setLogForm((f) => ({ ...f, event_date: e.target.value }))} />
+                </div>
+                <div>
+                  <label>시간</label>
+                  <input type="time" value={logForm.event_time} onChange={(e) => setLogForm((f) => ({ ...f, event_time: e.target.value }))} />
+                </div>
+                <div>
+                  <label>제목</label>
+                  <input value={logForm.title} onChange={(e) => setLogForm((f) => ({ ...f, title: e.target.value }))} placeholder="예: 아침 혈당" />
+                </div>
+              </div>
+              <label>측정값</label>
+              <div className="grid2">
+                <div>
+                  <label>항목</label>
+                  <select value={logForm.metric_id} onChange={(e) => setLogForm((f) => ({ ...f, metric_id: e.target.value }))}>
+                    <option value="">선택</option>
+                    {(master[CATEGORY_KEYS.disease_measurement_type] || []).map((x) => (
+                      <option key={x.id} value={x.id}>{x.ko_name || x.en || x.key}</option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label>수치</label>
+                  <input type="number" step="0.1" value={logForm.numeric_value} onChange={(e) => setLogForm((f) => ({ ...f, numeric_value: e.target.value }))} placeholder="0.0" />
+                </div>
+                <div>
+                  <label>단위</label>
+                  <select value={logForm.unit_id} onChange={(e) => setLogForm((f) => ({ ...f, unit_id: e.target.value }))}>
+                    <option value="">선택</option>
+                    {(master[CATEGORY_KEYS.weight_unit] || []).map((x) => (
+                      <option key={x.id} value={x.id}>{x.ko_name || x.en || x.key}</option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+              <label>메모</label>
+              <textarea rows={2} value={logForm.notes} onChange={(e) => setLogForm((f) => ({ ...f, notes: e.target.value }))} />
+              <button disabled={logLoading} onClick={() => void saveLog()}>저장</button>
+            </div>
+
+            {/* Timeline */}
+            <div className="log-timeline">
+              <h3>타임라인</h3>
+              {logLoading && <p className="muted">로딩 중...</p>}
+              {!logLoading && logs.length === 0 && <p className="muted">기록이 없습니다.</p>}
+              {logs.map((log) => (
+                <div key={log.id} className="log-card">
+                  <div className="log-card-header">
+                    <span className="log-type-badge">{log.logtype_code || '기록'}</span>
+                    <span className="log-date">{log.event_date}{log.event_time ? ` ${log.event_time}` : ''}</span>
+                    <button className="danger small" onClick={() => void removeLog(log.id)}>삭제</button>
+                  </div>
+                  {log.title && <p className="log-title">{log.title}</p>}
+                  {log.values.length > 0 && (
+                    <div className="log-values">
+                      {log.values.map((v, i) => (
+                        <span key={i} className="log-value-chip">
+                          {v.metric_code || v.metric_id}: <strong>{v.numeric_value ?? v.text_value}</strong> {v.unit_code || v.unit_id}
+                        </span>
+                      ))}
+                    </div>
+                  )}
+                  {log.notes && <p className="muted">{log.notes}</p>}
+                </div>
+              ))}
+            </div>
           </div>
         )}
       </section>

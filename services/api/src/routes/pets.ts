@@ -201,6 +201,12 @@ export async function handlePets(request: Request, env: Env, url: URL): Promise<
     return handleDevices(request, env, url);
   }
 
+  // /pets/:id/logs (delegated to logs route)
+  if (sub.includes('/logs')) {
+    const { handleLogs } = await import('./logs');
+    return handleLogs(request, env, url);
+  }
+
   return err('Not found', 404);
 }
 
