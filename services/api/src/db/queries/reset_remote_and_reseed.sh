@@ -13,7 +13,10 @@ echo "[1/4] Drop all tables on remote: ${DB_NAME}"
 npx wrangler d1 execute "${DB_NAME}" --remote --config "${CFG}" --file src/db/queries/reset_all_tables.sql
 
 echo "[2/4] Re-apply migrations"
-for file in $(ls src/db/migrations/*.sql | sort); do
+echo "  - applying src/db/migrations/000_init.sql"
+npx wrangler d1 execute "${DB_NAME}" --remote --config "${CFG}" --file src/db/migrations/000_init.sql
+
+for file in $(ls src/db/migrations/*.sql | sort | grep -v '/000_init\.sql$'); do
   echo "  - applying ${file}"
   npx wrangler d1 execute "${DB_NAME}" --remote --config "${CFG}" --file "${file}"
 done
