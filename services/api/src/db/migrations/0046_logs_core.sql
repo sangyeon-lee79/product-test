@@ -16,7 +16,7 @@ INSERT OR IGNORE INTO master_items (id, category_id, parent_item_id, code, sort_
 
 -- ─── i18n: log_type 라벨 (13개 언어) ─────────────────────────────────────────
 INSERT OR IGNORE INTO i18n_translations
-  (id, key, namespace, ko, en, ja, zh_cn, zh_tw, es, fr, de, pt, vi, th, id_lang, ar, is_verified, created_at, updated_at)
+  (id, key, page, ko, en, ja, zh_cn, zh_tw, es, fr, de, pt, vi, th, id_lang, ar, is_active, created_at, updated_at)
 VALUES
   ('i46-lt-blood-glucose', 'master.log_type.blood_glucose_log', 'master',
    '혈당 기록', 'Blood Glucose Log', '血糖記録', '血糖记录', '血糖記錄', 'Registro de glucosa', 'Journal glycémique', 'Blutzuckerprotokoll', 'Registro de glicemia', 'Nhật ký đường huyết', 'บันทึกน้ำตาลในเลือด', 'Log glukosa darah', 'سجل سكر الدم',

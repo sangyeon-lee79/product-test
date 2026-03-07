@@ -2,7 +2,7 @@
 -- S7: 건강 기록 UI i18n 키 (Guardian + 공통 alert 키)
 
 INSERT OR IGNORE INTO i18n_translations
-  (id, key, namespace, ko, en, ja, zh_cn, zh_tw, es, fr, de, pt, vi, th, id_lang, ar, is_verified, created_at, updated_at)
+  (id, key, page, ko, en, ja, zh_cn, zh_tw, es, fr, de, pt, vi, th, id_lang, ar, is_active, created_at, updated_at)
 VALUES
   -- ─── Guardian 로그 UI ─────────────────────────────────────────────────────
   ('i47-001', 'guardian.log.title',     'guardian', '건강 기록',          'Health Log',           '健康記録',             '健康记录',         '健康記錄',         'Historial de salud',        'Journal de santé',         'Gesundheitsprotokoll',  'Histórico de saúde',    'Nhật ký sức khỏe',      'บันทึกสุขภาพ',           'Log kesehatan',         'سجل الصحة',              1, datetime('now'), datetime('now')),
