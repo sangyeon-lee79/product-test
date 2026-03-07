@@ -49,6 +49,12 @@ export default function MasterPage() {
         'disease_measurement_type',
         'disease_measurement_context',
         'disease_judgement_rule_type',
+        'allergy_group',
+        'allergy_type',
+        'medication_status',
+        'coat_type',
+        'activity_level',
+        'neuter_status',
       ]),
     [],
   );
@@ -86,6 +92,9 @@ export default function MasterPage() {
         'disease_measurement_context',
       ];
     }
+    if (key === 'coat_length') return ['coat_length', 'coat_type', null, null, null];
+    if (key === 'temperament_type') return ['temperament_type', 'activity_level', null, null, null];
+    if (key === 'gender') return ['gender', 'neuter_status', null, null, null];
     if (key === 'diet_type') return ['diet_type', 'diet_subtype', null, null, null];
     if (key === 'allergy_group') return ['allergy_group', 'allergy_type', null, null, null];
     if (!key) return [null, null, null, null, null];
@@ -159,6 +168,9 @@ export default function MasterPage() {
     if (!parentId) return [];
 
     let list = all.filter((it) => it.parent_id === parentId);
+    if (list.length === 0) {
+      list = all.filter((it) => !it.parent_id);
+    }
 
     if (normalizeCategoryKey(selectedCat?.key || '') === 'disease_group') {
       if (level === 3 && list.length === 0) {
