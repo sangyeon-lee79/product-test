@@ -83,6 +83,8 @@ function normalizePetRecord(pet: Record<string, unknown>) {
   for (const col of ARRAY_COLUMNS) {
     out[col] = parseJsonArrayString(pet[col]);
   }
+  out.microchip_no = (pet.microchip_no as string | null) || (pet.microchip_number as string | null) || null;
+  out.health_condition_level_id = pet.health_condition_level_id ?? pet.health_level_id ?? null;
   out.birthday = (pet.birthday as string | null) || (pet.birth_date as string | null) || null;
   out.current_weight = pet.current_weight ?? pet.weight_kg ?? null;
   return out;
@@ -194,11 +196,41 @@ async function syncPetCurrentWeightFromLogs(env: Env, petId: string): Promise<vo
   ).run();
 }
 
+async function replaceDiseaseHistory(env: Env, petId: string, userId: string, diseaseIds: string[], note?: string | null): Promise<void> {
+  await env.DB.prepare(
+    `DELETE FROM health_records
+     WHERE pet_id = ? AND record_type = 'disease'`
+  ).bind(petId).run();
+
+  for (const diseaseId of diseaseIds) {
+    await env.DB.prepare(
+      `INSERT INTO health_records (
+        id, pet_id, record_type, disease_id, description, recorded_at, created_by_user_id, created_at
+      ) VALUES (?, ?, 'disease', ?, ?, ?, ?, ?)`
+    ).bind(
+      newId(),
+      petId,
+      diseaseId,
+      note ?? null,
+      now(),
+      userId,
+      now(),
+    ).run();
+  }
+}
+
 // ─── GET /pets ────────────────────────────────────────────────────────────────
 
 async function listPets(env: Env, payload: JwtPayload): Promise<Response> {
   const pets = await env.DB.prepare(
-    "SELECT * FROM pets WHERE guardian_user_id = ? AND status != 'deleted' ORDER BY created_at ASC"
+    `SELECT p.*,
+            p.microchip_number AS microchip_no,
+            p.birth_date AS birthday,
+            p.weight_kg AS current_weight,
+            p.health_level_id AS health_condition_level_id
+     FROM pets p
+     WHERE p.guardian_user_id = ? AND p.status != 'deleted'
+     ORDER BY p.created_at ASC`
   ).bind(payload.sub).all<Record<string, unknown>>();
 
   const result = await Promise.all(
@@ -228,7 +260,8 @@ async function createPet(request: Request, env: Env, payload: JwtPayload): Promi
 
   const id = newId();
   const ts = now();
-  const species = typeof body.species === 'string' ? body.species : 'other';
+  const speciesLegacy = typeof body.species === 'string' && body.species.trim() ? body.species.trim() : null;
+  const genderLegacy = typeof body.gender === 'string' && body.gender.trim() ? body.gender.trim() : null;
   const birthday = (typeof body.birthday === 'string' && body.birthday.trim())
     ? body.birthday.trim()
     : (typeof body.birth_date === 'string' && body.birth_date.trim() ? body.birth_date.trim() : null);
@@ -236,62 +269,52 @@ async function createPet(request: Request, env: Env, payload: JwtPayload): Promi
 
   await env.DB.prepare(`
     INSERT INTO pets (
-      id, guardian_id, name, species, pet_type_id, breed_id, gender_id, neuter_status_id,
-      life_stage_id, body_size_id, country_id, medication_status_id, weight_unit_id,
-      health_condition_level_id, activity_level_id, diet_type_id, living_style_id,
-      ownership_type_id, coat_length_id, coat_type_id, grooming_cycle_id,
-      color_ids, allergy_ids, disease_history_ids, symptom_tag_ids, vaccination_ids,
-      temperament_ids, notes, intro_text, birthday, birth_date, current_weight, weight_kg, microchip_no,
-      avatar_url, is_neutered, status, created_at, updated_at
+      id, guardian_user_id, name, microchip_number, pet_type_id, breed_id, gender_id,
+      life_stage_id, body_size_id, country_id, diet_type_id, coat_length_id, coat_type_id,
+      activity_level_id, health_level_id, gender_legacy, species_legacy, birth_date,
+      weight_kg, is_neutered, avatar_url, status, created_at, updated_at
     ) VALUES (
-      ?, ?, ?, ?, ?, ?, ?, ?,
+      ?, ?, ?, ?, ?, ?, ?,
+      ?, ?, ?, ?, ?, ?,
       ?, ?, ?, ?, ?,
-      ?, ?, ?, ?,
-      ?, ?, ?, ?,
-      ?, ?, ?, ?, ?,
-      ?, ?, ?, ?, ?, ?, ?, ?,
-      ?, ?, 'active', ?, ?
+      ?, ?, ?, 'active', ?, ?
     )
   `).bind(
     id,
     payload.sub,
     String(body.name).trim(),
-    species,
+    microchipNo,
     body.pet_type_id,
     body.breed_id ?? null,
     body.gender_id ?? null,
-    body.neuter_status_id ?? null,
     body.life_stage_id ?? null,
     body.body_size_id ?? null,
     body.country_id ?? null,
-    body.medication_status_id ?? null,
-    body.weight_unit_id ?? null,
-    body.health_condition_level_id ?? null,
-    body.activity_level_id ?? null,
     body.diet_type_id ?? null,
-    body.living_style_id ?? null,
-    body.ownership_type_id ?? null,
     body.coat_length_id ?? null,
     body.coat_type_id ?? null,
-    body.grooming_cycle_id ?? null,
-    JSON.stringify(parseIdArray(body.color_ids)),
-    JSON.stringify(parseIdArray(body.allergy_ids)),
-    JSON.stringify(parseIdArray(body.disease_history_ids)),
-    JSON.stringify(parseIdArray(body.symptom_tag_ids)),
-    JSON.stringify(parseIdArray(body.vaccination_ids)),
-    JSON.stringify(parseIdArray(body.temperament_ids)),
-    typeof body.notes === 'string' ? body.notes.trim() : null,
-    typeof body.intro_text === 'string' ? body.intro_text.trim() : null,
-    birthday,
+    body.activity_level_id ?? null,
+    body.health_condition_level_id ?? null,
+    genderLegacy,
+    speciesLegacy,
     birthday,
     currentWeight,
-    currentWeight,
-    microchipNo,
-    body.avatar_url ?? null,
     body.is_neutered ? 1 : 0,
+    (typeof body.avatar_url === 'string' ? body.avatar_url.trim() : null) ?? null,
     ts,
     ts,
   ).run();
+
+  const diseaseHistoryIds = parseIdArray(body.disease_history_ids);
+  if (diseaseHistoryIds.length > 0) {
+    await replaceDiseaseHistory(
+      env,
+      id,
+      payload.sub,
+      diseaseHistoryIds,
+      typeof body.notes === 'string' ? body.notes.trim() : null,
+    );
+  }
 
   if (currentWeight !== null) {
     await env.DB.prepare(
@@ -311,7 +334,15 @@ async function createPet(request: Request, env: Env, payload: JwtPayload): Promi
     ).run();
   }
 
-  const pet = await env.DB.prepare('SELECT * FROM pets WHERE id = ?').bind(id).first<Record<string, unknown>>();
+  const pet = await env.DB.prepare(`
+    SELECT p.*,
+           p.microchip_number AS microchip_no,
+           p.birth_date AS birthday,
+           p.weight_kg AS current_weight,
+           p.health_level_id AS health_condition_level_id
+    FROM pets p
+    WHERE p.id = ?
+  `).bind(id).first<Record<string, unknown>>();
   return created({ pet: await attachDiseases(env, normalizePetRecord(pet!)) });
 }
 
@@ -319,7 +350,13 @@ async function createPet(request: Request, env: Env, payload: JwtPayload): Promi
 
 async function getPet(env: Env, payload: JwtPayload, petId: string): Promise<Response> {
   const pet = await env.DB.prepare(
-    "SELECT * FROM pets WHERE id = ? AND guardian_user_id = ? AND status != 'deleted'"
+    `SELECT p.*,
+            p.microchip_number AS microchip_no,
+            p.birth_date AS birthday,
+            p.weight_kg AS current_weight,
+            p.health_level_id AS health_condition_level_id
+     FROM pets p
+     WHERE p.id = ? AND p.guardian_user_id = ? AND p.status != 'deleted'`
   ).bind(petId, payload.sub).first<Record<string, unknown>>();
   if (!pet) return err('Pet not found', 404, 'not_found');
   return ok({ pet: await attachDiseases(env, normalizePetRecord(pet)) });
@@ -329,7 +366,7 @@ async function getPet(env: Env, payload: JwtPayload, petId: string): Promise<Res
 
 async function updatePet(request: Request, env: Env, payload: JwtPayload, petId: string): Promise<Response> {
   const pet = await env.DB.prepare(
-    "SELECT id FROM pets WHERE id = ? AND guardian_id = ? AND status != 'deleted'"
+    "SELECT id FROM pets WHERE id = ? AND guardian_user_id = ? AND status != 'deleted'"
   ).bind(petId, payload.sub).first();
   if (!pet) return err('Pet not found', 404, 'not_found');
 
@@ -351,26 +388,17 @@ async function updatePet(request: Request, env: Env, payload: JwtPayload, petId:
 
   const scalarMap: Record<string, string> = {
     name: 'name',
-    species: 'species',
     pet_type_id: 'pet_type_id',
     breed_id: 'breed_id',
     gender_id: 'gender_id',
-    neuter_status_id: 'neuter_status_id',
     life_stage_id: 'life_stage_id',
     body_size_id: 'body_size_id',
     country_id: 'country_id',
-    medication_status_id: 'medication_status_id',
-    weight_unit_id: 'weight_unit_id',
-    health_condition_level_id: 'health_condition_level_id',
+    health_condition_level_id: 'health_level_id',
     activity_level_id: 'activity_level_id',
     diet_type_id: 'diet_type_id',
-    living_style_id: 'living_style_id',
-    ownership_type_id: 'ownership_type_id',
     coat_length_id: 'coat_length_id',
     coat_type_id: 'coat_type_id',
-    grooming_cycle_id: 'grooming_cycle_id',
-    notes: 'notes',
-    intro_text: 'intro_text',
     avatar_url: 'avatar_url',
   };
 
@@ -386,8 +414,6 @@ async function updatePet(request: Request, env: Env, payload: JwtPayload, petId:
     const birthday = (typeof body.birthday === 'string' && body.birthday.trim())
       ? body.birthday.trim()
       : (typeof body.birth_date === 'string' && body.birth_date.trim() ? body.birth_date.trim() : null);
-    sets.push('birthday = ?');
-    vals.push(birthday);
     sets.push('birth_date = ?');
     vals.push(birthday);
   }
@@ -396,14 +422,12 @@ async function updatePet(request: Request, env: Env, payload: JwtPayload, petId:
     || Object.prototype.hasOwnProperty.call(body, 'weight_kg');
   const normalizedWeight = parseOptionalNumber(body.current_weight ?? body.weight_kg);
   if (explicitWeight) {
-    sets.push('current_weight = ?');
-    vals.push(normalizedWeight);
     sets.push('weight_kg = ?');
     vals.push(normalizedWeight);
   }
 
   if (Object.prototype.hasOwnProperty.call(body, 'microchip_no')) {
-    sets.push('microchip_no = ?');
+    sets.push('microchip_number = ?');
     vals.push(microchipNo);
   }
   if (Object.prototype.hasOwnProperty.call(body, 'is_neutered')) {
@@ -411,15 +435,18 @@ async function updatePet(request: Request, env: Env, payload: JwtPayload, petId:
     vals.push(body.is_neutered ? 1 : 0);
   }
 
-  for (const col of ARRAY_COLUMNS) {
-    if (Object.prototype.hasOwnProperty.call(body, col)) {
-      sets.push(`${col} = ?`);
-      vals.push(JSON.stringify(parseIdArray(body[col])));
-    }
-  }
-
   vals.push(petId);
   await env.DB.prepare(`UPDATE pets SET ${sets.join(', ')} WHERE id = ?`).bind(...vals).run();
+
+  if (Object.prototype.hasOwnProperty.call(body, 'disease_history_ids')) {
+    await replaceDiseaseHistory(
+      env,
+      petId,
+      payload.sub,
+      parseIdArray(body.disease_history_ids),
+      typeof body.notes === 'string' ? body.notes.trim() : null,
+    );
+  }
 
   if (explicitWeight && normalizedWeight !== null) {
     await env.DB.prepare(
@@ -618,18 +645,18 @@ async function addDisease(request: Request, env: Env, payload: JwtPayload, petId
   }
   if (!body.disease_id) return err('disease_id required');
 
-  const id = newId();
-  try {
-    await env.DB.prepare(`
-      INSERT INTO pet_diseases (id, pet_id, disease_id, diagnosed_at, notes, is_active, created_at)
-      VALUES (?, ?, ?, ?, ?, 1, ?)
-    `).bind(id, petId, body.disease_id, body.diagnosed_at ?? null, body.notes ?? null, now()).run();
-  } catch {
-    await env.DB.prepare(`
-      UPDATE pet_diseases SET is_active = 1, diagnosed_at = COALESCE(?, diagnosed_at), notes = COALESCE(?, notes)
-      WHERE pet_id = ? AND disease_id = ?
-    `).bind(body.diagnosed_at ?? null, body.notes ?? null, petId, body.disease_id).run();
-  }
+  await env.DB.prepare(`
+    INSERT INTO health_records (id, pet_id, record_type, disease_id, description, recorded_at, created_by_user_id, created_at)
+    VALUES (?, ?, 'disease', ?, ?, ?, ?, ?)
+  `).bind(
+    newId(),
+    petId,
+    body.disease_id,
+    body.notes ?? null,
+    body.diagnosed_at ?? now(),
+    payload.sub,
+    now(),
+  ).run();
 
   return getPet(env, payload, petId);
 }
@@ -643,7 +670,7 @@ async function removeDisease(env: Env, payload: JwtPayload, petId: string, disea
   if (!pet) return err('Pet not found', 404, 'not_found');
 
   await env.DB.prepare(
-    'DELETE FROM pet_diseases WHERE pet_id = ? AND disease_id = ?'
+    "DELETE FROM health_records WHERE pet_id = ? AND record_type = 'disease' AND disease_id = ?"
   ).bind(petId, diseaseId).run();
   return getPet(env, payload, petId);
 }
