@@ -8,6 +8,7 @@ Your pet's life portfolio
 - [PLAN.md](documents/PLAN.md)
 - [PRD.md](documents/PRD.md)
 - [LLD.md](documents/LLD.md)
+- [DEVELOPMENT_STATUS.md](documents/DEVELOPMENT_STATUS.md)
 - [SYSTEM_ARCHITECTURE.md](SYSTEM_ARCHITECTURE.md)
 - [DATABASE_SCHEMA.md](DATABASE_SCHEMA.md)
 - [API_SPEC.md](API_SPEC.md)
