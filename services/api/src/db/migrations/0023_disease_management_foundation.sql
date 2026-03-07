@@ -267,17 +267,182 @@ INSERT OR IGNORE INTO disease_judgement_rules (
   id, disease_item_id, measurement_item_id, context_item_id, species_item_id, min_value, max_value,
   unit_item_id, judgement_level, judgement_label, sort_order, notes, status, created_at, updated_at
 )
-VALUES
-  ('rule-diabetes-fasting-normal', 'mi-disease-diabetes', 'mi-measure-glucose-value', 'mi-context-fasting', NULL, 70, 120, 'mi-unit-mgdl', 'normal', '정상', 1, 'seed guideline', 'active', datetime('now'), datetime('now')),
-  ('rule-diabetes-fasting-warning', 'mi-disease-diabetes', 'mi-measure-glucose-value', 'mi-context-fasting', NULL, 121, 180, 'mi-unit-mgdl', 'warning', '주의', 2, 'seed guideline', 'active', datetime('now'), datetime('now')),
-  ('rule-diabetes-fasting-danger', 'mi-disease-diabetes', 'mi-measure-glucose-value', 'mi-context-fasting', NULL, 181, 250, 'mi-unit-mgdl', 'danger', '위험', 3, 'seed guideline', 'active', datetime('now'), datetime('now')),
-  ('rule-diabetes-fasting-critical', 'mi-disease-diabetes', 'mi-measure-glucose-value', 'mi-context-fasting', NULL, 251, NULL, 'mi-unit-mgdl', 'critical', '매우 위험', 4, 'seed guideline', 'active', datetime('now'), datetime('now')),
-  ('rule-diabetes-premeal-normal', 'mi-disease-diabetes', 'mi-measure-glucose-value', 'mi-context-pre-meal', NULL, 70, 120, 'mi-unit-mgdl', 'normal', '정상', 5, 'seed guideline', 'active', datetime('now'), datetime('now')),
-  ('rule-diabetes-premeal-warning', 'mi-disease-diabetes', 'mi-measure-glucose-value', 'mi-context-pre-meal', NULL, 121, 180, 'mi-unit-mgdl', 'warning', '주의', 6, 'seed guideline', 'active', datetime('now'), datetime('now')),
-  ('rule-diabetes-postmeal-normal', 'mi-disease-diabetes', 'mi-measure-glucose-value', 'mi-context-post-1h', NULL, 80, 180, 'mi-unit-mgdl', 'normal', '정상', 7, 'seed guideline', 'active', datetime('now'), datetime('now')),
-  ('rule-diabetes-postmeal-warning', 'mi-disease-diabetes', 'mi-measure-glucose-value', 'mi-context-post-1h', NULL, 181, 250, 'mi-unit-mgdl', 'warning', '주의', 8, 'seed guideline', 'active', datetime('now'), datetime('now')),
-  ('rule-diabetes-postmeal-danger', 'mi-disease-diabetes', 'mi-measure-glucose-value', 'mi-context-post-1h', NULL, 251, 300, 'mi-unit-mgdl', 'danger', '위험', 9, 'seed guideline', 'active', datetime('now'), datetime('now')),
-  ('rule-diabetes-postmeal-critical', 'mi-disease-diabetes', 'mi-measure-glucose-value', 'mi-context-post-1h', NULL, 301, NULL, 'mi-unit-mgdl', 'critical', '매우 위험', 10, 'seed guideline', 'active', datetime('now'), datetime('now'));
+SELECT
+  'rule-diabetes-fasting-normal',
+  d.id,
+  m.id,
+  c.id,
+  NULL,
+  70, 120,
+  u.id,
+  'normal', '정상', 1, 'seed guideline', 'active', datetime('now'), datetime('now')
+FROM master_items d, master_items m, master_items c, master_items u
+WHERE d.code = 'diabetes' AND d.category_id = (SELECT id FROM master_categories WHERE code = 'disease_type' LIMIT 1)
+  AND m.code = 'glucose_value' AND m.category_id = (SELECT id FROM master_categories WHERE code = 'disease_measurement_type' LIMIT 1)
+  AND c.code = 'fasting' AND c.category_id = (SELECT id FROM master_categories WHERE code = 'disease_measurement_context' LIMIT 1)
+  AND u.code = 'mg_dl' AND u.category_id = (SELECT id FROM master_categories WHERE code = 'weight_unit' LIMIT 1);
+INSERT OR IGNORE INTO disease_judgement_rules (
+  id, disease_item_id, measurement_item_id, context_item_id, species_item_id, min_value, max_value,
+  unit_item_id, judgement_level, judgement_label, sort_order, notes, status, created_at, updated_at
+)
+SELECT
+  'rule-diabetes-fasting-warning',
+  d.id,
+  m.id,
+  c.id,
+  NULL,
+  121, 180,
+  u.id,
+  'warning', '주의', 2, 'seed guideline', 'active', datetime('now'), datetime('now')
+FROM master_items d, master_items m, master_items c, master_items u
+WHERE d.code = 'diabetes' AND d.category_id = (SELECT id FROM master_categories WHERE code = 'disease_type' LIMIT 1)
+  AND m.code = 'glucose_value' AND m.category_id = (SELECT id FROM master_categories WHERE code = 'disease_measurement_type' LIMIT 1)
+  AND c.code = 'fasting' AND c.category_id = (SELECT id FROM master_categories WHERE code = 'disease_measurement_context' LIMIT 1)
+  AND u.code = 'mg_dl' AND u.category_id = (SELECT id FROM master_categories WHERE code = 'weight_unit' LIMIT 1);
+INSERT OR IGNORE INTO disease_judgement_rules (
+  id, disease_item_id, measurement_item_id, context_item_id, species_item_id, min_value, max_value,
+  unit_item_id, judgement_level, judgement_label, sort_order, notes, status, created_at, updated_at
+)
+SELECT
+  'rule-diabetes-fasting-danger',
+  d.id,
+  m.id,
+  c.id,
+  NULL,
+  181, 250,
+  u.id,
+  'danger', '위험', 3, 'seed guideline', 'active', datetime('now'), datetime('now')
+FROM master_items d, master_items m, master_items c, master_items u
+WHERE d.code = 'diabetes' AND d.category_id = (SELECT id FROM master_categories WHERE code = 'disease_type' LIMIT 1)
+  AND m.code = 'glucose_value' AND m.category_id = (SELECT id FROM master_categories WHERE code = 'disease_measurement_type' LIMIT 1)
+  AND c.code = 'fasting' AND c.category_id = (SELECT id FROM master_categories WHERE code = 'disease_measurement_context' LIMIT 1)
+  AND u.code = 'mg_dl' AND u.category_id = (SELECT id FROM master_categories WHERE code = 'weight_unit' LIMIT 1);
+INSERT OR IGNORE INTO disease_judgement_rules (
+  id, disease_item_id, measurement_item_id, context_item_id, species_item_id, min_value, max_value,
+  unit_item_id, judgement_level, judgement_label, sort_order, notes, status, created_at, updated_at
+)
+SELECT
+  'rule-diabetes-fasting-critical',
+  d.id,
+  m.id,
+  c.id,
+  NULL,
+  251, NULL,
+  u.id,
+  'critical', '매우 위험', 4, 'seed guideline', 'active', datetime('now'), datetime('now')
+FROM master_items d, master_items m, master_items c, master_items u
+WHERE d.code = 'diabetes' AND d.category_id = (SELECT id FROM master_categories WHERE code = 'disease_type' LIMIT 1)
+  AND m.code = 'glucose_value' AND m.category_id = (SELECT id FROM master_categories WHERE code = 'disease_measurement_type' LIMIT 1)
+  AND c.code = 'fasting' AND c.category_id = (SELECT id FROM master_categories WHERE code = 'disease_measurement_context' LIMIT 1)
+  AND u.code = 'mg_dl' AND u.category_id = (SELECT id FROM master_categories WHERE code = 'weight_unit' LIMIT 1);
+INSERT OR IGNORE INTO disease_judgement_rules (
+  id, disease_item_id, measurement_item_id, context_item_id, species_item_id, min_value, max_value,
+  unit_item_id, judgement_level, judgement_label, sort_order, notes, status, created_at, updated_at
+)
+SELECT
+  'rule-diabetes-premeal-normal',
+  d.id,
+  m.id,
+  c.id,
+  NULL,
+  70, 120,
+  u.id,
+  'normal', '정상', 5, 'seed guideline', 'active', datetime('now'), datetime('now')
+FROM master_items d, master_items m, master_items c, master_items u
+WHERE d.code = 'diabetes' AND d.category_id = (SELECT id FROM master_categories WHERE code = 'disease_type' LIMIT 1)
+  AND m.code = 'glucose_value' AND m.category_id = (SELECT id FROM master_categories WHERE code = 'disease_measurement_type' LIMIT 1)
+  AND c.code = 'pre_meal' AND c.category_id = (SELECT id FROM master_categories WHERE code = 'disease_measurement_context' LIMIT 1)
+  AND u.code = 'mg_dl' AND u.category_id = (SELECT id FROM master_categories WHERE code = 'weight_unit' LIMIT 1);
+INSERT OR IGNORE INTO disease_judgement_rules (
+  id, disease_item_id, measurement_item_id, context_item_id, species_item_id, min_value, max_value,
+  unit_item_id, judgement_level, judgement_label, sort_order, notes, status, created_at, updated_at
+)
+SELECT
+  'rule-diabetes-premeal-warning',
+  d.id,
+  m.id,
+  c.id,
+  NULL,
+  121, 180,
+  u.id,
+  'warning', '주의', 6, 'seed guideline', 'active', datetime('now'), datetime('now')
+FROM master_items d, master_items m, master_items c, master_items u
+WHERE d.code = 'diabetes' AND d.category_id = (SELECT id FROM master_categories WHERE code = 'disease_type' LIMIT 1)
+  AND m.code = 'glucose_value' AND m.category_id = (SELECT id FROM master_categories WHERE code = 'disease_measurement_type' LIMIT 1)
+  AND c.code = 'pre_meal' AND c.category_id = (SELECT id FROM master_categories WHERE code = 'disease_measurement_context' LIMIT 1)
+  AND u.code = 'mg_dl' AND u.category_id = (SELECT id FROM master_categories WHERE code = 'weight_unit' LIMIT 1);
+INSERT OR IGNORE INTO disease_judgement_rules (
+  id, disease_item_id, measurement_item_id, context_item_id, species_item_id, min_value, max_value,
+  unit_item_id, judgement_level, judgement_label, sort_order, notes, status, created_at, updated_at
+)
+SELECT
+  'rule-diabetes-postmeal-normal',
+  d.id,
+  m.id,
+  c.id,
+  NULL,
+  80, 180,
+  u.id,
+  'normal', '정상', 7, 'seed guideline', 'active', datetime('now'), datetime('now')
+FROM master_items d, master_items m, master_items c, master_items u
+WHERE d.code = 'diabetes' AND d.category_id = (SELECT id FROM master_categories WHERE code = 'disease_type' LIMIT 1)
+  AND m.code = 'glucose_value' AND m.category_id = (SELECT id FROM master_categories WHERE code = 'disease_measurement_type' LIMIT 1)
+  AND c.code = 'post_meal_1h' AND c.category_id = (SELECT id FROM master_categories WHERE code = 'disease_measurement_context' LIMIT 1)
+  AND u.code = 'mg_dl' AND u.category_id = (SELECT id FROM master_categories WHERE code = 'weight_unit' LIMIT 1);
+INSERT OR IGNORE INTO disease_judgement_rules (
+  id, disease_item_id, measurement_item_id, context_item_id, species_item_id, min_value, max_value,
+  unit_item_id, judgement_level, judgement_label, sort_order, notes, status, created_at, updated_at
+)
+SELECT
+  'rule-diabetes-postmeal-warning',
+  d.id,
+  m.id,
+  c.id,
+  NULL,
+  181, 250,
+  u.id,
+  'warning', '주의', 8, 'seed guideline', 'active', datetime('now'), datetime('now')
+FROM master_items d, master_items m, master_items c, master_items u
+WHERE d.code = 'diabetes' AND d.category_id = (SELECT id FROM master_categories WHERE code = 'disease_type' LIMIT 1)
+  AND m.code = 'glucose_value' AND m.category_id = (SELECT id FROM master_categories WHERE code = 'disease_measurement_type' LIMIT 1)
+  AND c.code = 'post_meal_1h' AND c.category_id = (SELECT id FROM master_categories WHERE code = 'disease_measurement_context' LIMIT 1)
+  AND u.code = 'mg_dl' AND u.category_id = (SELECT id FROM master_categories WHERE code = 'weight_unit' LIMIT 1);
+INSERT OR IGNORE INTO disease_judgement_rules (
+  id, disease_item_id, measurement_item_id, context_item_id, species_item_id, min_value, max_value,
+  unit_item_id, judgement_level, judgement_label, sort_order, notes, status, created_at, updated_at
+)
+SELECT
+  'rule-diabetes-postmeal-danger',
+  d.id,
+  m.id,
+  c.id,
+  NULL,
+  251, 300,
+  u.id,
+  'danger', '위험', 9, 'seed guideline', 'active', datetime('now'), datetime('now')
+FROM master_items d, master_items m, master_items c, master_items u
+WHERE d.code = 'diabetes' AND d.category_id = (SELECT id FROM master_categories WHERE code = 'disease_type' LIMIT 1)
+  AND m.code = 'glucose_value' AND m.category_id = (SELECT id FROM master_categories WHERE code = 'disease_measurement_type' LIMIT 1)
+  AND c.code = 'post_meal_1h' AND c.category_id = (SELECT id FROM master_categories WHERE code = 'disease_measurement_context' LIMIT 1)
+  AND u.code = 'mg_dl' AND u.category_id = (SELECT id FROM master_categories WHERE code = 'weight_unit' LIMIT 1);
+INSERT OR IGNORE INTO disease_judgement_rules (
+  id, disease_item_id, measurement_item_id, context_item_id, species_item_id, min_value, max_value,
+  unit_item_id, judgement_level, judgement_label, sort_order, notes, status, created_at, updated_at
+)
+SELECT
+  'rule-diabetes-postmeal-critical',
+  d.id,
+  m.id,
+  c.id,
+  NULL,
+  301, NULL,
+  u.id,
+  'critical', '매우 위험', 10, 'seed guideline', 'active', datetime('now'), datetime('now')
+FROM master_items d, master_items m, master_items c, master_items u
+WHERE d.code = 'diabetes' AND d.category_id = (SELECT id FROM master_categories WHERE code = 'disease_type' LIMIT 1)
+  AND m.code = 'glucose_value' AND m.category_id = (SELECT id FROM master_categories WHERE code = 'disease_measurement_type' LIMIT 1)
+  AND c.code = 'post_meal_1h' AND c.category_id = (SELECT id FROM master_categories WHERE code = 'disease_measurement_context' LIMIT 1)
+  AND u.code = 'mg_dl' AND u.category_id = (SELECT id FROM master_categories WHERE code = 'weight_unit' LIMIT 1);
 
 -- 13) Bangul sample relation seed
 INSERT OR IGNORE INTO pet_disease_histories (
@@ -286,15 +451,17 @@ INSERT OR IGNORE INTO pet_disease_histories (
 SELECT
   'seed-pdh-bangul-diabetes',
   p.id,
-  'mi-dg-endocrine',
-  'mi-disease-diabetes',
+  dg.id,
+  d.id,
   datetime('now'),
   '샘플 당뇨 질병 이력',
   1,
   datetime('now'),
   datetime('now')
-FROM pets p
-WHERE p.id = 'seed-pet-bangul';
+FROM pets p, master_items dg, master_items d
+WHERE p.id = 'seed-pet-bangul'
+  AND dg.code = 'endocrine' AND dg.category_id = (SELECT id FROM master_categories WHERE code = 'disease_group' LIMIT 1)
+  AND d.code = 'diabetes' AND d.category_id = (SELECT id FROM master_categories WHERE code = 'disease_type' LIMIT 1);
 
 INSERT OR IGNORE INTO pet_disease_devices (
   id, pet_id, disease_item_id, device_item_id, serial_number, nickname, notes, is_active, created_at, updated_at
@@ -302,16 +469,18 @@ INSERT OR IGNORE INTO pet_disease_devices (
 SELECT
   'seed-pdd-bangul-meter',
   p.id,
-  'mi-disease-diabetes',
-  'mi-device-glucose-meter',
+  d.id,
+  dv.id,
   NULL,
   '방울이 검사기',
   '샘플 장치',
   1,
   datetime('now'),
   datetime('now')
-FROM pets p
-WHERE p.id = 'seed-pet-bangul';
+FROM pets p, master_items d, master_items dv
+WHERE p.id = 'seed-pet-bangul'
+  AND d.code = 'diabetes' AND d.category_id = (SELECT id FROM master_categories WHERE code = 'disease_type' LIMIT 1)
+  AND dv.code = 'glucose_meter' AND dv.category_id = (SELECT id FROM master_categories WHERE code = 'disease_device_type' LIMIT 1);
 
 INSERT OR IGNORE INTO pet_glucose_logs (
   id, pet_id, disease_item_id, device_item_id, glucose_value, glucose_unit_item_id,
@@ -321,12 +490,12 @@ INSERT OR IGNORE INTO pet_glucose_logs (
 SELECT
   'seed-pgl-bangul-1',
   p.id,
-  'mi-disease-diabetes',
-  'seed-pdd-bangul-meter',
+  d.id,
+  dd.id,
   186,
-  'mi-unit-mgdl',
+  u.id,
   datetime('now', '-1 hour'),
-  'mi-context-pre-meal',
+  c.id,
   '샘플 혈당 기록',
   p.guardian_user_id,
   'warning',
@@ -334,6 +503,10 @@ SELECT
   datetime('now'),
   datetime('now')
 FROM pets p
+LEFT JOIN pet_disease_devices dd ON dd.id = 'seed-pdd-bangul-meter' AND dd.pet_id = p.id
+JOIN master_items d ON d.code = 'diabetes' AND d.category_id = (SELECT id FROM master_categories WHERE code = 'disease_type' LIMIT 1)
+JOIN master_items u ON u.code = 'mg_dl' AND u.category_id = (SELECT id FROM master_categories WHERE code = 'weight_unit' LIMIT 1)
+JOIN master_items c ON c.code = 'pre_meal' AND c.category_id = (SELECT id FROM master_categories WHERE code = 'disease_measurement_context' LIMIT 1)
 WHERE p.id = 'seed-pet-bangul';
 
 -- 14) i18n seed (key-based)
