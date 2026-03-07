@@ -1,20 +1,36 @@
 -- 0038: Cleanup and Reseed Disease Group (L1) and Disease Type (L2)
--- Goal: Fix mixed translation keys in data and ensure correct L1-L2 parent-child linking.
+-- Goal: Fix mixed translation keys and ensure correct L1-L2 parent-child linking.
+-- Fix: Handle foreign key constraints by cleaning up referencing tables first.
 
--- 1. DELETE existing data for L1 (disease_group) and L2 (disease_type)
--- We use a subquery to find category IDs to ensure we don't accidentally delete other categories
+-- 1. CLEANUP referencing tables to avoid FOREIGN KEY constraint failures
+-- These tables reference master_items(id) for disease_group or disease_type
+DELETE FROM pet_disease_histories 
+WHERE disease_group_item_id IN (SELECT id FROM master_items WHERE category_id IN (SELECT id FROM master_categories WHERE code IN ('disease_group', 'disease_type')))
+   OR disease_item_id IN (SELECT id FROM master_items WHERE category_id IN (SELECT id FROM master_categories WHERE code IN ('disease_group', 'disease_type')));
+
+DELETE FROM pet_disease_devices 
+WHERE disease_item_id IN (SELECT id FROM master_items WHERE category_id IN (SELECT id FROM master_categories WHERE code IN ('disease_group', 'disease_type')));
+
+DELETE FROM pet_glucose_logs 
+WHERE disease_item_id IN (SELECT id FROM master_items WHERE category_id IN (SELECT id FROM master_categories WHERE code IN ('disease_group', 'disease_type')));
+
+DELETE FROM disease_judgement_rules 
+WHERE disease_item_id IN (SELECT id FROM master_items WHERE category_id IN (SELECT id FROM master_categories WHERE code IN ('disease_group', 'disease_type')));
+
+
+-- 2. DELETE existing data for L1 (disease_group) and L2 (disease_type) from master_items
 DELETE FROM master_items 
 WHERE category_id IN (
     SELECT id FROM master_categories WHERE code IN ('disease_group', 'disease_type')
 );
 
--- Delete related i18n keys to prevent stale/incorrect translations
+-- Delete related i18n keys
 DELETE FROM i18n_translations 
 WHERE key LIKE 'master.disease_group.%' 
    OR key LIKE 'master.disease_type.%';
 
--- 2. SEED L1 (disease_group)
--- L1 keys follow 'master.disease_group.*' for i18n, but 'code' in master_items should be the suffix.
+
+-- 3. SEED L1 (disease_group)
 WITH l1_data(id, code, sort_order, ko, en) AS (
   VALUES
     ('mi-dg-endocrine', 'endocrine_disease', 1, '내분비 질환', 'Endocrine Disease'),
@@ -39,30 +55,11 @@ WITH l1_data(id, code, sort_order, ko, en) AS (
     ('mi-dg-nutritional', 'nutritional_disease', 20, '영양 질환', 'Nutritional Disorder')
 )
 INSERT INTO master_items (id, category_id, parent_item_id, code, sort_order, status, metadata, created_at, updated_at)
-SELECT 
-    d.id, 
-    c.id, 
-    NULL, 
-    d.code, 
-    d.sort_order, 
-    'active', 
-    '{}', 
-    datetime('now'), 
-    datetime('now')
-FROM l1_data d
-JOIN master_categories c ON c.code = 'disease_group';
+SELECT d.id, c.id, NULL, d.code, d.sort_order, 'active', '{}', datetime('now'), datetime('now')
+FROM l1_data d JOIN master_categories c ON c.code = 'disease_group';
 
--- Insert i18n for L1
 INSERT INTO i18n_translations (id, key, page, ko, en, is_active, created_at, updated_at)
-SELECT 
-    'i18n-dg-' || code, 
-    'master.disease_group.' || code, 
-    'master', 
-    ko, 
-    en, 
-    1, 
-    datetime('now'), 
-    datetime('now')
+SELECT 'i18n-dg-' || code, 'master.disease_group.' || code, 'master', ko, en, 1, datetime('now'), datetime('now')
 FROM (
   VALUES
     ('endocrine_disease', '내분비 질환', 'Endocrine Disease'),
@@ -88,56 +85,32 @@ FROM (
 ) AS t(code, ko, en);
 
 
--- 3. SEED L2 (disease_type)
--- L2 keys follow 'master.disease_type.*'
+-- 4. SEED L2 (disease_type)
 WITH l2_data(id, parent_code, code, sort_order, ko, en) AS (
   VALUES
-    -- Respiratory (respiratory_disease)
     ('mi-dt-asthma', 'respiratory_disease', 'asthma', 1, '천식', 'Asthma'),
     ('mi-dt-pneumonia', 'respiratory_disease', 'pneumonia', 2, '폐렴', 'Pneumonia'),
     ('mi-dt-bronchitis', 'respiratory_disease', 'bronchitis', 3, '기관지염', 'Bronchitis'),
     ('mi-dt-tracheal_collapse', 'respiratory_disease', 'tracheal_collapse', 4, '기관허탈', 'Tracheal Collapse'),
     ('mi-dt-rhinitis', 'respiratory_disease', 'rhinitis', 5, '비염', 'Rhinitis'),
-    
-    -- Endocrine (endocrine_disease)
     ('mi-dt-diabetes', 'endocrine_disease', 'diabetes', 1, '당뇨', 'Diabetes'),
     ('mi-dt-hypothyroidism', 'endocrine_disease', 'hypothyroidism', 2, '갑상선 기능저하증', 'Hypothyroidism'),
     ('mi-dt-hyperthyroidism', 'endocrine_disease', 'hyperthyroidism', 3, '갑상선 기능항진증', 'Hyperthyroidism'),
     ('mi-dt-cushing', 'endocrine_disease', 'cushing', 4, '쿠싱 증후군', 'Cushing Syndrome'),
     ('mi-dt-addison', 'endocrine_disease', 'addison', 5, '애디슨병', 'Addison Disease'),
-    
-    -- Digestive (digestive_disease)
     ('mi-dt-gastritis', 'digestive_disease', 'gastritis', 1, '위염', 'Gastritis'),
     ('mi-dt-enteritis', 'digestive_disease', 'enteritis', 2, '장염', 'Enteritis'),
     ('mi-dt-pancreatitis', 'digestive_disease', 'pancreatitis', 3, '췌장염', 'Pancreatitis'),
     ('mi-dt-colitis', 'digestive_disease', 'colitis', 4, '대장염', 'Colitis')
 )
 INSERT INTO master_items (id, category_id, parent_item_id, code, sort_order, status, metadata, created_at, updated_at)
-SELECT 
-    d.id, 
-    c.id, 
-    p.id, 
-    d.code, 
-    d.sort_order, 
-    'active', 
-    '{}', 
-    datetime('now'), 
-    datetime('now')
+SELECT d.id, c.id, p.id, d.code, d.sort_order, 'active', '{}', datetime('now'), datetime('now')
 FROM l2_data d
 JOIN master_categories c ON c.code = 'disease_type'
 JOIN master_items p ON p.code = d.parent_code AND p.category_id = (SELECT id FROM master_categories WHERE code = 'disease_group');
 
--- Insert i18n for L2
 INSERT INTO i18n_translations (id, key, page, ko, en, is_active, created_at, updated_at)
-SELECT 
-    'i18n-dt-' || code, 
-    'master.disease_type.' || code, 
-    'master', 
-    ko, 
-    en, 
-    1, 
-    datetime('now'), 
-    datetime('now')
+SELECT 'i18n-dt-' || code, 'master.disease_type.' || code, 'master', ko, en, 1, datetime('now'), datetime('now')
 FROM (
   VALUES
     ('asthma', '천식', 'Asthma'),
