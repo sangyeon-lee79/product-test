@@ -331,14 +331,21 @@ export default function PetGalleryPanel({
           subdir: `feed/${petSeg}`,
         });
         await uploadBinary(feedPresigned.upload_url, feedFile, (ratio) => setUploadProgress(Math.round(ratio * 0.7)));
-        const thumbPresigned = await api.storage.presignedUrl({
-          type: 'log_media',
-          ext: 'jpg',
-          subdir: `thumb/${petSeg}`,
-        });
-        await uploadBinary(thumbPresigned.upload_url, thumbFile, (ratio) => setUploadProgress(70 + Math.round(ratio * 0.3)));
         mediaUrl = feedPresigned.public_url;
-        thumbnailUrl = thumbPresigned.public_url;
+        thumbnailUrl = mediaUrl;
+        try {
+          const thumbPresigned = await api.storage.presignedUrl({
+            type: 'log_media',
+            ext: 'jpg',
+            subdir: `thumb/${petSeg}`,
+          });
+          await uploadBinary(thumbPresigned.upload_url, thumbFile, (ratio) => setUploadProgress(70 + Math.round(ratio * 0.3)));
+          thumbnailUrl = thumbPresigned.public_url;
+        } catch {
+          // 썸네일 업로드 실패 시 원본 URL로 대체하여 전체 저장은 계속 진행
+          thumbnailUrl = mediaUrl;
+          setError(t('guardian.pet.gallery.add_photo.error.thumbnail_fallback'));
+        }
       } catch (uploadError) {
         const message = uploadError instanceof Error ? uploadError.message : '';
         const isStorageUnavailable = /Storage not configured|no_r2|storage/i.test(message);
@@ -359,7 +366,11 @@ export default function PetGalleryPanel({
       });
       setUploadOpen(false);
       resetUploadForm();
-      await onRefresh();
+      try {
+        await onRefresh();
+      } catch {
+        setError(t('guardian.pet.gallery.add_photo.error.refresh_failed'));
+      }
     } catch (e) {
       const raw = e instanceof Error ? e.message : '';
       let message = t('guardian.pet.gallery.add_photo.error.upload_failed');
