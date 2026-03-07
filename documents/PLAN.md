@@ -28,6 +28,72 @@ Your pet's life portfolio
 
 ---
 
+## 0.2 통합 개발 반영 내역 (2026-03-07, 최신)
+
+아래는 최근 연속 개발에서 실제 코드/DB에 반영된 항목 요약이다.
+
+### A) Guardian / Public 안정화
+- [x] 방울(Bangul) 샘플 복구 마이그레이션 반영 및 원격 데이터 확인 쿼리 정비
+- [x] 네트워크 실패 메시지 정리: raw `"Failed to fetch"` 직접 노출 제거
+- [x] API 오류와 Empty State 메시지 분리 처리
+- [x] Guardian/Public 주요 API 응답 shape 정합성 보정
+
+### B) Guardian Gallery / Feed UX
+- [x] Guardian 갤러리: URL 입력 제거, 파일 업로드 기반으로 전환
+- [x] 업로드 실패 시 원인 메시지 개선 및 부분 실패 복구 처리
+- [x] 세로 사진 비율 보존(미리보기 contain, 피드/앨범 비율 유지) 적용
+- [x] 업로드 이미지 압축/썸네일 생성/경로 분리(feed, thumb) 적용
+- [x] Feed 작성 UI 단순화(booking_id/supplier_id 제거)
+- [x] Guardian 본인 게시글 삭제 기능 추가
+
+### C) Storage / Infra
+- [x] Cloudflare R2 바인딩(`env.R2`) 설정 및 업로드 경로 연동
+- [x] wrangler 환경별 설정 점검 및 배포 가이드 반영
+
+### D) Admin Master UI 구조 개편
+- [x] 4단/5단 탐색 UI를 거쳐 현재 6컬럼 구조로 통합
+  - `Category | L1 | L2 | L3 | L4 | L5`
+- [x] 질병 관리 흐름을 카테고리 내부 계층으로 정리
+  - `질병군 → 질병대분류/질병이력 → (추가 관리 레벨)`
+- [x] 카테고리 생성 시 한국어 표시명 필수 + 자동번역 트리거
+- [x] key/raw 값 노출 최소화 및 번역 라벨 우선 표시
+
+### E) 카테고리 재구성 반영
+- [x] 최상위 카테고리 정리(삭제/숨김/이동)
+  - `실내/실외(living_style)` 삭제(비활성)
+  - `복용약물상태(medication_status)` 삭제(비활성)
+  - `알러지(allergy_group/allergy_type)` 최상위 제거
+- [x] L2 이동 반영
+  - `성별 → 중성화여부`
+  - `성격/기질 → 활동량`
+  - `털길이 → 미용주기`
+  - `체형/크기 → 체중단위`
+  - `pet_type(L1) → 품종(L2)` 체인 보정
+
+### F) Master Seed / i18n 확장
+- [x] 질병 측정 중심 seed(검사방법/장치/측정값/컨텍스트) 추가
+- [x] pet_type 품종 대규모 seed 및 i18n 확장
+- [x] food category(`diet_type`/`diet_subtype`) 대규모 seed 추가
+- [x] 질병군/질병이력 대규모 seed 파일 추가(레거시 스키마 호환 버전 포함)
+
+### G) 최근 마이그레이션 파일 (0031+)
+- [x] `0031_disease_test_method_seed.sql`
+- [x] `0032_master_category_restructure_cleanup.sql`
+- [x] `0033_master_l2_restructure_and_pet_breed_seed.sql` (D1 upsert 호환 수정 반영)
+- [x] `0034_master_seed_foodtype_pettype_extensions.sql`
+- [x] `0035_pet_type_full_seed_expansion.sql`
+- [x] `0036_food_category_full_seed.sql`
+- [x] `0037_disease_group_type_full_seed.sql` (legacy schema 기준 수정본 커밋 완료)
+
+### H) 운영 메모 (중요)
+- [ ] 일부 환경에서 GitHub push 인증 오류로 원격 반영이 지연될 수 있음
+  - 증상: `Missing or invalid credentials`, `No anonymous write access`
+  - 조치: PAT 기반 HTTPS push로 인증 복구 후 migration 재적용
+
+---
+
+---
+
 ## 0. 문서 관리 / 개발 절차 (전역 규칙: 체크 대상 아님)
 
 - 문서는 /documents 폴더에서만 관리: PLAN.md / PRD.md / LLD.md
