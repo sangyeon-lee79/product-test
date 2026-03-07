@@ -48,25 +48,34 @@ export default function MasterPage() {
 
 
   const normalizeCategoryKey = useCallback((key: string) => key.replace(/^master\./, ''), []);
-  const categoryPriority = useMemo<Record<string, number>>(() => ({
-    disease_group: 1,
-    disease_measurement_type: 2,
-    disease_device_type: 3,
-    disease_measurement_context: 4,
-    disease_judgement_rule_type: 5,
-  }), []);
+  const diseaseCategoryOrder = useMemo(
+    () => [
+      'disease_group',
+      'disease_measurement_type',
+      'disease_device_type',
+      'disease_measurement_context',
+      'disease_judgement_rule_type',
+    ],
+    [],
+  );
+  const hiddenCategoryKeys = useMemo(
+    () => new Set(['pet_breed', 'life_stage', 'diet_subtype']),
+    [],
+  );
   const visibleCategories = useMemo(
     () => categories
-      .filter((cat) => normalizeCategoryKey(cat.key) !== 'pet_breed')
+      .filter((cat) => !hiddenCategoryKeys.has(normalizeCategoryKey(cat.key)))
       .sort((a, b) => {
         const aKey = normalizeCategoryKey(a.key);
         const bKey = normalizeCategoryKey(b.key);
-        const aPriority = categoryPriority[aKey] ?? 999;
-        const bPriority = categoryPriority[bKey] ?? 999;
+        const aIdx = diseaseCategoryOrder.indexOf(aKey);
+        const bIdx = diseaseCategoryOrder.indexOf(bKey);
+        const aPriority = aIdx === -1 ? 999 : aIdx + 1;
+        const bPriority = bIdx === -1 ? 999 : bIdx + 1;
         if (aPriority !== bPriority) return aPriority - bPriority;
         return (a.sort_order ?? 0) - (b.sort_order ?? 0) || aKey.localeCompare(bKey);
       }),
-    [categories, normalizeCategoryKey, categoryPriority],
+    [categories, normalizeCategoryKey, diseaseCategoryOrder, hiddenCategoryKeys],
   );
 
   const getParentCategoryKey = useCallback((catKey: string): string | null => {
