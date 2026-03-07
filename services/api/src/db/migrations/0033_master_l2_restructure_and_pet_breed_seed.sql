@@ -97,7 +97,7 @@ WITH breed_i18n(code, ko, en) AS (
     ('chameleon', '카멜레온', 'Chameleon'),
     ('reptile_other', '기타', 'Other')
 )
-INSERT INTO i18n_translations
+INSERT OR IGNORE INTO i18n_translations
   (id, key, page, ko, en, ja, zh_cn, zh_tw, es, fr, de, pt, vi, th, id_lang, ar, is_active, created_at, updated_at)
 SELECT
   lower(hex(randomblob(16))),
@@ -119,8 +119,64 @@ SELECT
   1,
   datetime('now'),
   datetime('now')
-FROM breed_i18n
-ON CONFLICT(key) DO UPDATE SET
-  ko = excluded.ko,
-  en = excluded.en,
-  updated_at = datetime('now');
+FROM breed_i18n;
+
+WITH breed_i18n(code, ko, en) AS (
+  VALUES
+    ('maltese', '말티즈', 'Maltese'),
+    ('poodle', '푸들', 'Poodle'),
+    ('pomeranian', '포메라니안', 'Pomeranian'),
+    ('bichon_frise', '비숑프리제', 'Bichon Frise'),
+    ('shih_tzu', '시츄', 'Shih Tzu'),
+    ('golden_retriever', '골든리트리버', 'Golden Retriever'),
+    ('labrador_retriever', '래브라도 리트리버', 'Labrador Retriever'),
+    ('welsh_corgi', '웰시코기', 'Welsh Corgi'),
+    ('chihuahua', '치와와', 'Chihuahua'),
+    ('yorkshire_terrier', '요크셔테리어', 'Yorkshire Terrier'),
+    ('jindo', '진돗개', 'Jindo'),
+    ('french_bulldog', '프렌치불독', 'French Bulldog'),
+    ('dachshund', '닥스훈트', 'Dachshund'),
+    ('beagle', '비글', 'Beagle'),
+    ('samoyed', '사모예드', 'Samoyed'),
+    ('mixed_dog', '믹스견', 'Mixed Dog'),
+    ('dog_other', '기타', 'Other'),
+    ('korean_shorthair', '코리안숏헤어', 'Korean Shorthair'),
+    ('russian_blue', '러시안블루', 'Russian Blue'),
+    ('persian', '페르시안', 'Persian'),
+    ('british_shorthair', '브리티시숏헤어', 'British Shorthair'),
+    ('scottish_fold', '스코티시폴드', 'Scottish Fold'),
+    ('munchkin', '먼치킨', 'Munchkin'),
+    ('siamese', '샴', 'Siamese'),
+    ('norwegian_forest', '노르웨이숲', 'Norwegian Forest'),
+    ('bengal', '벵갈', 'Bengal'),
+    ('ragdoll', '랙돌', 'Ragdoll'),
+    ('sphynx', '스핑크스', 'Sphynx'),
+    ('mixed_cat', '믹스묘', 'Mixed Cat'),
+    ('cat_other', '기타', 'Other'),
+    ('parrot', '앵무새', 'Parrot'),
+    ('canary', '카나리아', 'Canary'),
+    ('java_sparrow', '문조', 'Java Sparrow'),
+    ('budgerigar', '잉꼬', 'Budgerigar'),
+    ('lovebird', '사랑앵무', 'Lovebird'),
+    ('cockatiel', '코카틸', 'Cockatiel'),
+    ('bird_other', '기타', 'Other'),
+    ('lionhead', '라이언헤드', 'Lionhead'),
+    ('rex', '렉스', 'Rex'),
+    ('holland_lop', '홀랜드롭', 'Holland Lop'),
+    ('netherland_dwarf', '네더랜드드워프', 'Netherland Dwarf'),
+    ('mini_lop', '미니롭', 'Mini Lop'),
+    ('rabbit_other', '기타', 'Other'),
+    ('lizard', '도마뱀', 'Lizard'),
+    ('turtle', '거북이', 'Turtle'),
+    ('iguana', '이구아나', 'Iguana'),
+    ('gecko', '게코', 'Gecko'),
+    ('snake', '뱀', 'Snake'),
+    ('chameleon', '카멜레온', 'Chameleon'),
+    ('reptile_other', '기타', 'Other')
+)
+UPDATE i18n_translations
+SET
+  ko = (SELECT b.ko FROM breed_i18n b WHERE i18n_translations.key = 'master.pet_type.' || b.code),
+  en = (SELECT b.en FROM breed_i18n b WHERE i18n_translations.key = 'master.pet_type.' || b.code),
+  updated_at = datetime('now')
+WHERE key IN (SELECT 'master.pet_type.' || code FROM breed_i18n);
