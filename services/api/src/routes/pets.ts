@@ -652,12 +652,13 @@ async function removeDisease(env: Env, payload: JwtPayload, petId: string, disea
 
 async function attachDiseases(env: Env, pet: Record<string, unknown>) {
   const diseases = await env.DB.prepare(`
-    SELECT pd.id, pd.disease_id, pd.diagnosed_at, pd.notes, pd.is_active,
-           NULL AS disease_key,
+    SELECT hr.id, hr.disease_id, hr.recorded_at AS diagnosed_at, hr.description AS notes, 1 AS is_active,
+           mi.code AS disease_key,
            NULL AS disease_ko_name
-    FROM pet_diseases pd
-    WHERE pd.pet_id = ?
-    ORDER BY pd.created_at ASC
+    FROM health_records hr
+    LEFT JOIN master_items mi ON mi.id = hr.disease_id
+    WHERE hr.pet_id = ? AND hr.record_type = 'disease'
+    ORDER BY datetime(hr.recorded_at) ASC, hr.id ASC
   `).bind(pet.id).all<Record<string, unknown>>();
   return { ...pet, diseases: diseases.results };
 }
