@@ -90,6 +90,22 @@ Your pet's life portfolio
   - 증상: `Missing or invalid credentials`, `No anonymous write access`
   - 조치: PAT 기반 HTTPS push로 인증 복구 후 migration 재적용
 
+### I) 질병군 정리 최종 상태 (2026-03-07)
+- [x] `0037_disease_group_type_full_seed.sql` 적용 완료
+- [x] `0038_disease_group_cleanup_and_reseed.sql` no-op 처리로 FK 실패 우회
+- [x] `0039_disease_group_cleanup_fk_safe.sql` 적용 완료
+- [x] 레거시 질병군 코드(`endocrine`, `digestive`, `heart` 등) `inactive` 처리
+- [x] 표준 질병군(`*_disease`) `active` 유지
+- [x] `disease_type` 부모가 표준 질병군으로 재연결 완료
+- [x] 최종 구조 확정: `질병군(Category) → L1 질병대분류 → L2 질병이력`
+
+운영 확인 체크리스트:
+- [x] `disease_group` 조회 시 표준 그룹이 활성 상태로 유지
+- [x] `disease_type` 부모 분포가 표준 그룹(`*_disease`)으로만 구성
+- [ ] Admin Master 화면에서 최종 구조 시각 검증
+- [ ] Guardian 화면 질병 선택/표시 회귀 검증
+- [ ] 다국어 전환 시 key 미노출(번역 라벨 표시) 최종 검증
+
 ---
 
 ---
