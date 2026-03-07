@@ -90,11 +90,11 @@ export default function MasterPage() {
   const jumpToCategory = useCallback((catKey: string) => {
     const target = findCategoryByKey(catKey);
     if (!target) {
-      setError(`"${catKey}" 카테고리를 찾지 못했습니다.`);
+      setError(`${t('admin.master.error_category_not_found')} (${catKey})`);
       return;
     }
     setSelectedCat(target);
-  }, [findCategoryByKey]);
+  }, [findCategoryByKey, t]);
 
   useEffect(() => { void loadCategories(); }, [loadCategories]);
   useEffect(() => { void loadDiseaseTree(); }, [loadDiseaseTree]);
@@ -131,7 +131,7 @@ export default function MasterPage() {
   async function openCreateItemAtCategory(catKey: string, parentId: string | null = null) {
     const cat = findCategoryByKey(catKey);
     if (!cat) {
-      setError(`"${catKey}" 카테고리를 찾지 못했습니다.`);
+      setError(`${t('admin.master.error_category_not_found')} (${catKey})`);
       return;
     }
     setSelectedCat(cat);
@@ -334,40 +334,40 @@ export default function MasterPage() {
 
         <div className="card" style={{ marginBottom: 16 }}>
           <div className="card-header">
-            <div className="card-title">질병/식단/알러지 빠른 이동</div>
+            <div className="card-title">{t('admin.master.disease_nav_title')}</div>
           </div>
           <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', padding: '12px 16px' }}>
-            <button className="btn btn-secondary btn-sm" onClick={() => jumpToCategory('disease_group')}>질병군</button>
-            <button className="btn btn-secondary btn-sm" onClick={() => jumpToCategory('disease_type')}>질병</button>
-            <button className="btn btn-secondary btn-sm" onClick={() => jumpToCategory('disease_device_type')}>질병 장치</button>
-            <button className="btn btn-secondary btn-sm" onClick={() => jumpToCategory('disease_measurement_type')}>측정 항목</button>
-            <button className="btn btn-secondary btn-sm" onClick={() => jumpToCategory('disease_measurement_context')}>측정 컨텍스트</button>
-            <button className="btn btn-secondary btn-sm" onClick={() => jumpToCategory('diet_type')}>식단 상위</button>
-            <button className="btn btn-secondary btn-sm" onClick={() => jumpToCategory('diet_subtype')}>식단 하위</button>
-            <button className="btn btn-secondary btn-sm" onClick={() => jumpToCategory('allergy_group')}>알러지 그룹</button>
-            <button className="btn btn-secondary btn-sm" onClick={() => jumpToCategory('allergy_type')}>알러지 타입</button>
+            <button className="btn btn-secondary btn-sm" onClick={() => jumpToCategory('disease_group')}>{t('admin.master.nav_disease_group')}</button>
+            <button className="btn btn-secondary btn-sm" onClick={() => jumpToCategory('disease_type')}>{t('admin.master.nav_disease_type')}</button>
+            <button className="btn btn-secondary btn-sm" onClick={() => jumpToCategory('disease_device_type')}>{t('admin.master.nav_disease_device_type')}</button>
+            <button className="btn btn-secondary btn-sm" onClick={() => jumpToCategory('disease_measurement_type')}>{t('admin.master.nav_disease_measurement_type')}</button>
+            <button className="btn btn-secondary btn-sm" onClick={() => jumpToCategory('disease_measurement_context')}>{t('admin.master.nav_disease_measurement_context')}</button>
+            <button className="btn btn-secondary btn-sm" onClick={() => jumpToCategory('diet_type')}>{t('admin.master.nav_diet_type')}</button>
+            <button className="btn btn-secondary btn-sm" onClick={() => jumpToCategory('diet_subtype')}>{t('admin.master.nav_diet_subtype')}</button>
+            <button className="btn btn-secondary btn-sm" onClick={() => jumpToCategory('allergy_group')}>{t('admin.master.nav_allergy_group')}</button>
+            <button className="btn btn-secondary btn-sm" onClick={() => jumpToCategory('allergy_type')}>{t('admin.master.nav_allergy_type')}</button>
           </div>
           <div style={{ padding: '0 16px 12px', fontSize: 12, color: 'var(--text-muted)' }}>
-            질병 장치 등록은 <b>disease_device_type</b>에서 아이템 추가 시 <b>부모 아이템 = 질병(disease_type)</b>으로 지정하면 됩니다.
+            {t('admin.master.disease_nav_desc_prefix')} <b>disease_device_type</b>{t('admin.master.disease_nav_desc_middle')} <b>{t('admin.master.parent', '부모')}</b>{t('admin.master.disease_nav_desc_suffix')}
           </div>
         </div>
 
         <div className="card" style={{ marginBottom: 16 }}>
           <div className="card-header">
-            <div className="card-title">질병군 &gt; 질병 &gt; 장치 트리</div>
+            <div className="card-title">{t('admin.master.disease_tree_title')}</div>
             <div style={{ display: 'flex', gap: 6 }}>
               <button className="btn btn-secondary btn-sm" onClick={() => void loadDiseaseTree()} disabled={treeLoading}>
-                {treeLoading ? '로딩...' : '새로고침'}
+                {treeLoading ? t('admin.common.loading', 'Loading...') : t('admin.common.refresh', 'Refresh')}
               </button>
               <button className="btn btn-primary btn-sm" onClick={() => void openCreateItemAtCategory('disease_group', null)}>
-                + 질병군
+                {t('admin.master.tree_add_group')}
               </button>
             </div>
           </div>
           <div style={{ padding: '12px 16px' }}>
-            {treeLoading && <div style={{ color: 'var(--text-muted)', fontSize: 13 }}>데이터를 불러오는 중입니다...</div>}
+            {treeLoading && <div style={{ color: 'var(--text-muted)', fontSize: 13 }}>{t('admin.master.tree_loading')}</div>}
             {!treeLoading && diseaseGroups.length === 0 && (
-              <div style={{ color: 'var(--text-muted)', fontSize: 13 }}>질병군 데이터가 없습니다.</div>
+              <div style={{ color: 'var(--text-muted)', fontSize: 13 }}>{t('admin.master.tree_no_group')}</div>
             )}
             {!treeLoading && diseaseGroups.length > 0 && (
               <div style={{ display: 'grid', gap: 10 }}>
@@ -378,13 +378,13 @@ export default function MasterPage() {
                       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
                         <div style={{ fontWeight: 700 }}>{getItemLabel(group)}</div>
                         <div style={{ display: 'flex', gap: 6 }}>
-                          <button className="btn btn-secondary btn-sm" onClick={() => void jumpToCategory('disease_group')}>열기</button>
-                          <button className="btn btn-primary btn-sm" onClick={() => void openCreateItemAtCategory('disease_type', group.id)}>+ 질병</button>
+                          <button className="btn btn-secondary btn-sm" onClick={() => void jumpToCategory('disease_group')}>{t('admin.common.open', 'Open')}</button>
+                          <button className="btn btn-primary btn-sm" onClick={() => void openCreateItemAtCategory('disease_type', group.id)}>{t('admin.master.tree_add_disease')}</button>
                         </div>
                       </div>
                       <div style={{ marginTop: 8, display: 'grid', gap: 8 }}>
                         {diseasesInGroup.length === 0 && (
-                          <div style={{ color: 'var(--text-muted)', fontSize: 12 }}>등록된 질병이 없습니다.</div>
+                          <div style={{ color: 'var(--text-muted)', fontSize: 12 }}>{t('admin.master.tree_no_disease')}</div>
                         )}
                         {diseasesInGroup.map((disease) => {
                           const devicesInDisease = diseaseDevices.filter((device) => device.parent_id === disease.id);
@@ -393,13 +393,13 @@ export default function MasterPage() {
                               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
                                 <div style={{ fontWeight: 600 }}>{getItemLabel(disease)}</div>
                                 <div style={{ display: 'flex', gap: 6 }}>
-                                  <button className="btn btn-secondary btn-sm" onClick={() => void jumpToCategory('disease_type')}>열기</button>
-                                  <button className="btn btn-primary btn-sm" onClick={() => void openCreateItemAtCategory('disease_device_type', disease.id)}>+ 장치</button>
+                                  <button className="btn btn-secondary btn-sm" onClick={() => void jumpToCategory('disease_type')}>{t('admin.common.open', 'Open')}</button>
+                                  <button className="btn btn-primary btn-sm" onClick={() => void openCreateItemAtCategory('disease_device_type', disease.id)}>{t('admin.master.tree_add_device')}</button>
                                 </div>
                               </div>
                               <div style={{ marginTop: 6, marginLeft: 12, display: 'grid', gap: 4 }}>
                                 {devicesInDisease.length === 0 && (
-                                  <div style={{ color: 'var(--text-muted)', fontSize: 12 }}>등록된 장치가 없습니다.</div>
+                                  <div style={{ color: 'var(--text-muted)', fontSize: 12 }}>{t('admin.master.tree_no_device')}</div>
                                 )}
                                 {devicesInDisease.map((device) => (
                                   <div key={device.id} style={{ fontSize: 13 }}>

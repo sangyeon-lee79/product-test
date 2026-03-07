@@ -77,6 +77,20 @@ async function hasTable(env: Env, table: string): Promise<boolean> {
   return Boolean(row?.name);
 }
 
+async function resolveMasterItemId(env: Env, categoryCode: string, itemCode: string): Promise<string | null> {
+  const row = await env.DB.prepare(
+    `SELECT mi.id
+     FROM master_items mi
+     JOIN master_categories mc ON mc.id = mi.category_id
+     WHERE mc.code = ?
+       AND mi.code = ?
+       AND mc.status = 'active'
+       AND mi.status = 'active'
+     LIMIT 1`
+  ).bind(categoryCode, itemCode).first<{ id: string }>();
+  return row?.id ?? null;
+}
+
 async function findMicrochipOwner(env: Env, microchipNo: string, excludePetId?: string) {
   const baseQuery = "SELECT id, guardian_user_id AS guardian_id FROM pets WHERE microchip_number = ? AND status != 'deleted'";
   if (excludePetId) {
@@ -837,12 +851,14 @@ async function resolveGlucoseJudgement(
   contextItemId: string | null,
 ): Promise<{ level: string | null; label: string | null }> {
   if (!(await hasTable(env, 'disease_judgement_rules'))) return { level: null, label: null };
+  const measurementItemId = await resolveMasterItemId(env, 'disease_measurement_type', 'glucose_value');
+  if (!measurementItemId) return { level: null, label: null };
   const pet = await env.DB.prepare(`SELECT pet_type_id FROM pets WHERE id = ?`).bind(petId).first<{ pet_type_id: string | null }>();
   const rows = await env.DB.prepare(
     `SELECT judgement_level, judgement_label
      FROM disease_judgement_rules
      WHERE disease_item_id = ?
-       AND measurement_item_id = 'mi-measure-glucose-value'
+       AND measurement_item_id = ?
        AND unit_item_id = ?
        AND status = 'active'
        AND (? IS NULL OR context_item_id = ? OR context_item_id IS NULL)
@@ -856,6 +872,7 @@ async function resolveGlucoseJudgement(
      LIMIT 1`
   ).bind(
     diseaseItemId,
+    measurementItemId,
     unitItemId,
     contextItemId,
     contextItemId,
@@ -909,10 +926,14 @@ async function createGlucoseLog(request: Request, env: Env, payload: JwtPayload,
     notes?: string | null;
   };
   try { body = await request.json() as typeof body; } catch { return err('Invalid JSON body'); }
-  const diseaseItemId = (body.disease_item_id || '').trim() || 'mi-disease-diabetes';
+  const defaultDiseaseId = await resolveMasterItemId(env, 'disease_type', 'diabetes');
+  const diseaseItemId = (body.disease_item_id || '').trim() || defaultDiseaseId || '';
+  if (!diseaseItemId) return err('disease_item_id required');
   const value = parseOptionalNumber(body.glucose_value);
   if (value === null) return err('glucose_value required');
-  const unitId = (body.glucose_unit_item_id || '').trim() || 'mi-unit-mgdl';
+  const defaultUnitId = await resolveMasterItemId(env, 'weight_unit', 'mg_dl');
+  const unitId = (body.glucose_unit_item_id || '').trim() || defaultUnitId || '';
+  if (!unitId) return err('glucose_unit_item_id required');
   const contextId = body.measured_context_item_id ? String(body.measured_context_item_id).trim() : null;
   const judgement = await resolveGlucoseJudgement(env, petId, diseaseItemId, value, unitId, contextId);
   const id = newId();
@@ -953,8 +974,12 @@ async function updateGlucoseLog(request: Request, env: Env, payload: JwtPayload,
     ? parseOptionalNumber(body.glucose_value)
     : parseOptionalNumber(existing.glucose_value);
   if (value === null) return err('invalid glucose_value');
-  const diseaseItemId = String(body.disease_item_id ?? existing.disease_item_id ?? 'mi-disease-diabetes');
-  const unitId = String(body.glucose_unit_item_id ?? existing.glucose_unit_item_id ?? 'mi-unit-mgdl');
+  const defaultDiseaseId = await resolveMasterItemId(env, 'disease_type', 'diabetes');
+  const defaultUnitId = await resolveMasterItemId(env, 'weight_unit', 'mg_dl');
+  const diseaseItemId = String(body.disease_item_id ?? existing.disease_item_id ?? defaultDiseaseId ?? '');
+  const unitId = String(body.glucose_unit_item_id ?? existing.glucose_unit_item_id ?? defaultUnitId ?? '');
+  if (!diseaseItemId) return err('disease_item_id required');
+  if (!unitId) return err('glucose_unit_item_id required');
   const contextId = (body.measured_context_item_id ?? existing.measured_context_item_id ?? null) as string | null;
   const judgement = await resolveGlucoseJudgement(env, petId, diseaseItemId, value, unitId, contextId);
   await env.DB.prepare(
