@@ -72,6 +72,10 @@ export default function MasterPage() {
   }, []);
 
   const normalizeCategoryKey = useCallback((key: string) => key.replace(/^master\./, ''), []);
+  const visibleCategories = useMemo(
+    () => categories.filter((cat) => normalizeCategoryKey(cat.key) !== 'pet_breed'),
+    [categories, normalizeCategoryKey],
+  );
 
   const getParentCategoryKey = useCallback((catKey: string): string | null => {
     const normalized = normalizeCategoryKey(catKey);
@@ -488,7 +492,7 @@ export default function MasterPage() {
             </div>
             {loading ? <div className="loading-center"><span className="spinner" /></div> : (
               <div className="master-column-list">
-                {categories.map((cat) => (
+                {visibleCategories.map((cat) => (
                   <button
                     key={cat.id}
                     className={`master-row-btn ${selectedCat?.id === cat.id ? 'active' : ''}`}
@@ -501,7 +505,7 @@ export default function MasterPage() {
                     <span className={`badge ${cat.is_active ? 'badge-green' : 'badge-gray'}`}>{cat.is_active ? t('admin.common.active', '활성') : t('admin.common.inactive', '비활성')}</span>
                   </button>
                 ))}
-                {categories.length === 0 && <div className="master-empty">{t('admin.master.no_category', '카테고리 없음')}</div>}
+                {visibleCategories.length === 0 && <div className="master-empty">{t('admin.master.no_category', '카테고리 없음')}</div>}
               </div>
             )}
           </div>

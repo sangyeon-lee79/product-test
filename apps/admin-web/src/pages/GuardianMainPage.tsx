@@ -101,7 +101,7 @@ const FEED_MAX_MB = 0.5;
 
 const CATEGORY_KEYS: Record<string, string[]> = {
   pet_type: ['master.pet_type', 'pet_type'],
-  pet_breed: ['master.pet_breed', 'pet_breed', 'breed'],
+  pet_breed: ['master.pet_type', 'pet_type'],
   pet_gender: ['master.pet_gender', 'pet_gender', 'gender'],
   neuter_status: ['master.neuter_status', 'neuter_status'],
   life_stage: ['master.life_stage', 'life_stage'],
@@ -362,11 +362,7 @@ export default function GuardianMainPage() {
 
   const breedOptionsFiltered = useMemo(() => {
     if (!petForm.pet_type_id) return optBreed;
-    return optBreed.filter((b) => {
-      const byParent = b.parentId && b.parentId === petForm.pet_type_id;
-      const byMeta = b.metadata && String(b.metadata.pet_type_id || '') === petForm.pet_type_id;
-      return byParent || byMeta || (!b.parentId && !b.metadata?.pet_type_id);
-    });
+    return optBreed.filter((b) => b.parentId === petForm.pet_type_id);
   }, [optBreed, petForm.pet_type_id]);
 
   const latestBooking = useMemo(() => {
@@ -470,8 +466,8 @@ export default function GuardianMainPage() {
       setFeeds(feedsRes.feeds || []);
       setAlbumMedia(albumRes.media || []);
 
-      setOptPetType(toOption(petTypeRows));
-      setOptBreed(toOption(breedRows));
+      setOptPetType(toOption(petTypeRows).filter((item) => !item.parentId));
+      setOptBreed(toOption(breedRows).filter((item) => Boolean(item.parentId)));
       setOptGender(toOption(genderRows));
       setOptNeuter(toOption(neuterRows));
       setOptLifeStage(toOption(lifeStageRows));

@@ -225,6 +225,7 @@ export async function handleMaster(request: Request, env: Env, url: URL): Promis
   if (!isAdmin && path === '/api/v1/master/items' && request.method === 'GET') {
     const categoryKey = url.searchParams.get('category_key');
     if (!categoryKey) return err('category_key required');
+    const parentId = (url.searchParams.get('parent_id') || '').trim() || null;
 
     const normalized = await hasColumn(env, 'master_categories', 'code');
     const cat = normalized
@@ -266,8 +267,9 @@ export async function handleMaster(request: Request, env: Env, url: URL): Promis
             ELSE ('master.' || mc.code || '.' || mi.code)
           END
         WHERE mi.category_id = ? AND mi.status = 'active'
+          AND (? IS NULL OR mi.parent_item_id = ?)
         ORDER BY mi.sort_order, mi.code
-      `).bind(cat.id).all()
+      `).bind(cat.id, parentId, parentId).all()
       : await env.DB.prepare(`
         SELECT
           mi.*,
@@ -281,8 +283,9 @@ export async function handleMaster(request: Request, env: Env, url: URL): Promis
             ELSE ('master.' || mc.key || '.' || mi.key)
           END
         WHERE mi.category_id = ? AND mi.is_active = 1
+          AND (? IS NULL OR mi.parent_id = ?)
         ORDER BY mi.sort_order, mi.key
-      `).bind(cat.id).all();
+      `).bind(cat.id, parentId, parentId).all();
     return ok(rows.results);
   }
 
