@@ -373,11 +373,16 @@ export default function PetGalleryPanel({
       }
     } catch (e) {
       const raw = e instanceof Error ? e.message : '';
+      // Keep raw backend error when available so upload failures are diagnosable.
+      const normalizedRaw = raw && !/^https?:\/\//i.test(raw) ? raw : '';
       let message = t('guardian.pet.gallery.add_photo.error.upload_failed');
       if (/10MB|file size|max/i.test(raw)) message = t('guardian.pet.gallery.add_photo.error.file_too_large');
       else if (/JPG|JPEG|PNG|WEBP|type/i.test(raw)) message = t('guardian.pet.gallery.add_photo.error.invalid_file_type');
       else if (/Storage not configured|no_r2|storage/i.test(raw)) message = t('guardian.pet.gallery.add_photo.error.storage_unavailable');
       else if (/Network|fetch|CORS|Failed to fetch/i.test(raw)) message = t('guardian.pet.gallery.add_photo.error.network');
+      else if (normalizedRaw) message = normalizedRaw;
+      // eslint-disable-next-line no-console
+      console.error('gallery upload failed', { raw, uploadKind, selectedPetId: selectedPet?.id });
       setUploadError(message);
       setError(message);
     } finally {
