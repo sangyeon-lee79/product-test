@@ -155,6 +155,25 @@ export default function MasterPage() {
   }
 
   function getItemLabel(item: MasterItem) {
+    const catKey = normalizeCategoryKey(selectedCat?.key || '');
+    if (catKey === 'disease_group') {
+      const translated = t(`master.disease_group.${item.key}`, '');
+      if (translated) return translated;
+    }
+    if (catKey === 'disease_type') {
+      const translated = t(`master.disease_type.${item.key}`, '');
+      if (translated) return translated;
+    }
+    // Fallback for sub-levels of disease_group or other categories
+    if (item.category_id) {
+      const targetCat = categories.find(c => c.id === item.category_id);
+      if (targetCat) {
+        const itemCatKey = normalizeCategoryKey(targetCat.key);
+        const translated = t(`master.${itemCatKey}.${item.key}`, '');
+        if (translated) return translated;
+      }
+    }
+
     return item.ko_name?.trim() || item.ko?.trim() || item.key;
   }
 
