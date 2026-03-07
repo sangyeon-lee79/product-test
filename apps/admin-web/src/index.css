@@ -699,7 +699,7 @@ tbody tr:hover { background: #f8fafc; }
 
 .master-explorer-grid {
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-template-columns: repeat(5, minmax(0, 1fr));
   gap: 12px;
 }
 .master-column-list {
@@ -771,33 +771,6 @@ tbody tr:hover { background: #f8fafc; }
 .master-toggle-row.compact {
   margin: 0 6px;
 }
-.master-disease-grid {
-  display: grid;
-  grid-template-columns: repeat(5, minmax(0, 1fr));
-  gap: 10px;
-  padding: 10px 12px 12px;
-}
-.master-disease-col {
-  border: 1px solid #dbe4f0;
-  border-radius: 10px;
-  background: #fff;
-  min-height: 220px;
-  display: grid;
-  grid-template-rows: auto 1fr auto;
-}
-.master-disease-col > header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 8px;
-  padding: 10px;
-  border-bottom: 1px solid #e8eef8;
-}
-.master-disease-col > header h4 {
-  font-size: 13px;
-  margin: 0;
-}
-
 /* Utils */
 .text-muted { color: var(--text-muted); }
 .text-sm { font-size: 12px; }
@@ -867,9 +840,6 @@ tbody tr:hover { background: #f8fafc; }
     grid-template-columns: 1fr 1fr;
   }
   .master-explorer-grid {
-    grid-template-columns: 1fr;
-  }
-  .master-disease-grid {
     grid-template-columns: 1fr;
   }
 }
