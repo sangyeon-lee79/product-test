@@ -1,12 +1,12 @@
 -- 0037: Disease Group (L1) + Disease History Type (L2) full seed
--- Legacy schema compatible: master_categories.key / master_items.key / parent_id / status
+-- Legacy schema compatible: master_categories.code / master_items.code / parent_item_id / status
 
 UPDATE master_categories
 SET status = 'active', updated_at = datetime('now')
-WHERE key IN ('disease_group', 'disease_type');
+WHERE code IN ('disease_group', 'disease_type');
 
 -- L1 disease groups
-WITH groups(id, key, sort_order, ko, en) AS (
+WITH groups(id, code, sort_order, ko, en) AS (
   VALUES
     ('mi-dg-endocrine-disease', 'endocrine_disease', 1, '내분비질환', 'Endocrine Disease'),
     ('mi-dg-cardiovascular-disease', 'cardiovascular_disease', 2, '심혈관 질환', 'Cardiovascular Disease'),
@@ -32,23 +32,23 @@ WITH groups(id, key, sort_order, ko, en) AS (
     ('mi-dg-nutritional-disease', 'nutritional_disease', 22, '영양 질환', 'Nutritional Disorder')
 )
 INSERT OR IGNORE INTO master_items (
-  id, category_id, parent_id, key, sort_order, status, metadata, created_at, updated_at
+  id, category_id, parent_item_id, code, sort_order, status, metadata, created_at, updated_at
 )
 SELECT
   g.id,
   c.id,
   NULL,
-  g.key,
+  g.code,
   g.sort_order,
   'active',
   '{}',
   datetime('now'),
   datetime('now')
 FROM groups g
-JOIN master_categories c ON c.key = 'disease_group';
+JOIN master_categories c ON c.code = 'disease_group';
 
 -- L2 disease types
-WITH diseases(id, group_key, key, sort_order, ko, en) AS (
+WITH diseases(id, group_code, code, sort_order, ko, en) AS (
   VALUES
     ('mi-dt-diabetes-mellitus', 'endocrine_disease', 'diabetes_mellitus', 101, '당뇨병', 'Diabetes Mellitus'),
     ('mi-dt-hypothyroidism', 'endocrine_disease', 'hypothyroidism', 102, '갑상선 기능저하증', 'Hypothyroidism'),
@@ -152,29 +152,29 @@ WITH diseases(id, group_key, key, sort_order, ko, en) AS (
     ('mi-dt-mineral-imbalance', 'nutritional_disease', 'mineral_imbalance', 2203, '미네랄 불균형', 'Mineral Imbalance')
 )
 INSERT OR IGNORE INTO master_items (
-  id, category_id, parent_id, key, sort_order, status, metadata, created_at, updated_at
+  id, category_id, parent_item_id, code, sort_order, status, metadata, created_at, updated_at
 )
 SELECT
   d.id,
   c2.id,
   g.id,
-  d.key,
+  d.code,
   d.sort_order,
   'active',
   '{}',
   datetime('now'),
   datetime('now')
 FROM diseases d
-JOIN master_categories c2 ON c2.key = 'disease_type'
+JOIN master_categories c2 ON c2.code = 'disease_type'
 JOIN master_items g
-  ON g.key = d.group_key
- AND g.category_id = (SELECT id FROM master_categories WHERE key = 'disease_group' LIMIT 1);
+  ON g.code = d.group_code
+ AND g.category_id = (SELECT id FROM master_categories WHERE code = 'disease_group' LIMIT 1);
 
 -- i18n minimal upsert
 WITH keys AS (
-  SELECT DISTINCT 'master.disease_group.' || key AS i18n_key FROM master_items WHERE category_id = (SELECT id FROM master_categories WHERE key='disease_group' LIMIT 1)
+  SELECT DISTINCT 'master.disease_group.' || code AS i18n_key FROM master_items WHERE category_id = (SELECT id FROM master_categories WHERE code='disease_group' LIMIT 1)
   UNION
-  SELECT DISTINCT 'master.disease_type.' || key AS i18n_key FROM master_items WHERE category_id = (SELECT id FROM master_categories WHERE key='disease_type' LIMIT 1)
+  SELECT DISTINCT 'master.disease_type.' || code AS i18n_key FROM master_items WHERE category_id = (SELECT id FROM master_categories WHERE code='disease_type' LIMIT 1)
 )
 INSERT OR IGNORE INTO i18n_translations (
   id, key, page, ko, en, ja, zh_cn, zh_tw, es, fr, de, pt, vi, th, id_lang, ar, is_active, created_at, updated_at
