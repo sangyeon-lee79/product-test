@@ -700,7 +700,7 @@ export async function handleMaster(request: Request, env: Env, url: URL): Promis
         return ok(row);
       }
       if (request.method === 'POST') {
-        let body: { category_id: string; parent_id?: string; sort_order?: number; metadata?: Record<string, unknown>; translations?: Record<string, string> };
+        let body: { category_id: string; parent_id?: string; sort_order?: number; metadata?: Record<string, unknown>; translations?: Record<string, string>; device_type_id?: string | null };
         try { body = await request.json() as typeof body; } catch { return err('Invalid JSON'); }
         if (!body.category_id) return err('category_id required');
         const translations = normalizeTranslations(body.translations);
@@ -724,22 +724,25 @@ export async function handleMaster(request: Request, env: Env, url: URL): Promis
         const i18nReady = await hasCompleteI18n(env, i18nKey);
         if (!i18nReady) return err('i18n 생성이 완료되지 않아 저장할 수 없습니다.', 400, 'i18n_not_ready');
 
-        const row = {
-          id: newId(), category_id: body.category_id, key: autoKey,
-          parent_id: body.parent_id ?? null, sort_order: body.sort_order ?? 0,
-          is_active: 1, metadata: JSON.stringify(body.metadata ?? {}),
-          created_at: now(), updated_at: now(),
-        };
+        const rowId = newId();
+        const hasDeviceTypeCol = await hasColumn(env, 'master_items', 'device_type_id');
+        const deviceTypeId = (hasDeviceTypeCol && body.device_type_id) ? body.device_type_id : null;
         if (normalized) {
-          await env.DB.prepare(
-            "INSERT INTO master_items (id,category_id,code,parent_item_id,sort_order,status,metadata,created_at,updated_at) VALUES (?,?,?,?,?,'active',?,?,?)"
-          ).bind(row.id, row.category_id, row.key, row.parent_id, row.sort_order, row.metadata, row.created_at, row.updated_at).run();
+          if (hasDeviceTypeCol && deviceTypeId) {
+            await env.DB.prepare(
+              "INSERT INTO master_items (id,category_id,code,parent_item_id,sort_order,status,metadata,device_type_id,created_at,updated_at) VALUES (?,?,?,?,?,'active',?,?,?,?)"
+            ).bind(rowId, body.category_id, autoKey, body.parent_id ?? null, body.sort_order ?? 0, JSON.stringify(body.metadata ?? {}), deviceTypeId, now(), now()).run();
+          } else {
+            await env.DB.prepare(
+              "INSERT INTO master_items (id,category_id,code,parent_item_id,sort_order,status,metadata,created_at,updated_at) VALUES (?,?,?,?,?,'active',?,?,?)"
+            ).bind(rowId, body.category_id, autoKey, body.parent_id ?? null, body.sort_order ?? 0, JSON.stringify(body.metadata ?? {}), now(), now()).run();
+          }
         } else {
           await env.DB.prepare(
             'INSERT INTO master_items (id,category_id,key,parent_id,sort_order,is_active,metadata,created_at,updated_at) VALUES (?,?,?,?,?,?,?,?,?)'
-          ).bind(row.id, row.category_id, row.key, row.parent_id, row.sort_order, row.is_active, row.metadata, row.created_at, row.updated_at).run();
+          ).bind(rowId, body.category_id, autoKey, body.parent_id ?? null, body.sort_order ?? 0, 1, JSON.stringify(body.metadata ?? {}), now(), now()).run();
         }
-        return created({ ...row, metadata: body.metadata ?? {} });
+        return created({ id: rowId, category_id: body.category_id, key: autoKey, parent_id: body.parent_id ?? null, sort_order: body.sort_order ?? 0, is_active: 1, metadata: body.metadata ?? {}, device_type_id: deviceTypeId });
       }
       if (request.method === 'PUT' && id) {
         let body: { sort_order?: number; is_active?: boolean; metadata?: Record<string, unknown>; parent_id?: string | null; translations?: Record<string, string> };
@@ -779,6 +782,14 @@ export async function handleMaster(request: Request, env: Env, url: URL): Promis
         if (body.parent_id !== undefined) {
           sets.push(normalized ? 'parent_item_id = ?' : 'parent_id = ?');
           vals.push(body.parent_id);
+        }
+        // device_type_id (optional, only if column exists)
+        if ((body as Record<string, unknown>).device_type_id !== undefined) {
+          const hasDevTypeCol = await hasColumn(env, 'master_items', 'device_type_id');
+          if (hasDevTypeCol) {
+            sets.push('device_type_id = ?');
+            vals.push(((body as Record<string, unknown>).device_type_id as string | null) ?? null);
+          }
         }
         vals.push(id);
         const result = await env.DB.prepare(`UPDATE master_items SET ${sets.join(', ')} WHERE id = ?`).bind(...vals).run();

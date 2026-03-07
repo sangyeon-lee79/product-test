@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState, useCallback } from 'react';
-import { api, type MasterCategory, type MasterItem } from '../lib/api';
+import { api, type MasterCategory, type MasterItem, type DeviceType } from '../lib/api';
 import { useT, useI18n, SUPPORTED_LANGS, LANG_LABELS } from '../lib/i18n';
 
 const emptyTrans = () => Object.fromEntries(SUPPORTED_LANGS.map((l) => [l, ''])) as Record<string, string>;
@@ -42,6 +42,8 @@ export default function MasterPage() {
   const [itemTargetCategory, setItemTargetCategory] = useState<MasterCategory | null>(null);
   const [itemParentCandidates, setItemParentCandidates] = useState<MasterItem[]>([]);
   const [translating, setTranslating] = useState(false);
+  const [deviceTypes, setDeviceTypes] = useState<DeviceType[]>([]);
+  const [itemDeviceTypeId, setItemDeviceTypeId] = useState<string>('');
 
   const hiddenCategoryKeys = useMemo(
     () =>
@@ -147,6 +149,7 @@ export default function MasterPage() {
 
   useEffect(() => {
     void loadCategories();
+    void api.devices.public.types().then(setDeviceTypes).catch(() => {/* non-critical */});
   }, [loadCategories]);
 
   useEffect(() => {
@@ -410,6 +413,7 @@ export default function MasterPage() {
     setItemParentCandidates(level > 0 ? levelItems[level - 1] : []);
     setItemForm({ sort_order: '0', parent_id: parentId });
     setItemTrans(emptyTrans());
+    setItemDeviceTypeId('');
     setItemModal('create');
   }
 
@@ -430,6 +434,7 @@ export default function MasterPage() {
       parent_id: selectedNode.parent_id,
     });
     setItemTrans(itemToTranslations(selectedNode));
+    setItemDeviceTypeId((selectedNode as unknown as Record<string, string>).device_type_id ?? '');
     setItemModal('edit');
   }
 
@@ -452,12 +457,14 @@ export default function MasterPage() {
         throw new Error(t('admin.master.err_trans_missing').replace('{langs}', missingLangs.map((lang) => (LANG_LABELS as Record<string, string>)[lang] || lang).join(', ')));
       }
 
+      const isDeviceTypeCategory = itemTargetCategory && normalizeCategoryKey(itemTargetCategory.key) === 'disease_device_type';
       if (itemModal === 'create') {
         await api.master.items.create({
           category_id: itemTargetCategory.id,
           sort_order: parseInt(itemForm.sort_order, 10),
           translations,
           parent_id: itemForm.parent_id || undefined,
+          device_type_id: isDeviceTypeCategory && itemDeviceTypeId ? itemDeviceTypeId : undefined,
         });
         flash(t('admin.master.msg_success'));
       } else if (itemModal === 'edit' && itemForm.id) {
@@ -465,6 +472,7 @@ export default function MasterPage() {
           sort_order: parseInt(itemForm.sort_order, 10),
           parent_id: itemForm.parent_id,
           translations,
+          device_type_id: isDeviceTypeCategory ? (itemDeviceTypeId || null) : undefined,
         });
         flash(t('admin.master.msg_success'));
       }
@@ -670,6 +678,20 @@ export default function MasterPage() {
                   {itemParentCandidates.filter((i) => i.id !== itemForm.id).map((i) => <option key={i.id} value={i.id}>{getItemLabel(i, itemTargetCategory ? normalizeCategoryKey(itemTargetCategory.key) : null)}</option>)}
                 </select>
               </div>
+              {itemTargetCategory && normalizeCategoryKey(itemTargetCategory.key) === 'disease_device_type' && (
+                <div className="form-group">
+                  <label className="form-label">{t('admin.device.device_type', '장치 유형')}</label>
+                  <select className="form-input" value={itemDeviceTypeId} onChange={(e) => {
+                    const dtId = e.target.value;
+                    setItemDeviceTypeId(dtId);
+                    const dt = deviceTypes.find(d => d.id === dtId);
+                    if (dt && !itemTrans.ko) setItemTrans(f => ({ ...f, ko: dt.name_ko, en: dt.name_en }));
+                  }}>
+                    <option value="">{t('admin.device.select_type', '유형을 선택하세요')}</option>
+                    {deviceTypes.map(dt => <option key={dt.id} value={dt.id}>{dt.name_ko} ({dt.name_en})</option>)}
+                  </select>
+                </div>
+              )}
               <div className="form-group">
                 <label className="form-label">{t('admin.master.field_sort')}</label>
                 <input className="form-input" type="number" value={itemForm.sort_order} onChange={(e) => setItemForm((f) => ({ ...f, sort_order: e.target.value }))} />

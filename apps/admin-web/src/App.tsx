@@ -9,6 +9,7 @@ import Dashboard from './pages/Dashboard';
 import I18nPage from './pages/I18nPage';
 import MasterPage from './pages/MasterPage';
 import CountriesPage from './pages/CountriesPage';
+import DevicePage from './pages/DevicePage';
 import GuardianMainPage from './pages/GuardianMainPage';
 import SupplierDashboardPage from './pages/SupplierDashboardPage';
 import './index.css';
@@ -60,6 +61,7 @@ export default function App() {
                 <Route path="i18n" element={<I18nPage />} />
                 <Route path="master" element={<MasterPage />} />
                 <Route path="countries" element={<CountriesPage />} />
+                <Route path="devices" element={<DevicePage />} />
                 <Route path="*" element={<Navigate to="/admin" replace />} />
               </Route>
             </Route>

@@ -195,6 +195,12 @@ export async function handlePets(request: Request, env: Env, url: URL): Promise<
     if (request.method === 'DELETE') return deleteGlucoseLog(env, payload, petId, logId);
   }
 
+  // /pets/:id/guardian-devices (delegated to devices route)
+  if (sub.includes('/guardian-devices')) {
+    const { handleDevices } = await import('./devices');
+    return handleDevices(request, env, url);
+  }
+
   return err('Not found', 404);
 }
 

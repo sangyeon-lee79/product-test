@@ -164,9 +164,9 @@ export const api = {
         const q = categoryKey ? `?category_key=${encodeURIComponent(categoryKey)}` : '';
         return request<MasterItem[]>(`/api/v1/admin/master/items${q}`);
       },
-      create: (data: { category_id: string; sort_order?: number; metadata?: Record<string, unknown>; translations?: Record<string, string>; parent_id?: string | null }) =>
+      create: (data: { category_id: string; sort_order?: number; metadata?: Record<string, unknown>; translations?: Record<string, string>; parent_id?: string | null; device_type_id?: string | null }) =>
         request<MasterItem>('/api/v1/admin/master/items', { method: 'POST', body: JSON.stringify(data) }),
-      update: (id: string, data: { sort_order?: number; parent_id?: string | null; is_active?: number; metadata?: Record<string, unknown>; translations?: Record<string, string> }) =>
+      update: (id: string, data: { sort_order?: number; parent_id?: string | null; is_active?: number; metadata?: Record<string, unknown>; translations?: Record<string, string>; device_type_id?: string | null }) =>
         request<MasterItem>(`/api/v1/admin/master/items/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
       delete: (id: string) =>
         request<{ id: string; deleted: boolean; message?: string }>(`/api/v1/admin/master/items/${id}`, { method: 'DELETE' }),
@@ -404,6 +404,81 @@ export const api = {
       request<Currency>('/api/v1/admin/currencies', { method: 'POST', body: JSON.stringify(data) }),
     update: (id: string, data: Partial<Currency>) =>
       request<Currency>(`/api/v1/admin/currencies/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
+  },
+  devices: {
+    types: {
+      list: () => request<DeviceType[]>('/api/v1/admin/devices/types'),
+      create: (data: { key?: string; name_ko: string; name_en: string; sort_order?: number }) =>
+        request<DeviceType>('/api/v1/admin/devices/types', { method: 'POST', body: JSON.stringify(data) }),
+      update: (id: string, data: Partial<{ name_ko: string; name_en: string; sort_order: number; status: string }>) =>
+        request<DeviceType>(`/api/v1/admin/devices/types/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
+      delete: (id: string) =>
+        request<{ id: string; deleted: boolean }>(`/api/v1/admin/devices/types/${id}`, { method: 'DELETE' }),
+    },
+    manufacturers: {
+      list: () => request<DeviceManufacturer[]>('/api/v1/admin/devices/manufacturers'),
+      create: (data: { key?: string; name_ko: string; name_en: string; country?: string; sort_order?: number }) =>
+        request<DeviceManufacturer>('/api/v1/admin/devices/manufacturers', { method: 'POST', body: JSON.stringify(data) }),
+      update: (id: string, data: Partial<{ name_ko: string; name_en: string; country: string; sort_order: number; status: string }>) =>
+        request<DeviceManufacturer>(`/api/v1/admin/devices/manufacturers/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
+      delete: (id: string) =>
+        request<{ id: string; deleted: boolean }>(`/api/v1/admin/devices/manufacturers/${id}`, { method: 'DELETE' }),
+    },
+    brands: {
+      list: (manufacturerId?: string) => {
+        const q = manufacturerId ? `?manufacturer_id=${encodeURIComponent(manufacturerId)}` : '';
+        return request<DeviceBrand[]>(`/api/v1/admin/devices/brands${q}`);
+      },
+      create: (data: { manufacturer_id: string; name_ko: string; name_en: string }) =>
+        request<DeviceBrand>('/api/v1/admin/devices/brands', { method: 'POST', body: JSON.stringify(data) }),
+      update: (id: string, data: Partial<{ name_ko: string; name_en: string; status: string }>) =>
+        request<DeviceBrand>(`/api/v1/admin/devices/brands/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
+      delete: (id: string) =>
+        request<{ id: string; deleted: boolean }>(`/api/v1/admin/devices/brands/${id}`, { method: 'DELETE' }),
+    },
+    models: {
+      list: (filters?: { device_type_id?: string; manufacturer_id?: string; brand_id?: string }) => {
+        const q = new URLSearchParams();
+        if (filters?.device_type_id) q.set('device_type_id', filters.device_type_id);
+        if (filters?.manufacturer_id) q.set('manufacturer_id', filters.manufacturer_id);
+        if (filters?.brand_id) q.set('brand_id', filters.brand_id);
+        const suffix = q.toString() ? `?${q.toString()}` : '';
+        return request<DeviceModel[]>(`/api/v1/admin/devices/models${suffix}`);
+      },
+      create: (data: { device_type_id: string; manufacturer_id: string; brand_id?: string; model_name: string; model_code?: string; description?: string }) =>
+        request<DeviceModel>('/api/v1/admin/devices/models', { method: 'POST', body: JSON.stringify(data) }),
+      update: (id: string, data: Partial<{ model_name: string; model_code: string; description: string; status: string; device_type_id: string; manufacturer_id: string; brand_id: string | null }>) =>
+        request<DeviceModel>(`/api/v1/admin/devices/models/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
+      delete: (id: string) =>
+        request<{ id: string; deleted: boolean }>(`/api/v1/admin/devices/models/${id}`, { method: 'DELETE' }),
+    },
+    units: {
+      list: () => request<MeasurementUnit[]>('/api/v1/admin/devices/units'),
+      create: (data: { key: string; name: string; symbol?: string; sort_order?: number }) =>
+        request<MeasurementUnit>('/api/v1/admin/devices/units', { method: 'POST', body: JSON.stringify(data) }),
+      update: (id: string, data: Partial<{ name: string; symbol: string; sort_order: number; status: string }>) =>
+        request<MeasurementUnit>(`/api/v1/admin/devices/units/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
+    },
+    public: {
+      types: () => request<DeviceType[]>('/api/v1/devices/types'),
+      manufacturers: (deviceTypeId?: string) => {
+        const q = deviceTypeId ? `?device_type_id=${encodeURIComponent(deviceTypeId)}` : '';
+        return request<DeviceManufacturer[]>(`/api/v1/devices/manufacturers${q}`);
+      },
+      brands: (manufacturerId?: string) => {
+        const q = manufacturerId ? `?manufacturer_id=${encodeURIComponent(manufacturerId)}` : '';
+        return request<DeviceBrand[]>(`/api/v1/devices/brands${q}`);
+      },
+      models: (filters?: { device_type_id?: string; manufacturer_id?: string; brand_id?: string }) => {
+        const q = new URLSearchParams();
+        if (filters?.device_type_id) q.set('device_type_id', filters.device_type_id);
+        if (filters?.manufacturer_id) q.set('manufacturer_id', filters.manufacturer_id);
+        if (filters?.brand_id) q.set('brand_id', filters.brand_id);
+        const suffix = q.toString() ? `?${q.toString()}` : '';
+        return request<DeviceModel[]>(`/api/v1/devices/models${suffix}`);
+      },
+      units: () => request<MeasurementUnit[]>('/api/v1/devices/units'),
+    },
   },
 };
 
@@ -661,4 +736,46 @@ export interface FriendConnection {
   friend_user_id: string;
   friend_email: string;
   friend_role: string;
+}
+
+export interface DeviceType {
+  id: string; key: string; name_ko: string; name_en: string;
+  status: string; sort_order: number; created_at: string; updated_at: string;
+}
+
+export interface DeviceManufacturer {
+  id: string; key: string; name_ko: string; name_en: string;
+  country: string | null; status: string; sort_order: number;
+  created_at: string; updated_at: string;
+}
+
+export interface DeviceBrand {
+  id: string; manufacturer_id: string; name_ko: string; name_en: string;
+  status: string; mfr_name_ko?: string | null;
+  created_at: string; updated_at: string;
+}
+
+export interface DeviceModel {
+  id: string; device_type_id: string; manufacturer_id: string; brand_id: string | null;
+  model_name: string; model_code: string | null; description: string | null;
+  status: string; created_at: string; updated_at: string;
+  type_name_ko?: string | null; type_name_en?: string | null;
+  mfr_name_ko?: string | null; mfr_name_en?: string | null;
+  brand_name_ko?: string | null; brand_name_en?: string | null;
+}
+
+export interface MeasurementUnit {
+  id: string; key: string; name: string; symbol: string | null;
+  status: string; sort_order: number; created_at: string; updated_at: string;
+}
+
+export interface GuardianDevice {
+  id: string; pet_id: string; device_model_id: string;
+  nickname: string | null; serial_number: string | null;
+  start_date: string | null; notes: string | null; status: string;
+  model_name?: string; model_code?: string | null;
+  type_name_ko?: string | null; type_name_en?: string | null; type_key?: string | null;
+  mfr_name_ko?: string | null; mfr_name_en?: string | null;
+  brand_name_ko?: string | null; brand_name_en?: string | null;
+  created_at: string; updated_at: string;
 }

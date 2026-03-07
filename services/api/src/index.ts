@@ -125,6 +125,12 @@ async function dispatch(request: Request, env: Env, url: URL): Promise<Response>
     return handlePetAlbum(request, env, url);
   }
 
+  // Device Management (public)
+  if (path.startsWith('/api/v1/devices')) {
+    const { handleDevices } = await import('./routes/devices');
+    return handleDevices(request, env, url);
+  }
+
   // ─── Admin 전용 (/api/v1/admin/*) ─────────────────────────────────
   if (path.startsWith('/api/v1/admin')) {
     return dispatchAdmin(request, env, url, path);
@@ -134,6 +140,10 @@ async function dispatch(request: Request, env: Env, url: URL): Promise<Response>
 }
 
 async function dispatchAdmin(request: Request, env: Env, url: URL, path: string): Promise<Response> {
+  if (path.startsWith('/api/v1/admin/devices')) {
+    const { handleDevices } = await import('./routes/devices');
+    return handleDevices(request, env, url);
+  }
   if (path.startsWith('/api/v1/admin/master')) {
     const { handleMaster } = await import('./routes/master');
     return handleMaster(request, env, url);
