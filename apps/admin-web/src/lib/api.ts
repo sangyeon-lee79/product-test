@@ -258,7 +258,7 @@ export const api = {
     update: (id: string, data: Partial<Pet>) => request<{ pet: Pet }>(`/api/v1/pets/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
     remove: (id: string) => request<{ deleted: boolean }>(`/api/v1/pets/${id}`, { method: 'DELETE' }),
     weightLogs: {
-      list: (petId: string, params?: { range?: '1m' | '3m' | '6m' | '1y' | 'all' }) => {
+      list: (petId: string, params?: { range?: '7d' | '15d' | '1m' | '3m' | '6m' | '1y' | 'all' }) => {
         const q = new URLSearchParams();
         if (params?.range) q.set('range', params.range);
         const suffix = q.toString() ? `?${q.toString()}` : '';
@@ -332,6 +332,45 @@ export const api = {
         notes: string | null;
       }>) => request<{ updated: boolean; id: string; judgement: { level: string | null; label: string | null } }>(`/api/v1/pets/${petId}/glucose-logs/${logId}`, { method: 'PUT', body: JSON.stringify(data) }),
       remove: (petId: string, logId: string) => request<{ deleted: boolean; id: string }>(`/api/v1/pets/${petId}/glucose-logs/${logId}`, { method: 'DELETE' }),
+    },
+    healthMeasurements: {
+      list: (petId: string, params?: { range?: '7d' | '15d' | '1m' | '3m' | '6m' | '1y' | 'all' }) => {
+        const q = new URLSearchParams();
+        if (params?.range) q.set('range', params.range);
+        const suffix = q.toString() ? `?${q.toString()}` : '';
+        return request<{ logs: PetHealthMeasurementLog[]; summary: HealthMeasurementSummary | null; range: string }>(`/api/v1/pets/${petId}/health-measurements${suffix}`);
+      },
+      create: (petId: string, data: {
+        disease_item_id: string;
+        device_type_item_id?: string | null;
+        device_model_id?: string | null;
+        measurement_item_id: string;
+        measurement_context_id?: string | null;
+        value: number;
+        unit_item_id?: string | null;
+        measured_at?: string;
+        memo?: string | null;
+      }) => request<{ id: string; judgement: { level: string | null; label: string | null } }>(`/api/v1/pets/${petId}/health-measurements`, {
+        method: 'POST',
+        body: JSON.stringify(data),
+      }),
+      update: (petId: string, logId: string, data: Partial<{
+        disease_item_id: string;
+        device_type_item_id: string | null;
+        device_model_id: string | null;
+        measurement_item_id: string;
+        measurement_context_id: string | null;
+        value: number;
+        unit_item_id: string | null;
+        measured_at: string;
+        memo: string | null;
+      }>) => request<{ updated: boolean; id: string; judgement: { level: string | null; label: string | null } }>(`/api/v1/pets/${petId}/health-measurements/${logId}`, {
+        method: 'PUT',
+        body: JSON.stringify(data),
+      }),
+      remove: (petId: string, logId: string) => request<{ deleted: boolean; id: string }>(`/api/v1/pets/${petId}/health-measurements/${logId}`, {
+        method: 'DELETE',
+      }),
     },
     checkMicrochip: (microchipNo: string, excludePetId?: string) => {
       const q = new URLSearchParams();
@@ -639,6 +678,33 @@ export interface GlucoseSummary {
   latest_measured_at?: string | null;
   latest_judgement_level?: string | null;
   latest_judgement_label?: string | null;
+}
+
+export interface PetHealthMeasurementLog {
+  id: string;
+  pet_id: string;
+  disease_item_id: string;
+  device_type_item_id?: string | null;
+  device_model_id?: string | null;
+  measurement_item_id: string;
+  measurement_context_id?: string | null;
+  value: number;
+  unit_item_id?: string | null;
+  measured_at: string;
+  memo?: string | null;
+  recorded_by_user_id: string;
+  judgement_level?: string | null;
+  judgement_label?: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface HealthMeasurementSummary {
+  latest_value?: number | null;
+  latest_measured_at?: string | null;
+  latest_judgement_level?: string | null;
+  latest_judgement_label?: string | null;
+  latest_measurement_item_id?: string | null;
 }
 
 export interface Booking {

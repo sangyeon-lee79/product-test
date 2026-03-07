@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
-import { api, type Booking, type FeedPost, type FriendRequest, type MasterItem, type Pet, type PetAlbumMedia, type PetWeightLog, type WeightSummary } from '../lib/api';
+import { api, type Booking, type FeedPost, type FriendRequest, type HealthMeasurementSummary, type MasterItem, type Pet, type PetAlbumMedia, type PetHealthMeasurementLog, type PetWeightLog, type WeightSummary } from '../lib/api';
 import { useT } from '../lib/i18n';
 import { getStoredRole } from '../lib/auth';
 import PetGalleryPanel from '../components/PetGalleryPanel';
@@ -8,7 +8,7 @@ import PetGalleryPanel from '../components/PetGalleryPanel';
 type FeedTab = 'all' | 'friends';
 type Mode = 'create' | 'edit';
 type PetProfileTab = 'timeline' | 'health' | 'services' | 'gallery' | 'profile';
-type WeightRange = '1m' | '3m' | '6m' | '1y' | 'all';
+type WeightRange = '7d' | '15d' | '1m' | '3m' | '6m' | '1y' | 'all';
 type PetWizardStep = 1 | 2 | 3 | 4 | 5;
 
 type Option = { id: string; label: string; parentId?: string | null; metadata?: Record<string, unknown> };
@@ -32,13 +32,11 @@ type PetForm = {
   disease_history_ids: string[];
   symptom_tag_ids: string[];
   vaccination_ids: string[];
-  medication_status_id: string;
   weight_unit_id: string;
   health_condition_level_id: string;
   activity_level_id: string;
   diet_type_id: string;
   temperament_ids: string[];
-  living_style_id: string;
   ownership_type_id: string;
   coat_length_id: string;
   coat_type_id: string;
@@ -73,13 +71,11 @@ const DEFAULT_PET_FORM: PetForm = {
   disease_history_ids: [],
   symptom_tag_ids: [],
   vaccination_ids: [],
-  medication_status_id: '',
   weight_unit_id: '',
   health_condition_level_id: '',
   activity_level_id: '',
   diet_type_id: '',
   temperament_ids: [],
-  living_style_id: '',
   ownership_type_id: '',
   coat_length_id: '',
   coat_type_id: '',
@@ -111,15 +107,16 @@ const CATEGORY_KEYS: Record<string, string[]> = {
   country: ['master.country', 'country'],
   allergy_type: ['master.allergy_type', 'allergy_type'],
   disease_type: ['master.disease_type', 'disease_type'],
+  disease_device_type: ['master.disease_device_type', 'disease_device_type'],
+  disease_measurement_type: ['master.disease_measurement_type', 'disease_measurement_type'],
+  disease_measurement_context: ['master.disease_measurement_context', 'disease_measurement_context'],
   symptom_type: ['master.symptom_type', 'symptom_type'],
   vaccination_type: ['master.vaccination_type', 'vaccination_type'],
-  medication_status: ['master.medication_status', 'medication_status'],
   weight_unit: ['master.weight_unit', 'weight_unit'],
   health_condition_level: ['master.health_condition_level', 'health_condition_level'],
   activity_level: ['master.activity_level', 'activity_level'],
   diet_type: ['master.diet_type', 'diet_type'],
   temperament_type: ['master.temperament_type', 'temperament_type'],
-  living_style: ['master.living_style', 'living_style'],
   ownership_type: ['master.ownership_type', 'ownership_type'],
   coat_length: ['master.coat_length', 'coat_length'],
   coat_type: ['master.coat_type', 'coat_type'],
@@ -298,13 +295,36 @@ export default function GuardianMainPage() {
   const [feeds, setFeeds] = useState<FeedPost[]>([]);
   const [albumMedia, setAlbumMedia] = useState<PetAlbumMedia[]>([]);
   const [weightLogs, setWeightLogs] = useState<PetWeightLog[]>([]);
+  const [measurementLogs, setMeasurementLogs] = useState<PetHealthMeasurementLog[]>([]);
   const [weightSummary, setWeightSummary] = useState<WeightSummary | null>(null);
-  const [weightRange, setWeightRange] = useState<WeightRange>('3m');
+  const [measurementSummary, setMeasurementSummary] = useState<HealthMeasurementSummary | null>(null);
+  const [weightRange, setWeightRange] = useState<WeightRange>('1m');
   const [weightModalOpen, setWeightModalOpen] = useState(false);
+  const [measurementModalOpen, setMeasurementModalOpen] = useState(false);
+  const [selectedMeasurementItemId, setSelectedMeasurementItemId] = useState('');
   const [weightForm, setWeightForm] = useState<{ value: string; measured_at: string; notes: string }>({
     value: '',
     measured_at: '',
     notes: '',
+  });
+  const [measurementForm, setMeasurementForm] = useState<{
+    disease_item_id: string;
+    device_type_item_id: string;
+    measurement_item_id: string;
+    measurement_context_id: string;
+    value: string;
+    unit_item_id: string;
+    measured_at: string;
+    memo: string;
+  }>({
+    disease_item_id: '',
+    device_type_item_id: '',
+    measurement_item_id: '',
+    measurement_context_id: '',
+    value: '',
+    unit_item_id: '',
+    measured_at: '',
+    memo: '',
   });
   const [feedTab, setFeedTab] = useState<FeedTab>('all');
   const [petTab, setPetTab] = useState<PetProfileTab>('gallery');
@@ -329,15 +349,16 @@ export default function GuardianMainPage() {
   const [optCountry, setOptCountry] = useState<Option[]>([]);
   const [optAllergy, setOptAllergy] = useState<Option[]>([]);
   const [optDisease, setOptDisease] = useState<Option[]>([]);
+  const [optDiseaseDevice, setOptDiseaseDevice] = useState<Option[]>([]);
+  const [optMeasurement, setOptMeasurement] = useState<Option[]>([]);
+  const [optMeasurementContext, setOptMeasurementContext] = useState<Option[]>([]);
   const [optSymptom, setOptSymptom] = useState<Option[]>([]);
   const [optVaccination, setOptVaccination] = useState<Option[]>([]);
-  const [optMedication, setOptMedication] = useState<Option[]>([]);
   const [optWeightUnit, setOptWeightUnit] = useState<Option[]>([]);
   const [optHealthLevel, setOptHealthLevel] = useState<Option[]>([]);
   const [optActivity, setOptActivity] = useState<Option[]>([]);
   const [optDiet, setOptDiet] = useState<Option[]>([]);
   const [optTemperament, setOptTemperament] = useState<Option[]>([]);
-  const [optLivingStyle, setOptLivingStyle] = useState<Option[]>([]);
   const [optOwnership, setOptOwnership] = useState<Option[]>([]);
   const [optCoatLength, setOptCoatLength] = useState<Option[]>([]);
   const [optCoatType, setOptCoatType] = useState<Option[]>([]);
@@ -415,15 +436,16 @@ export default function GuardianMainPage() {
         countryRows,
         allergyRows,
         diseaseRows,
+        diseaseDeviceRows,
+        measurementRows,
+        measurementContextRows,
         symptomRows,
         vaccinationRows,
-        medicationRows,
         weightRows,
         healthRows,
         activityRows,
         dietRows,
         temperamentRows,
-        livingRows,
         ownershipRows,
         coatLengthRows,
         coatTypeRows,
@@ -445,15 +467,16 @@ export default function GuardianMainPage() {
         loadCategoryItems(CATEGORY_KEYS.country),
         loadCategoryItems(CATEGORY_KEYS.allergy_type),
         loadCategoryItems(CATEGORY_KEYS.disease_type),
+        loadCategoryItems(CATEGORY_KEYS.disease_device_type),
+        loadCategoryItems(CATEGORY_KEYS.disease_measurement_type),
+        loadCategoryItems(CATEGORY_KEYS.disease_measurement_context),
         loadCategoryItems(CATEGORY_KEYS.symptom_type),
         loadCategoryItems(CATEGORY_KEYS.vaccination_type),
-        loadCategoryItems(CATEGORY_KEYS.medication_status),
         loadCategoryItems(CATEGORY_KEYS.weight_unit),
         loadCategoryItems(CATEGORY_KEYS.health_condition_level),
         loadCategoryItems(CATEGORY_KEYS.activity_level),
         loadCategoryItems(CATEGORY_KEYS.diet_type),
         loadCategoryItems(CATEGORY_KEYS.temperament_type),
-        loadCategoryItems(CATEGORY_KEYS.living_style),
         loadCategoryItems(CATEGORY_KEYS.ownership_type),
         loadCategoryItems(CATEGORY_KEYS.coat_length),
         loadCategoryItems(CATEGORY_KEYS.coat_type),
@@ -478,15 +501,16 @@ export default function GuardianMainPage() {
       setOptCountry(toOption(countryRows));
       setOptAllergy(toOption(allergyRows));
       setOptDisease(toOption(diseaseRows));
+      setOptDiseaseDevice(toOption(diseaseDeviceRows));
+      setOptMeasurement(toOption(measurementRows));
+      setOptMeasurementContext(toOption(measurementContextRows));
       setOptSymptom(toOption(symptomRows));
       setOptVaccination(toOption(vaccinationRows));
-      setOptMedication(toOption(medicationRows));
       setOptWeightUnit(toOption(weightRows));
       setOptHealthLevel(toOption(healthRows));
       setOptActivity(toOption(activityRows));
       setOptDiet(toOption(dietRows));
       setOptTemperament(toOption(temperamentRows));
-      setOptLivingStyle(toOption(livingRows));
       setOptOwnership(toOption(ownershipRows));
       setOptCoatLength(toOption(coatLengthRows));
       setOptCoatType(toOption(coatTypeRows));
@@ -537,13 +561,31 @@ export default function GuardianMainPage() {
     }
   }
 
+  async function loadMeasurementLogs(petId: string, range: WeightRange) {
+    try {
+      const res = await api.pets.healthMeasurements.list(petId, { range });
+      setMeasurementLogs(res.logs || []);
+      setMeasurementSummary(res.summary || null);
+      if (res.logs && res.logs.length > 0 && !selectedMeasurementItemId) {
+        setSelectedMeasurementItemId(String(res.logs[0].measurement_item_id || ''));
+      }
+    } catch (e) {
+      setError(uiErrorMessage(e, '질병 수치 기록을 불러오지 못했습니다.'));
+      setMeasurementLogs([]);
+      setMeasurementSummary(null);
+    }
+  }
+
   useEffect(() => {
     if (!selectedPet?.id) {
       setWeightLogs([]);
       setWeightSummary(null);
+      setMeasurementLogs([]);
+      setMeasurementSummary(null);
       return;
     }
     loadWeightLogs(selectedPet.id, weightRange);
+    loadMeasurementLogs(selectedPet.id, weightRange);
   }, [selectedPet?.id, weightRange]);
 
   async function createWeightLog() {
@@ -581,6 +623,94 @@ export default function GuardianMainPage() {
     }
   }
 
+  const diseaseOptionsForHealth = useMemo(() => {
+    const selectedIds = toArray(selectedPet?.disease_history_ids);
+    if (!selectedIds.length) return optDisease;
+    const set = new Set(selectedIds);
+    return optDisease.filter((item) => set.has(item.id));
+  }, [optDisease, selectedPet?.disease_history_ids]);
+
+  const healthDeviceOptions = useMemo(
+    () => optDiseaseDevice.filter((item) => !measurementForm.disease_item_id || item.parentId === measurementForm.disease_item_id),
+    [optDiseaseDevice, measurementForm.disease_item_id],
+  );
+
+  const healthMeasurementOptions = useMemo(
+    () => optMeasurement.filter((item) => !measurementForm.device_type_item_id || item.parentId === measurementForm.device_type_item_id),
+    [optMeasurement, measurementForm.device_type_item_id],
+  );
+
+  const healthContextOptions = useMemo(
+    () => optMeasurementContext.filter((item) => !measurementForm.measurement_item_id || item.parentId === measurementForm.measurement_item_id),
+    [optMeasurementContext, measurementForm.measurement_item_id],
+  );
+
+  useEffect(() => {
+    if (!measurementLogs.length) {
+      if (selectedMeasurementItemId) setSelectedMeasurementItemId('');
+      return;
+    }
+    if (!selectedMeasurementItemId || !measurementLogs.some((log) => String(log.measurement_item_id) === selectedMeasurementItemId)) {
+      setSelectedMeasurementItemId(String(measurementLogs[0].measurement_item_id || ''));
+    }
+  }, [measurementLogs, selectedMeasurementItemId]);
+
+  async function createHealthMeasurementLog() {
+    if (!selectedPet?.id) return;
+    const value = Number(measurementForm.value);
+    if (!measurementForm.disease_item_id) {
+      setError('질병을 선택해 주세요.');
+      return;
+    }
+    if (!measurementForm.measurement_item_id) {
+      setError('측정항목을 선택해 주세요.');
+      return;
+    }
+    if (!Number.isFinite(value)) {
+      setError('측정값을 올바르게 입력해 주세요.');
+      return;
+    }
+    try {
+      await api.pets.healthMeasurements.create(selectedPet.id, {
+        disease_item_id: measurementForm.disease_item_id,
+        device_type_item_id: measurementForm.device_type_item_id || null,
+        measurement_item_id: measurementForm.measurement_item_id,
+        measurement_context_id: measurementForm.measurement_context_id || null,
+        value,
+        unit_item_id: measurementForm.unit_item_id || null,
+        measured_at: measurementForm.measured_at || new Date().toISOString(),
+        memo: measurementForm.memo.trim() || null,
+      });
+      setMeasurementModalOpen(false);
+      setMeasurementForm({
+        disease_item_id: '',
+        device_type_item_id: '',
+        measurement_item_id: '',
+        measurement_context_id: '',
+        value: '',
+        unit_item_id: '',
+        measured_at: '',
+        memo: '',
+      });
+      await loadMeasurementLogs(selectedPet.id, weightRange);
+      await loadAll(feedTab);
+    } catch (e) {
+      setError(uiErrorMessage(e, '질병 수치 기록 추가에 실패했습니다.'));
+    }
+  }
+
+  async function removeHealthMeasurementLog(logId: string) {
+    if (!selectedPet?.id) return;
+    if (!confirm('이 질병 수치 기록을 삭제할까요?')) return;
+    try {
+      await api.pets.healthMeasurements.remove(selectedPet.id, logId);
+      await loadMeasurementLogs(selectedPet.id, weightRange);
+      await loadAll(feedTab);
+    } catch (e) {
+      setError(uiErrorMessage(e, '질병 수치 기록 삭제에 실패했습니다.'));
+    }
+  }
+
   function openCreatePet() {
     setPetMode('create');
     setPetForm(DEFAULT_PET_FORM);
@@ -614,13 +744,11 @@ export default function GuardianMainPage() {
         disease_history_ids: toArray(p.disease_history_ids),
         symptom_tag_ids: toArray(p.symptom_tag_ids),
         vaccination_ids: toArray(p.vaccination_ids),
-        medication_status_id: p.medication_status_id || '',
         weight_unit_id: p.weight_unit_id || '',
         health_condition_level_id: p.health_condition_level_id || '',
         activity_level_id: p.activity_level_id || '',
         diet_type_id: p.diet_type_id || '',
         temperament_ids: toArray(p.temperament_ids),
-        living_style_id: p.living_style_id || '',
         ownership_type_id: p.ownership_type_id || '',
         coat_length_id: p.coat_length_id || '',
         coat_type_id: p.coat_type_id || '',
@@ -675,12 +803,10 @@ export default function GuardianMainPage() {
       life_stage_id: petForm.life_stage_id || null,
       body_size_id: petForm.body_size_id || null,
       country_id: petForm.country_id || null,
-      medication_status_id: petForm.medication_status_id || null,
       weight_unit_id: petForm.weight_unit_id || null,
       health_condition_level_id: petForm.health_condition_level_id || null,
       activity_level_id: petForm.activity_level_id || null,
       diet_type_id: petForm.diet_type_id || null,
-      living_style_id: petForm.living_style_id || null,
       ownership_type_id: petForm.ownership_type_id || null,
       coat_length_id: petForm.coat_length_id || null,
       coat_type_id: petForm.coat_type_id || null,
@@ -889,41 +1015,59 @@ export default function GuardianMainPage() {
     );
   }
 
-  function renderWeightTrendChart(logs: PetWeightLog[]) {
-    if (!logs.length) {
-      return <div className="weight-chart-empty text-sm text-muted">몸무게 기록이 없습니다.</div>;
+  function renderCombinedHealthChart(weightRows: PetWeightLog[], measurementRows: PetHealthMeasurementLog[]) {
+    if (!weightRows.length && !measurementRows.length) {
+      return <div className="weight-chart-empty text-sm text-muted">표시할 건강 기록이 없습니다.</div>;
     }
-    const rows = [...logs].sort((a, b) => new Date(a.measured_at).getTime() - new Date(b.measured_at).getTime());
-    const values = rows.map((row) => Number(row.weight_value));
-    const min = Math.min(...values);
-    const max = Math.max(...values);
-    const width = 640;
-    const height = 220;
-    const pad = 28;
-    const usableW = width - pad * 2;
+    const width = 720;
+    const height = 260;
+    const pad = 34;
+    const rightPad = 46;
+    const usableW = width - pad - rightPad;
     const usableH = height - pad * 2;
-    const span = Math.max(0.0001, max - min);
-    const points = rows.map((row, idx) => {
-      const x = pad + (rows.length === 1 ? usableW / 2 : (idx / (rows.length - 1)) * usableW);
-      const y = pad + (1 - ((Number(row.weight_value) - min) / span)) * usableH;
-      return { x, y, row };
-    });
-    const line = points.map((p, idx) => `${idx === 0 ? 'M' : 'L'} ${p.x} ${p.y}`).join(' ');
+
+    const allTimes = [
+      ...weightRows.map((row) => new Date(row.measured_at).getTime()),
+      ...measurementRows.map((row) => new Date(row.measured_at).getTime()),
+    ].filter((v) => Number.isFinite(v));
+    if (!allTimes.length) return <div className="weight-chart-empty text-sm text-muted">표시할 건강 기록이 없습니다.</div>;
+    const minT = Math.min(...allTimes);
+    const maxT = Math.max(...allTimes);
+    const tSpan = Math.max(1, maxT - minT);
+
+    const normalizeX = (timeMs: number) => pad + ((timeMs - minT) / tSpan) * usableW;
+    const weightValues = weightRows.map((row) => Number(row.weight_value));
+    const measurementValues = measurementRows.map((row) => Number(row.value));
+    const minW = weightValues.length ? Math.min(...weightValues) : 0;
+    const maxW = weightValues.length ? Math.max(...weightValues) : 1;
+    const minM = measurementValues.length ? Math.min(...measurementValues) : 0;
+    const maxM = measurementValues.length ? Math.max(...measurementValues) : 1;
+    const wSpan = Math.max(0.0001, maxW - minW);
+    const mSpan = Math.max(0.0001, maxM - minM);
+    const normalizeYW = (value: number) => pad + (1 - ((value - minW) / wSpan)) * usableH;
+    const normalizeYM = (value: number) => pad + (1 - ((value - minM) / mSpan)) * usableH;
+
+    const sortedWeights = [...weightRows].sort((a, b) => new Date(a.measured_at).getTime() - new Date(b.measured_at).getTime());
+    const sortedMeasurements = [...measurementRows].sort((a, b) => new Date(a.measured_at).getTime() - new Date(b.measured_at).getTime());
+
+    const weightPath = sortedWeights
+      .map((row, idx) => `${idx === 0 ? 'M' : 'L'} ${normalizeX(new Date(row.measured_at).getTime())} ${normalizeYW(Number(row.weight_value))}`)
+      .join(' ');
+    const measurementPath = sortedMeasurements
+      .map((row, idx) => `${idx === 0 ? 'M' : 'L'} ${normalizeX(new Date(row.measured_at).getTime())} ${normalizeYM(Number(row.value))}`)
+      .join(' ');
 
     return (
       <div className="weight-chart">
-        <svg viewBox={`0 0 ${width} ${height}`} role="img" aria-label="Weight trend chart">
+        <svg viewBox={`0 0 ${width} ${height}`} role="img" aria-label="Combined health trend chart">
           <rect x="0" y="0" width={width} height={height} rx="12" fill="#f7fbff" />
           <line x1={pad} y1={pad} x2={pad} y2={height - pad} stroke="#b8c8de" />
-          <line x1={pad} y1={height - pad} x2={width - pad} y2={height - pad} stroke="#b8c8de" />
-          <path d={line} fill="none" stroke="#1a73e8" strokeWidth="3" />
-          {points.map((p) => (
-            <circle key={p.row.id} cx={p.x} cy={p.y} r="4" fill="#1a73e8">
-              <title>{`${new Date(p.row.measured_at).toLocaleDateString()} / ${p.row.weight_value}`}</title>
-            </circle>
-          ))}
-          <text x={pad} y={16} fontSize="11" fill="#4e6487">{`max ${max.toFixed(2)}`}</text>
-          <text x={pad} y={height - 8} fontSize="11" fill="#4e6487">{`min ${min.toFixed(2)}`}</text>
+          <line x1={width - rightPad} y1={pad} x2={width - rightPad} y2={height - pad} stroke="#d6deec" />
+          <line x1={pad} y1={height - pad} x2={width - rightPad} y2={height - pad} stroke="#b8c8de" />
+          {weightPath && <path d={weightPath} fill="none" stroke="#1a73e8" strokeWidth="3" />}
+          {measurementPath && <path d={measurementPath} fill="none" stroke="#ef6c00" strokeWidth="3" />}
+          <text x={pad} y={16} fontSize="11" fill="#1a73e8">{`W ${maxW.toFixed(2)} / ${minW.toFixed(2)}`}</text>
+          <text x={width - rightPad + 4} y={16} fontSize="11" fill="#ef6c00">{`M ${maxM.toFixed(2)} / ${minM.toFixed(2)}`}</text>
         </svg>
       </div>
     );
@@ -1137,9 +1281,10 @@ export default function GuardianMainPage() {
             {petTab === 'health' && (
               <div className="card">
                 <div className="card-header">
-                  <div className="card-title">Weight History</div>
+                  <div className="card-title">Health History</div>
                   <div className="td-actions">
                     <button className="btn btn-primary btn-sm" onClick={() => setWeightModalOpen(true)}>몸무게 추가</button>
+                    <button className="btn btn-secondary btn-sm" onClick={() => setMeasurementModalOpen(true)}>질병 수치 추가</button>
                   </div>
                 </div>
                 <div className="card-body">
@@ -1150,8 +1295,15 @@ export default function GuardianMainPage() {
                     <article className="card"><div className="card-body"><p className="text-sm text-muted">직전 대비 변화량</p><h3>{weightSummary?.delta_from_prev ?? '-'} {weightSummary?.delta_from_prev != null ? 'kg' : ''}</h3></div></article>
                   </div>
 
+                  <div className="guardian-summary-grid weight-summary-grid mt-2">
+                    <article className="card"><div className="card-body"><p className="text-sm text-muted">최근 질병 수치</p><h3>{measurementSummary?.latest_value ?? '-'}</h3></div></article>
+                    <article className="card"><div className="card-body"><p className="text-sm text-muted">최근 수치 기록일</p><h3>{formatDate(measurementSummary?.latest_measured_at, '-')}</h3></div></article>
+                    <article className="card"><div className="card-body"><p className="text-sm text-muted">최근 판단 상태</p><h3>{measurementSummary?.latest_judgement_label || measurementSummary?.latest_judgement_level || '-'}</h3></div></article>
+                    <article className="card"><div className="card-body"><p className="text-sm text-muted">수치 로그 개수</p><h3>{measurementLogs.length}</h3></div></article>
+                  </div>
+
                   <div className="feed-tabs mt-2">
-                    {(['1m', '3m', '6m', '1y', 'all'] as const).map((range) => (
+                    {(['7d', '15d', '1m', '3m', '6m', '1y', 'all'] as const).map((range) => (
                       <button
                         key={range}
                         className={`feed-tab ${weightRange === range ? 'active' : ''}`}
@@ -1162,7 +1314,19 @@ export default function GuardianMainPage() {
                     ))}
                   </div>
 
-                  {renderWeightTrendChart(weightLogs)}
+                  <div className="form-row col2 mt-2">
+                    {renderSelect(
+                      '질병 수치 항목',
+                      selectedMeasurementItemId,
+                      optMeasurement.filter((m) => measurementLogs.some((log) => log.measurement_item_id === m.id)),
+                      (v) => setSelectedMeasurementItemId(v),
+                    )}
+                  </div>
+
+                  {renderCombinedHealthChart(
+                    weightLogs,
+                    measurementLogs.filter((log) => !selectedMeasurementItemId || log.measurement_item_id === selectedMeasurementItemId),
+                  )}
 
                   <div className="mt-3">
                     <h4>Weight Log List</h4>
@@ -1176,6 +1340,26 @@ export default function GuardianMainPage() {
                         </div>
                       ))}
                       {weightLogs.length === 0 && <p className="text-muted">몸무게 기록이 없습니다.</p>}
+                    </div>
+                  </div>
+
+                  <div className="mt-3">
+                    <h4>질병 수치 로그</h4>
+                    <div className="guardian-pet-list">
+                      {measurementLogs
+                        .filter((log) => !selectedMeasurementItemId || log.measurement_item_id === selectedMeasurementItemId)
+                        .map((log) => (
+                          <div key={log.id} className="guardian-pet-item">
+                            <p className="text-sm">
+                              {new Date(log.measured_at).toLocaleString()} · {log.value}
+                              {log.judgement_label ? ` · ${log.judgement_label}` : ''}
+                            </p>
+                            <div className="td-actions">
+                              <button className="btn btn-danger btn-sm" onClick={() => removeHealthMeasurementLog(log.id)}>삭제</button>
+                            </div>
+                          </div>
+                        ))}
+                      {measurementLogs.length === 0 && <p className="text-muted">질병 수치 기록이 없습니다.</p>}
                     </div>
                   </div>
 
@@ -1376,9 +1560,7 @@ export default function GuardianMainPage() {
                     {renderSelect(t('master.activity_level', 'Activity Level'), petForm.activity_level_id, optActivity, (v) => setPetForm((p) => ({ ...p, activity_level_id: v })))}
                     {renderSelect(t('master.diet_type', 'Diet Type'), petForm.diet_type_id, optDiet, (v) => setPetForm((p) => ({ ...p, diet_type_id: v })))}
                   </div>
-                  <div className="form-row col3">
-                    {renderSelect(t('master.medication_status', 'Medication Status'), petForm.medication_status_id, optMedication, (v) => setPetForm((p) => ({ ...p, medication_status_id: v })))}
-                    {renderSelect(t('master.living_style', 'Living Style'), petForm.living_style_id, optLivingStyle, (v) => setPetForm((p) => ({ ...p, living_style_id: v })))}
+                  <div className="form-row col2">
                     {renderSelect(t('master.ownership_type', 'Ownership Type'), petForm.ownership_type_id, optOwnership, (v) => setPetForm((p) => ({ ...p, ownership_type_id: v })))}
                   </div>
                   <div className="form-row col2">
@@ -1460,6 +1642,74 @@ export default function GuardianMainPage() {
             <div className="modal-footer">
               <button className="btn btn-secondary" onClick={() => setWeightModalOpen(false)}>{t('common.cancel', 'Cancel')}</button>
               <button className="btn btn-primary" onClick={createWeightLog}>{t('common.save', 'Save')}</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {measurementModalOpen && (
+        <div className="modal-overlay">
+          <div className="modal">
+            <div className="modal-header">
+              <h3 className="modal-title">질병 수치 추가</h3>
+              <button className="modal-close" onClick={() => setMeasurementModalOpen(false)}>&times;</button>
+            </div>
+            <div className="modal-body">
+              {renderSelect('질병', measurementForm.disease_item_id, diseaseOptionsForHealth, (v) => setMeasurementForm((prev) => ({
+                ...prev,
+                disease_item_id: v,
+                device_type_item_id: '',
+                measurement_item_id: '',
+                measurement_context_id: '',
+              })), true)}
+              {renderSelect('장치', measurementForm.device_type_item_id, healthDeviceOptions, (v) => setMeasurementForm((prev) => ({
+                ...prev,
+                device_type_item_id: v,
+                measurement_item_id: '',
+                measurement_context_id: '',
+              })))}
+              {renderSelect('측정항목', measurementForm.measurement_item_id, healthMeasurementOptions, (v) => setMeasurementForm((prev) => ({
+                ...prev,
+                measurement_item_id: v,
+                measurement_context_id: '',
+              })), true)}
+              {renderSelect('측정 컨텍스트', measurementForm.measurement_context_id, healthContextOptions, (v) => setMeasurementForm((prev) => ({ ...prev, measurement_context_id: v })))}
+              <div className="form-row col2">
+                <div className="form-group">
+                  <label className="form-label">수치 값</label>
+                  <input
+                    className="form-input"
+                    type="number"
+                    step="0.01"
+                    value={measurementForm.value}
+                    onChange={(e) => setMeasurementForm((prev) => ({ ...prev, value: e.target.value }))}
+                  />
+                </div>
+                {renderSelect('단위', measurementForm.unit_item_id, optWeightUnit, (v) => setMeasurementForm((prev) => ({ ...prev, unit_item_id: v })))}
+              </div>
+              <div className="form-row col2">
+                <div className="form-group">
+                  <label className="form-label">측정일</label>
+                  <input
+                    className="form-input"
+                    type="datetime-local"
+                    value={measurementForm.measured_at}
+                    onChange={(e) => setMeasurementForm((prev) => ({ ...prev, measured_at: e.target.value }))}
+                  />
+                </div>
+                <div className="form-group">
+                  <label className="form-label">메모</label>
+                  <input
+                    className="form-input"
+                    value={measurementForm.memo}
+                    onChange={(e) => setMeasurementForm((prev) => ({ ...prev, memo: e.target.value }))}
+                  />
+                </div>
+              </div>
+            </div>
+            <div className="modal-footer">
+              <button className="btn btn-secondary" onClick={() => setMeasurementModalOpen(false)}>{t('common.cancel', 'Cancel')}</button>
+              <button className="btn btn-primary" onClick={createHealthMeasurementLog}>{t('common.save', 'Save')}</button>
             </div>
           </div>
         </div>

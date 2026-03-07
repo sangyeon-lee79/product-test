@@ -62,7 +62,10 @@ function normalizeMeasuredAt(value: unknown): string {
 
 function rangeStartByKey(range: string): string | null {
   const current = new Date();
-  if (range === '1m') current.setMonth(current.getMonth() - 1);
+  if (range === '7d') current.setDate(current.getDate() - 7);
+  else if (range === '15d') current.setDate(current.getDate() - 15);
+  else if (range === '1w') current.setDate(current.getDate() - 7);
+  else if (range === '1m') current.setMonth(current.getMonth() - 1);
   else if (range === '3m') current.setMonth(current.getMonth() - 3);
   else if (range === '6m') current.setMonth(current.getMonth() - 6);
   else if (range === '1y') current.setFullYear(current.getFullYear() - 1);
@@ -75,6 +78,70 @@ async function hasTable(env: Env, table: string): Promise<boolean> {
     "SELECT name FROM sqlite_master WHERE type='table' AND name = ? LIMIT 1"
   ).bind(table).first<{ name: string }>();
   return Boolean(row?.name);
+}
+
+async function hasColumn(env: Env, table: string, column: string): Promise<boolean> {
+  const rows = await env.DB.prepare(`PRAGMA table_info(${table})`).all<{ name: string }>();
+  return rows.results.some((r) => r.name === column);
+}
+
+async function replaceRelationRows(
+  env: Env,
+  petId: string,
+  table: string,
+  idColumn: string,
+  itemColumn: string,
+  itemIds: string[],
+): Promise<void> {
+  if (!(await hasTable(env, table))) return;
+  await env.DB.prepare(`DELETE FROM ${table} WHERE pet_id = ?`).bind(petId).run();
+  for (const itemId of itemIds) {
+    await env.DB.prepare(
+      `INSERT INTO ${table} (${idColumn}, pet_id, ${itemColumn}, created_at, updated_at)
+       VALUES (?, ?, ?, ?, ?)`
+    ).bind(newId(), petId, itemId, now(), now()).run();
+  }
+}
+
+async function replaceDiseaseSelections(
+  env: Env,
+  petId: string,
+  userId: string,
+  diseaseIds: string[],
+  note?: string | null,
+): Promise<void> {
+  if (await hasTable(env, 'pet_disease_histories')) {
+    await env.DB.prepare(`DELETE FROM pet_disease_histories WHERE pet_id = ?`).bind(petId).run();
+    for (const diseaseItemId of diseaseIds) {
+      const parent = await env.DB.prepare(
+        `SELECT parent_item_id FROM master_items WHERE id = ?`
+      ).bind(diseaseItemId).first<{ parent_item_id: string | null }>();
+      await env.DB.prepare(
+        `INSERT INTO pet_disease_histories (
+          id, pet_id, disease_group_item_id, disease_item_id, diagnosed_at, notes, is_active, created_at, updated_at
+        ) VALUES (?, ?, ?, ?, ?, ?, 1, ?, ?)`
+      ).bind(
+        newId(),
+        petId,
+        parent?.parent_item_id ?? null,
+        diseaseItemId,
+        now(),
+        note ?? null,
+        now(),
+        now(),
+      ).run();
+    }
+    return;
+  }
+  await replaceDiseaseHistory(env, petId, userId, diseaseIds, note);
+}
+
+async function selectRelationIds(env: Env, petId: string, table: string, itemColumn: string): Promise<string[]> {
+  if (!(await hasTable(env, table))) return [];
+  const rows = await env.DB.prepare(
+    `SELECT ${itemColumn} AS item_id FROM ${table} WHERE pet_id = ? ORDER BY datetime(created_at) ASC, ${itemColumn} ASC`
+  ).bind(petId).all<{ item_id: string }>();
+  return rows.results.map((r) => r.item_id).filter(Boolean);
 }
 
 async function resolveMasterItemId(env: Env, categoryCode: string, itemCode: string): Promise<string | null> {
@@ -195,6 +262,22 @@ export async function handlePets(request: Request, env: Env, url: URL): Promise<
     if (request.method === 'DELETE') return deleteGlucoseLog(env, payload, petId, logId);
   }
 
+  // /pets/:id/health-measurements
+  const measurementLogsMatch = sub.match(/^\/([^/]+)\/health-measurements$/);
+  if (measurementLogsMatch) {
+    const petId = measurementLogsMatch[1];
+    if (request.method === 'GET') return listHealthMeasurementLogs(env, payload, petId, url);
+    if (request.method === 'POST') return createHealthMeasurementLog(request, env, payload, petId);
+  }
+
+  // /pets/:id/health-measurements/:logId
+  const measurementLogItemMatch = sub.match(/^\/([^/]+)\/health-measurements\/([^/]+)$/);
+  if (measurementLogItemMatch) {
+    const [, petId, logId] = measurementLogItemMatch;
+    if (request.method === 'PUT') return updateHealthMeasurementLog(request, env, payload, petId, logId);
+    if (request.method === 'DELETE') return deleteHealthMeasurementLog(env, payload, petId, logId);
+  }
+
   // /pets/:id/guardian-devices (delegated to devices route)
   if (sub.includes('/guardian-devices')) {
     const { handleDevices } = await import('./devices');
@@ -293,7 +376,7 @@ async function listPets(env: Env, payload: JwtPayload): Promise<Response> {
   ).bind(payload.sub).all<Record<string, unknown>>();
 
   const result = await Promise.all(
-    pets.results.map(async (pet) => attachDiseases(env, normalizePetRecord(pet)))
+    pets.results.map(async (pet) => attachPetRelations(env, normalizePetRecord(pet)))
   );
   return ok({ pets: result });
 }
@@ -365,15 +448,16 @@ async function createPet(request: Request, env: Env, payload: JwtPayload): Promi
   ).run();
 
   const diseaseHistoryIds = parseIdArray(body.disease_history_ids);
-  if (diseaseHistoryIds.length > 0) {
-    await replaceDiseaseHistory(
-      env,
-      id,
-      payload.sub,
-      diseaseHistoryIds,
-      typeof body.notes === 'string' ? body.notes.trim() : null,
-    );
-  }
+  await replaceDiseaseSelections(
+    env,
+    id,
+    payload.sub,
+    diseaseHistoryIds,
+    typeof body.notes === 'string' ? body.notes.trim() : null,
+  );
+  await replaceRelationRows(env, id, 'pet_allergies', 'id', 'allergy_item_id', parseIdArray(body.allergy_ids));
+  await replaceRelationRows(env, id, 'pet_symptoms', 'id', 'symptom_item_id', parseIdArray(body.symptom_tag_ids));
+  await replaceRelationRows(env, id, 'pet_vaccinations', 'id', 'vaccination_item_id', parseIdArray(body.vaccination_ids));
 
   if (currentWeight !== null) {
     await env.DB.prepare(
@@ -402,7 +486,7 @@ async function createPet(request: Request, env: Env, payload: JwtPayload): Promi
     FROM pets p
     WHERE p.id = ?
   `).bind(id).first<Record<string, unknown>>();
-  return created({ pet: await attachDiseases(env, normalizePetRecord(pet!)) });
+  return created({ pet: await attachPetRelations(env, normalizePetRecord(pet!)) });
 }
 
 // ─── GET /pets/:id ────────────────────────────────────────────────────────────
@@ -418,7 +502,7 @@ async function getPet(env: Env, payload: JwtPayload, petId: string): Promise<Res
      WHERE p.id = ? AND p.guardian_user_id = ? AND p.status != 'deleted'`
   ).bind(petId, payload.sub).first<Record<string, unknown>>();
   if (!pet) return err('Pet not found', 404, 'not_found');
-  return ok({ pet: await attachDiseases(env, normalizePetRecord(pet)) });
+  return ok({ pet: await attachPetRelations(env, normalizePetRecord(pet)) });
 }
 
 // ─── PUT /pets/:id ────────────────────────────────────────────────────────────
@@ -498,13 +582,23 @@ async function updatePet(request: Request, env: Env, payload: JwtPayload, petId:
   await env.DB.prepare(`UPDATE pets SET ${sets.join(', ')} WHERE id = ?`).bind(...vals).run();
 
   if (Object.prototype.hasOwnProperty.call(body, 'disease_history_ids')) {
-    await replaceDiseaseHistory(
+    await replaceDiseaseSelections(
       env,
       petId,
       payload.sub,
       parseIdArray(body.disease_history_ids),
       typeof body.notes === 'string' ? body.notes.trim() : null,
     );
+  }
+
+  if (Object.prototype.hasOwnProperty.call(body, 'allergy_ids')) {
+    await replaceRelationRows(env, petId, 'pet_allergies', 'id', 'allergy_item_id', parseIdArray(body.allergy_ids));
+  }
+  if (Object.prototype.hasOwnProperty.call(body, 'symptom_tag_ids')) {
+    await replaceRelationRows(env, petId, 'pet_symptoms', 'id', 'symptom_item_id', parseIdArray(body.symptom_tag_ids));
+  }
+  if (Object.prototype.hasOwnProperty.call(body, 'vaccination_ids')) {
+    await replaceRelationRows(env, petId, 'pet_vaccinations', 'id', 'vaccination_item_id', parseIdArray(body.vaccination_ids));
   }
 
   if (explicitWeight && normalizedWeight !== null) {
@@ -1024,11 +1118,225 @@ async function deleteGlucoseLog(env: Env, payload: JwtPayload, petId: string, lo
   return ok({ deleted: true, id: logId });
 }
 
+// ─── Generic health measurement logs APIs ───────────────────────────────────
+
+async function resolveMeasurementJudgement(
+  env: Env,
+  petId: string,
+  diseaseItemId: string,
+  measurementItemId: string,
+  value: number,
+  unitItemId: string | null,
+  contextItemId: string | null,
+): Promise<{ level: string | null; label: string | null }> {
+  if (!(await hasTable(env, 'disease_judgement_rules')) || !unitItemId) return { level: null, label: null };
+  const pet = await env.DB.prepare(`SELECT pet_type_id FROM pets WHERE id = ?`).bind(petId).first<{ pet_type_id: string | null }>();
+  const row = await env.DB.prepare(
+    `SELECT judgement_level, judgement_label
+     FROM disease_judgement_rules
+     WHERE disease_item_id = ?
+       AND measurement_item_id = ?
+       AND unit_item_id = ?
+       AND status = 'active'
+       AND (? IS NULL OR context_item_id = ? OR context_item_id IS NULL)
+       AND (species_item_id IS NULL OR species_item_id = ?)
+       AND (min_value IS NULL OR ? >= min_value)
+       AND (max_value IS NULL OR ? <= max_value)
+     ORDER BY
+       CASE WHEN context_item_id = ? THEN 0 WHEN context_item_id IS NULL THEN 1 ELSE 2 END,
+       CASE WHEN species_item_id = ? THEN 0 WHEN species_item_id IS NULL THEN 1 ELSE 2 END,
+       sort_order ASC
+     LIMIT 1`
+  ).bind(
+    diseaseItemId,
+    measurementItemId,
+    unitItemId,
+    contextItemId,
+    contextItemId,
+    pet?.pet_type_id ?? null,
+    value,
+    value,
+    contextItemId,
+    pet?.pet_type_id ?? null,
+  ).first<{ judgement_level: string; judgement_label: string | null }>();
+  return { level: row?.judgement_level ?? null, label: row?.judgement_label ?? null };
+}
+
+async function listHealthMeasurementLogs(env: Env, payload: JwtPayload, petId: string, url: URL): Promise<Response> {
+  const pet = await assertPetOwner(env, payload, petId);
+  if (!pet) return err('Pet not found', 404, 'not_found');
+  if (!(await hasTable(env, 'pet_health_measurement_logs'))) return ok({ logs: [], range: 'all', summary: null });
+
+  const range = (url.searchParams.get('range') || '1m').trim();
+  const start = rangeStartByKey(range);
+  const where = ['pet_id = ?'];
+  const vals: Array<string | number> = [petId];
+  if (start) {
+    where.push('datetime(measured_at) >= datetime(?)');
+    vals.push(start);
+  }
+  const rows = await env.DB.prepare(
+    `SELECT *
+     FROM pet_health_measurement_logs
+     WHERE ${where.join(' AND ')}
+     ORDER BY datetime(measured_at) DESC, datetime(created_at) DESC, id DESC`
+  ).bind(...vals).all<Record<string, unknown>>();
+
+  const latest = rows.results[0] || null;
+  return ok({
+    logs: rows.results,
+    range,
+    summary: latest ? {
+      latest_value: latest.value ?? null,
+      latest_measured_at: latest.measured_at ?? null,
+      latest_judgement_level: latest.judgement_level ?? null,
+      latest_judgement_label: latest.judgement_label ?? null,
+      latest_measurement_item_id: latest.measurement_item_id ?? null,
+    } : null,
+  });
+}
+
+async function createHealthMeasurementLog(request: Request, env: Env, payload: JwtPayload, petId: string): Promise<Response> {
+  const pet = await assertPetOwner(env, payload, petId);
+  if (!pet) return err('Pet not found', 404, 'not_found');
+  if (!(await hasTable(env, 'pet_health_measurement_logs'))) return err('not supported', 400);
+
+  let body: {
+    disease_item_id?: string;
+    device_type_item_id?: string | null;
+    device_model_id?: string | null;
+    measurement_item_id?: string;
+    measurement_context_id?: string | null;
+    value?: number;
+    unit_item_id?: string | null;
+    measured_at?: string;
+    memo?: string | null;
+  };
+  try { body = await request.json() as typeof body; } catch { return err('Invalid JSON body'); }
+
+  const diseaseItemId = (body.disease_item_id || '').trim();
+  const measurementItemId = (body.measurement_item_id || '').trim();
+  const value = parseOptionalNumber(body.value);
+  if (!diseaseItemId) return err('disease_item_id required');
+  if (!measurementItemId) return err('measurement_item_id required');
+  if (value === null) return err('value required');
+
+  const contextId = body.measurement_context_id ? String(body.measurement_context_id).trim() : null;
+  const unitItemId = body.unit_item_id ? String(body.unit_item_id).trim() : null;
+  const deviceTypeItemId = body.device_type_item_id ? String(body.device_type_item_id).trim() : null;
+  const judgement = await resolveMeasurementJudgement(env, petId, diseaseItemId, measurementItemId, value, unitItemId, contextId);
+
+  if (deviceTypeItemId && (await hasTable(env, 'pet_disease_devices'))) {
+    const existingDevice = await env.DB.prepare(
+      `SELECT id
+       FROM pet_disease_devices
+       WHERE pet_id = ? AND disease_item_id = ? AND device_item_id = ?
+       LIMIT 1`
+    ).bind(petId, diseaseItemId, deviceTypeItemId).first<{ id: string }>();
+    if (!existingDevice) {
+      await env.DB.prepare(
+        `INSERT INTO pet_disease_devices (
+          id, pet_id, disease_item_id, device_item_id, is_active, created_at, updated_at
+        ) VALUES (?, ?, ?, ?, 1, ?, ?)`
+      ).bind(newId(), petId, diseaseItemId, deviceTypeItemId, now(), now()).run();
+    }
+  }
+
+  const id = newId();
+  await env.DB.prepare(
+    `INSERT INTO pet_health_measurement_logs (
+      id, pet_id, disease_item_id, device_type_item_id, device_model_id,
+      measurement_item_id, measurement_context_id, value, unit_item_id,
+      measured_at, memo, recorded_by_user_id, judgement_level, judgement_label, created_at, updated_at
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+  ).bind(
+    id,
+    petId,
+    diseaseItemId,
+    deviceTypeItemId,
+    body.device_model_id ?? null,
+    measurementItemId,
+    contextId,
+    value,
+    unitItemId,
+    normalizeMeasuredAt(body.measured_at),
+    body.memo ?? null,
+    payload.sub,
+    judgement.level,
+    judgement.label,
+    now(),
+    now(),
+  ).run();
+  return created({ id, judgement });
+}
+
+async function updateHealthMeasurementLog(request: Request, env: Env, payload: JwtPayload, petId: string, logId: string): Promise<Response> {
+  const pet = await assertPetOwner(env, payload, petId);
+  if (!pet) return err('Pet not found', 404, 'not_found');
+  if (!(await hasTable(env, 'pet_health_measurement_logs'))) return err('not supported', 400);
+  const existing = await env.DB.prepare(
+    `SELECT * FROM pet_health_measurement_logs WHERE id = ? AND pet_id = ?`
+  ).bind(logId, petId).first<Record<string, unknown>>();
+  if (!existing) return err('Health measurement log not found', 404, 'not_found');
+
+  let body: Record<string, unknown>;
+  try { body = await request.json() as Record<string, unknown>; } catch { return err('Invalid JSON body'); }
+
+  const diseaseItemId = String(body.disease_item_id ?? existing.disease_item_id ?? '');
+  const measurementItemId = String(body.measurement_item_id ?? existing.measurement_item_id ?? '');
+  const value = Object.prototype.hasOwnProperty.call(body, 'value')
+    ? parseOptionalNumber(body.value)
+    : parseOptionalNumber(existing.value);
+  if (!diseaseItemId) return err('disease_item_id required');
+  if (!measurementItemId) return err('measurement_item_id required');
+  if (value === null) return err('invalid value');
+
+  const contextId = String(body.measurement_context_id ?? existing.measurement_context_id ?? '').trim() || null;
+  const unitItemId = String(body.unit_item_id ?? existing.unit_item_id ?? '').trim() || null;
+  const judgement = await resolveMeasurementJudgement(env, petId, diseaseItemId, measurementItemId, value, unitItemId, contextId);
+
+  await env.DB.prepare(
+    `UPDATE pet_health_measurement_logs
+     SET disease_item_id = ?, device_type_item_id = ?, device_model_id = ?,
+         measurement_item_id = ?, measurement_context_id = ?, value = ?, unit_item_id = ?,
+         measured_at = ?, memo = ?, judgement_level = ?, judgement_label = ?, updated_at = ?
+     WHERE id = ? AND pet_id = ?`
+  ).bind(
+    diseaseItemId,
+    body.device_type_item_id ?? existing.device_type_item_id ?? null,
+    body.device_model_id ?? existing.device_model_id ?? null,
+    measurementItemId,
+    contextId,
+    value,
+    unitItemId,
+    normalizeMeasuredAt(body.measured_at ?? existing.measured_at),
+    body.memo ?? existing.memo ?? null,
+    judgement.level,
+    judgement.label,
+    now(),
+    logId,
+    petId,
+  ).run();
+  return ok({ updated: true, id: logId, judgement });
+}
+
+async function deleteHealthMeasurementLog(env: Env, payload: JwtPayload, petId: string, logId: string): Promise<Response> {
+  const pet = await assertPetOwner(env, payload, petId);
+  if (!pet) return err('Pet not found', 404, 'not_found');
+  if (!(await hasTable(env, 'pet_health_measurement_logs'))) return err('not supported', 400);
+  await env.DB.prepare(`DELETE FROM pet_health_measurement_logs WHERE id = ? AND pet_id = ?`).bind(logId, petId).run();
+  return ok({ deleted: true, id: logId });
+}
+
 // ─── util: attach diseases ────────────────────────────────────────────────────
 
-async function attachDiseases(env: Env, pet: Record<string, unknown>) {
+async function attachPetRelations(env: Env, pet: Record<string, unknown>) {
+  const petId = String(pet.id);
+  let diseases: Record<string, unknown>[] = [];
+  let diseaseIds: string[] = [];
+
   if (await hasTable(env, 'pet_disease_histories')) {
-    const diseases = await env.DB.prepare(
+    const rows = await env.DB.prepare(
       `SELECT
          h.id,
          h.disease_group_item_id,
@@ -1041,17 +1349,37 @@ async function attachDiseases(env: Env, pet: Record<string, unknown>) {
        LEFT JOIN master_items d ON d.id = h.disease_item_id
        WHERE h.pet_id = ?
        ORDER BY h.is_active DESC, datetime(h.created_at) DESC`
-    ).bind(pet.id).all<Record<string, unknown>>();
-    return { ...pet, diseases: diseases.results };
+    ).bind(petId).all<Record<string, unknown>>();
+    diseases = rows.results;
+    diseaseIds = rows.results
+      .map((row) => String(row.disease_id || row.disease_item_id || ''))
+      .filter(Boolean);
+  } else {
+    const rows = await env.DB.prepare(
+      `SELECT hr.id, hr.disease_id, hr.recorded_at AS diagnosed_at, hr.description AS notes, 1 AS is_active,
+              mi.code AS disease_key
+       FROM health_records hr
+       LEFT JOIN master_items mi ON mi.id = hr.disease_id
+       WHERE hr.pet_id = ? AND hr.record_type = 'disease'
+       ORDER BY datetime(hr.recorded_at) ASC, hr.id ASC`
+    ).bind(petId).all<Record<string, unknown>>();
+    diseases = rows.results;
+    diseaseIds = rows.results.map((row) => String(row.disease_id || '')).filter(Boolean);
   }
 
-  const diseases = await env.DB.prepare(
-    `SELECT hr.id, hr.disease_id, hr.recorded_at AS diagnosed_at, hr.description AS notes, 1 AS is_active,
-            mi.code AS disease_key
-     FROM health_records hr
-     LEFT JOIN master_items mi ON mi.id = hr.disease_id
-     WHERE hr.pet_id = ? AND hr.record_type = 'disease'
-     ORDER BY datetime(hr.recorded_at) ASC, hr.id ASC`
-  ).bind(pet.id).all<Record<string, unknown>>();
-  return { ...pet, diseases: diseases.results };
+  const allergyIds = await selectRelationIds(env, petId, 'pet_allergies', 'allergy_item_id');
+  const symptomIds = await selectRelationIds(env, petId, 'pet_symptoms', 'symptom_item_id');
+  const vaccinationIds = await selectRelationIds(env, petId, 'pet_vaccinations', 'vaccination_item_id');
+
+  const out: Record<string, unknown> = { ...pet };
+  out.diseases = diseases;
+  out.disease_history_ids = diseaseIds;
+  out.allergy_ids = allergyIds.length > 0 ? allergyIds : parseJsonArrayString(pet.allergy_ids);
+  out.symptom_tag_ids = symptomIds.length > 0 ? symptomIds : parseJsonArrayString(pet.symptom_tag_ids);
+  out.vaccination_ids = vaccinationIds.length > 0 ? vaccinationIds : parseJsonArrayString(pet.vaccination_ids);
+
+  if (!(await hasColumn(env, 'pets', 'medication_status_id'))) out.medication_status_id = null;
+  if (!(await hasColumn(env, 'pets', 'living_style_id'))) out.living_style_id = null;
+
+  return out;
 }
