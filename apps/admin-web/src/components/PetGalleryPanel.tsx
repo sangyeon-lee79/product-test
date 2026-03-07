@@ -9,6 +9,10 @@ type UploadKind = 'manual_upload' | 'health_record' | 'profile' | 'feed' | 'book
 type VisibilityScope = 'public' | 'friends_only' | 'private' | 'guardian_supplier_only' | 'booking_related';
 const MAX_UPLOAD_SIZE = 10 * 1024 * 1024;
 const ALLOWED_UPLOAD_TYPES = new Set(['image/jpeg', 'image/jpg', 'image/png', 'image/webp']);
+const FEED_MAX_EDGE = 1080;
+const FEED_MAX_MB = 0.5;
+const THUMB_MAX_EDGE = 400;
+const THUMB_MAX_MB = 0.12;
 
 interface GalleryItem {
   id: string;
@@ -98,6 +102,59 @@ function fileToDataUrl(file: File): Promise<string> {
     reader.onerror = () => reject(new Error('file_read_failed'));
     reader.readAsDataURL(file);
   });
+}
+
+function sanitizePathSegment(value: string): string {
+  return value.replace(/[^a-zA-Z0-9_-]/g, '');
+}
+
+function loadImageElement(file: File): Promise<HTMLImageElement> {
+  return new Promise((resolve, reject) => {
+    const objectUrl = URL.createObjectURL(file);
+    const image = new Image();
+    image.onload = () => {
+      URL.revokeObjectURL(objectUrl);
+      resolve(image);
+    };
+    image.onerror = () => {
+      URL.revokeObjectURL(objectUrl);
+      reject(new Error('image_decode_failed'));
+    };
+    image.src = objectUrl;
+  });
+}
+
+async function compressImageFile(
+  file: File,
+  options: { maxEdge: number; maxSizeMB: number; preferredType?: 'image/jpeg' | 'image/webp' }
+): Promise<File> {
+  const image = await loadImageElement(file);
+  const longEdge = Math.max(image.naturalWidth, image.naturalHeight);
+  const scale = longEdge > options.maxEdge ? options.maxEdge / longEdge : 1;
+  const width = Math.max(1, Math.round(image.naturalWidth * scale));
+  const height = Math.max(1, Math.round(image.naturalHeight * scale));
+  const canvas = document.createElement('canvas');
+  canvas.width = width;
+  canvas.height = height;
+  const ctx = canvas.getContext('2d');
+  if (!ctx) throw new Error('canvas_not_supported');
+  ctx.drawImage(image, 0, 0, width, height);
+
+  const outputType = options.preferredType ?? 'image/jpeg';
+  const targetBytes = options.maxSizeMB * 1024 * 1024;
+  const qualities = [0.82, 0.75, 0.68, 0.6];
+
+  for (const quality of qualities) {
+    const blob = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, outputType, quality));
+    if (!blob) continue;
+    if (blob.size <= targetBytes || quality === qualities[qualities.length - 1]) {
+      const ext = outputType === 'image/webp' ? 'webp' : 'jpg';
+      const filename = `${file.name.replace(/\.[^.]+$/, '')}_${options.maxEdge}.${ext}`;
+      return new File([blob], filename, { type: outputType, lastModified: Date.now() });
+    }
+  }
+
+  throw new Error('image_compress_failed');
 }
 
 export default function PetGalleryPanel({
@@ -254,24 +311,47 @@ export default function PetGalleryPanel({
     setSavingUpload(true);
     setUploadError('');
     try {
-      const ext = (uploadFile.name.split('.').pop() || 'jpg').toLowerCase().replace(/[^a-z0-9]/g, '') || 'jpg';
       let mediaUrl = '';
+      let thumbnailUrl = '';
       try {
-        const presigned = await api.storage.presignedUrl({ type: 'log_media', ext });
-        await uploadBinary(presigned.upload_url, uploadFile, (ratio) => setUploadProgress(ratio));
-        mediaUrl = presigned.public_url;
+        const feedFile = await compressImageFile(uploadFile, {
+          maxEdge: FEED_MAX_EDGE,
+          maxSizeMB: FEED_MAX_MB,
+          preferredType: 'image/jpeg',
+        });
+        const thumbFile = await compressImageFile(uploadFile, {
+          maxEdge: THUMB_MAX_EDGE,
+          maxSizeMB: THUMB_MAX_MB,
+          preferredType: 'image/jpeg',
+        });
+        const petSeg = sanitizePathSegment(selectedPet.id || 'pet');
+        const feedPresigned = await api.storage.presignedUrl({
+          type: 'log_media',
+          ext: 'jpg',
+          subdir: `feed/${petSeg}`,
+        });
+        await uploadBinary(feedPresigned.upload_url, feedFile, (ratio) => setUploadProgress(Math.round(ratio * 0.7)));
+        const thumbPresigned = await api.storage.presignedUrl({
+          type: 'log_media',
+          ext: 'jpg',
+          subdir: `thumb/${petSeg}`,
+        });
+        await uploadBinary(thumbPresigned.upload_url, thumbFile, (ratio) => setUploadProgress(70 + Math.round(ratio * 0.3)));
+        mediaUrl = feedPresigned.public_url;
+        thumbnailUrl = thumbPresigned.public_url;
       } catch (uploadError) {
         const message = uploadError instanceof Error ? uploadError.message : '';
         const isStorageUnavailable = /Storage not configured|no_r2|storage/i.test(message);
         if (!isStorageUnavailable) throw uploadError;
         mediaUrl = await fileToDataUrl(uploadFile);
+        thumbnailUrl = mediaUrl;
       }
       await api.petAlbum.create({
         pet_id: selectedPet.id,
         source_type: uploadKind,
         media_type: 'image',
         media_url: mediaUrl,
-        thumbnail_url: mediaUrl,
+        thumbnail_url: thumbnailUrl || mediaUrl,
         caption: uploadCaption.trim() || null,
         tags,
         visibility_scope: uploadVisibility,

@@ -335,10 +335,11 @@ export const api = {
     },
   },
   storage: {
-    presignedUrl: (params: { type: 'user_avatar' | 'pet_avatar' | 'log_media' | 'feed_media' | 'completion_photo' | 'store_photo' | 'service_photo'; ext: string }) => {
+    presignedUrl: (params: { type: 'user_avatar' | 'pet_avatar' | 'log_media' | 'feed_media' | 'completion_photo' | 'store_photo' | 'service_photo'; ext: string; subdir?: string }) => {
       const q = new URLSearchParams();
       q.set('type', params.type);
       q.set('ext', params.ext);
+      if (params.subdir) q.set('subdir', params.subdir);
       return request<{ upload_url: string; file_key: string; public_url: string; expires_in: number }>(`/api/v1/storage/presigned-url?${q.toString()}`);
     },
   },

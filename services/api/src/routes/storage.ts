@@ -48,12 +48,20 @@ export async function handleStorage(request: Request, env: Env, url: URL): Promi
 async function getPresignedUrl(request: Request, env: Env, url: URL): Promise<Response> {
   const type = url.searchParams.get('type') ?? '';
   const ext  = (url.searchParams.get('ext') ?? 'jpg').toLowerCase().replace(/[^a-z0-9]/g, '');
+  const subdirRaw = (url.searchParams.get('subdir') ?? '').trim();
 
   if (!TYPE_PATHS[type]) {
     return err(`type must be one of: ${Object.keys(TYPE_PATHS).join(', ')}`);
   }
 
-  const file_key = `${TYPE_PATHS[type]}/${newId()}.${ext}`;
+  const safeSubdir = subdirRaw
+    .split('/')
+    .map((part) => part.trim().replace(/[^a-zA-Z0-9_-]/g, ''))
+    .filter(Boolean)
+    .slice(0, 5)
+    .join('/');
+  const keyPrefix = safeSubdir ? `${TYPE_PATHS[type]}/${safeSubdir}` : TYPE_PATHS[type];
+  const file_key = `${keyPrefix}/${newId()}.${ext}`;
   const expires  = Math.floor(Date.now() / 1000) + 300;
   const token    = await makeUploadToken(file_key, expires, env.JWT_SECRET);
 
