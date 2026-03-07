@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState, useCallback } from 'react';
 import { api, type MasterCategory, type MasterItem } from '../lib/api';
-import { useT, SUPPORTED_LANGS, LANG_LABELS } from '../lib/i18n';
+import { useT, useI18n, SUPPORTED_LANGS, LANG_LABELS } from '../lib/i18n';
 
 const emptyTrans = () => Object.fromEntries(SUPPORTED_LANGS.map((l) => [l, ''])) as Record<string, string>;
 const MAX_LEVEL = 5;
@@ -21,6 +21,7 @@ function findMissingTranslationLangs(translations: Record<string, string>): stri
 
 export default function MasterPage() {
   const t = useT();
+  const { lang } = useI18n();
   const [categories, setCategories] = useState<MasterCategory[]>([]);
   const [itemsByCategory, setItemsByCategory] = useState<Record<string, MasterItem[]>>({});
   const [selectedCat, setSelectedCat] = useState<MasterCategory | null>(null);
@@ -154,8 +155,16 @@ export default function MasterPage() {
   }, [selectedCat?.id, loadChainItems]);
 
   function getCategoryLabel(cat: MasterCategory) {
-    const translated = t(`master.${normalizeCategoryKey(cat.key)}`, '');
-    return cat.ko_name?.trim() || translated || t('admin.master.missing_translation');
+    const translated = t(`master.${normalizeCategoryKey(cat.key)}`, '').trim();
+    if (translated) return translated;
+
+    const localized = (cat as unknown as Record<string, string | undefined | null>)[lang];
+    if (localized && localized.trim()) return localized.trim();
+
+    const ko = cat.ko_name?.trim() || cat.ko?.trim();
+    if (ko) return ko;
+
+    return t('admin.master.missing_translation');
   }
 
   function getItemLabel(item: MasterItem, preferredCategoryKey?: string | null) {
@@ -173,6 +182,9 @@ export default function MasterPage() {
         if (translated) return translated;
       }
     }
+
+    const localized = (item as unknown as Record<string, string | undefined | null>)[lang];
+    if (localized && localized.trim()) return localized.trim();
 
     const ko = item.ko_name?.trim() || item.ko?.trim();
     if (ko) return ko;
