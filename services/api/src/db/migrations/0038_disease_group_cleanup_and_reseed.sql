@@ -1,13 +1,42 @@
 -- 0038: Cleanup and Reseed Disease Group (L1) and Disease Type (L2)
 -- Goal: Fix mixed translation keys and ensure correct L1-L2 parent-child linking.
--- Fix: Handle self-referencing foreign keys (L3+ referencing L2) and external references.
+-- Fix: Manually clear all foreign key references before deletion.
 
--- 1. Disable foreign key checks if possible
-PRAGMA foreign_keys = OFF;
+-- 1. CLEANUP external referencing tables (Referencing L1/L2)
+-- We use subqueries to target only the items we are about to delete.
 
--- 2. BREAK self-references in master_items
--- L3, L4, L5 items might point to L2 items we are about to delete.
--- We set their parent_item_id to NULL first to avoid FK violation.
+-- pet_disease_histories (0023)
+DELETE FROM pet_disease_histories 
+WHERE disease_group_item_id IN (SELECT id FROM master_items WHERE category_id IN (SELECT id FROM master_categories WHERE code IN ('disease_group', 'disease_type')))
+   OR disease_item_id IN (SELECT id FROM master_items WHERE category_id IN (SELECT id FROM master_categories WHERE code IN ('disease_group', 'disease_type')));
+
+-- pet_disease_devices (0023)
+DELETE FROM pet_disease_devices 
+WHERE disease_item_id IN (SELECT id FROM master_items WHERE category_id IN (SELECT id FROM master_categories WHERE code IN ('disease_group', 'disease_type')));
+
+-- pet_glucose_logs (0023)
+DELETE FROM pet_glucose_logs 
+WHERE disease_item_id IN (SELECT id FROM master_items WHERE category_id IN (SELECT id FROM master_categories WHERE code IN ('disease_group', 'disease_type')));
+
+-- disease_judgement_rules (0023)
+DELETE FROM disease_judgement_rules 
+WHERE disease_item_id IN (SELECT id FROM master_items WHERE category_id IN (SELECT id FROM master_categories WHERE code IN ('disease_group', 'disease_type')));
+
+-- health_records (0021)
+DELETE FROM health_records 
+WHERE disease_id IN (SELECT id FROM master_items WHERE category_id IN (SELECT id FROM master_categories WHERE code IN ('disease_group', 'disease_type')));
+
+-- pet_diseases (0004)
+DELETE FROM pet_diseases 
+WHERE disease_id IN (SELECT id FROM master_items WHERE category_id IN (SELECT id FROM master_categories WHERE code IN ('disease_group', 'disease_type')));
+
+
+-- 2. BREAK SELF-REFERENCES (Hierarchy L1 -> L2 -> L3 -> L4 -> L5)
+-- We must nullify parent_item_id for any item that points to the items we are deleting.
+-- This ensures that L3 items (which we keep) don't have invalid parent pointers to deleted L2 items.
+
+-- First, find all items in the categories we want to delete
+-- and NULLify any items that point to them.
 UPDATE master_items 
 SET parent_item_id = NULL 
 WHERE parent_item_id IN (
@@ -15,28 +44,9 @@ WHERE parent_item_id IN (
     WHERE category_id IN (SELECT id FROM master_categories WHERE code IN ('disease_group', 'disease_type'))
 );
 
--- 3. CLEANUP external referencing tables
-DELETE FROM pet_disease_histories 
-WHERE disease_group_item_id IN (SELECT id FROM master_items WHERE category_id IN (SELECT id FROM master_categories WHERE code IN ('disease_group', 'disease_type')))
-   OR disease_item_id IN (SELECT id FROM master_items WHERE category_id IN (SELECT id FROM master_categories WHERE code IN ('disease_group', 'disease_type')));
 
-DELETE FROM pet_disease_devices 
-WHERE disease_item_id IN (SELECT id FROM master_items WHERE category_id IN (SELECT id FROM master_categories WHERE code IN ('disease_group', 'disease_type')));
-
-DELETE FROM pet_glucose_logs 
-WHERE disease_item_id IN (SELECT id FROM master_items WHERE category_id IN (SELECT id FROM master_categories WHERE code IN ('disease_group', 'disease_type')));
-
-DELETE FROM disease_judgement_rules 
-WHERE disease_item_id IN (SELECT id FROM master_items WHERE category_id IN (SELECT id FROM master_categories WHERE code IN ('disease_group', 'disease_type')));
-
-DELETE FROM health_records 
-WHERE disease_id IN (SELECT id FROM master_items WHERE category_id IN (SELECT id FROM master_categories WHERE code IN ('disease_group', 'disease_type')));
-
-DELETE FROM pet_diseases 
-WHERE disease_id IN (SELECT id FROM master_items WHERE category_id IN (SELECT id FROM master_categories WHERE code IN ('disease_group', 'disease_type')));
-
-
--- 4. DELETE L1 (disease_group) and L2 (disease_type) from master_items
+-- 3. DELETE THE ITEMS (Finally)
+-- Now that no external table or internal parent pointer is referencing these IDs, we can delete them.
 DELETE FROM master_items 
 WHERE category_id IN (
     SELECT id FROM master_categories WHERE code IN ('disease_group', 'disease_type')
@@ -48,7 +58,7 @@ WHERE key LIKE 'master.disease_group.%'
    OR key LIKE 'master.disease_type.%';
 
 
--- 5. SEED L1 (disease_group)
+-- 4. SEED L1 (disease_group)
 WITH l1_data(id, code, sort_order, ko, en) AS (
   VALUES
     ('mi-dg-endocrine', 'endocrine_disease', 1, '내분비 질환', 'Endocrine Disease'),
@@ -103,7 +113,7 @@ FROM (
 ) AS t(code, ko, en);
 
 
--- 6. SEED L2 (disease_type)
+-- 5. SEED L2 (disease_type)
 WITH l2_data(id, parent_code, code, sort_order, ko, en) AS (
   VALUES
     ('mi-dt-asthma', 'respiratory_disease', 'asthma', 1, '천식', 'Asthma'),
@@ -146,6 +156,3 @@ FROM (
     ('pancreatitis', '췌장염', 'Pancreatitis'),
     ('colitis', '대장염', 'Colitis')
 ) AS t(code, ko, en);
-
--- 7. Restore foreign key checks
-PRAGMA foreign_keys = ON;
