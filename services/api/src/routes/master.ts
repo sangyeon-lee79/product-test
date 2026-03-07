@@ -10,6 +10,10 @@ import { requireAuth, requireRole } from '../middleware/auth';
 import type { JwtPayload } from '../types';
 
 const LANGS = ['ko','en','ja','zh_cn','zh_tw','es','fr','de','pt','vi','th','id_lang','ar'] as const;
+async function hasColumn(env: Env, table: string, column: string): Promise<boolean> {
+  const rows = await env.DB.prepare(`PRAGMA table_info(${table})`).all<{ name: string }>();
+  return rows.results.some((r) => r.name === column);
+}
 
 function randomToken(length = 6): string {
   const chars = 'abcdefghijklmnopqrstuvwxyz0123456789';
@@ -76,9 +80,23 @@ export async function handleMaster(request: Request, env: Env, url: URL): Promis
 
   // ─── 공개: 카테고리 목록 ──────────────────────────────────────────────────
   if (!isAdmin && path === '/api/v1/master/categories' && request.method === 'GET') {
-    const rows = await env.DB.prepare(
-      'SELECT * FROM master_categories WHERE is_active = 1 ORDER BY sort_order, key'
-    ).all();
+    const normalized = await hasColumn(env, 'master_categories', 'code');
+    const rows = normalized
+      ? await env.DB.prepare(
+        `SELECT
+           id,
+           code AS key,
+           sort_order,
+           CASE WHEN status = 'active' THEN 1 ELSE 0 END AS is_active,
+           created_at,
+           updated_at
+         FROM master_categories
+         WHERE status = 'active'
+         ORDER BY sort_order, code`
+      ).all()
+      : await env.DB.prepare(
+        'SELECT * FROM master_categories WHERE is_active = 1 ORDER BY sort_order, key'
+      ).all();
     return ok(rows.results);
   }
 
@@ -87,26 +105,63 @@ export async function handleMaster(request: Request, env: Env, url: URL): Promis
     const categoryKey = url.searchParams.get('category_key');
     if (!categoryKey) return err('category_key required');
 
-    const cat = await env.DB.prepare(
-      'SELECT id FROM master_categories WHERE key = ? AND is_active = 1'
-    ).bind(categoryKey).first<{ id: string }>();
+    const normalized = await hasColumn(env, 'master_categories', 'code');
+    const cat = normalized
+      ? await env.DB.prepare(
+        `SELECT id
+         FROM master_categories
+         WHERE status = 'active'
+           AND (
+             code = ?
+             OR ('master.' || code) = ?
+             OR REPLACE(code, 'master.', '') = ?
+           )
+         LIMIT 1`
+      ).bind(categoryKey, categoryKey, categoryKey).first<{ id: string }>()
+      : await env.DB.prepare(
+        'SELECT id FROM master_categories WHERE key = ? AND is_active = 1'
+      ).bind(categoryKey).first<{ id: string }>();
     if (!cat) return err('Category not found', 404);
 
-    const rows = await env.DB.prepare(`
-      SELECT
-        mi.*,
-        tr.ko as ko_name,
-        tr.en, tr.ja, tr.zh_cn, tr.zh_tw, tr.es, tr.fr, tr.de, tr.pt, tr.vi, tr.th, tr.id_lang, tr.ar
-      FROM master_items mi
-      LEFT JOIN master_categories mc ON mc.id = mi.category_id
-      LEFT JOIN i18n_translations tr
-        ON tr.key = CASE
-          WHEN mc.key LIKE 'master.%' THEN (mc.key || '.' || mi.key)
-          ELSE ('master.' || mc.key || '.' || mi.key)
-        END
-      WHERE mi.category_id = ? AND mi.is_active = 1
-      ORDER BY mi.sort_order, mi.key
-    `).bind(cat.id).all();
+    const rows = normalized
+      ? await env.DB.prepare(`
+        SELECT
+          mi.id,
+          mi.category_id,
+          mi.code AS key,
+          mi.parent_item_id AS parent_id,
+          mi.sort_order,
+          CASE WHEN mi.status = 'active' THEN 1 ELSE 0 END AS is_active,
+          mi.metadata,
+          mi.created_at,
+          mi.updated_at,
+          tr.ko as ko_name,
+          tr.en, tr.ja, tr.zh_cn, tr.zh_tw, tr.es, tr.fr, tr.de, tr.pt, tr.vi, tr.th, tr.id_lang, tr.ar
+        FROM master_items mi
+        LEFT JOIN master_categories mc ON mc.id = mi.category_id
+        LEFT JOIN i18n_translations tr
+          ON tr.key = CASE
+            WHEN mc.code LIKE 'master.%' THEN (mc.code || '.' || mi.code)
+            ELSE ('master.' || mc.code || '.' || mi.code)
+          END
+        WHERE mi.category_id = ? AND mi.status = 'active'
+        ORDER BY mi.sort_order, mi.code
+      `).bind(cat.id).all()
+      : await env.DB.prepare(`
+        SELECT
+          mi.*,
+          tr.ko as ko_name,
+          tr.en, tr.ja, tr.zh_cn, tr.zh_tw, tr.es, tr.fr, tr.de, tr.pt, tr.vi, tr.th, tr.id_lang, tr.ar
+        FROM master_items mi
+        LEFT JOIN master_categories mc ON mc.id = mi.category_id
+        LEFT JOIN i18n_translations tr
+          ON tr.key = CASE
+            WHEN mc.key LIKE 'master.%' THEN (mc.key || '.' || mi.key)
+            ELSE ('master.' || mc.key || '.' || mi.key)
+          END
+        WHERE mi.category_id = ? AND mi.is_active = 1
+        ORDER BY mi.sort_order, mi.key
+      `).bind(cat.id).all();
     return ok(rows.results);
   }
 
