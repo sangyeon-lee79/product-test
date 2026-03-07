@@ -1,8 +1,8 @@
 -- 0037: Disease Group (L1) + Disease History Type (L2) full seed
--- Legacy schema compatible: master_categories.key / master_items.key / parent_id / is_active
+-- Legacy schema compatible: master_categories.key / master_items.key / parent_id / status
 
 UPDATE master_categories
-SET is_active = 1, updated_at = datetime('now')
+SET status = 'active', updated_at = datetime('now')
 WHERE key IN ('disease_group', 'disease_type');
 
 -- L1 disease groups
@@ -32,7 +32,7 @@ WITH groups(id, key, sort_order, ko, en) AS (
     ('mi-dg-nutritional-disease', 'nutritional_disease', 22, '영양 질환', 'Nutritional Disorder')
 )
 INSERT OR IGNORE INTO master_items (
-  id, category_id, parent_id, key, sort_order, is_active, metadata, created_at, updated_at
+  id, category_id, parent_id, key, sort_order, status, metadata, created_at, updated_at
 )
 SELECT
   g.id,
@@ -40,7 +40,7 @@ SELECT
   NULL,
   g.key,
   g.sort_order,
-  1,
+  'active',
   '{}',
   datetime('now'),
   datetime('now')
@@ -152,7 +152,7 @@ WITH diseases(id, group_key, key, sort_order, ko, en) AS (
     ('mi-dt-mineral-imbalance', 'nutritional_disease', 'mineral_imbalance', 2203, '미네랄 불균형', 'Mineral Imbalance')
 )
 INSERT OR IGNORE INTO master_items (
-  id, category_id, parent_id, key, sort_order, is_active, metadata, created_at, updated_at
+  id, category_id, parent_id, key, sort_order, status, metadata, created_at, updated_at
 )
 SELECT
   d.id,
@@ -160,7 +160,7 @@ SELECT
   g.id,
   d.key,
   d.sort_order,
-  1,
+  'active',
   '{}',
   datetime('now'),
   datetime('now')
