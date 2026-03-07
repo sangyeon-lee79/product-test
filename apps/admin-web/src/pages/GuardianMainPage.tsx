@@ -301,6 +301,7 @@ export default function GuardianMainPage() {
   const [weightRange, setWeightRange] = useState<WeightRange>('1m');
   const [weightModalOpen, setWeightModalOpen] = useState(false);
   const [measurementModalOpen, setMeasurementModalOpen] = useState(false);
+  const [editingMeasurementLogId, setEditingMeasurementLogId] = useState<string | null>(null);
   const [selectedMeasurementItemId, setSelectedMeasurementItemId] = useState('');
   const [weightForm, setWeightForm] = useState<{ value: string; measured_at: string; notes: string }>({
     value: '',
@@ -697,6 +698,65 @@ export default function GuardianMainPage() {
     } catch (e) {
       setError(uiErrorMessage(e, '질병 수치 기록 추가에 실패했습니다.'));
     }
+  }
+
+  async function updateHealthMeasurementLog() {
+    if (!selectedPet?.id || !editingMeasurementLogId) return;
+    const value = Number(measurementForm.value);
+    if (!measurementForm.disease_item_id) {
+      setError('질병을 선택해 주세요.');
+      return;
+    }
+    if (!measurementForm.measurement_item_id) {
+      setError('측정항목을 선택해 주세요.');
+      return;
+    }
+    if (!Number.isFinite(value)) {
+      setError('측정값을 올바르게 입력해 주세요.');
+      return;
+    }
+    try {
+      await api.pets.healthMeasurements.update(selectedPet.id, editingMeasurementLogId, {
+        disease_item_id: measurementForm.disease_item_id,
+        device_type_item_id: measurementForm.device_type_item_id || null,
+        measurement_item_id: measurementForm.measurement_item_id,
+        measurement_context_id: measurementForm.measurement_context_id || null,
+        value,
+        unit_item_id: measurementForm.unit_item_id || null,
+        measured_at: measurementForm.measured_at || new Date().toISOString(),
+        memo: measurementForm.memo.trim() || null,
+      });
+      setMeasurementModalOpen(false);
+      setEditingMeasurementLogId(null);
+      setMeasurementForm({
+        disease_item_id: '',
+        device_type_item_id: '',
+        measurement_item_id: '',
+        measurement_context_id: '',
+        value: '',
+        unit_item_id: '',
+        measured_at: '',
+        memo: '',
+      });
+      await loadMeasurementLogs(selectedPet.id, weightRange);
+    } catch (e) {
+      setError(uiErrorMessage(e, '질병 수치 기록 수정에 실패했습니다.'));
+    }
+  }
+
+  function openEditHealthMeasurementLog(log: PetHealthMeasurementLog) {
+    setEditingMeasurementLogId(log.id);
+    setMeasurementForm({
+      disease_item_id: log.disease_item_id || '',
+      device_type_item_id: log.device_type_item_id || '',
+      measurement_item_id: log.measurement_item_id || '',
+      measurement_context_id: log.measurement_context_id || '',
+      value: String(log.value ?? ''),
+      unit_item_id: log.unit_item_id || '',
+      measured_at: log.measured_at ? new Date(log.measured_at).toISOString().slice(0, 16) : '',
+      memo: log.memo || '',
+    });
+    setMeasurementModalOpen(true);
   }
 
   async function removeHealthMeasurementLog(logId: string) {
@@ -1355,6 +1415,7 @@ export default function GuardianMainPage() {
                               {log.judgement_label ? ` · ${log.judgement_label}` : ''}
                             </p>
                             <div className="td-actions">
+                              <button className="btn btn-secondary btn-sm" onClick={() => openEditHealthMeasurementLog(log)}>수정</button>
                               <button className="btn btn-danger btn-sm" onClick={() => removeHealthMeasurementLog(log.id)}>삭제</button>
                             </div>
                           </div>
@@ -1651,8 +1712,8 @@ export default function GuardianMainPage() {
         <div className="modal-overlay">
           <div className="modal">
             <div className="modal-header">
-              <h3 className="modal-title">질병 수치 추가</h3>
-              <button className="modal-close" onClick={() => setMeasurementModalOpen(false)}>&times;</button>
+              <h3 className="modal-title">{editingMeasurementLogId ? '질병 수치 수정' : '질병 수치 추가'}</h3>
+              <button className="modal-close" onClick={() => { setMeasurementModalOpen(false); setEditingMeasurementLogId(null); }}>&times;</button>
             </div>
             <div className="modal-body">
               {renderSelect('질병', measurementForm.disease_item_id, diseaseOptionsForHealth, (v) => setMeasurementForm((prev) => ({
@@ -1708,8 +1769,8 @@ export default function GuardianMainPage() {
               </div>
             </div>
             <div className="modal-footer">
-              <button className="btn btn-secondary" onClick={() => setMeasurementModalOpen(false)}>{t('common.cancel', 'Cancel')}</button>
-              <button className="btn btn-primary" onClick={createHealthMeasurementLog}>{t('common.save', 'Save')}</button>
+              <button className="btn btn-secondary" onClick={() => { setMeasurementModalOpen(false); setEditingMeasurementLogId(null); }}>{t('common.cancel', 'Cancel')}</button>
+              <button className="btn btn-primary" onClick={editingMeasurementLogId ? updateHealthMeasurementLog : createHealthMeasurementLog}>{t('common.save', 'Save')}</button>
             </div>
           </div>
         </div>
