@@ -288,6 +288,7 @@ export default function GuardianMainPage() {
   const [pets, setPets] = useState<Pet[]>([]);
   const [selectedPetId, setSelectedPetId] = useState('');
   const [activePet, setActivePet] = useState<Pet | null>(null);
+  const [editingPetId, setEditingPetId] = useState('');
   const [petModalOpen, setPetModalOpen] = useState(false);
   const [petMode, setPetMode] = useState<Mode>('create');
   const [petForm, setPetForm] = useState<PetForm>(DEFAULT_PET_FORM);
@@ -984,6 +985,7 @@ export default function GuardianMainPage() {
     setPetForm(DEFAULT_PET_FORM);
     setPetWizardStep(1);
     setSelectedDiseaseGroupId('');
+    setEditingPetId('');
     setPetModalOpen(true);
   }
 
@@ -995,6 +997,7 @@ export default function GuardianMainPage() {
       const firstDisease = optDisease.find((d) => diseaseHistoryIds.includes(d.id));
       setPetMode('edit');
       setActivePet(p);
+      setEditingPetId(p.id);
       setPetWizardStep(1);
       setSelectedDiseaseGroupId(firstDisease?.parentId || '');
       setPetForm({
@@ -1044,7 +1047,7 @@ export default function GuardianMainPage() {
     }
     if (petForm.microchip_no.trim()) {
       try {
-        const dup = await api.pets.checkMicrochip(petForm.microchip_no.trim(), petMode === 'edit' ? activePet?.id : undefined);
+        const dup = await api.pets.checkMicrochip(petForm.microchip_no.trim(), petMode === 'edit' ? (editingPetId || activePet?.id) : undefined);
         if (!dup.available) {
           setError(dup.reason || t('guardian.alert.microchip_duplicate', 'This microchip number is already registered.'));
           return;
@@ -1088,11 +1091,17 @@ export default function GuardianMainPage() {
     try {
       if (petMode === 'create') {
         await api.pets.create(payload);
-      } else if (activePet?.id) {
-        await api.pets.update(activePet.id, payload);
+      } else {
+        const targetPetId = editingPetId || activePet?.id || selectedPet?.id || '';
+        if (!targetPetId) {
+          setError('수정 대상 펫을 찾을 수 없습니다. 다시 시도해 주세요.');
+          return;
+        }
+        await api.pets.update(targetPetId, payload);
       }
       setPetModalOpen(false);
       setActivePet(null);
+      setEditingPetId('');
       setPetForm(DEFAULT_PET_FORM);
       await loadAll(feedTab);
     } catch (e) {
@@ -1103,6 +1112,7 @@ export default function GuardianMainPage() {
   function closePetModal() {
     setPetModalOpen(false);
     setActivePet(null);
+    setEditingPetId('');
     setPetWizardStep(1);
     setSelectedDiseaseGroupId('');
   }
