@@ -95,7 +95,7 @@ export default function MasterPage() {
         'disease_measurement_context',
       ];
     }
-    if (key === 'pet_type') return ['pet_type', 'pet_breed', null, null, null];
+    if (key === 'pet_type') return ['pet_type', 'pet_type', null, null, null];
     if (key === 'coat_length') return ['coat_length', 'grooming_cycle', null, null, null];
     if (key === 'temperament_type') return ['temperament_type', 'activity_level', null, null, null];
     if (key === 'gender') return ['gender', 'neuter_status', null, null, null];
