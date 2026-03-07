@@ -15,6 +15,10 @@ function sortByOrderAndLabel(a: MasterItem, b: MasterItem) {
   return (a.ko_name || a.ko || a.key).localeCompare(b.ko_name || b.ko || b.key, 'ko');
 }
 
+function findMissingTranslationLangs(translations: Record<string, string>): string[] {
+  return SUPPORTED_LANGS.filter((lang) => !(translations[lang] || '').trim());
+}
+
 export default function MasterPage() {
   const t = useT();
   const [categories, setCategories] = useState<MasterCategory[]>([]);
@@ -173,8 +177,7 @@ export default function MasterPage() {
     const ko = item.ko_name?.trim() || item.ko?.trim();
     if (ko) return ko;
 
-    // key raw 노출 방지: 최소한 사람이 읽을 수 있는 형태로 표시
-    return item.key.replace(/_/g, ' ');
+    return t('admin.master.missing_translation', '번역 필요');
   }
 
   function flash(msg: string) {
@@ -315,6 +318,10 @@ export default function MasterPage() {
           const result = await api.i18n.translate(ko, translations);
           translations = { ...result.translations, ...translations, ko };
         }
+        const missingLangs = findMissingTranslationLangs(translations);
+        if (missingLangs.length > 0) {
+          throw new Error(`번역값이 비어 있습니다: ${missingLangs.map((lang) => (LANG_LABELS as Record<string, string>)[lang] || lang).join(', ')}`);
+        }
 
         await api.master.categories.create({ key, sort_order: parseInt(catForm.sort_order, 10), translations });
         flash(t('admin.master.success_cat_add', '카테고리가 추가되었습니다.'));
@@ -327,6 +334,10 @@ export default function MasterPage() {
         if (hasMissing) {
           const result = await api.i18n.translate(ko, translations);
           translations = { ...result.translations, ...translations, ko };
+        }
+        const missingLangs = findMissingTranslationLangs(translations);
+        if (missingLangs.length > 0) {
+          throw new Error(`번역값이 비어 있습니다: ${missingLangs.map((lang) => (LANG_LABELS as Record<string, string>)[lang] || lang).join(', ')}`);
         }
 
         await api.master.categories.update(selectedCat.id, {
@@ -420,6 +431,10 @@ export default function MasterPage() {
       if (hasMissing) {
         const result = await api.i18n.translate(ko, translations);
         translations = { ...result.translations, ...translations, ko };
+      }
+      const missingLangs = findMissingTranslationLangs(translations);
+      if (missingLangs.length > 0) {
+        throw new Error(`번역값이 비어 있습니다: ${missingLangs.map((lang) => (LANG_LABELS as Record<string, string>)[lang] || lang).join(', ')}`);
       }
 
       if (itemModal === 'create') {

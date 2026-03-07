@@ -147,6 +147,16 @@ async function upsertI18n(env: Env, i18nKey: string, translations: Record<string
   }
 }
 
+function normalizeTranslations(input?: Record<string, string>): Record<string, string> {
+  const out: Record<string, string> = {};
+  for (const lang of LANGS) out[lang] = (input?.[lang] || '').trim();
+  return out;
+}
+
+function missingTranslationLangs(translations: Record<string, string>): string[] {
+  return LANGS.filter((lang) => !translations[lang]);
+}
+
 export async function handleMaster(request: Request, env: Env, url: URL): Promise<Response> {
   const path = url.pathname;
   const isAdmin = path.startsWith('/api/v1/admin/master');
@@ -379,8 +389,11 @@ export async function handleMaster(request: Request, env: Env, url: URL): Promis
         const inputKey = normalizeMasterKey(String(body.key || ''));
         if (!inputKey) return err('key required');
         if (!isValidMasterKey(inputKey)) return err('invalid key format');
-        const koName = body.translations?.ko?.trim();
+        const translations = normalizeTranslations(body.translations);
+        const koName = translations.ko;
         if (!koName) return err('한국어 표시명을 입력해야 카테고리를 생성할 수 있습니다.');
+        const missing = missingTranslationLangs(translations);
+        if (missing.length > 0) return err(`번역값 누락: ${missing.join(', ')}`, 400, 'missing_translations');
 
         const exists = normalized
           ? await env.DB.prepare('SELECT id FROM master_categories WHERE code = ? LIMIT 1').bind(inputKey).first<{ id: string }>()
@@ -397,7 +410,7 @@ export async function handleMaster(request: Request, env: Env, url: URL): Promis
             'INSERT INTO master_categories (id,key,sort_order,is_active,created_at,updated_at) VALUES (?,?,?,?,?,?)'
           ).bind(row.id, row.key, row.sort_order, row.is_active, row.created_at, row.updated_at).run();
         }
-        await upsertI18n(env, categoryI18nKey(row.key), body.translations ?? { ko: koName });
+        await upsertI18n(env, categoryI18nKey(row.key), translations);
         return created({ ...row, ko_name: koName });
       }
       if (request.method === 'PUT' && id) {
@@ -420,10 +433,13 @@ export async function handleMaster(request: Request, env: Env, url: URL): Promis
         if (result.meta.changes === 0) return err('Not found', 404);
 
         if (body.translations && Object.values(body.translations).some(v => (v || '').trim())) {
+          const translations = normalizeTranslations(body.translations);
+          const missing = missingTranslationLangs(translations);
+          if (missing.length > 0) return err(`번역값 누락: ${missing.join(', ')}`, 400, 'missing_translations');
           const cat = normalized
             ? await env.DB.prepare('SELECT code AS key FROM master_categories WHERE id = ?').bind(id).first<{ key: string }>()
             : await env.DB.prepare('SELECT key FROM master_categories WHERE id = ?').bind(id).first<{ key: string }>();
-          if (cat?.key) await upsertI18n(env, categoryI18nKey(cat.key), body.translations);
+          if (cat?.key) await upsertI18n(env, categoryI18nKey(cat.key), translations);
         }
 
         return ok(await (normalized
@@ -578,7 +594,10 @@ export async function handleMaster(request: Request, env: Env, url: URL): Promis
         let body: { category_id: string; parent_id?: string; sort_order?: number; metadata?: Record<string, unknown>; translations?: Record<string, string> };
         try { body = await request.json() as typeof body; } catch { return err('Invalid JSON'); }
         if (!body.category_id) return err('category_id required');
-        if (!body.translations?.ko?.trim()) return err('ko translation required');
+        const translations = normalizeTranslations(body.translations);
+        if (!translations.ko) return err('ko translation required');
+        const missing = missingTranslationLangs(translations);
+        if (missing.length > 0) return err(`번역값 누락: ${missing.join(', ')}`, 400, 'missing_translations');
 
         const autoKey = await generateItemKey(env, body.category_id);
         const row = {
@@ -600,7 +619,7 @@ export async function handleMaster(request: Request, env: Env, url: URL): Promis
           const cat = normalized
             ? await env.DB.prepare('SELECT code AS key FROM master_categories WHERE id = ?').bind(body.category_id).first<{ key: string }>()
             : await env.DB.prepare('SELECT key FROM master_categories WHERE id = ?').bind(body.category_id).first<{ key: string }>();
-          if (cat) await upsertI18n(env, itemI18nKey(cat.key, row.key), body.translations);
+          if (cat) await upsertI18n(env, itemI18nKey(cat.key, row.key), translations);
         }
         return created({ ...row, metadata: body.metadata ?? {} });
       }
@@ -629,6 +648,9 @@ export async function handleMaster(request: Request, env: Env, url: URL): Promis
         if (result.meta.changes === 0) return err('Not found', 404);
 
         if (body.translations && Object.values(body.translations).some(v => v)) {
+          const translations = normalizeTranslations(body.translations);
+          const missing = missingTranslationLangs(translations);
+          if (missing.length > 0) return err(`번역값 누락: ${missing.join(', ')}`, 400, 'missing_translations');
           const item = await (normalized
             ? env.DB.prepare(
               `SELECT mi.code as item_key, mc.code as category_key
@@ -642,7 +664,7 @@ export async function handleMaster(request: Request, env: Env, url: URL): Promis
                JOIN master_categories mc ON mc.id = mi.category_id
                WHERE mi.id = ?`
             ).bind(id).first<{ item_key: string; category_key: string }>());
-          if (item) await upsertI18n(env, itemI18nKey(item.category_key, item.item_key), body.translations);
+          if (item) await upsertI18n(env, itemI18nKey(item.category_key, item.item_key), translations);
         }
 
         return ok(await (normalized
