@@ -4,6 +4,8 @@
 	"private": true,
 	"scripts": {
 		"build": "tsc --noEmit",
+		"check:i18n:master": "bash scripts/check_master_i18n_before_deploy.sh",
+		"deploy:guarded": "npm run check:i18n:master && wrangler deploy",
 		"deploy": "wrangler deploy",
 		"dev": "wrangler dev",
 		"start": "wrangler dev",

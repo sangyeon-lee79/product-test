@@ -155,7 +155,7 @@ export default function MasterPage() {
 
   function getCategoryLabel(cat: MasterCategory) {
     const translated = t(`master.${normalizeCategoryKey(cat.key)}`, '');
-    return cat.ko_name?.trim() || translated || t('admin.master.unnamed_category', '이름 없음');
+    return cat.ko_name?.trim() || translated || t('');
   }
 
   function getItemLabel(item: MasterItem, preferredCategoryKey?: string | null) {
@@ -177,7 +177,7 @@ export default function MasterPage() {
     const ko = item.ko_name?.trim() || item.ko?.trim();
     if (ko) return ko;
 
-    return t('admin.master.missing_translation', '번역 필요');
+    return t('');
   }
 
   function flash(msg: string) {
@@ -324,7 +324,7 @@ export default function MasterPage() {
         }
 
         await api.master.categories.create({ key, sort_order: parseInt(catForm.sort_order, 10), translations });
-        flash(t('admin.master.success_cat_add', '카테고리가 추가되었습니다.'));
+        flash(t(''));
       } else if (catModal === 'edit' && selectedCat) {
         const ko = (catTrans.ko || '').trim();
         if (!ko) throw new Error(t('admin.master.error_ko_required'));
@@ -344,7 +344,7 @@ export default function MasterPage() {
           sort_order: parseInt(catForm.sort_order, 10),
           translations,
         });
-        flash(t('admin.master.success_cat_edit', '카테고리가 수정되었습니다.'));
+        flash(t(''));
       }
       setCatModal(null);
       await loadCategories();
@@ -356,10 +356,10 @@ export default function MasterPage() {
   }
 
   async function handleCatDelete(cat: MasterCategory) {
-    if (!confirm(`"${getCategoryLabel(cat)}" ${t('admin.master.confirm_delete_cat', '카테고리를 삭제하시겠습니까? 아이템이 있으면 비활성화됩니다.')}`)) return;
+    if (!confirm(`"${getCategoryLabel(cat)}" ${t('')}`)) return;
     try {
       await api.master.categories.delete(cat.id);
-      flash(t('admin.master.success_done', '처리되었습니다.'));
+      flash(t(''));
       if (selectedCat?.id === cat.id) setSelectedCat(null);
       await loadCategories();
     } catch (e) {
@@ -371,7 +371,7 @@ export default function MasterPage() {
     try {
       await api.master.categories.update(cat.id, { is_active: cat.is_active ? 0 : 1 });
       await loadCategories();
-      flash(t('admin.master.success_done', '처리되었습니다.'));
+      flash(t(''));
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Error');
     }
@@ -444,14 +444,14 @@ export default function MasterPage() {
           translations,
           parent_id: itemForm.parent_id || undefined,
         });
-        flash(t('admin.master.success_item_add', '아이템이 추가되었습니다.'));
+        flash(t(''));
       } else if (itemModal === 'edit' && itemForm.id) {
         await api.master.items.update(itemForm.id, {
           sort_order: parseInt(itemForm.sort_order, 10),
           parent_id: itemForm.parent_id,
           translations,
         });
-        flash(t('admin.master.success_item_edit', '아이템이 수정되었습니다.'));
+        flash(t(''));
       }
 
       setItemModal(null);
@@ -465,10 +465,10 @@ export default function MasterPage() {
 
   async function handleDeleteSelectedItem() {
     if (!selectedNode) return;
-    if (!confirm(`"${getItemLabel(selectedNode, selectedNodeCategoryKey)}" ${t('admin.master.confirm_delete_item', '아이템을 삭제하시겠습니까?')}`)) return;
+    if (!confirm(`"${getItemLabel(selectedNode, selectedNodeCategoryKey)}" ${t('')}`)) return;
     try {
       const res = await api.master.items.delete(selectedNode.id);
-      flash(res.deleted ? t('admin.master.success_done', '삭제되었습니다.') : t('admin.master.success_deactivated', '다른 데이터에서 사용 중이라 비활성화되었습니다.'));
+      flash(res.deleted ? t('') : t(''));
       await loadChainItems();
       setSelectedIds(Array(MAX_LEVEL).fill(''));
     } catch (e) {
@@ -481,7 +481,7 @@ export default function MasterPage() {
     try {
       await api.master.items.update(selectedNode.id, { is_active: selectedNode.is_active ? 0 : 1 });
       await loadChainItems();
-      flash(t('admin.master.success_done', '처리되었습니다.'));
+      flash(t(''));
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Error');
     }
@@ -502,7 +502,7 @@ export default function MasterPage() {
   return (
     <>
       <div className="topbar">
-        <div className="topbar-title">🗂 {t('admin.master.title', '마스터 데이터 관리')}</div>
+        <div className="topbar-title">🗂 {t('')}</div>
       </div>
       <div className="content">
         {error && <div className="alert alert-error">{error}</div>}
@@ -512,8 +512,8 @@ export default function MasterPage() {
         <div className="master-explorer-grid" style={{ gridTemplateColumns: 'repeat(6, minmax(0, 1fr))' }}>
           <div className="card">
             <div className="card-header">
-              <div className="card-title">{t('admin.master.categories', '카테고리')}</div>
-              <button className="btn btn-primary btn-sm" onClick={() => { setCatForm({ key: '', sort_order: '0' }); setCatTrans(emptyTrans()); setCatModal('create'); }}>{t('admin.master.add_category', '+ 카테고리 추가')}</button>
+              <div className="card-title">{t('')}</div>
+              <button className="btn btn-primary btn-sm" onClick={() => { setCatForm({ key: '', sort_order: '0' }); setCatTrans(emptyTrans()); setCatModal('create'); }}>{t('')}</button>
             </div>
             {loading ? (
               <div className="loading-center"><span className="spinner" /></div>
@@ -522,10 +522,10 @@ export default function MasterPage() {
                 {visibleCategories.map((cat) => (
                   <button key={cat.id} className={`master-row-btn ${selectedCat?.id === cat.id ? 'active' : ''}`} onClick={() => setSelectedCat(cat)}>
                     <div><div className="master-row-title">{getCategoryLabel(cat)}</div></div>
-                    <span className={`badge ${cat.is_active ? 'badge-green' : 'badge-gray'}`}>{cat.is_active ? t('admin.common.active', '활성') : t('admin.common.inactive', '비활성')}</span>
+                    <span className={`badge ${cat.is_active ? 'badge-green' : 'badge-gray'}`}>{cat.is_active ? t('') : t('')}</span>
                   </button>
                 ))}
-                {visibleCategories.length === 0 && <div className="master-empty">{t('admin.master.no_category', '카테고리 없음')}</div>}
+                {visibleCategories.length === 0 && <div className="master-empty">{t('')}</div>}
               </div>
             )}
           </div>
@@ -538,18 +538,18 @@ export default function MasterPage() {
               <div className="card" key={`level-${level}`}>
                 <div className="card-header">
                   <div className="card-title">{levelTitle(level)}</div>
-                  {canAdd && <button className="btn btn-primary btn-sm" onClick={() => openCreateAtLevel(level)}>+ {t('admin.master.add_item', '아이템 추가')}</button>}
+                  {canAdd && <button className="btn btn-primary btn-sm" onClick={() => openCreateAtLevel(level)}>+ {t('')}</button>}
                 </div>
                 <div className="master-column-list">
-                  {!selectedCat && <div className="master-empty">{t('admin.master.select_hint', '카테고리를 선택하세요')}</div>}
+                  {!selectedCat && <div className="master-empty">{t('')}</div>}
                   {selectedCat && level > 0 && !selectedIds[level - 1] && <div className="master-empty">{t('admin.master.level_select_required').replace('{level}', String(level))}</div>}
                   {selectedCat && (level === 0 || selectedIds[level - 1]) && items.map((item) => (
                     <button key={item.id} className={`master-row-btn ${selectedId === item.id ? 'active' : ''}`} onClick={() => selectLevelItem(level, item.id)}>
                       <div><div className="master-row-title">{getItemLabel(item, categoryChain[level])}</div></div>
-                      <span className={`badge ${item.is_active ? 'badge-green' : 'badge-gray'}`}>{item.is_active ? t('admin.common.active', '활성') : t('admin.common.inactive', '비활성')}</span>
+                      <span className={`badge ${item.is_active ? 'badge-green' : 'badge-gray'}`}>{item.is_active ? t('') : t('')}</span>
                     </button>
                   ))}
-                  {selectedCat && (level === 0 || selectedIds[level - 1]) && items.length === 0 && <div className="master-empty">{t('admin.master.no_item', '아이템이 없습니다')}</div>}
+                  {selectedCat && (level === 0 || selectedIds[level - 1]) && items.length === 0 && <div className="master-empty">{t('')}</div>}
                 </div>
               </div>
             );
@@ -559,26 +559,26 @@ export default function MasterPage() {
         {selectedCat && (
           <div className="card" style={{ marginTop: 12 }}>
             <div className="card-header">
-              <div className="card-title">{t('admin.master.options', '선택 항목 설정')}</div>
+              <div className="card-title">{t('')}</div>
             </div>
             <div className="table-wrap" style={{ padding: 12, display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
-              {!selectedNode && <div className="master-empty">{t('admin.master.select_item_first', '아이템을 먼저 선택하세요')}</div>}
+              {!selectedNode && <div className="master-empty">{t('')}</div>}
               {selectedNode && (
                 <>
                   <div className="master-row-title">{getItemLabel(selectedNode, selectedNodeCategoryKey)}</div>
                   <label className="master-toggle-row compact">
-                    <span>{t('admin.common.status', '상태')}</span>
+                    <span>{t('')}</span>
                     <input type="checkbox" checked={Boolean(selectedNode.is_active)} onChange={() => void toggleSelectedItemActive()} />
                   </label>
-                  <button className="btn btn-secondary btn-sm" onClick={openEditSelectedItem}>{t('admin.common.edit', '편집')}</button>
-                  <button className="btn btn-danger btn-sm" onClick={() => void handleDeleteSelectedItem()}>{t('admin.common.delete', '삭제')}</button>
+                  <button className="btn btn-secondary btn-sm" onClick={openEditSelectedItem}>{t('')}</button>
+                  <button className="btn btn-danger btn-sm" onClick={() => void handleDeleteSelectedItem()}>{t('')}</button>
                 </>
               )}
               {selectedCat && (
                 <>
                   <button className="btn btn-secondary btn-sm" onClick={() => { setCatForm({ key: selectedCat.key, sort_order: String(selectedCat.sort_order) }); setCatTrans(categoryToTranslations(selectedCat)); setCatModal('edit'); }}>{t('admin.master.edit_category')}</button>
                   <label className="master-toggle-row compact">
-                    <span>{t('admin.common.status', '상태')}</span>
+                    <span>{t('')}</span>
                     <input type="checkbox" checked={Boolean(selectedCat.is_active)} onChange={() => void toggleCategoryActive(selectedCat)} />
                   </label>
                   <button className="btn btn-danger btn-sm" onClick={() => void handleCatDelete(selectedCat)}>{t('admin.master.delete_category')}</button>
@@ -593,7 +593,7 @@ export default function MasterPage() {
         <div className="modal-overlay" onClick={(e) => e.target === e.currentTarget && setCatModal(null)}>
           <div className="modal" style={{ maxWidth: 560 }}>
             <div className="modal-header">
-              <div className="modal-title">{catModal === 'create' ? t('admin.master.modal_create_cat', '카테고리 추가') : t('admin.master.modal_edit_cat', '카테고리 수정')}</div>
+              <div className="modal-title">{catModal === 'create' ? t('') : t('')}</div>
               <button className="modal-close" onClick={() => setCatModal(null)}>×</button>
             </div>
             <div className="modal-body" style={{ maxHeight: '70vh', overflowY: 'auto' }}>
@@ -604,13 +604,13 @@ export default function MasterPage() {
                 </div>
               )}
               <div className="form-group">
-                <label className="form-label">{t('admin.common.sort_order', '정렬 순서')}</label>
+                <label className="form-label">{t('')}</label>
                 <input className="form-input" type="number" value={catForm.sort_order} onChange={(e) => setCatForm((f) => ({ ...f, sort_order: e.target.value }))} />
               </div>
               <div style={{ borderTop: '1px solid var(--border)', paddingTop: 12, marginTop: 4 }}>
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
-                  <div style={{ fontSize: 13, fontWeight: 600 }}>{t('admin.master.translations', '표시명 (13개국어)')}</div>
-                  <button className="btn btn-secondary btn-sm" onClick={() => autoTranslate(catTrans.ko, setCatTrans, catTrans)} disabled={translating || !catTrans.ko}>{translating ? t('admin.master.loading_translate') : t('admin.master.auto_translate', '🌐 한국어 기준 자동번역')}</button>
+                  <div style={{ fontSize: 13, fontWeight: 600 }}>{t('')}</div>
+                  <button className="btn btn-secondary btn-sm" onClick={() => autoTranslate(catTrans.ko, setCatTrans, catTrans)} disabled={translating || !catTrans.ko}>{translating ? t('admin.master.loading_translate') : t('')}</button>
                 </div>
                 {SUPPORTED_LANGS.map((lang) => (
                   <div key={lang} className="form-group" style={{ marginBottom: 6, display: 'flex', alignItems: 'center', gap: 8 }}>
@@ -623,8 +623,8 @@ export default function MasterPage() {
               </div>
             </div>
             <div className="modal-footer">
-              <button className="btn btn-secondary" onClick={() => setCatModal(null)}>{t('admin.common.cancel', '취소')}</button>
-              <button className="btn btn-primary" onClick={() => void handleCatSave()} disabled={catSaving}>{t('admin.common.save', '저장')}</button>
+              <button className="btn btn-secondary" onClick={() => setCatModal(null)}>{t('')}</button>
+              <button className="btn btn-primary" onClick={() => void handleCatSave()} disabled={catSaving}>{t('')}</button>
             </div>
           </div>
         </div>
@@ -634,35 +634,35 @@ export default function MasterPage() {
         <div className="modal-overlay" onClick={(e) => e.target === e.currentTarget && setItemModal(null)}>
           <div className="modal" style={{ maxWidth: 560 }}>
             <div className="modal-header">
-              <div className="modal-title">{itemModal === 'create' ? t('admin.master.modal_create_item', '아이템 추가') : t('admin.master.modal_edit_item', '아이템 수정')}</div>
+              <div className="modal-title">{itemModal === 'create' ? t('') : t('')}</div>
               <button className="modal-close" onClick={() => setItemModal(null)}>×</button>
             </div>
             <div className="modal-body" style={{ maxHeight: '70vh', overflowY: 'auto' }}>
               <div className="form-group">
-                <label className="form-label">{t('admin.master.categories', '카테고리')}</label>
+                <label className="form-label">{t('')}</label>
                 <input className="form-input" value={itemTargetCategory ? getCategoryLabel(itemTargetCategory) : ''} readOnly />
               </div>
               {itemModal === 'edit' && itemForm.key && (
                 <div className="form-group">
-                  <label className="form-label">{t('admin.common.key', '키')}</label>
+                  <label className="form-label">{t('')}</label>
                   <input className="form-input font-mono" value={itemForm.key} readOnly />
                 </div>
               )}
               <div className="form-group">
-                <label className="form-label">{t('admin.master.parent_item', '부모 아이템')}</label>
+                <label className="form-label">{t('')}</label>
                 <select className="form-input" value={itemForm.parent_id || ''} onChange={(e) => setItemForm((f) => ({ ...f, parent_id: e.target.value || null }))}>
                   <option value="">{t('admin.master.none_option')}</option>
                   {itemParentCandidates.filter((i) => i.id !== itemForm.id).map((i) => <option key={i.id} value={i.id}>{getItemLabel(i, itemTargetCategory ? normalizeCategoryKey(itemTargetCategory.key) : null)}</option>)}
                 </select>
               </div>
               <div className="form-group">
-                <label className="form-label">{t('admin.common.sort_order', '정렬 순서')}</label>
+                <label className="form-label">{t('')}</label>
                 <input className="form-input" type="number" value={itemForm.sort_order} onChange={(e) => setItemForm((f) => ({ ...f, sort_order: e.target.value }))} />
               </div>
               <div style={{ borderTop: '1px solid var(--border)', paddingTop: 12, marginTop: 4 }}>
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
-                  <div style={{ fontSize: 13, fontWeight: 600 }}>{t('admin.master.translations', '표시명 (13개국어)')}</div>
-                  <button className="btn btn-secondary btn-sm" onClick={() => autoTranslate(itemTrans.ko, setItemTrans, itemTrans)} disabled={translating || !itemTrans.ko}>{translating ? t('admin.master.loading_translate') : t('admin.master.auto_translate', '🌐 한국어 기준 자동번역')}</button>
+                  <div style={{ fontSize: 13, fontWeight: 600 }}>{t('')}</div>
+                  <button className="btn btn-secondary btn-sm" onClick={() => autoTranslate(itemTrans.ko, setItemTrans, itemTrans)} disabled={translating || !itemTrans.ko}>{translating ? t('admin.master.loading_translate') : t('')}</button>
                 </div>
                 {SUPPORTED_LANGS.map((lang) => (
                   <div key={lang} className="form-group" style={{ marginBottom: 6, display: 'flex', alignItems: 'center', gap: 8 }}>
@@ -675,8 +675,8 @@ export default function MasterPage() {
               </div>
             </div>
             <div className="modal-footer">
-              <button className="btn btn-secondary" onClick={() => setItemModal(null)}>{t('admin.common.cancel', '취소')}</button>
-              <button className="btn btn-primary" onClick={() => void handleItemSave()} disabled={itemSaving}>{t('admin.common.save', '저장')}</button>
+              <button className="btn btn-secondary" onClick={() => setItemModal(null)}>{t('')}</button>
+              <button className="btn btn-primary" onClick={() => void handleItemSave()} disabled={itemSaving}>{t('')}</button>
             </div>
           </div>
         </div>

@@ -147,6 +147,17 @@ async function upsertI18n(env: Env, i18nKey: string, translations: Record<string
   }
 }
 
+async function hasCompleteI18n(env: Env, i18nKey: string): Promise<boolean> {
+  const row = await env.DB.prepare(
+    `SELECT ko,en,ja,zh_cn,zh_tw,es,fr,de,pt,vi,th,id_lang,ar
+     FROM i18n_translations
+     WHERE key = ?
+     LIMIT 1`
+  ).bind(i18nKey).first<Record<string, string | null>>();
+  if (!row) return false;
+  return LANGS.every((lang) => Boolean((row[lang] || '').trim()));
+}
+
 function normalizeTranslations(input?: Record<string, string>): Record<string, string> {
   const out: Record<string, string> = {};
   for (const lang of LANGS) out[lang] = (input?.[lang] || '').trim();
@@ -400,6 +411,11 @@ export async function handleMaster(request: Request, env: Env, url: URL): Promis
           : await env.DB.prepare('SELECT id FROM master_categories WHERE key = ? LIMIT 1').bind(inputKey).first<{ id: string }>();
         if (exists) return err('이미 존재하는 key 입니다.', 409, 'duplicate_key');
 
+        const i18nKey = categoryI18nKey(inputKey);
+        await upsertI18n(env, i18nKey, translations);
+        const i18nReady = await hasCompleteI18n(env, i18nKey);
+        if (!i18nReady) return err('i18n 생성이 완료되지 않아 저장할 수 없습니다.', 400, 'i18n_not_ready');
+
         const row = { id: newId(), key: inputKey, sort_order: body.sort_order ?? 0, is_active: 1, created_at: now(), updated_at: now() };
         if (normalized) {
           await env.DB.prepare(
@@ -410,7 +426,6 @@ export async function handleMaster(request: Request, env: Env, url: URL): Promis
             'INSERT INTO master_categories (id,key,sort_order,is_active,created_at,updated_at) VALUES (?,?,?,?,?,?)'
           ).bind(row.id, row.key, row.sort_order, row.is_active, row.created_at, row.updated_at).run();
         }
-        await upsertI18n(env, categoryI18nKey(row.key), translations);
         return created({ ...row, ko_name: koName });
       }
       if (request.method === 'PUT' && id) {
@@ -599,7 +614,17 @@ export async function handleMaster(request: Request, env: Env, url: URL): Promis
         const missing = missingTranslationLangs(translations);
         if (missing.length > 0) return err(`번역값 누락: ${missing.join(', ')}`, 400, 'missing_translations');
 
+        const category = normalized
+          ? await env.DB.prepare('SELECT code AS key FROM master_categories WHERE id = ?').bind(body.category_id).first<{ key: string }>()
+          : await env.DB.prepare('SELECT key FROM master_categories WHERE id = ?').bind(body.category_id).first<{ key: string }>();
+        if (!category?.key) return err('category not found', 404);
+
         const autoKey = await generateItemKey(env, body.category_id);
+        const i18nKey = itemI18nKey(category.key, autoKey);
+        await upsertI18n(env, i18nKey, translations);
+        const i18nReady = await hasCompleteI18n(env, i18nKey);
+        if (!i18nReady) return err('i18n 생성이 완료되지 않아 저장할 수 없습니다.', 400, 'i18n_not_ready');
+
         const row = {
           id: newId(), category_id: body.category_id, key: autoKey,
           parent_id: body.parent_id ?? null, sort_order: body.sort_order ?? 0,
@@ -614,12 +639,6 @@ export async function handleMaster(request: Request, env: Env, url: URL): Promis
           await env.DB.prepare(
             'INSERT INTO master_items (id,category_id,key,parent_id,sort_order,is_active,metadata,created_at,updated_at) VALUES (?,?,?,?,?,?,?,?,?)'
           ).bind(row.id, row.category_id, row.key, row.parent_id, row.sort_order, row.is_active, row.metadata, row.created_at, row.updated_at).run();
-        }
-        if (body.translations && Object.values(body.translations).some(v => v)) {
-          const cat = normalized
-            ? await env.DB.prepare('SELECT code AS key FROM master_categories WHERE id = ?').bind(body.category_id).first<{ key: string }>()
-            : await env.DB.prepare('SELECT key FROM master_categories WHERE id = ?').bind(body.category_id).first<{ key: string }>();
-          if (cat) await upsertI18n(env, itemI18nKey(cat.key, row.key), translations);
         }
         return created({ ...row, metadata: body.metadata ?? {} });
       }
