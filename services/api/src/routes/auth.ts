@@ -184,50 +184,100 @@ async function ensureBangulGuardianSample(env: Env): Promise<{ id: string; role:
      WHERE user_id = ?`
   ).bind(ts, userId).run();
 
-  const pet = await env.DB.prepare(
-    `SELECT id FROM pets
-     WHERE guardian_id = ? AND name = '방울' AND status != 'deleted'
-     LIMIT 1`
-  ).bind(userId).first<{ id: string }>();
+  const normalizedPets = await hasColumn(env, 'pets', 'guardian_user_id');
+  if (normalizedPets) {
+    const pet = await env.DB.prepare(
+      `SELECT id FROM pets
+       WHERE guardian_user_id = ? AND name = '방울' AND status != 'deleted'
+       LIMIT 1`
+    ).bind(userId).first<{ id: string }>();
 
-  if (!pet) {
-    const petId = newId();
-    await env.DB.prepare(`
-      INSERT INTO pets (
-        id, guardian_id, name, species, pet_type_id, breed_id, gender_id, neuter_status_id,
-        life_stage_id, body_size_id, country_id, medication_status_id, weight_unit_id,
-        health_condition_level_id, activity_level_id, diet_type_id, living_style_id,
-        ownership_type_id, coat_length_id, coat_type_id, grooming_cycle_id,
-        color_ids, allergy_ids, disease_history_ids, symptom_tag_ids, vaccination_ids,
-        temperament_ids, notes, intro_text, birthday, birth_date, current_weight, weight_kg, microchip_no,
-        avatar_url, is_neutered, status, created_at, updated_at
-      ) VALUES (
-        ?, ?, '방울', 'dog', ?, ?, ?, NULL,
-        NULL, NULL, NULL, NULL, ?,
-        NULL, NULL, NULL, NULL,
-        NULL, NULL, NULL, NULL,
-        '[]', '[]', '[]', '[]', '[]',
-        '[]', '샘플 반려동물 데이터', '포메라니안 방울이', '2021-03-15', '2021-03-15', 4.2, 4.2, 'BANGUL-0001',
-        'https://placehold.co/600x600?text=Bangul', 0, 'active', ?, ?
-      )
-    `).bind(
-      petId,
-      userId,
-      await findMasterItemId(env, 'dog'),
-      await findMasterItemId(env, 'pomeranian'),
-      await findMasterItemId(env, 'female'),
-      await findMasterItemId(env, 'kg'),
-      ts,
-      ts,
-    ).run();
+    if (!pet) {
+      const petId = newId();
+      await env.DB.prepare(`
+        INSERT INTO pets (
+          id, guardian_user_id, name, microchip_number,
+          pet_type_id, breed_id, gender_id, life_stage_id, body_size_id, country_id,
+          diet_type_id, coat_length_id, coat_type_id, activity_level_id, health_level_id,
+          gender_legacy, species_legacy, birth_date, weight_kg, is_neutered, avatar_url, status, created_at, updated_at
+        ) VALUES (
+          ?, ?, '방울', 'BANGUL-0001',
+          ?, ?, ?, NULL, NULL, NULL,
+          NULL, NULL, NULL, NULL, NULL,
+          'female', 'dog', '2021-03-15', 4.2, 0, 'https://placehold.co/600x600?text=Bangul', 'active', ?, ?
+        )
+      `).bind(
+        petId,
+        userId,
+        await findMasterItemId(env, 'dog'),
+        await findMasterItemId(env, 'pomeranian'),
+        await findMasterItemId(env, 'female'),
+        ts,
+        ts,
+      ).run();
+    }
+  } else {
+    const pet = await env.DB.prepare(
+      `SELECT id FROM pets
+       WHERE guardian_id = ? AND name = '방울' AND status != 'deleted'
+       LIMIT 1`
+    ).bind(userId).first<{ id: string }>();
+
+    if (!pet) {
+      const petId = newId();
+      await env.DB.prepare(`
+        INSERT INTO pets (
+          id, guardian_id, name, species, pet_type_id, breed_id, gender_id, neuter_status_id,
+          life_stage_id, body_size_id, country_id, medication_status_id, weight_unit_id,
+          health_condition_level_id, activity_level_id, diet_type_id, living_style_id,
+          ownership_type_id, coat_length_id, coat_type_id, grooming_cycle_id,
+          color_ids, allergy_ids, disease_history_ids, symptom_tag_ids, vaccination_ids,
+          temperament_ids, notes, intro_text, birthday, birth_date, current_weight, weight_kg, microchip_no,
+          avatar_url, is_neutered, status, created_at, updated_at
+        ) VALUES (
+          ?, ?, '방울', 'dog', ?, ?, ?, NULL,
+          NULL, NULL, NULL, NULL, ?,
+          NULL, NULL, NULL, NULL,
+          NULL, NULL, NULL, NULL,
+          '[]', '[]', '[]', '[]', '[]',
+          '[]', '샘플 반려동물 데이터', '포메라니안 방울이', '2021-03-15', '2021-03-15', 4.2, 4.2, 'BANGUL-0001',
+          'https://placehold.co/600x600?text=Bangul', 0, 'active', ?, ?
+        )
+      `).bind(
+        petId,
+        userId,
+        await findMasterItemId(env, 'dog'),
+        await findMasterItemId(env, 'pomeranian'),
+        await findMasterItemId(env, 'female'),
+        await findMasterItemId(env, 'kg'),
+        ts,
+        ts,
+      ).run();
+    }
   }
 
   return { id: userId, role: 'guardian' };
 }
 
 async function findMasterItemId(env: Env, key: string): Promise<string | null> {
-  const row = await env.DB.prepare('SELECT id FROM master_items WHERE key = ? LIMIT 1').bind(key).first<{ id: string }>();
-  return row?.id ?? null;
+  try {
+    const rowByKey = await env.DB.prepare('SELECT id FROM master_items WHERE key = ? LIMIT 1').bind(key).first<{ id: string }>();
+    if (rowByKey?.id) return rowByKey.id;
+  } catch {
+    // key column may not exist on normalized schema
+  }
+  try {
+    const rowByCode = await env.DB.prepare('SELECT id FROM master_items WHERE code = ? LIMIT 1').bind(key).first<{ id: string }>();
+    if (rowByCode?.id) return rowByCode.id;
+  } catch {
+    // code column may not exist on legacy schema
+  }
+  return null;
+}
+
+async function hasColumn(env: Env, table: string, column: string): Promise<boolean> {
+  const rows = await env.DB.prepare(`PRAGMA table_info(${table})`).all<{ name: string }>();
+  return rows.results.some((r) => r.name === column);
 }
 
 // ─── refresh ──────────────────────────────────────────────────────────────────
