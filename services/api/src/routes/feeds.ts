@@ -9,6 +9,10 @@ async function hasTable(env: Env, table: string): Promise<boolean> {
   ).bind(table).first<{ name: string }>();
   return Boolean(row?.name);
 }
+async function hasColumn(env: Env, table: string, column: string): Promise<boolean> {
+  const rows = await env.DB.prepare(`PRAGMA table_info(${table})`).all<{ name: string }>();
+  return rows.results.some((r) => r.name === column);
+}
 
 function toJsonArray(value: unknown): string {
   if (!Array.isArray(value)) return '[]';
@@ -327,32 +331,62 @@ async function createGuardianPost(request: Request, env: Env): Promise<Response>
   const id = newId();
   const publicVisible = visibility === 'public' ? 1 : 0;
   const timestamp = now();
-  await env.DB.prepare(
-    `INSERT INTO feeds (
-      id, feed_type, author_user_id, author_role, pet_id, business_category_id, pet_type_id,
-      visibility_scope, booking_id, supplier_id, related_service_id,
-      caption, media_urls, tags,
-      publish_request_status, is_public, status, created_at, updated_at
-    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'none', ?, 'published', ?, ?)`
-  ).bind(
-    id,
-    feedType,
-    me.sub,
-    me.role,
-    body.pet_id ?? null,
-    body.business_category_id ?? null,
-    body.pet_type_id ?? null,
-    visibility,
-    body.booking_id ?? null,
-    body.supplier_id ?? null,
-    body.related_service_id ?? null,
-    caption,
-    mediaUrls,
-    tags,
-    publicVisible,
-    timestamp,
-    timestamp,
-  ).run();
+  if (await hasTable(env, 'feed_posts')) {
+    await env.DB.prepare(
+      `INSERT INTO feed_posts (
+        id, author_user_id, author_role, feed_type, visibility_scope, caption, status, created_at, updated_at
+      ) VALUES (?, ?, ?, ?, ?, ?, 'published', ?, ?)`
+    ).bind(
+      id,
+      me.sub,
+      me.role,
+      feedType,
+      visibility,
+      caption,
+      timestamp,
+      timestamp,
+    ).run();
+    const petId = (body.pet_id as string | null) ?? null;
+    if (petId) {
+      await env.DB.prepare(
+        `INSERT OR IGNORE INTO feed_post_pets (id, post_id, pet_id, sort_order)
+         VALUES (?, ?, ?, 0)`
+      ).bind(newId(), id, petId).run();
+    }
+    for (const [index, url] of parseJsonArray(mediaUrls).entries()) {
+      await env.DB.prepare(
+        `INSERT INTO feed_media (id, post_id, media_type, media_url, thumbnail_url, sort_order)
+         VALUES (?, ?, ?, ?, ?, ?)`
+      ).bind(newId(), id, inferMediaType(url), url, url, index).run();
+    }
+  } else {
+    await env.DB.prepare(
+      `INSERT INTO feeds (
+        id, feed_type, author_user_id, author_role, pet_id, business_category_id, pet_type_id,
+        visibility_scope, booking_id, supplier_id, related_service_id,
+        caption, media_urls, tags,
+        publish_request_status, is_public, status, created_at, updated_at
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'none', ?, 'published', ?, ?)`
+    ).bind(
+      id,
+      feedType,
+      me.sub,
+      me.role,
+      body.pet_id ?? null,
+      body.business_category_id ?? null,
+      body.pet_type_id ?? null,
+      visibility,
+      body.booking_id ?? null,
+      body.supplier_id ?? null,
+      body.related_service_id ?? null,
+      caption,
+      mediaUrls,
+      tags,
+      publicVisible,
+      timestamp,
+      timestamp,
+    ).run();
+  }
 
   await upsertAlbumFromFeed(env, {
     feedId: id,
@@ -387,19 +421,62 @@ async function shareFromCompletion(request: Request, env: Env): Promise<Response
   const bookingId = String(body.booking_id || '').trim();
   if (!completionId && !bookingId) return err('completion_id or booking_id required');
 
-  const completion = completionId
-    ? await env.DB.prepare(
-      `SELECT c.*, b.id AS booking_id, b.guardian_id, b.supplier_id, b.pet_id, b.service_id
-       FROM booking_completion_contents c
-       INNER JOIN bookings b ON b.id = c.booking_id
-       WHERE c.id = ?`
-    ).bind(completionId).first<Record<string, unknown>>()
-    : await env.DB.prepare(
-      `SELECT c.*, b.id AS booking_id, b.guardian_id, b.supplier_id, b.pet_id, b.service_id
-       FROM booking_completion_contents c
-       INNER JOIN bookings b ON b.id = c.booking_id
-       WHERE c.booking_id = ?`
-    ).bind(bookingId).first<Record<string, unknown>>();
+  const normalized = await hasTable(env, 'feed_publish_requests');
+  const completion = normalized
+    ? (completionId
+      ? await env.DB.prepare(
+        `SELECT
+           fpr.id,
+           fpr.booking_id,
+           fpr.supplier_id,
+           fpr.guardian_id,
+           b.pet_id,
+           b.service_id,
+           fpr.media_urls,
+           fpr.content AS completion_memo,
+           CASE fpr.status
+             WHEN 'approved' THEN 'approved'
+             WHEN 'rejected' THEN 'rejected'
+             ELSE 'pending'
+           END AS publish_status
+         FROM feed_publish_requests fpr
+         INNER JOIN bookings b ON b.id = fpr.booking_id
+         WHERE fpr.id = ?`
+      ).bind(completionId).first<Record<string, unknown>>()
+      : await env.DB.prepare(
+        `SELECT
+           fpr.id,
+           fpr.booking_id,
+           fpr.supplier_id,
+           fpr.guardian_id,
+           b.pet_id,
+           b.service_id,
+           fpr.media_urls,
+           fpr.content AS completion_memo,
+           CASE fpr.status
+             WHEN 'approved' THEN 'approved'
+             WHEN 'rejected' THEN 'rejected'
+             ELSE 'pending'
+           END AS publish_status
+         FROM feed_publish_requests fpr
+         INNER JOIN bookings b ON b.id = fpr.booking_id
+         WHERE fpr.booking_id = ?
+         ORDER BY datetime(fpr.created_at) DESC
+         LIMIT 1`
+      ).bind(bookingId).first<Record<string, unknown>>())
+    : (completionId
+      ? await env.DB.prepare(
+        `SELECT c.*, b.id AS booking_id, b.guardian_id, b.supplier_id, b.pet_id, b.service_id
+         FROM booking_completion_contents c
+         INNER JOIN bookings b ON b.id = c.booking_id
+         WHERE c.id = ?`
+      ).bind(completionId).first<Record<string, unknown>>()
+      : await env.DB.prepare(
+        `SELECT c.*, b.id AS booking_id, b.guardian_id, b.supplier_id, b.pet_id, b.service_id
+         FROM booking_completion_contents c
+         INNER JOIN bookings b ON b.id = c.booking_id
+         WHERE c.booking_id = ?`
+      ).bind(bookingId).first<Record<string, unknown>>());
 
   if (!completion) return err('completion not found', 404);
   if (String(completion.guardian_id || '') !== me.sub) return err('forbidden', 403);
@@ -426,29 +503,49 @@ async function shareFromCompletion(request: Request, env: Env): Promise<Response
 
   const id = newId();
   const timestamp = now();
-  await env.DB.prepare(
-    `INSERT INTO feeds (
-      id, feed_type, author_user_id, author_role, pet_id, business_category_id, pet_type_id,
-      visibility_scope, booking_id, supplier_id, related_service_id,
-      caption, media_urls, tags, publish_request_status, is_public, status, created_at, updated_at
-    ) VALUES (?, 'guardian_post', ?, 'guardian', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'none', ?, 'published', ?, ?)`
-  ).bind(
-    id,
-    me.sub,
-    completion.pet_id ?? null,
-    body.business_category_id ?? null,
-    body.pet_type_id ?? null,
-    visibility,
-    completion.booking_id ?? null,
-    completion.supplier_id ?? null,
-    completion.service_id ?? null,
-    caption,
-    JSON.stringify(mediaUrls),
-    tagsJson,
-    visibility === 'public' ? 1 : 0,
-    timestamp,
-    timestamp,
-  ).run();
+  if (await hasTable(env, 'feed_posts')) {
+    await env.DB.prepare(
+      `INSERT INTO feed_posts (
+        id, author_user_id, author_role, feed_type, visibility_scope, caption, status, created_at, updated_at
+      ) VALUES (?, ?, 'guardian', 'guardian_post', ?, ?, 'published', ?, ?)`
+    ).bind(id, me.sub, visibility, caption, timestamp, timestamp).run();
+    if (completion.pet_id) {
+      await env.DB.prepare(
+        `INSERT OR IGNORE INTO feed_post_pets (id, post_id, pet_id, sort_order)
+         VALUES (?, ?, ?, 0)`
+      ).bind(newId(), id, completion.pet_id).run();
+    }
+    for (const [index, mediaUrl] of mediaUrls.entries()) {
+      await env.DB.prepare(
+        `INSERT INTO feed_media (id, post_id, media_type, media_url, thumbnail_url, sort_order)
+         VALUES (?, ?, ?, ?, ?, ?)`
+      ).bind(newId(), id, inferMediaType(mediaUrl), mediaUrl, mediaUrl, index).run();
+    }
+  } else {
+    await env.DB.prepare(
+      `INSERT INTO feeds (
+        id, feed_type, author_user_id, author_role, pet_id, business_category_id, pet_type_id,
+        visibility_scope, booking_id, supplier_id, related_service_id,
+        caption, media_urls, tags, publish_request_status, is_public, status, created_at, updated_at
+      ) VALUES (?, 'guardian_post', ?, 'guardian', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'none', ?, 'published', ?, ?)`
+    ).bind(
+      id,
+      me.sub,
+      completion.pet_id ?? null,
+      body.business_category_id ?? null,
+      body.pet_type_id ?? null,
+      visibility,
+      completion.booking_id ?? null,
+      completion.supplier_id ?? null,
+      completion.service_id ?? null,
+      caption,
+      JSON.stringify(mediaUrls),
+      tagsJson,
+      visibility === 'public' ? 1 : 0,
+      timestamp,
+      timestamp,
+    ).run();
+  }
 
   await upsertAlbumFromFeed(env, {
     feedId: id,
@@ -489,22 +586,45 @@ async function requestBookingCompletedFeed(request: Request, env: Env): Promise<
     return err('booking must be service_completed before publish request');
   }
 
+  const normalized = await hasTable(env, 'feed_publish_requests');
   const completionId = newId();
   const mediaUrls = toJsonArray(body.media_urls);
   const memo = typeof body.completion_memo === 'string' ? body.completion_memo.trim() : null;
   const timestamp = now();
 
-  await env.DB.prepare(
-    `INSERT INTO booking_completion_contents (
-      id, booking_id, supplier_id, media_urls, completion_memo, publish_status, requested_at, created_at, updated_at
-    ) VALUES (?, ?, ?, ?, ?, 'pending', ?, ?, ?)
-    ON CONFLICT(booking_id) DO UPDATE SET
-      media_urls = excluded.media_urls,
-      completion_memo = excluded.completion_memo,
-      publish_status = 'pending',
-      requested_at = excluded.requested_at,
-      updated_at = excluded.updated_at`
-  ).bind(completionId, bookingId, me.sub, mediaUrls, memo, timestamp, timestamp, timestamp).run();
+  if (normalized) {
+    const existing = await env.DB.prepare(
+      `SELECT id FROM feed_publish_requests
+       WHERE booking_id = ?
+       ORDER BY datetime(created_at) DESC
+       LIMIT 1`
+    ).bind(bookingId).first<{ id: string }>();
+    if (existing?.id) {
+      await env.DB.prepare(
+        `UPDATE feed_publish_requests
+         SET supplier_id = ?, guardian_id = ?, content = ?, media_urls = ?, status = 'pending', created_at = ?
+         WHERE id = ?`
+      ).bind(me.sub, booking.guardian_id, memo, mediaUrls, timestamp, existing.id).run();
+    } else {
+      await env.DB.prepare(
+        `INSERT INTO feed_publish_requests (
+          id, booking_id, supplier_id, guardian_id, content, media_urls, status, created_at, approved_at
+        ) VALUES (?, ?, ?, ?, ?, ?, 'pending', ?, NULL)`
+      ).bind(completionId, bookingId, me.sub, booking.guardian_id, memo, mediaUrls, timestamp).run();
+    }
+  } else {
+    await env.DB.prepare(
+      `INSERT INTO booking_completion_contents (
+        id, booking_id, supplier_id, media_urls, completion_memo, publish_status, requested_at, created_at, updated_at
+      ) VALUES (?, ?, ?, ?, ?, 'pending', ?, ?, ?)
+      ON CONFLICT(booking_id) DO UPDATE SET
+        media_urls = excluded.media_urls,
+        completion_memo = excluded.completion_memo,
+        publish_status = 'pending',
+        requested_at = excluded.requested_at,
+        updated_at = excluded.updated_at`
+    ).bind(completionId, bookingId, me.sub, mediaUrls, memo, timestamp, timestamp, timestamp).run();
+  }
 
   let feed = await env.DB.prepare(
     `SELECT id FROM feeds WHERE booking_id = ? AND feed_type = 'booking_completed'`
@@ -590,6 +710,74 @@ async function approveBookingCompletedFeed(request: Request, env: Env, feedId: s
   try { body = await request.json() as { approved?: boolean; action?: string; visibility_scope?: string }; }
   catch { return err('Invalid JSON'); }
 
+  const normalized = await hasTable(env, 'feed_publish_requests');
+  if (normalized) {
+    const req = await env.DB.prepare(
+      `SELECT fpr.*, b.pet_id, b.service_id, b.guardian_id, b.supplier_id
+       FROM feed_publish_requests fpr
+       JOIN bookings b ON b.id = fpr.booking_id
+       WHERE fpr.id = ?`
+    ).bind(feedId).first<Record<string, unknown>>();
+    if (!req) return err('publish request not found', 404);
+    if (String(req.guardian_id) !== me.sub) return err('forbidden', 403);
+
+    const approved = body.action ? body.action === 'approve' : !!body.approved;
+    const timestamp = now();
+    if (approved) {
+      const visibility = (body.visibility_scope || 'public').trim();
+      const postId = `booking-post-${feedId}`;
+      await env.DB.prepare(
+        `INSERT OR REPLACE INTO feed_posts (
+          id, author_user_id, author_role, feed_type, visibility_scope, caption, status, created_at, updated_at
+        ) VALUES (?, ?, 'provider', 'booking_completed', ?, ?, 'published', ?, ?)`
+      ).bind(postId, req.supplier_id, visibility, req.content ?? null, timestamp, timestamp).run();
+      if (req.pet_id) {
+        await env.DB.prepare(
+          `INSERT OR REPLACE INTO feed_post_pets (id, post_id, pet_id, sort_order)
+           VALUES (?, ?, ?, 0)`
+        ).bind(`fpp-${postId}`, postId, req.pet_id).run();
+      }
+      const mediaUrls = parseJsonArray(req.media_urls);
+      for (const [index, mediaUrl] of mediaUrls.entries()) {
+        await env.DB.prepare(
+          `INSERT OR REPLACE INTO feed_media (id, post_id, media_type, media_url, thumbnail_url, sort_order)
+           VALUES (?, ?, ?, ?, ?, ?)`
+        ).bind(`${postId}-m-${index}`, postId, inferMediaType(mediaUrl), mediaUrl, mediaUrl, index).run();
+      }
+      await env.DB.prepare(
+        `UPDATE feed_publish_requests SET status = 'approved', approved_at = ? WHERE id = ?`
+      ).bind(timestamp, feedId).run();
+      await env.DB.prepare(
+        `UPDATE bookings SET status = 'publish_approved', updated_at = ? WHERE id = ?`
+      ).bind(timestamp, req.booking_id).run();
+
+      await upsertAlbumFromFeed(env, {
+        feedId: postId,
+        petId: (req.pet_id as string | null) ?? null,
+        bookingId: (req.booking_id as string | null) ?? null,
+        feedType: 'booking_completed',
+        mediaUrls,
+        caption: (req.content as string | null) ?? null,
+        tags: ['source:booking_completed'],
+        authorUserId: String(req.supplier_id),
+        visibilityScope: visibility,
+        feedStatus: 'published',
+        publishRequestStatus: 'approved',
+        createdAt: timestamp,
+        updatedAt: timestamp,
+      });
+      return ok({ approved: true, feed_id: postId, publish_request_id: feedId });
+    }
+
+    await env.DB.prepare(
+      `UPDATE feed_publish_requests SET status = 'rejected', approved_at = ? WHERE id = ?`
+    ).bind(timestamp, feedId).run();
+    await env.DB.prepare(
+      `UPDATE bookings SET status = 'publish_rejected', updated_at = ? WHERE id = ?`
+    ).bind(timestamp, req.booking_id).run();
+    return ok({ approved: false, publish_request_id: feedId });
+  }
+
   const feed = await env.DB.prepare(`SELECT * FROM feeds WHERE id = ? AND feed_type = 'booking_completed'`).bind(feedId).first<Record<string, unknown>>();
   if (!feed) return err('feed not found', 404);
 
@@ -654,13 +842,14 @@ async function likeFeed(request: Request, env: Env, feedId: string): Promise<Res
   if (auth instanceof Response) return auth;
   const me = auth as JwtPayload;
 
+  const likeKey = await hasColumn(env, 'feed_likes', 'post_id') ? 'post_id' : 'feed_id';
   if (request.method === 'POST') {
-    await env.DB.prepare(`INSERT OR IGNORE INTO feed_likes (id, feed_id, user_id, created_at) VALUES (?, ?, ?, ?)`)
+    await env.DB.prepare(`INSERT OR IGNORE INTO feed_likes (id, ${likeKey}, user_id, created_at) VALUES (?, ?, ?, ?)`)
       .bind(newId(), feedId, me.sub, now()).run();
     return ok({ liked: true });
   }
 
-  await env.DB.prepare(`DELETE FROM feed_likes WHERE feed_id = ? AND user_id = ?`).bind(feedId, me.sub).run();
+  await env.DB.prepare(`DELETE FROM feed_likes WHERE ${likeKey} = ? AND user_id = ?`).bind(feedId, me.sub).run();
   return ok({ liked: false });
 }
 
