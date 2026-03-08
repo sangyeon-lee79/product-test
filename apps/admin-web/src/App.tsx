@@ -12,6 +12,7 @@ import CountriesPage from './pages/CountriesPage';
 import DevicePage from './pages/DevicePage';
 import GuardianMainPage from './pages/GuardianMainPage';
 import SupplierDashboardPage from './pages/SupplierDashboardPage';
+import ExplorePage from './pages/ExplorePage';
 import './index.css';
 
 function AuthRoute() {
@@ -42,6 +43,7 @@ export default function App() {
       <HashRouter>
         <Routes>
           <Route path="/" element={<PublicHome />} />
+          <Route path="/explore" element={<ExplorePage />} />
           <Route path="/login" element={<Login />} />
           <Route path="/admin/login" element={<Login />} />
           <Route path="/signup" element={<Signup />} />
