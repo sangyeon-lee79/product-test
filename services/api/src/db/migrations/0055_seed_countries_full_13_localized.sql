@@ -63,6 +63,22 @@ WHERE country_id IN (
   JOIN mapping m ON m.country_code = c.code
 );
 
+WITH mapping(country_code, currency_code, map_id) AS (
+  VALUES
+    ('KR', 'KRW', 'ccm-kr-krw'),
+    ('US', 'USD', 'ccm-us-usd'),
+    ('JP', 'JPY', 'ccm-jp-jpy'),
+    ('CN', 'CNY', 'ccm-cn-cny'),
+    ('TW', 'TWD', 'ccm-tw-twd'),
+    ('ES', 'EUR', 'ccm-es-eur'),
+    ('FR', 'EUR', 'ccm-fr-eur'),
+    ('DE', 'EUR', 'ccm-de-eur'),
+    ('PT', 'EUR', 'ccm-pt-eur'),
+    ('VN', 'VND', 'ccm-vn-vnd'),
+    ('TH', 'THB', 'ccm-th-thb'),
+    ('ID', 'IDR', 'ccm-id-idr'),
+    ('SA', 'SAR', 'ccm-sa-sar')
+)
 INSERT OR REPLACE INTO country_currency_map (id, country_id, currency_id, is_default)
 SELECT
   m.map_id,
