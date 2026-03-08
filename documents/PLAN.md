@@ -155,6 +155,16 @@ Your pet's life portfolio
 - [x] `npm --prefix services/api run build`
 - [x] `npm --prefix apps/admin-web run build`
 
+## 0.13 국가/통화 Seed 추가 (KR/US/VN/JP) (2026-03-08)
+
+적용 범위:
+- `services/api/src/db/migrations/0054_seed_countries_kr_us_vn_jp.sql`
+
+- [x] 국가 추가: `KR`, `US`, `VN`, `JP`
+- [x] 통화 추가/활성화: `KRW`, `USD`, `VND`, `JPY`
+- [x] 기본 매핑 추가: `KR->KRW`, `US->USD`, `VN->VND`, `JP->JPY`
+- [x] i18n key 기반 번역 row 추가: `country.*`, `currency.*`
+
 ---
 
 ## 0.2 통합 개발 반영 내역 (2026-03-07)

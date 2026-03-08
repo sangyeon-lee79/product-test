@@ -183,6 +183,20 @@ Frontend:
 - `apps/admin-web/src/App.tsx`, `components/Layout.tsx`
   - `/admin/feeds` 라우트/사이드바 메뉴 추가
 
+### 0.9 Countries/Currencies Seed 추가 (2026-03-08)
+
+마이그레이션:
+- `0054_seed_countries_kr_us_vn_jp.sql`
+
+세부:
+- `currencies`: KRW/USD/VND/JPY upsert + active 보장
+- `countries`: KR/US/VN/JP upsert + active 보장
+- `country_currency_map`: 국가별 기본 통화 매핑 upsert
+- `i18n_translations`:
+  - `country.kr|us|vn|jp`
+  - `currency.krw|usd|vnd|jpy`
+  - 미번역 언어 컬럼은 en fallback 채움
+
 ---
 
 ## 1. 기술 스택
