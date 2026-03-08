@@ -119,7 +119,7 @@ export default function FeedPage() {
   }, [selectedMfr, loadBrands]);
 
   useEffect(() => {
-    if (!selectedType || !selectedMfr) {
+    if (!selectedType || !selectedMfr || !selectedBrand) {
       setModels([]);
       setSelectedModel(null);
       return;
@@ -127,8 +127,8 @@ export default function FeedPage() {
     const filters: { feed_type_id?: string; manufacturer_id?: string; brand_id?: string } = {
       feed_type_id: selectedType.id,
       manufacturer_id: selectedMfr.id,
+      brand_id: selectedBrand.id,
     };
-    if (selectedBrand) filters.brand_id = selectedBrand.id;
     void loadModels(filters);
     setSelectedModel(null);
   }, [selectedType, selectedMfr, selectedBrand, loadModels]);
