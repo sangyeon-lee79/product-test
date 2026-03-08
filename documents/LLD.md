@@ -197,6 +197,22 @@ Frontend:
   - `currency.krw|usd|vnd|jpy`
   - 미번역 언어 컬럼은 en fallback 채움
 
+### 0.10 Countries/Currencies 13개국 확장 상세 (2026-03-08)
+
+마이그레이션:
+- `0055_seed_countries_full_13_localized.sql`
+
+세부:
+- countries upsert/active:
+  - `KR, US, JP, CN, TW, ES, FR, DE, PT, VN, TH, ID, SA`
+- currencies upsert/active:
+  - `KRW, USD, JPY, CNY, TWD, EUR, VND, THB, IDR, SAR`
+- default mapping:
+  - 각 대상 국가에 대해 기존 default 해제 후 지정 통화를 default=1로 설정
+- i18n:
+  - `country.*` 키는 13개 언어 컬럼에 직접 현지화 번역 입력
+  - `currency.*` 키는 ko/en 우선값 + 나머지 언어 fallback
+
 ---
 
 ## 1. 기술 스택

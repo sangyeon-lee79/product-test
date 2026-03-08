@@ -128,6 +128,16 @@ Your pet's life portfolio
   - 국가/통화명은 i18n key 기반(`country.*`, `currency.*`)
   - 국가별 기본 통화 매핑 포함
 
+### 0.13 국가/통화 13개국 지원 확장 (2026-03-08)
+- 목표:
+  - Admin 국가/통화 관리에 플랫폼 13개 언어권 기준 국가 셋 반영
+- 반영 국가:
+  - KR, US, JP, CN, TW, ES, FR, DE, PT, VN, TH, ID, SA
+- 반영 원칙:
+  - 저장은 country/currency code + key 기반
+  - 표시는 i18n locale 번역값 사용
+  - 국가명은 13개 언어 컬럼에 현지화 번역값 제공
+
 ---
 
 ## 1. 제품 개요

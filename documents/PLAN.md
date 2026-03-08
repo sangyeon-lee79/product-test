@@ -165,6 +165,17 @@ Your pet's life portfolio
 - [x] 기본 매핑 추가: `KR->KRW`, `US->USD`, `VN->VND`, `JP->JPY`
 - [x] i18n key 기반 번역 row 추가: `country.*`, `currency.*`
 
+## 0.14 국가/통화 13개국 전체 확장 + 현지화 번역 반영 (2026-03-08)
+
+적용 범위:
+- `services/api/src/db/migrations/0055_seed_countries_full_13_localized.sql`
+
+- [x] 국가 13개 확장: `KR, US, JP, CN, TW, ES, FR, DE, PT, VN, TH, ID, SA`
+- [x] 통화 확장: `KRW, USD, JPY, CNY, TWD, EUR, VND, THB, IDR, SAR`
+- [x] 국가별 기본 통화 매핑 보장 (default flag 갱신)
+- [x] 국가명 i18n 13개 언어 컬럼(`ko/en/ja/zh_cn/zh_tw/es/fr/de/pt/vi/th/id_lang/ar`) 현지화 값 반영
+- [x] 통화명 i18n key(`currency.*`) 보강
+
 ---
 
 ## 0.2 통합 개발 반영 내역 (2026-03-07)
