@@ -1730,10 +1730,13 @@ export default function GuardianMainPage() {
                   {feeds.map((f) => (
                     <article key={f.id} className="sns-card">
                       <div className="sns-card-header">
-                        <div>
-                          <p className="sns-meta">{feedTypeLabel(t, f.feed_type)}</p>
-                          <h3>{f.author_email || t('common.none', '-')}</h3>
-                          <p className="text-sm text-muted">{formatDate(f.created_at, t('common.none', '-'))}</p>
+                        <div className="sns-author-row">
+                          <div className="sns-avatar">{(f.author_email || '?')[0].toUpperCase()}</div>
+                          <div className="sns-author-info">
+                            <p className="sns-meta">{feedTypeLabel(t, f.feed_type)}</p>
+                            <span className="sns-author-name">{f.author_email || t('common.none', '-')}</span>
+                            <p className="text-sm text-muted">{formatDate(f.created_at, t('common.none', '-'))}</p>
+                          </div>
                         </div>
                         <div className="sns-card-right">
                           <div className="sns-badges">
@@ -1746,7 +1749,7 @@ export default function GuardianMainPage() {
                           )}
                         </div>
                       </div>
-                      {f.pet_name && <p className="sns-pet">{t('guardian.feed.pet_prefix', 'Pet')}: {f.pet_name}</p>}
+                      {f.pet_name && <span className="sns-pet-chip">{f.pet_name}</span>}
                       {f.caption && <p className="sns-caption">{f.caption}</p>}
                       {Array.isArray(f.media_urls) && f.media_urls[0] && (
                         <div className="sns-feed-image-wrap">
@@ -1754,11 +1757,11 @@ export default function GuardianMainPage() {
                         </div>
                       )}
                       <div className="sns-actions">
-                        <button className="btn btn-secondary btn-sm" onClick={() => api.feeds.like(f.id).then(() => loadAll(feedTab)).catch((e) => setError(uiErrorMessage(e, t('guardian.alert.like_failed', '좋아요 처리에 실패했습니다.'))))}>
-                          {t('guardian.feed.like', 'Like')} ({f.like_count || 0})
+                        <button className="sns-action-btn" onClick={() => api.feeds.like(f.id).then(() => loadAll(feedTab)).catch((e) => setError(uiErrorMessage(e, t('guardian.alert.like_failed', '좋아요 처리에 실패했습니다.'))))}>
+                          ♥ {f.like_count || 0}
                         </button>
-                        <button className="btn btn-secondary btn-sm" onClick={() => api.feeds.comments.list(f.id).then(() => null).catch((e) => setError(uiErrorMessage(e, t('guardian.alert.comment_failed', '댓글을 불러오지 못했습니다.'))))}>
-                          {t('guardian.feed.comment', 'Comment')} ({f.comment_count || 0})
+                        <button className="sns-action-btn" onClick={() => api.feeds.comments.list(f.id).then(() => null).catch((e) => setError(uiErrorMessage(e, t('guardian.alert.comment_failed', '댓글을 불러오지 못했습니다.'))))}>
+                          ○ {f.comment_count || 0}
                         </button>
                       </div>
                     </article>

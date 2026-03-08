@@ -206,72 +206,91 @@ export default function PublicHome() {
 
   return (
     <div className="public-page">
+
+      {/* ── Top Navigation ─────────────────────────────────── */}
+      <nav style={{
+        display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+        padding: '14px 32px', borderBottom: '1px solid #E7E0D6',
+        background: '#fff', position: 'sticky', top: 0, zIndex: 20,
+      }}>
+        <span style={{ fontFamily: "'DM Serif Display', Georgia, serif", fontSize: 20, color: '#1C1917', fontStyle: 'italic' }}>
+          Petfolio
+        </span>
+        <div style={{ display: 'flex', gap: 8 }}>
+          <Link to="/login" className="btn btn-secondary btn-sm">로그인</Link>
+          <Link to="/signup" className="btn btn-primary btn-sm">시작하기</Link>
+        </div>
+      </nav>
+
+      {/* ── Hero ───────────────────────────────────────────── */}
       <header className="public-hero">
-        <div>
-          <p className="hero-eyebrow">Petfolio | 펫폴리오</p>
-          <h1>Petfolio</h1>
-          <p className="hero-desc">
-            Your pet's life portfolio
-          </p>
-          <div className="hero-actions">
-            <Link to="/login" className="btn btn-primary">Login</Link>
-            <Link to="/signup" className="btn btn-secondary">Signup</Link>
-            <Link to="/admin/login" className="btn btn-secondary">Admin Login</Link>
-          </div>
+        <p className="hero-eyebrow">Pet Portfolio Platform</p>
+        <h1>반려동물의 삶을,<br />아름답게 기록하다.</h1>
+        <p className="hero-desc">
+          Petfolio는 반려동물의 일상을 나누는 SNS이자,<br />
+          소중한 순간들을 영원히 보관하는 포트폴리오 플랫폼입니다.
+        </p>
+
+        {/* Feature pills */}
+        <div style={{ display: 'flex', gap: 8, marginTop: 20, flexWrap: 'wrap' }}>
+          {['📸 일상 피드 공유', '🗂 포트폴리오 아카이브', '❤️ 친구 & 커뮤니티', '🏥 건강 기록 타임라인'].map((f) => (
+            <span key={f} style={{
+              display: 'inline-flex', alignItems: 'center', gap: 5,
+              background: 'rgba(217,119,6,.08)', color: '#92400E',
+              border: '1px solid rgba(217,119,6,.18)',
+              borderRadius: 999, padding: '5px 14px', fontSize: 12, fontWeight: 600,
+            }}>{f}</span>
+          ))}
+        </div>
+
+        <div className="hero-actions" style={{ marginTop: 28 }}>
+          <Link to="/signup" className="btn btn-primary">Guardian으로 시작</Link>
+          <Link to="/admin/login" className="btn btn-secondary">Admin Login</Link>
         </div>
       </header>
 
-      <section className="public-section">
-        <div className="feed-toolbar card">
+      {/* ── Feed Section ───────────────────────────────────── */}
+      <section className="public-section" style={{ maxWidth: 760, marginTop: 8 }}>
+
+        {/* Toolbar */}
+        <div className="feed-toolbar card" style={{ marginBottom: 16 }}>
           <div className="feed-tabs">
-            <button className={`feed-tab ${tab === 'all' ? 'active' : ''}`} onClick={() => { setTab('all'); loadFeed('all', businessCategoryId, petTypeId); }}>
-              All
-            </button>
+            <button
+              className={`feed-tab ${tab === 'all' ? 'active' : ''}`}
+              onClick={() => { setTab('all'); loadFeed('all', businessCategoryId, petTypeId); }}
+            >전체 피드</button>
             <button
               className={`feed-tab ${tab === 'friends' ? 'active' : ''}`}
               onClick={() => { setTab('friends'); loadFeed('friends', businessCategoryId, petTypeId); }}
               disabled={!loggedIn}
               title={!loggedIn ? '로그인 후 사용 가능' : ''}
-            >
-              Friends Feed
-            </button>
+            >친구 피드</button>
           </div>
           <div className="feed-filters">
             <select
               className="form-select"
               value={businessCategoryId}
-              onChange={(e) => {
-                const value = e.target.value;
-                setBusinessCategoryId(value);
-                loadFeed(tab, value, petTypeId);
-              }}
+              onChange={(e) => { const v = e.target.value; setBusinessCategoryId(v); loadFeed(tab, v, petTypeId); }}
             >
-              <option value="">By Business Category</option>
-              {businessOptions.map((opt) => (
-                <option key={opt.id} value={opt.id}>{opt.label}</option>
-              ))}
+              <option value="">업종 전체</option>
+              {businessOptions.map((opt) => <option key={opt.id} value={opt.id}>{opt.label}</option>)}
             </select>
             <select
               className="form-select"
               value={petTypeId}
-              onChange={(e) => {
-                const value = e.target.value;
-                setPetTypeId(value);
-                loadFeed(tab, businessCategoryId, value);
-              }}
+              onChange={(e) => { const v = e.target.value; setPetTypeId(v); loadFeed(tab, businessCategoryId, v); }}
             >
-              <option value="">By Pet Type</option>
-              {petTypeOptions.map((opt) => (
-                <option key={opt.id} value={opt.id}>{opt.label}</option>
-              ))}
+              <option value="">펫 유형 전체</option>
+              {petTypeOptions.map((opt) => <option key={opt.id} value={opt.id}>{opt.label}</option>)}
             </select>
           </div>
         </div>
 
+        {/* Friend Request */}
         {loggedIn && (role === 'guardian' || role === 'provider') && (
-          <div className="friend-request card">
+          <div className="friend-request card" style={{ marginBottom: 16 }}>
             <div className="card-body">
-              <p className="text-sm text-muted">Guardian ↔ Supplier 연결</p>
+              <p className="text-sm text-muted" style={{ marginBottom: 8 }}>Guardian ↔ Supplier 연결 요청</p>
               <div className="friend-row">
                 <input
                   className="form-input"
@@ -279,15 +298,16 @@ export default function PublicHome() {
                   value={friendEmail}
                   onChange={(e) => setFriendEmail(e.target.value)}
                 />
-                <button className="btn btn-secondary" onClick={sendFriendRequest}>친구 요청</button>
+                <button className="btn btn-secondary" onClick={sendFriendRequest}>연결 요청</button>
               </div>
-              {friendMessage && <p className="text-sm mt-2">{friendMessage}</p>}
+              {friendMessage && <p className="text-sm mt-2" style={{ color: '#D97706' }}>{friendMessage}</p>}
             </div>
           </div>
         )}
 
-        {error && <div className="alert alert-error mt-2">{error}</div>}
+        {error && <div className="alert alert-error">{error}</div>}
 
+        {/* Feed List */}
         {loading ? (
           <div className="loading-center"><span className="spinner" /></div>
         ) : (
@@ -296,28 +316,33 @@ export default function PublicHome() {
               const media = ensureArray(feed.media_urls);
               const tags = ensureArray(feed.tags);
               const comments = commentMap[feed.id] || [];
-              const displayBusiness = feed.business_category_ko || feed.business_category_key || '-';
-              const displayPetType = feed.pet_type_ko || feed.pet_type_key || '-';
+              const displayBusiness = feed.business_category_ko || feed.business_category_key || null;
+              const displayPetType = feed.pet_type_ko || feed.pet_type_key || null;
               const authorLine = feed.feed_type === 'booking_completed'
                 ? `${feed.booking_guardian_email || '-'} + ${feed.booking_supplier_email || '-'}`
                 : (feed.author_email || '-');
+              const avatarLetter = authorLine[0]?.toUpperCase() || '?';
+              const isLiked = Number(feed.liked_by_me || 0) > 0;
 
               return (
                 <article key={feed.id} className="sns-card">
                   <div className="sns-card-header">
-                    <div>
-                      <p className="sns-meta">{feed.feed_type}</p>
-                      <h3>{authorLine}</h3>
-                      <p className="text-sm text-muted">{formatDate(feed.created_at)}</p>
+                    <div className="sns-author-row">
+                      <div className="sns-avatar">{avatarLetter}</div>
+                      <div className="sns-author-info">
+                        <p className="sns-meta">{feed.feed_type}</p>
+                        <span className="sns-author-name">{authorLine}</span>
+                        <p className="text-sm text-muted">{formatDate(feed.created_at)}</p>
+                      </div>
                     </div>
                     <div className="sns-badges">
-                      <span className="badge badge-blue">{displayBusiness}</span>
-                      <span className="badge badge-gray">{displayPetType}</span>
+                      {displayBusiness && <span className="badge badge-amber">{displayBusiness}</span>}
+                      {displayPetType && <span className="badge badge-gray">{displayPetType}</span>}
                       <span className="badge badge-green">{feed.visibility_scope}</span>
                     </div>
                   </div>
 
-                  {feed.pet_name && <p className="sns-pet">Pet: {feed.pet_name}</p>}
+                  {feed.pet_name && <span className="sns-pet-chip">{feed.pet_name}</span>}
                   {feed.caption && <p className="sns-caption">{feed.caption}</p>}
 
                   {media.length > 0 && (
@@ -337,11 +362,16 @@ export default function PublicHome() {
                   )}
 
                   <div className="sns-actions">
-                    <button className="btn btn-secondary btn-sm" onClick={() => toggleLike(feed)} disabled={!loggedIn}>
-                      {Number(feed.liked_by_me || 0) > 0 ? 'Unlike' : 'Like'} ({feed.like_count || 0})
+                    <button
+                      className={`sns-action-btn${isLiked ? ' liked' : ''}`}
+                      onClick={() => toggleLike(feed)}
+                      disabled={!loggedIn}
+                      style={isLiked ? { background: '#FEF3C7', borderColor: '#D97706', color: '#B45309' } : {}}
+                    >
+                      ♥ {feed.like_count || 0}
                     </button>
-                    <button className="btn btn-secondary btn-sm" onClick={() => toggleComments(feed.id)}>
-                      Comment ({feed.comment_count || 0})
+                    <button className="sns-action-btn" onClick={() => toggleComments(feed.id)}>
+                      ○ {feed.comment_count || 0}
                     </button>
                   </div>
 
@@ -393,31 +423,56 @@ export default function PublicHome() {
                 </article>
               );
             })}
-            {feeds.length === 0 && <div className="card"><div className="card-body">노출 가능한 피드가 없습니다.</div></div>}
+            {feeds.length === 0 && (
+              <div className="card">
+                <div className="card-body" style={{ textAlign: 'center', padding: 40, color: '#78716C' }}>
+                  <p style={{ fontSize: 32, marginBottom: 12 }}>🐾</p>
+                  <p style={{ fontWeight: 600, marginBottom: 4 }}>아직 피드가 없습니다</p>
+                  <p style={{ fontSize: 13 }}>Guardian으로 가입하고 반려동물의 첫 이야기를 시작해보세요.</p>
+                </div>
+              </div>
+            )}
           </div>
         )}
       </section>
 
-      <section className="public-section">
-        <h2>Entry Points</h2>
+      {/* ── Entry Points ───────────────────────────────────── */}
+      <section className="public-section" style={{ marginTop: 48, maxWidth: 1080 }}>
+        <h2 style={{ fontFamily: "'DM Serif Display', Georgia, serif", fontSize: 28, marginBottom: 4 }}>Petfolio 시작하기</h2>
+        <p className="text-muted" style={{ marginBottom: 20, fontSize: 14 }}>역할에 맞는 방식으로 참여하세요.</p>
         <div className="entry-grid">
           <div className="entry-card">
+            <div style={{ fontSize: 28, marginBottom: 8 }}>🐕</div>
             <h3>Guardian</h3>
-            <p>일상/건강 피드 작성, 예약 완료 게시 승인, 친구 연결 기반 소통</p>
-            <Link to="/signup" className="btn btn-primary btn-sm">Guardian 시작</Link>
+            <p>반려동물의 일상과 건강을 기록하고, 펫폴리오를 만들어 소중한 순간을 영구 보관하세요.</p>
+            <Link to="/signup" className="btn btn-primary btn-sm">Guardian으로 시작</Link>
           </div>
           <div className="entry-card">
+            <div style={{ fontSize: 28, marginBottom: 8 }}>🏪</div>
             <h3>Supplier</h3>
-            <p>예약 완료 콘텐츠 업로드 후 보호자 승인 시에만 공개 피드 게시</p>
-            <Link to="/signup" className="btn btn-primary btn-sm">Supplier 시작</Link>
+            <p>예약 완료 콘텐츠를 업로드하고, 보호자 승인 후 커뮤니티에 공유되는 전문가 계정입니다.</p>
+            <Link to="/signup" className="btn btn-primary btn-sm">Supplier로 시작</Link>
           </div>
           <div className="entry-card">
+            <div style={{ fontSize: 28, marginBottom: 8 }}>⚙️</div>
             <h3>Admin</h3>
-            <p>마스터데이터/번역/국가 설정 및 전체 운영 데이터 관리</p>
+            <p>마스터데이터, 번역, 국가 설정 및 전체 운영 데이터를 관리하는 관리자 콘솔입니다.</p>
             <Link to="/admin/login" className="btn btn-secondary btn-sm">Admin Login</Link>
           </div>
         </div>
       </section>
+
+      {/* ── Footer ─────────────────────────────────────────── */}
+      <footer style={{
+        textAlign: 'center', padding: '40px 24px 24px',
+        color: '#A8A29E', fontSize: 12, marginTop: 60,
+        borderTop: '1px solid #E7E0D6',
+      }}>
+        <p style={{ fontFamily: "'DM Serif Display', Georgia, serif", fontSize: 16, color: '#78716C', fontStyle: 'italic', marginBottom: 6 }}>
+          Petfolio
+        </p>
+        <p>반려동물의 삶을 기록하는 포트폴리오 플랫폼</p>
+      </footer>
     </div>
   );
 }
