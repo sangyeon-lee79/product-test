@@ -13,6 +13,15 @@ type PetWizardStep = 1 | 2 | 3 | 4 | 5 | 6 | 7;
 type MeasurementWizardStep = 1 | 2;
 
 type Option = { id: string; label: string; parentId?: string | null; metadata?: Record<string, unknown> };
+const PET_WIZARD_STEPS: Array<{ step: PetWizardStep; label: string }> = [
+  { step: 1, label: '기본정보' },
+  { step: 2, label: '펫종류' },
+  { step: 3, label: '성별' },
+  { step: 4, label: '예방접종' },
+  { step: 5, label: '질병군' },
+  { step: 6, label: '성격기질' },
+  { step: 7, label: '털길이' },
+];
 
 type PetForm = {
   name: string;
@@ -520,9 +529,10 @@ export default function GuardianMainPage() {
     };
   }, [optColor, optDiet, optDisease, optGrooming, optTemperament, optVaccination, selectedPet]);
 
-  async function loadAll(tab = feedTab) {
+  async function loadAll(tab = feedTab, opts?: { silent?: boolean }) {
+    const silent = Boolean(opts?.silent);
     setLoading(true);
-    setError('');
+    if (!silent) setError('');
     try {
       const failedApis: string[] = [];
       const safe = async <T,>(promise: Promise<T>, fallback: T, name: string): Promise<T> => {
@@ -616,11 +626,11 @@ export default function GuardianMainPage() {
       setOptCoatLength(toOption(coatLengthRows));
       setOptGrooming(toOption(groomingRows));
 
-      if (failedApis.length > 0) {
+      if (!silent && failedApis.length > 0) {
         setError('일부 데이터를 불러오지 못했습니다. 잠시 후 다시 시도해주세요.');
       }
     } catch (e) {
-      setError(uiErrorMessage(e, t('guardian.alert.load_failed', '데이터를 불러오지 못했습니다.')));
+      if (!silent) setError(uiErrorMessage(e, t('guardian.alert.load_failed', '데이터를 불러오지 못했습니다.')));
     } finally {
       setLoading(false);
     }
@@ -1159,7 +1169,7 @@ export default function GuardianMainPage() {
       setActivePet(null);
       setEditingPetId('');
       setPetForm(DEFAULT_PET_FORM);
-      void loadAll(feedTab);
+      void loadAll(feedTab, { silent: true });
     } catch (e) {
       setError(uiErrorMessage(e, t('guardian.alert.pet_save_failed', '반려동물 저장에 실패했습니다.')));
     }
@@ -1171,6 +1181,11 @@ export default function GuardianMainPage() {
     setEditingPetId('');
     setPetWizardStep(1);
     setDiseaseRows([{ groupId: '', diseaseId: '' }]);
+  }
+
+  function gotoPetStep(step: PetWizardStep) {
+    setError('');
+    setPetWizardStep(step);
   }
 
   function gotoNextPetStep() {
@@ -1189,10 +1204,6 @@ export default function GuardianMainPage() {
       return;
     }
     setError('');
-    if (petWizardStep === 7) {
-      void savePet();
-      return;
-    }
     setPetWizardStep((prev) => (prev < 7 ? ((prev + 1) as PetWizardStep) : prev));
   }
 
@@ -2153,14 +2164,15 @@ export default function GuardianMainPage() {
             </div>
             <div className="modal-footer">
               <div style={{ display: 'flex', gap: 6, marginRight: 'auto', flexWrap: 'wrap' }}>
-                {[1, 2, 3, 4, 5, 6, 7].map((step) => (
+                {PET_WIZARD_STEPS.map(({ step, label }) => (
                   <button
                     key={step}
                     type="button"
-                    className={`btn btn-secondary ${petWizardStep === step ? 'active' : ''}`}
-                    onClick={() => setPetWizardStep(step as PetWizardStep)}
+                    className={`btn ${petWizardStep === step ? 'btn-primary' : 'btn-secondary'}`}
+                    onClick={() => gotoPetStep(step)}
+                    title={label}
                   >
-                    {step}
+                    {step}. {label}
                   </button>
                 ))}
               </div>
@@ -2168,8 +2180,11 @@ export default function GuardianMainPage() {
               <button className="btn btn-secondary" onClick={gotoPrevPetStep} disabled={petWizardStep === 1}>
                 {t('common.previous', 'Previous')}
               </button>
-              <button className="btn btn-primary" onClick={gotoNextPetStep}>
+              <button className="btn btn-secondary" onClick={gotoNextPetStep} disabled={petWizardStep === 7}>
                 {t('common.next', 'Next')}
+              </button>
+              <button className="btn btn-primary" onClick={() => void savePet()}>
+                {t('common.save', 'Save')}
               </button>
             </div>
           </div>
