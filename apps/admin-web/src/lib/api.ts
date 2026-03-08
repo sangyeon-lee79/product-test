@@ -466,9 +466,9 @@ export const api = {
         const suffix = q.toString() ? `?${q.toString()}` : '';
         return request<DeviceManufacturer[]>(`/api/v1/admin/devices/manufacturers${suffix}`);
       },
-      create: (data: { country?: string; sort_order?: number; name_ko: string; name_en?: string; parent_type_ids?: string[]; translations?: Record<string, string> }) =>
+      create: (data: { key?: string; country?: string; sort_order?: number; name_ko: string; name_en?: string; parent_type_ids?: string[]; translations?: Record<string, string> }) =>
         request<DeviceManufacturer>('/api/v1/admin/devices/manufacturers', { method: 'POST', body: JSON.stringify(data) }),
-      update: (id: string, data: Partial<{ name_ko: string; name_en: string; country: string; sort_order: number; status: string; parent_type_ids: string[]; translations: Record<string, string> }>) =>
+      update: (id: string, data: Partial<{ key: string; name_ko: string; name_en: string; country: string; sort_order: number; status: string; parent_type_ids: string[]; translations: Record<string, string> }>) =>
         request<DeviceManufacturer>(`/api/v1/admin/devices/manufacturers/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
       delete: (id: string) =>
         request<{ id: string; deleted: boolean }>(`/api/v1/admin/devices/manufacturers/${id}`, { method: 'DELETE' }),
@@ -551,9 +551,9 @@ export const api = {
         const suffix = q.toString() ? `?${q.toString()}` : '';
         return request<FeedManufacturer[]>(`/api/v1/admin/feed-catalog/manufacturers${suffix}`);
       },
-      create: (data: { country?: string; sort_order?: number; name_ko: string; name_en?: string; parent_type_ids?: string[]; translations?: Record<string, string> }) =>
+      create: (data: { key?: string; country?: string; sort_order?: number; name_ko: string; name_en?: string; parent_type_ids?: string[]; translations?: Record<string, string> }) =>
         request<FeedManufacturer>('/api/v1/admin/feed-catalog/manufacturers', { method: 'POST', body: JSON.stringify(data) }),
-      update: (id: string, data: Partial<{ name_ko: string; name_en: string; country: string; sort_order: number; status: string; parent_type_ids: string[]; translations: Record<string, string> }>) =>
+      update: (id: string, data: Partial<{ key: string; name_ko: string; name_en: string; country: string; sort_order: number; status: string; parent_type_ids: string[]; translations: Record<string, string> }>) =>
         request<FeedManufacturer>(`/api/v1/admin/feed-catalog/manufacturers/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
       delete: (id: string) =>
         request<{ id: string; deleted: boolean }>(`/api/v1/admin/feed-catalog/manufacturers/${id}`, { method: 'DELETE' }),

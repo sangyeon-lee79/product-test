@@ -1,8 +1,13 @@
 import { useEffect, useState, useCallback } from 'react';
-import { api, type FeedType, type FeedManufacturer, type FeedBrand, type FeedModel } from '../lib/api';
-import { useI18n, useT } from '../lib/i18n';
+import { api, type FeedType, type FeedManufacturer, type FeedBrand, type FeedModel, type I18nRow } from '../lib/api';
+import { useI18n, useT, SUPPORTED_LANGS, LANG_LABELS } from '../lib/i18n';
 
 type ModalTarget = 'manufacturer' | 'brand' | 'model';
+const emptyTrans = () => Object.fromEntries(SUPPORTED_LANGS.map((l) => [l, ''])) as Record<string, string>;
+
+function findMissingTranslationLangs(translations: Record<string, string>): string[] {
+  return SUPPORTED_LANGS.filter((lang) => !(translations[lang] || '').trim());
+}
 
 export default function FeedPage() {
   const t = useT();
@@ -22,8 +27,10 @@ export default function FeedPage() {
 
   const [modal, setModal] = useState<{ target: ModalTarget; mode: 'create' | 'edit'; id?: string } | null>(null);
   const [saving, setSaving] = useState(false);
+  const [translating, setTranslating] = useState(false);
 
-  const [mfrForm, setMfrForm] = useState({ name_ko: '', country: '', sort_order: '0' });
+  const [mfrForm, setMfrForm] = useState({ key: '', country: '', sort_order: '0' });
+  const [mfrTrans, setMfrTrans] = useState<Record<string, string>>(emptyTrans());
   const [brandForm, setBrandForm] = useState({ name_ko: '' });
   const [modelForm, setModelForm] = useState({ name_ko: '', model_code: '', description: '' });
   const [mfrParentTypeIds, setMfrParentTypeIds] = useState<string[]>([]);
@@ -132,16 +139,71 @@ export default function FeedPage() {
     return { ...result.translations, ko: base };
   }
 
+  function manufacturerToTranslations(item: FeedManufacturer): Record<string, string> {
+    return {
+      ...emptyTrans(),
+      ko: item.name_ko || '',
+      en: item.name_en || '',
+    };
+  }
+
+  function i18nRowToTranslations(row: I18nRow): Record<string, string> {
+    return {
+      ko: row.ko ?? '',
+      en: row.en ?? '',
+      ja: row.ja ?? '',
+      zh_cn: row.zh_cn ?? '',
+      zh_tw: row.zh_tw ?? '',
+      es: row.es ?? '',
+      fr: row.fr ?? '',
+      de: row.de ?? '',
+      pt: row.pt ?? '',
+      vi: row.vi ?? '',
+      th: row.th ?? '',
+      id_lang: row.id_lang ?? '',
+      ar: row.ar ?? '',
+    };
+  }
+
+  async function autoTranslate(koText: string, current: Record<string, string>, setTrans: (t: Record<string, string>) => void) {
+    if (!koText) return;
+    setTranslating(true);
+    try {
+      const result = await api.i18n.translate(koText, current);
+      const merged: Record<string, string> = { ...current, ko: koText };
+      for (const langCode of SUPPORTED_LANGS) {
+        if (langCode === 'ko') continue;
+        if ((current[langCode] || '').trim()) continue;
+        const translated = result.translations[langCode];
+        if (translated) merged[langCode] = translated;
+      }
+      setTrans(merged);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : String(e));
+    } finally {
+      setTranslating(false);
+    }
+  }
+
   function openCreateMfr() {
-    setMfrForm({ name_ko: '', country: '', sort_order: '0' });
+    setMfrForm({ key: '', country: '', sort_order: '0' });
+    setMfrTrans(emptyTrans());
     setMfrParentTypeIds(selectedType ? [selectedType.id] : []);
     setModal({ target: 'manufacturer', mode: 'create' });
   }
 
   function openEditMfr(item: FeedManufacturer) {
-    setMfrForm({ name_ko: item.name_ko || '', country: item.country || '', sort_order: String(item.sort_order || 0) });
+    const fallback = manufacturerToTranslations(item);
+    setMfrForm({ key: item.key || '', country: item.country || '', sort_order: String(item.sort_order || 0) });
+    setMfrTrans(fallback);
     setMfrParentTypeIds((item.parent_type_ids || '').split(',').map((v) => v.trim()).filter(Boolean));
     setModal({ target: 'manufacturer', mode: 'edit', id: item.id });
+    if (item.name_key) {
+      void api.i18n.list({ prefix: item.name_key, limit: 50 }).then((res) => {
+        const row = res.items.find((it) => it.key === item.name_key);
+        if (row) setMfrTrans(i18nRowToTranslations(row));
+      }).catch(() => {});
+    }
   }
 
   function openCreateBrand() {
@@ -180,10 +242,25 @@ export default function FeedPage() {
     try {
       const { target, mode, id } = modal;
       if (target === 'manufacturer') {
-        if (!mfrForm.name_ko) throw new Error('ko required');
-        const translations = await buildTranslations(mfrForm.name_ko);
+        if (mfrParentTypeIds.length === 0) throw new Error(t('admin.master.err_required'));
+        const ko = (mfrTrans.ko || '').trim();
+        if (!ko) throw new Error(t('admin.master.err_required'));
+        const key = (mfrForm.key || '').trim().replace(/^master\./, '');
+        if (key && !/^[a-z0-9_]+$/.test(key)) throw new Error(t('admin.master.err_key_fmt'));
+        let translations: Record<string, string> = { ...mfrTrans, ko };
+        const hasMissing = SUPPORTED_LANGS.some((langCode) => langCode !== 'ko' && !(translations[langCode] || '').trim());
+        if (hasMissing) {
+          const result = await api.i18n.translate(ko, translations);
+          translations = { ...result.translations, ...translations, ko };
+        }
+        const missingLangs = findMissingTranslationLangs(translations);
+        if (missingLangs.length > 0) {
+          throw new Error(t('admin.master.err_trans_missing').replace('{langs}', missingLangs.map((langCode) => (LANG_LABELS as Record<string, string>)[langCode] || langCode).join(', ')));
+        }
         const payload = {
-          name_ko: mfrForm.name_ko,
+          key: mode === 'create' ? key || undefined : undefined,
+          name_ko: ko,
+          name_en: translations.en || undefined,
           country: mfrForm.country || undefined,
           sort_order: parseInt(mfrForm.sort_order, 10) || 0,
           parent_type_ids: mfrParentTypeIds,
@@ -408,17 +485,13 @@ export default function FeedPage() {
               </div>
               <button className="modal-close" onClick={() => setModal(null)}>×</button>
             </div>
-            <div className="modal-body">
+            <div className="modal-body" style={{ maxHeight: '70vh', overflowY: 'auto' }}>
               {error && <div className="alert alert-error" style={{ marginBottom: 8 }}>{error}</div>}
 
               {modal.target === 'manufacturer' && (
                 <>
                   <div className="form-group">
-                    <label className="form-label">{t('admin.feed.name_ko')} *</label>
-                    <input className="form-input" value={mfrForm.name_ko} onChange={(e) => setMfrForm((f) => ({ ...f, name_ko: e.target.value }))} />
-                  </div>
-                  <div className="form-group">
-                    <label className="form-label">{t('admin.feed.type')}</label>
+                    <label className="form-label">{t('admin.feed.type')} *</label>
                     <div style={{ display: 'grid', gap: 6, maxHeight: 140, overflowY: 'auto', border: '1px solid var(--border)', borderRadius: 8, padding: 8 }}>
                       {types.map((row) => (
                         <label key={row.id} style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 12 }}>
@@ -433,12 +506,36 @@ export default function FeedPage() {
                     </div>
                   </div>
                   <div className="form-group">
-                    <label className="form-label">{t('admin.feed.country')}</label>
-                    <input className="form-input" value={mfrForm.country} onChange={(e) => setMfrForm((f) => ({ ...f, country: e.target.value }))} placeholder="US" />
+                    <label className="form-label">{t('admin.master.field_key')}</label>
+                    {modal.mode === 'create' ? (
+                      <input className="form-input font-mono" value={mfrForm.key} onChange={(e) => setMfrForm((f) => ({ ...f, key: e.target.value }))} placeholder={t('admin.master.ph_key')} />
+                    ) : (
+                      <input className="form-input font-mono" value={mfrForm.key} readOnly />
+                    )}
                   </div>
                   <div className="form-group">
                     <label className="form-label">{t('admin.master.field_sort')}</label>
                     <input className="form-input" type="number" value={mfrForm.sort_order} onChange={(e) => setMfrForm((f) => ({ ...f, sort_order: e.target.value }))} />
+                  </div>
+                  <div className="form-group">
+                    <label className="form-label">{t('admin.feed.country')}</label>
+                    <input className="form-input" value={mfrForm.country} onChange={(e) => setMfrForm((f) => ({ ...f, country: e.target.value }))} placeholder="US" />
+                  </div>
+                  <div style={{ borderTop: '1px solid var(--border)', paddingTop: 12, marginTop: 4 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
+                      <div style={{ fontSize: 13, fontWeight: 600 }}>{t('admin.master.btn_trans_auto')}</div>
+                      <button className="btn btn-secondary btn-sm" onClick={() => void autoTranslate(mfrTrans.ko, mfrTrans, setMfrTrans)} disabled={translating || !mfrTrans.ko}>
+                        {translating ? t('admin.master.loading_trans') : t('admin.master.btn_trans_auto')}
+                      </button>
+                    </div>
+                    {SUPPORTED_LANGS.map((langCode) => (
+                      <div key={langCode} className="form-group" style={{ marginBottom: 6, display: 'flex', alignItems: 'center', gap: 8 }}>
+                        <label style={{ fontSize: 12, width: 110, flexShrink: 0, color: langCode === 'ko' ? 'var(--text)' : 'var(--text-muted)' }}>
+                          {LANG_LABELS[langCode]}{langCode === 'ko' ? ' *' : ''}
+                        </label>
+                        <input className="form-input" style={{ fontSize: 13 }} value={mfrTrans[langCode] ?? ''} onChange={(e) => setMfrTrans((f) => ({ ...f, [langCode]: e.target.value }))} />
+                      </div>
+                    ))}
                   </div>
                 </>
               )}
