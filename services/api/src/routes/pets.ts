@@ -116,6 +116,22 @@ async function ensurePetItemRelationTable(env: Env, table: string, itemColumn: s
   ).run();
 }
 
+async function upsertSinglePetItemRelation(
+  env: Env,
+  table: string,
+  itemColumn: string,
+  petId: string,
+  itemId: string | null,
+): Promise<void> {
+  await ensurePetItemRelationTable(env, table, itemColumn);
+  await env.DB.prepare(`DELETE FROM ${table} WHERE pet_id = ?`).bind(petId).run();
+  if (!itemId) return;
+  await env.DB.prepare(
+    `INSERT INTO ${table} (id, pet_id, ${itemColumn}, created_at, updated_at)
+     VALUES (?, ?, ?, ?, ?)`
+  ).bind(newId(), petId, itemId, now(), now()).run();
+}
+
 async function replaceDiseaseSelections(
   env: Env,
   petId: string,
@@ -477,6 +493,8 @@ async function createPet(request: Request, env: Env, payload: JwtPayload): Promi
   if (hasGroomingCycleColumn) {
     insertColumns.push('grooming_cycle_id');
     insertValues.push(body.grooming_cycle_id ?? null);
+  } else {
+    await ensurePetItemRelationTable(env, 'pet_grooming_cycles', 'grooming_cycle_item_id');
   }
   if (hasColorIdsColumn) {
     insertColumns.push('color_ids');
@@ -513,6 +531,10 @@ async function createPet(request: Request, env: Env, payload: JwtPayload): Promi
   }
   if (!hasTemperamentIdsColumn) {
     await replaceRelationRows(env, id, 'pet_temperaments', 'id', 'temperament_item_id', parseIdArray(body.temperament_ids));
+  }
+  if (!hasGroomingCycleColumn) {
+    const groomingCycleId = typeof body.grooming_cycle_id === 'string' ? body.grooming_cycle_id.trim() || null : null;
+    await upsertSinglePetItemRelation(env, 'pet_grooming_cycles', 'grooming_cycle_item_id', id, groomingCycleId);
   }
 
   if (currentWeight !== null) {
@@ -679,6 +701,10 @@ async function updatePet(request: Request, env: Env, payload: JwtPayload, petId:
   }
   if (!hasTemperamentIdsColumn && Object.prototype.hasOwnProperty.call(body, 'temperament_ids')) {
     await replaceRelationRows(env, petId, 'pet_temperaments', 'id', 'temperament_item_id', parseIdArray(body.temperament_ids));
+  }
+  if (!hasGroomingCycleColumn && Object.prototype.hasOwnProperty.call(body, 'grooming_cycle_id')) {
+    const groomingCycleId = typeof body.grooming_cycle_id === 'string' ? body.grooming_cycle_id.trim() || null : null;
+    await upsertSinglePetItemRelation(env, 'pet_grooming_cycles', 'grooming_cycle_item_id', petId, groomingCycleId);
   }
 
   if (explicitWeight && normalizedWeight !== null) {
@@ -1452,6 +1478,7 @@ async function attachPetRelations(env: Env, pet: Record<string, unknown>) {
   const vaccinationIds = await selectRelationIds(env, petId, 'pet_vaccinations', 'vaccination_item_id');
   const colorIdsFallback = await selectRelationIds(env, petId, 'pet_colors', 'color_item_id');
   const temperamentIdsFallback = await selectRelationIds(env, petId, 'pet_temperaments', 'temperament_item_id');
+  const groomingCycleFallback = await selectRelationIds(env, petId, 'pet_grooming_cycles', 'grooming_cycle_item_id');
 
   const out: Record<string, unknown> = { ...pet };
   out.diseases = diseases;
@@ -1461,6 +1488,7 @@ async function attachPetRelations(env: Env, pet: Record<string, unknown>) {
   out.vaccination_ids = vaccinationIds.length > 0 ? vaccinationIds : parseJsonArrayString(pet.vaccination_ids);
   out.color_ids = colorIdsFallback.length > 0 ? colorIdsFallback : parseJsonArrayString(pet.color_ids);
   out.temperament_ids = temperamentIdsFallback.length > 0 ? temperamentIdsFallback : parseJsonArrayString(pet.temperament_ids);
+  out.grooming_cycle_id = groomingCycleFallback[0] || (pet.grooming_cycle_id as string | null) || null;
 
   if (!(await hasColumn(env, 'pets', 'medication_status_id'))) out.medication_status_id = null;
   if (!(await hasColumn(env, 'pets', 'living_style_id'))) out.living_style_id = null;

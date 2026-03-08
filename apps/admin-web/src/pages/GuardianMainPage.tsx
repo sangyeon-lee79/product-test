@@ -380,7 +380,6 @@ export default function GuardianMainPage() {
   const [optGender, setOptGender] = useState<Option[]>([]);
   const [optLifeStage, setOptLifeStage] = useState<Option[]>([]);
   const [optColor, setOptColor] = useState<Option[]>([]);
-  const [optAllergy, setOptAllergy] = useState<Option[]>([]);
   const [optDisease, setOptDisease] = useState<Option[]>([]);
   const [optDiseaseGroup, setOptDiseaseGroup] = useState<Option[]>([]);
   const [optDiseaseDevice, setOptDiseaseDevice] = useState<Option[]>([]);
@@ -519,15 +518,19 @@ export default function GuardianMainPage() {
 
   const petSummaryDetails = useMemo(() => {
     if (!selectedPet) return null;
+    const temperamentBase = summarizeOptions(optTemperament, selectedPet.temperament_ids);
+    const activityLabel = labelOf(optActivity, selectedPet.activity_level_id, t('common.none', '-'));
+    const temperamentText = `${temperamentBase.text} · ${activityLabel}`;
+    const temperamentTooltip = `${temperamentBase.tooltip || temperamentBase.text}\n${t('master.activity_level', 'Activity Level')}: ${activityLabel}`;
     return {
       diet: summarizeOptions(optDiet, selectedPet.diet_type_id ? [selectedPet.diet_type_id] : []),
       disease: summarizeOptions(optDisease, selectedPet.disease_history_ids),
       vaccination: summarizeOptions(optVaccination, selectedPet.vaccination_ids),
-      temperament: summarizeOptions(optTemperament, selectedPet.temperament_ids),
+      temperament: { text: temperamentText, tooltip: temperamentTooltip },
       color: summarizeOptions(optColor, selectedPet.color_ids),
       grooming: summarizeOptions(optGrooming, selectedPet.grooming_cycle_id ? [selectedPet.grooming_cycle_id] : []),
     };
-  }, [optColor, optDiet, optDisease, optGrooming, optTemperament, optVaccination, selectedPet]);
+  }, [optActivity, optColor, optDiet, optDisease, optGrooming, optTemperament, optVaccination, selectedPet, t]);
 
   async function loadAll(tab = feedTab, opts?: { silent?: boolean }) {
     const silent = Boolean(opts?.silent);
@@ -556,7 +559,6 @@ export default function GuardianMainPage() {
         genderRows,
         lifeStageRows,
         colorRows,
-        allergyRows,
         diseaseRows,
         diseaseGroupRows,
         diseaseDeviceRows,
@@ -582,7 +584,6 @@ export default function GuardianMainPage() {
         loadCategoryItems(CATEGORY_KEYS.pet_gender),
         loadCategoryItems(CATEGORY_KEYS.life_stage),
         loadCategoryItems(CATEGORY_KEYS.pet_color),
-        loadCategoryItems(CATEGORY_KEYS.allergy_type),
         loadCategoryItems(CATEGORY_KEYS.disease_type),
         loadCategoryItems(CATEGORY_KEYS.disease_group),
         loadCategoryItems(CATEGORY_KEYS.disease_device_type),
@@ -611,7 +612,6 @@ export default function GuardianMainPage() {
       setOptGender(toOption(genderRows));
       setOptLifeStage(toOption(lifeStageRows));
       setOptColor(toOption(colorRows));
-      setOptAllergy(toOption(allergyRows));
       setOptDisease(toOption(diseaseRows));
       setOptDiseaseGroup(toOption(diseaseGroupRows));
       setOptDiseaseDevice(toOption(diseaseDeviceRows));
@@ -2131,12 +2131,6 @@ export default function GuardianMainPage() {
                     {renderSelect(t('master.activity_level', 'Activity Level'), petForm.activity_level_id, optActivity, (v) => setPetForm((p) => ({ ...p, activity_level_id: v })))}
                   </div>
                   <div className="form-row col2">
-                    {renderDropdownRows(
-                      t('master.allergy_type', 'Allergy'),
-                      petForm.allergy_ids,
-                      optAllergy,
-                      (next) => setPetForm((p) => ({ ...p, allergy_ids: normalizeUniqueIds(next) })),
-                    )}
                     {renderDropdownRows(
                       t('master.symptom_type', 'Symptom'),
                       petForm.symptom_tag_ids,
