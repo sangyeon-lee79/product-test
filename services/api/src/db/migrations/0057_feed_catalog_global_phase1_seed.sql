@@ -11,13 +11,13 @@
 --    (legacy-compatible: key/is_active schema)
 -- ---------------------------------------------------------------------------
 INSERT OR IGNORE INTO master_categories (
-  id, key, sort_order, is_active, created_at, updated_at
+  id, code, sort_order, status, created_at, updated_at
 )
 VALUES
-  ('mc-diet-subtype', 'diet_subtype', 130, 1, datetime('now'), datetime('now')),
-  ('mc-diet-feed-type', 'diet_feed_type', 131, 1, datetime('now'), datetime('now'));
+  ('mc-diet-subtype', 'diet_subtype', 130, 'active', datetime('now'), datetime('now')),
+  ('mc-diet-feed-type', 'diet_feed_type', 131, 'active', datetime('now'), datetime('now'));
 
-WITH l1(id, key, sort_order) AS (
+WITH l1(id, code, sort_order) AS (
   VALUES
     ('mi-diet-dry-food', 'dry_food', 1),
     ('mi-diet-wet-food', 'wet_food', 2),
@@ -27,22 +27,22 @@ WITH l1(id, key, sort_order) AS (
     ('mi-diet-snack', 'snack', 7)
 )
 INSERT OR IGNORE INTO master_items (
-  id, category_id, key, parent_id, sort_order, is_active, metadata, created_at, updated_at
+  id, category_id, code, parent_item_id, sort_order, status, metadata, created_at, updated_at
 )
 SELECT
   l1.id,
   c.id,
-  l1.key,
+  l1.code,
   NULL,
   l1.sort_order,
-  1,
+  'active',
   '{}',
   datetime('now'),
   datetime('now')
 FROM l1
-JOIN master_categories c ON c.key = 'diet_type';
+JOIN master_categories c ON c.code = 'diet_type';
 
-WITH l2(id, parent_l1_key, key, sort_order) AS (
+WITH l2(id, parent_l1_code, code, sort_order) AS (
   VALUES
     ('mi-diet-sub-adult-dry-food', 'dry_food', 'adult_dry_food', 2),
     ('mi-diet-sub-canned-food', 'wet_food', 'canned_food', 20),
@@ -53,28 +53,28 @@ WITH l2(id, parent_l1_key, key, sort_order) AS (
     ('mi-diet-sub-training-snack', 'snack', 'training_snack', 61)
 )
 INSERT OR IGNORE INTO master_items (
-  id, category_id, key, parent_id, sort_order, is_active, metadata, created_at, updated_at
+  id, category_id, code, parent_item_id, sort_order, status, metadata, created_at, updated_at
 )
 SELECT
   l2.id,
   c2.id,
-  l2.key,
+  l2.code,
   p.id,
   l2.sort_order,
-  1,
+  'active',
   '{}',
   datetime('now'),
   datetime('now')
 FROM l2
-JOIN master_categories c2 ON c2.key = 'diet_subtype'
+JOIN master_categories c2 ON c2.code = 'diet_subtype'
 JOIN master_items p
-  ON p.key = l2.parent_l1_key
- AND p.category_id = (SELECT id FROM master_categories WHERE key = 'diet_type' LIMIT 1);
+  ON p.code = l2.parent_l1_code
+ AND p.category_id = (SELECT id FROM master_categories WHERE code = 'diet_type' LIMIT 1);
 
 -- ---------------------------------------------------------------------------
 -- A) Ensure required diet_feed_type L3 keys exist
 -- ---------------------------------------------------------------------------
-WITH l3(id, parent_l2_key, item_key, sort_order) AS (
+WITH l3(id, parent_l2_code, item_code, sort_order) AS (
   VALUES
     ('mi-diet-feed-dry-food-core', 'adult_dry_food', 'dry_food_core', 9001),
     ('mi-diet-feed-wet-food-core', 'canned_food', 'wet_food_core', 9002),
@@ -85,24 +85,24 @@ WITH l3(id, parent_l2_key, item_key, sort_order) AS (
     ('mi-diet-feed-snack-treat-core', 'training_snack', 'snack_treat_core', 9007)
 )
 INSERT OR IGNORE INTO master_items (
-  id, category_id, key, parent_id, sort_order, is_active, metadata, created_at, updated_at
+  id, category_id, code, parent_item_id, sort_order, status, metadata, created_at, updated_at
 )
 SELECT
   l3.id,
   c3.id,
-  l3.item_key,
+  l3.item_code,
   p.id,
   l3.sort_order,
-  1,
+  'active',
   '{}',
   datetime('now'),
   datetime('now')
 FROM l3
-JOIN master_categories c3 ON c3.key IN ('diet_feed_type', 'master.diet_feed_type')
+JOIN master_categories c3 ON c3.code IN ('diet_feed_type', 'master.diet_feed_type')
 JOIN master_items p
-  ON p.key = l3.parent_l2_key
+  ON p.code = l3.parent_l2_code
  AND p.category_id = (
-   SELECT id FROM master_categories WHERE key IN ('diet_subtype', 'master.diet_subtype') LIMIT 1
+   SELECT id FROM master_categories WHERE code IN ('diet_subtype', 'master.diet_subtype') LIMIT 1
  );
 
 WITH t(key, ko, en) AS (
