@@ -257,10 +257,10 @@ export async function handleFeedCatalog(request: Request, env: Env, url: URL): P
       }
       const rows = await env.DB.prepare(
         `SELECT m.*,
-                mi.code AS type_key,
+                ${itemKeyExpr} AS type_key,
                 tr_type.ko AS type_name_ko,
                 tr_type.en AS type_name_en,
-                COALESCE(NULLIF(TRIM(tr_type.${langCol}), ''), NULLIF(TRIM(tr_type.en), ''), NULLIF(TRIM(tr_type.ko), ''), mi.code) AS type_display_label,
+                COALESCE(NULLIF(TRIM(tr_type.${langCol}), ''), NULLIF(TRIM(tr_type.en), ''), NULLIF(TRIM(tr_type.ko), ''), ${itemKeyExpr}) AS type_display_label,
                 mfr.name_ko AS mfr_name_ko,
                 mfr.name_en AS mfr_name_en,
                 COALESCE(NULLIF(TRIM(tr_mfr.${langCol}), ''), NULLIF(TRIM(tr_mfr.en), ''), NULLIF(TRIM(tr_mfr.ko), ''), mfr.name_en, mfr.name_ko) AS mfr_display_label,
@@ -559,10 +559,10 @@ export async function handleFeedCatalog(request: Request, env: Env, url: URL): P
     const rows = await env.DB.prepare(
       `SELECT m.*,
               ${parentBrandIdsExpr} AS parent_brand_ids,
-              mi.code AS type_key,
+              ${itemKeyExpr} AS type_key,
               tr_type.ko AS type_name_ko,
               tr_type.en AS type_name_en,
-              COALESCE(NULLIF(TRIM(tr_type.${langCol}), ''), NULLIF(TRIM(tr_type.en), ''), NULLIF(TRIM(tr_type.ko), ''), mi.code) AS type_display_label,
+              COALESCE(NULLIF(TRIM(tr_type.${langCol}), ''), NULLIF(TRIM(tr_type.en), ''), NULLIF(TRIM(tr_type.ko), ''), ${itemKeyExpr}) AS type_display_label,
               mfr.name_ko AS mfr_name_ko,
               mfr.name_en AS mfr_name_en,
               COALESCE(NULLIF(TRIM(tr_mfr.${langCol}), ''), NULLIF(TRIM(tr_mfr.en), ''), NULLIF(TRIM(tr_mfr.ko), ''), mfr.name_en, mfr.name_ko) AS mfr_display_label,
