@@ -556,37 +556,62 @@ export async function handleFeedCatalog(request: Request, env: Env, url: URL): P
         binds.push(brandId);
       }
     }
-    const rows = await env.DB.prepare(
-      `SELECT m.*,
-              ${parentBrandIdsExpr} AS parent_brand_ids,
-              ${itemKeyExpr} AS type_key,
-              tr_type.ko AS type_name_ko,
-              tr_type.en AS type_name_en,
-              COALESCE(NULLIF(TRIM(tr_type.${langCol}), ''), NULLIF(TRIM(tr_type.en), ''), NULLIF(TRIM(tr_type.ko), ''), ${itemKeyExpr}) AS type_display_label,
-              mfr.name_ko AS mfr_name_ko,
-              mfr.name_en AS mfr_name_en,
-              COALESCE(NULLIF(TRIM(tr_mfr.${langCol}), ''), NULLIF(TRIM(tr_mfr.en), ''), NULLIF(TRIM(tr_mfr.ko), ''), mfr.name_en, mfr.name_ko) AS mfr_display_label,
-              b.name_ko AS brand_name_ko,
-              b.name_en AS brand_name_en,
-              COALESCE(NULLIF(TRIM(tr_brand.${langCol}), ''), NULLIF(TRIM(tr_brand.en), ''), NULLIF(TRIM(tr_brand.ko), ''), b.name_en, b.name_ko) AS brand_display_label,
-              COALESCE(NULLIF(TRIM(tr_model.${langCol}), ''), NULLIF(TRIM(tr_model.en), ''), NULLIF(TRIM(tr_model.ko), ''), m.model_name) AS model_display_label
-       FROM feed_models m
-       LEFT JOIN master_items mi ON mi.id = m.feed_type_item_id
-       LEFT JOIN master_categories mc ON mc.id = mi.category_id
-       LEFT JOIN i18n_translations tr_type
-         ON tr_type.key = CASE
-           WHEN ${catKeyExpr} LIKE 'master.%' THEN (${catKeyExpr} || '.' || ${itemKeyExpr})
-           ELSE ('master.' || ${catKeyExpr} || '.' || ${itemKeyExpr})
-         END
-       LEFT JOIN feed_manufacturers mfr ON mfr.id = m.manufacturer_id
-       LEFT JOIN feed_brands b ON b.id = m.brand_id
-       LEFT JOIN i18n_translations tr_mfr ON tr_mfr.key = mfr.name_key
-       LEFT JOIN i18n_translations tr_brand ON tr_brand.key = b.name_key
-       LEFT JOIN i18n_translations tr_model ON tr_model.key = m.name_key
-       WHERE 1=1 ${where}
-       ORDER BY m.model_name`
-    ).bind(...binds).all();
-    return ok(rows.results);
+    try {
+      const rows = await env.DB.prepare(
+        `SELECT m.*,
+                ${parentBrandIdsExpr} AS parent_brand_ids,
+                ${itemKeyExpr} AS type_key,
+                tr_type.ko AS type_name_ko,
+                tr_type.en AS type_name_en,
+                COALESCE(NULLIF(TRIM(tr_type.${langCol}), ''), NULLIF(TRIM(tr_type.en), ''), NULLIF(TRIM(tr_type.ko), ''), ${itemKeyExpr}) AS type_display_label,
+                mfr.name_ko AS mfr_name_ko,
+                mfr.name_en AS mfr_name_en,
+                COALESCE(NULLIF(TRIM(tr_mfr.${langCol}), ''), NULLIF(TRIM(tr_mfr.en), ''), NULLIF(TRIM(tr_mfr.ko), ''), mfr.name_en, mfr.name_ko) AS mfr_display_label,
+                b.name_ko AS brand_name_ko,
+                b.name_en AS brand_name_en,
+                COALESCE(NULLIF(TRIM(tr_brand.${langCol}), ''), NULLIF(TRIM(tr_brand.en), ''), NULLIF(TRIM(tr_brand.ko), ''), b.name_en, b.name_ko) AS brand_display_label,
+                COALESCE(NULLIF(TRIM(tr_model.${langCol}), ''), NULLIF(TRIM(tr_model.en), ''), NULLIF(TRIM(tr_model.ko), ''), m.model_name) AS model_display_label
+         FROM feed_models m
+         LEFT JOIN master_items mi ON mi.id = m.feed_type_item_id
+         LEFT JOIN master_categories mc ON mc.id = mi.category_id
+         LEFT JOIN i18n_translations tr_type
+           ON tr_type.key = CASE
+             WHEN ${catKeyExpr} LIKE 'master.%' THEN (${catKeyExpr} || '.' || ${itemKeyExpr})
+             ELSE ('master.' || ${catKeyExpr} || '.' || ${itemKeyExpr})
+           END
+         LEFT JOIN feed_manufacturers mfr ON mfr.id = m.manufacturer_id
+         LEFT JOIN feed_brands b ON b.id = m.brand_id
+         LEFT JOIN i18n_translations tr_mfr ON tr_mfr.key = mfr.name_key
+         LEFT JOIN i18n_translations tr_brand ON tr_brand.key = b.name_key
+         LEFT JOIN i18n_translations tr_model ON tr_model.key = m.name_key
+         WHERE 1=1 ${where}
+         ORDER BY m.model_name`
+      ).bind(...binds).all();
+      return ok(rows.results);
+    } catch (e) {
+      console.error('[feed-catalog admin models] primary query failed, fallback query used', e);
+      const rows = await env.DB.prepare(
+        `SELECT m.*,
+                NULL AS parent_brand_ids,
+                NULL AS type_key,
+                NULL AS type_name_ko,
+                NULL AS type_name_en,
+                NULL AS type_display_label,
+                mfr.name_ko AS mfr_name_ko,
+                mfr.name_en AS mfr_name_en,
+                COALESCE(mfr.name_en, mfr.name_ko) AS mfr_display_label,
+                b.name_ko AS brand_name_ko,
+                b.name_en AS brand_name_en,
+                COALESCE(b.name_en, b.name_ko) AS brand_display_label,
+                m.model_name AS model_display_label
+         FROM feed_models m
+         LEFT JOIN feed_manufacturers mfr ON mfr.id = m.manufacturer_id
+         LEFT JOIN feed_brands b ON b.id = m.brand_id
+         WHERE 1=1 ${where}
+         ORDER BY m.model_name`
+      ).bind(...binds).all();
+      return ok(rows.results);
+    }
   }
 
   if (path === '/api/v1/admin/feed-catalog/models' && method === 'POST') {
