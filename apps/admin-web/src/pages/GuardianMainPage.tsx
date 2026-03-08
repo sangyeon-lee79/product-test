@@ -13,14 +13,14 @@ type PetWizardStep = 1 | 2 | 3 | 4 | 5 | 6 | 7;
 type MeasurementWizardStep = 1 | 2;
 
 type Option = { id: string; key: string; label: string; i18nKey?: string; parentId?: string | null; metadata?: Record<string, unknown> };
-const PET_WIZARD_STEPS: Array<{ step: PetWizardStep; label: string }> = [
-  { step: 1, label: '기본정보' },
-  { step: 2, label: '펫종류' },
-  { step: 3, label: '성별' },
-  { step: 4, label: '예방접종' },
-  { step: 5, label: '질병군' },
-  { step: 6, label: '성격기질' },
-  { step: 7, label: '털길이' },
+const PET_WIZARD_STEPS: Array<{ step: PetWizardStep; labelKey: string; fallback: string }> = [
+  { step: 1, labelKey: 'guardian.pet_wizard.basic_info', fallback: 'Basic Info' },
+  { step: 2, labelKey: 'master.pet_type', fallback: 'Pet Type' },
+  { step: 3, labelKey: 'master.pet_gender', fallback: 'Gender' },
+  { step: 4, labelKey: 'master.vaccination_type', fallback: 'Vaccination' },
+  { step: 5, labelKey: 'master.disease_group', fallback: 'Disease Group' },
+  { step: 6, labelKey: 'master.temperament_type', fallback: 'Temperament' },
+  { step: 7, labelKey: 'master.coat_length', fallback: 'Coat Length' },
 ];
 
 type PetForm = {
@@ -215,12 +215,6 @@ function formatDate(value?: string | null, fallback = '-'): string {
   }
 }
 
-function labelOf(options: Option[], id: string | null | undefined, fallback: string): string {
-  if (!id) return fallback;
-  const matched = options.find((o) => o.id === id || o.key === id);
-  return matched?.label || fallback;
-}
-
 function normalizeSingleStableId(value: string | null | undefined, options: Option[], allowUnknownWhenOptionsMissing = true): string {
   const raw = String(value || '').trim();
   if (!raw) return '';
@@ -327,7 +321,7 @@ function uiErrorMessage(error: unknown, fallback: string): string {
   if (error instanceof Error) {
     const msg = error.message || '';
     if (msg.includes('Failed to fetch') || msg.includes('NetworkError')) {
-      return '데이터를 불러오지 못했습니다. 잠시 후 다시 시도해주세요.';
+      return 'Unable to load data. Please try again shortly.';
     }
     return msg;
   }
@@ -447,6 +441,23 @@ export default function GuardianMainPage() {
   const [optTemperament, setOptTemperament] = useState<Option[]>([]);
   const [optCoatLength, setOptCoatLength] = useState<Option[]>([]);
   const [optGrooming, setOptGrooming] = useState<Option[]>([]);
+
+  const optionLabel = (option: Option | undefined, fallback: string): string => {
+    if (!option) return fallback;
+    if (option.i18nKey) {
+      const translated = t(option.i18nKey, '').trim();
+      if (translated) return translated;
+    }
+    const display = (option.label || '').trim();
+    if (display) return display;
+    return fallback;
+  };
+
+  const labelOf = (options: Option[], id: string | null | undefined, fallback: string): string => {
+    if (!id) return fallback;
+    const matched = options.find((o) => o.id === id || o.key === id);
+    return optionLabel(matched, fallback);
+  };
 
   function currentUserIdFromToken(): string | null {
     const token = localStorage.getItem('access_token');
@@ -680,7 +691,7 @@ export default function GuardianMainPage() {
       setOptGrooming(toOption(groomingRows, lang, t, CATEGORY_KEYS.grooming_cycle[0]));
 
       if (!silent && failedApis.length > 0) {
-        setError('일부 데이터를 불러오지 못했습니다. 잠시 후 다시 시도해주세요.');
+        setError(t('guardian.alert.partial_load_failed', 'Some data could not be loaded. Please try again shortly.'));
       }
     } catch (e) {
       if (!silent) setError(uiErrorMessage(e, t('guardian.alert.load_failed', '데이터를 불러오지 못했습니다.')));
@@ -734,7 +745,7 @@ export default function GuardianMainPage() {
       setWeightLogs(res.logs || []);
       setWeightSummary(res.summary || null);
     } catch (e) {
-      setError(uiErrorMessage(e, '몸무게 기록을 불러오지 못했습니다.'));
+      setError(uiErrorMessage(e, t('guardian.health.weight_log_load_failed', 'Failed to load weight logs.')));
       setWeightLogs([]);
       setWeightSummary(null);
     }
@@ -749,7 +760,7 @@ export default function GuardianMainPage() {
         setSelectedMeasurementItemId(String(res.logs[0].measurement_item_id || ''));
       }
     } catch (e) {
-      setError(uiErrorMessage(e, '질병 수치 기록을 불러오지 못했습니다.'));
+      setError(uiErrorMessage(e, t('guardian.health.measurement_log_load_failed', 'Failed to load health measurement logs.')));
       setMeasurementLogs([]);
       setMeasurementSummary(null);
     }
@@ -771,7 +782,7 @@ export default function GuardianMainPage() {
     if (!selectedPet?.id) return;
     const value = Number(weightForm.value);
     if (!Number.isFinite(value) || value <= 0) {
-      setError('몸무게를 올바르게 입력해 주세요.');
+      setError(t('guardian.health.weight_invalid', 'Please enter a valid weight.'));
       return;
     }
     try {
@@ -786,19 +797,19 @@ export default function GuardianMainPage() {
       await loadWeightLogs(selectedPet.id, weightRange);
       await loadAll(feedTab);
     } catch (e) {
-      setError(uiErrorMessage(e, '몸무게 기록 추가에 실패했습니다.'));
+      setError(uiErrorMessage(e, t('guardian.health.weight_create_failed', 'Failed to add weight log.')));
     }
   }
 
   async function removeWeightLog(logId: string) {
     if (!selectedPet?.id) return;
-    if (!confirm('이 몸무게 기록을 삭제할까요?')) return;
+    if (!confirm(t('guardian.health.weight_delete_confirm', 'Delete this weight log?'))) return;
     try {
       await api.pets.weightLogs.remove(selectedPet.id, logId);
       await loadWeightLogs(selectedPet.id, weightRange);
       await loadAll(feedTab);
     } catch (e) {
-      setError(uiErrorMessage(e, '몸무게 기록 삭제에 실패했습니다.'));
+      setError(uiErrorMessage(e, t('guardian.health.weight_delete_failed', 'Failed to delete weight log.')));
     }
   }
 
@@ -881,7 +892,7 @@ export default function GuardianMainPage() {
         setDeviceManufacturers(manufacturers);
         setMeasurementUnits(units);
       } catch (e) {
-        setError(uiErrorMessage(e, '장치/단위 데이터를 불러오지 못했습니다.'));
+        setError(uiErrorMessage(e, t('guardian.health.device_unit_load_failed', 'Failed to load device/unit data.')));
       }
     };
     run();
@@ -898,7 +909,7 @@ export default function GuardianMainPage() {
         const rows = await api.devices.public.brands(measurementForm.manufacturer_id);
         setDeviceBrands(rows);
       } catch (e) {
-        setError(uiErrorMessage(e, '브랜드 데이터를 불러오지 못했습니다.'));
+        setError(uiErrorMessage(e, t('guardian.health.brand_load_failed', 'Failed to load brand data.')));
       }
     };
     run();
@@ -927,7 +938,7 @@ export default function GuardianMainPage() {
         });
         setDeviceModels(rows);
       } catch (e) {
-        setError(uiErrorMessage(e, '모델 데이터를 불러오지 못했습니다.'));
+        setError(uiErrorMessage(e, t('guardian.health.model_load_failed', 'Failed to load model data.')));
       }
     };
     run();
@@ -963,23 +974,23 @@ export default function GuardianMainPage() {
     const stableUnitId = normalizeSingleStableId(measurementForm.unit_item_id, measurementUnitOptions, false);
     const value = Number(measurementForm.value);
     if (!stableDiseaseId) {
-      setError('질병을 선택해 주세요.');
+      setError(t('guardian.health.disease_required', 'Please select a disease.'));
       return;
     }
     if (!stableDeviceTypeId) {
-      setError('장치 유형을 선택해 주세요.');
+      setError(t('guardian.health.device_type_required', 'Please select a device type.'));
       return;
     }
     if (!stableMeasurementItemId) {
-      setError('측정항목을 선택해 주세요.');
+      setError(t('guardian.health.measurement_item_required', 'Please select a measurement item.'));
       return;
     }
     if (!measurementForm.measured_at) {
-      setError('측정일을 입력해 주세요.');
+      setError(t('guardian.health.measured_at_required', 'Please enter measured date/time.'));
       return;
     }
     if (!Number.isFinite(value)) {
-      setError('측정값을 올바르게 입력해 주세요.');
+      setError(t('guardian.health.measurement_value_invalid', 'Please enter a valid measurement value.'));
       return;
     }
     try {
@@ -1000,7 +1011,7 @@ export default function GuardianMainPage() {
       await loadMeasurementLogs(selectedPet.id, weightRange);
       await loadAll(feedTab);
     } catch (e) {
-      setError(uiErrorMessage(e, '질병 수치 기록 추가에 실패했습니다.'));
+      setError(uiErrorMessage(e, t('guardian.health.measurement_create_failed', 'Failed to add health measurement log.')));
     }
   }
 
@@ -1013,23 +1024,23 @@ export default function GuardianMainPage() {
     const stableUnitId = normalizeSingleStableId(measurementForm.unit_item_id, measurementUnitOptions, false);
     const value = Number(measurementForm.value);
     if (!stableDiseaseId) {
-      setError('질병을 선택해 주세요.');
+      setError(t('guardian.health.disease_required', 'Please select a disease.'));
       return;
     }
     if (!stableDeviceTypeId) {
-      setError('장치 유형을 선택해 주세요.');
+      setError(t('guardian.health.device_type_required', 'Please select a device type.'));
       return;
     }
     if (!stableMeasurementItemId) {
-      setError('측정항목을 선택해 주세요.');
+      setError(t('guardian.health.measurement_item_required', 'Please select a measurement item.'));
       return;
     }
     if (!measurementForm.measured_at) {
-      setError('측정일을 입력해 주세요.');
+      setError(t('guardian.health.measured_at_required', 'Please enter measured date/time.'));
       return;
     }
     if (!Number.isFinite(value)) {
-      setError('측정값을 올바르게 입력해 주세요.');
+      setError(t('guardian.health.measurement_value_invalid', 'Please enter a valid measurement value.'));
       return;
     }
     try {
@@ -1050,7 +1061,7 @@ export default function GuardianMainPage() {
       resetMeasurementForm();
       await loadMeasurementLogs(selectedPet.id, weightRange);
     } catch (e) {
-      setError(uiErrorMessage(e, '질병 수치 기록 수정에 실패했습니다.'));
+      setError(uiErrorMessage(e, t('guardian.health.measurement_update_failed', 'Failed to update health measurement log.')));
     }
   }
 
@@ -1090,13 +1101,13 @@ export default function GuardianMainPage() {
 
   async function removeHealthMeasurementLog(logId: string) {
     if (!selectedPet?.id) return;
-    if (!confirm('이 질병 수치 기록을 삭제할까요?')) return;
+    if (!confirm(t('guardian.health.measurement_delete_confirm', 'Delete this health measurement log?'))) return;
     try {
       await api.pets.healthMeasurements.remove(selectedPet.id, logId);
       await loadMeasurementLogs(selectedPet.id, weightRange);
       await loadAll(feedTab);
     } catch (e) {
-      setError(uiErrorMessage(e, '질병 수치 기록 삭제에 실패했습니다.'));
+      setError(uiErrorMessage(e, t('guardian.health.measurement_delete_failed', 'Failed to delete health measurement log.')));
     }
   }
 
@@ -1229,7 +1240,7 @@ export default function GuardianMainPage() {
       } else {
         const targetPetId = editingPetId || activePet?.id || selectedPet?.id || '';
         if (!targetPetId) {
-          setError('수정 대상 펫을 찾을 수 없습니다. 다시 시도해 주세요.');
+          setError(t('guardian.alert.pet_edit_target_not_found', 'Cannot find target pet for edit. Please try again.'));
           return;
         }
         const res = await api.pets.update(targetPetId, payload);
@@ -1302,8 +1313,8 @@ export default function GuardianMainPage() {
   }
 
   function validateFeedImage(file: File): string | null {
-    if (!ALLOWED_UPLOAD_TYPES.has(file.type.toLowerCase())) return 'JPG/PNG/WEBP 파일만 업로드할 수 있습니다.';
-    if (file.size > MAX_UPLOAD_SIZE) return '파일 크기는 10MB 이하여야 합니다.';
+    if (!ALLOWED_UPLOAD_TYPES.has(file.type.toLowerCase())) return t('guardian.feed.upload_type_invalid', 'Only JPG/PNG/WEBP files are allowed.');
+    if (file.size > MAX_UPLOAD_SIZE) return t('guardian.feed.upload_size_limit', 'File size must be 10MB or less.');
     return null;
   }
 
@@ -1398,10 +1409,10 @@ export default function GuardianMainPage() {
     } catch (e) {
       const raw = e instanceof Error ? e.message : '';
       let message = uiErrorMessage(e, t('guardian.alert.feed_create_failed', '피드 등록에 실패했습니다.'));
-      if (/10MB|file size|max/i.test(raw)) message = '파일 크기가 너무 큽니다.';
-      else if (/JPG|JPEG|PNG|WEBP|type/i.test(raw)) message = '지원하지 않는 파일 형식입니다.';
-      else if (/Storage not configured|no_r2|storage/i.test(raw)) message = '저장소 연결에 실패했습니다.';
-      else if (/upload/i.test(raw)) message = '업로드 중 오류가 발생했습니다.';
+      if (/10MB|file size|max/i.test(raw)) message = t('guardian.feed.upload_size_error', 'File size is too large.');
+      else if (/JPG|JPEG|PNG|WEBP|type/i.test(raw)) message = t('guardian.feed.upload_type_error', 'Unsupported file type.');
+      else if (/Storage not configured|no_r2|storage/i.test(raw)) message = t('guardian.feed.upload_storage_error', 'Storage connection failed.');
+      else if (/upload/i.test(raw)) message = t('guardian.feed.upload_failed', 'Upload failed.');
       setFeedUploadError(message);
       setError(message);
     } finally {
@@ -1410,12 +1421,12 @@ export default function GuardianMainPage() {
   }
 
   async function removeFeedPost(feedId: string) {
-    if (!confirm('정말 이 게시글을 삭제하시겠습니까?')) return;
+    if (!confirm(t('guardian.feed.delete_confirm', 'Delete this post?'))) return;
     try {
       await api.feeds.remove(feedId);
       await loadAll(feedTab);
     } catch (e) {
-      setError(uiErrorMessage(e, '게시글 삭제에 실패했습니다.'));
+      setError(uiErrorMessage(e, t('guardian.feed.delete_failed', 'Failed to delete post.')));
     }
   }
 
@@ -1425,7 +1436,7 @@ export default function GuardianMainPage() {
         <label className="form-label">{label}{required ? ' *' : ''}</label>
         <select className="form-select" value={value} onChange={(e) => onChange(e.target.value)}>
           <option value="">{t('common.select', 'Select')}</option>
-          {options.map((o) => <option key={o.id} value={o.id}>{o.label}</option>)}
+          {options.map((o) => <option key={o.id} value={o.id}>{optionLabel(o, t('common.none', '-'))}</option>)}
         </select>
       </div>
     );
@@ -1465,7 +1476,7 @@ export default function GuardianMainPage() {
                   }}
                 >
                   <option value="">{t('common.select', 'Select')}</option>
-                  {rowOptions.map((o) => <option key={o.id} value={o.id}>{o.label}</option>)}
+                  {rowOptions.map((o) => <option key={o.id} value={o.id}>{optionLabel(o, t('common.none', '-'))}</option>)}
                 </select>
                 <button
                   type="button"
@@ -1541,7 +1552,7 @@ export default function GuardianMainPage() {
                   }}
                 >
                   <option value="">{t('common.select', 'Select')}</option>
-                  {optDiseaseGroup.map((o) => <option key={o.id} value={o.id}>{o.label}</option>)}
+                  {optDiseaseGroup.map((o) => <option key={o.id} value={o.id}>{optionLabel(o, t('common.none', '-'))}</option>)}
                 </select>
                 <select
                   className="form-select"
@@ -1553,7 +1564,7 @@ export default function GuardianMainPage() {
                   }}
                 >
                   <option value="">{t('common.select', 'Select')}</option>
-                  {diseaseOptions.map((o) => <option key={o.id} value={o.id}>{o.label}</option>)}
+                  {diseaseOptions.map((o) => <option key={o.id} value={o.id}>{optionLabel(o, t('common.none', '-'))}</option>)}
                 </select>
                 <button
                   type="button"
@@ -1601,7 +1612,7 @@ export default function GuardianMainPage() {
 
   function renderCombinedHealthChart(weightRows: PetWeightLog[], measurementRows: PetHealthMeasurementLog[]) {
     if (!weightRows.length && !measurementRows.length) {
-      return <div className="weight-chart-empty text-sm text-muted">표시할 건강 기록이 없습니다.</div>;
+      return <div className="weight-chart-empty text-sm text-muted">{t('guardian.health.chart_empty', 'No health records to display.')}</div>;
     }
     const width = 720;
     const height = 260;
@@ -1614,7 +1625,7 @@ export default function GuardianMainPage() {
       ...weightRows.map((row) => new Date(row.measured_at).getTime()),
       ...measurementRows.map((row) => new Date(row.measured_at).getTime()),
     ].filter((v) => Number.isFinite(v));
-    if (!allTimes.length) return <div className="weight-chart-empty text-sm text-muted">표시할 건강 기록이 없습니다.</div>;
+    if (!allTimes.length) return <div className="weight-chart-empty text-sm text-muted">{t('guardian.health.chart_empty', 'No health records to display.')}</div>;
     const minT = Math.min(...allTimes);
     const maxT = Math.max(...allTimes);
     const tSpan = Math.max(1, maxT - minT);
@@ -2251,17 +2262,20 @@ export default function GuardianMainPage() {
             </div>
             <div className="modal-footer">
               <div style={{ display: 'flex', gap: 6, marginRight: 'auto', flexWrap: 'wrap' }}>
-                {PET_WIZARD_STEPS.map(({ step, label }) => (
-                  <button
-                    key={step}
-                    type="button"
-                    className={`btn ${petWizardStep === step ? 'btn-primary' : 'btn-secondary'}`}
-                    onClick={() => gotoPetStep(step)}
-                    title={label}
-                  >
-                    {step}. {label}
-                  </button>
-                ))}
+                {PET_WIZARD_STEPS.map(({ step, labelKey, fallback }) => {
+                  const label = t(labelKey, fallback);
+                  return (
+                    <button
+                      key={step}
+                      type="button"
+                      className={`btn ${petWizardStep === step ? 'btn-primary' : 'btn-secondary'}`}
+                      onClick={() => gotoPetStep(step)}
+                      title={label}
+                    >
+                      {step}. {label}
+                    </button>
+                  );
+                })}
               </div>
               <button className="btn btn-secondary" onClick={closePetModal}>{t('common.cancel', 'Cancel')}</button>
               <button className="btn btn-secondary" onClick={gotoPrevPetStep} disabled={petWizardStep === 1}>
@@ -2282,12 +2296,12 @@ export default function GuardianMainPage() {
         <div className="modal-overlay">
           <div className="modal">
             <div className="modal-header">
-              <h3 className="modal-title">몸무게 추가</h3>
+              <h3 className="modal-title">{t('guardian.health.weight_modal.add_title', 'Add Weight')}</h3>
               <button className="modal-close" onClick={() => setWeightModalOpen(false)}>&times;</button>
             </div>
             <div className="modal-body">
               <div className="form-group">
-                <label className="form-label">몸무게</label>
+                <label className="form-label">{t('guardian.health.weight_modal.weight', 'Weight')}</label>
                 <input
                   className="form-input"
                   type="number"
@@ -2297,7 +2311,7 @@ export default function GuardianMainPage() {
                 />
               </div>
               <div className="form-group">
-                <label className="form-label">측정일</label>
+                <label className="form-label">{t('guardian.health.weight_modal.measured_at', 'Measured At')}</label>
                 <input
                   className="form-input"
                   type="datetime-local"
@@ -2306,7 +2320,7 @@ export default function GuardianMainPage() {
                 />
               </div>
               <div className="form-group">
-                <label className="form-label">메모</label>
+                <label className="form-label">{t('guardian.health.weight_modal.memo', 'Memo')}</label>
                 <textarea
                   className="form-textarea"
                   value={weightForm.notes}

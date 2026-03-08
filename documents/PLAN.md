@@ -41,6 +41,24 @@ Your pet's life portfolio
 검증:
 - [x] `apps/admin-web` 빌드 통과 (`npm --prefix apps/admin-web run build`)
 
+## 0.6 Frontend i18n 전체 정리 + Master Dropdown Locale 통일 (2026-03-08)
+
+적용 범위:
+- `apps/admin-web/src/pages/GuardianMainPage.tsx`
+- `apps/guardian-web/src/App.tsx`
+
+- [x] Pet/Health/Profile/Wizard/summary/badge/tag 렌더 경로에서 master label 직접 출력 제거
+- [x] Dropdown option 표시값 locale 우선 적용 (`display_label -> locale -> ko -> en`)
+- [x] Master API 조회 시 `lang` 전달 경로 통일 (`/api/v1/master/items?...&lang={locale}`)
+- [x] 저장값은 stable id 유지, 화면 표시는 locale translation 재해석으로 통일
+- [x] Guardian Web locale 상태 도입 및 refresh 이후 locale 유지(`localStorage: guardian_locale`)
+- [x] Wizard 하단 단계 라벨 하드코딩 제거(i18n key 기반)
+- [x] Health/Feed 주요 오류/확인 메시지 하드코딩 제거(i18n key 기반 fallback)
+
+검증:
+- [x] `npm --prefix apps/admin-web run build`
+- [x] `npm --prefix apps/guardian-web run build` (Node 20.19+ 권장 경고 존재, 빌드 성공)
+
 ---
 
 ## 0.2 통합 개발 반영 내역 (2026-03-07)

@@ -39,6 +39,26 @@ Your pet's life portfolio
   - locale 변경 시 master 옵션 재조회 (`loadAll(..., { silent: true })`)
   - 저장 직후에도 동일 로직으로 재조회하여 locale 라벨 일관성 유지
 
+### 0.2 Locale-aware Master Rendering 구현 확장 (2026-03-08)
+
+대상 파일:
+- `apps/admin-web/src/pages/GuardianMainPage.tsx`
+- `apps/guardian-web/src/App.tsx`
+
+세부 구현:
+- Master option label 해석 함수 통일:
+  - 우선순위: `display_label` -> `item[locale]` -> `ko` -> `en`
+  - raw `label_ko`/`name` 직접 출력 금지
+- API 호출 규칙:
+  - master items 조회에 `lang` 파라미터 필수 전달
+  - endpoint: `GET /api/v1/master/items?category_key=...&lang=...`
+- 상태/저장 규칙:
+  - form state는 `master_item_id` 중심으로 유지
+  - legacy key 입력은 저장 전 id로 정규화 후 전송
+- locale 유지:
+  - Guardian Web `guardian_locale` 로컬 저장소 유지
+  - profile language 변경 시 locale 즉시 반영 + 재조회
+
 ---
 
 ## 1. 기술 스택

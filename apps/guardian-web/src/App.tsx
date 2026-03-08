@@ -5,12 +5,44 @@ type ApiOk<T> = { success: true; data: T };
 type ApiErr = { success: false; error: string };
 type ApiResp<T> = ApiOk<T> | ApiErr;
 
-type Country = { id: string; code: string; ko_name?: string | null };
+const SUPPORTED_LANGS = ['ko','en','ja','zh_cn','zh_tw','es','fr','de','pt','vi','th','id_lang','ar'] as const;
+type Lang = typeof SUPPORTED_LANGS[number];
+type Country = {
+  id: string;
+  code: string;
+  ko_name?: string | null;
+  ko?: string | null;
+  en?: string | null;
+  ja?: string | null;
+  zh_cn?: string | null;
+  zh_tw?: string | null;
+  es?: string | null;
+  fr?: string | null;
+  de?: string | null;
+  pt?: string | null;
+  vi?: string | null;
+  th?: string | null;
+  id_lang?: string | null;
+  ar?: string | null;
+};
 type MasterItem = {
   id: string;
   key: string;
+  display_label?: string | null;
   ko_name?: string | null;
+  ko?: string | null;
   en?: string | null;
+  ja?: string | null;
+  zh_cn?: string | null;
+  zh_tw?: string | null;
+  es?: string | null;
+  fr?: string | null;
+  de?: string | null;
+  pt?: string | null;
+  vi?: string | null;
+  th?: string | null;
+  id_lang?: string | null;
+  ar?: string | null;
   metadata?: string;
 };
 
@@ -235,6 +267,7 @@ function getApiBase() {
 }
 
 const API_BASE = getApiBase();
+const LOCALE_STORAGE_KEY = 'guardian_locale';
 
 async function api<T>(path: string, init: RequestInit = {}, token?: string): Promise<T> {
   const headers: Record<string, string> = {
@@ -268,8 +301,34 @@ async function api<T>(path: string, init: RequestInit = {}, token?: string): Pro
   return json.data;
 }
 
-function itemLabel(item: MasterItem): string {
-  return item.ko_name || item.en || item.key;
+function normalizeLang(value: string | null | undefined): Lang {
+  const raw = String(value || '').toLowerCase().replace('-', '_');
+  if ((SUPPORTED_LANGS as readonly string[]).includes(raw)) return raw as Lang;
+  if (raw.startsWith('id')) return 'id_lang';
+  const short = raw.split('_')[0];
+  if ((SUPPORTED_LANGS as readonly string[]).includes(short)) return short as Lang;
+  return 'ko';
+}
+
+function itemLabel(item: MasterItem | undefined, lang: Lang): string {
+  if (!item) return '-';
+  const display = (item.display_label || '').trim();
+  if (display) return display;
+  const localized = item[lang];
+  if (typeof localized === 'string' && localized.trim()) return localized.trim();
+  const ko = item.ko_name || item.ko;
+  if (ko && ko.trim()) return ko.trim();
+  if (typeof item.en === 'string' && item.en.trim()) return item.en.trim();
+  return '-';
+}
+
+function countryLabel(country: Country, lang: Lang): string {
+  const localized = country[lang];
+  if (typeof localized === 'string' && localized.trim()) return localized.trim();
+  const ko = country.ko_name || country.ko;
+  if (ko && ko.trim()) return ko.trim();
+  if (typeof country.en === 'string' && country.en.trim()) return country.en.trim();
+  return country.code;
 }
 
 function parseBreedTypes(item: MasterItem): string[] {
@@ -289,6 +348,7 @@ function toArray(value: unknown): string[] {
 }
 
 export default function App() {
+  const [activeLocale, setActiveLocale] = useState<Lang>(() => normalizeLang(localStorage.getItem(LOCALE_STORAGE_KEY) || 'ko'));
   const [token, setToken] = useState(localStorage.getItem('guardian_access_token') || '');
   const [email, setEmail] = useState('guardian@petlife.com');
   const [message, setMessage] = useState('');
@@ -389,7 +449,7 @@ export default function App() {
     try {
       const categoryList = Object.values(CATEGORY_KEYS);
       const masterPromises = categoryList.map((key) =>
-        api<MasterItem[]>(`/api/v1/master/items?category_key=${encodeURIComponent(key)}`)
+        api<MasterItem[]>(`/api/v1/master/items?category_key=${encodeURIComponent(key)}&lang=${encodeURIComponent(activeLocale)}`)
           .then((rows) => [key, rows] as const)
           .catch(() => [key, []] as const),
       );
@@ -405,6 +465,11 @@ export default function App() {
       const me = await api<{ profile: Profile | null }>('/api/v1/guardians/me', {}, token);
       if (me.profile) {
         setProfile({ ...me.profile, interests: me.profile.interests || [] });
+        const profileLang = normalizeLang(me.profile.language || activeLocale);
+        if (profileLang !== activeLocale) {
+          setActiveLocale(profileLang);
+          localStorage.setItem(LOCALE_STORAGE_KEY, profileLang);
+        }
       }
       const petData = await api<{ pets: Pet[] }>('/api/v1/pets', {}, token);
       const loadedPets = petData.pets || [];
@@ -425,7 +490,11 @@ export default function App() {
 
   useEffect(() => {
     void loadAll();
-  }, [token]);
+  }, [token, activeLocale]);
+
+  useEffect(() => {
+    localStorage.setItem(LOCALE_STORAGE_KEY, activeLocale);
+  }, [activeLocale]);
 
   // Load health logs when logPetId changes
   useEffect(() => {
@@ -849,7 +918,7 @@ export default function App() {
         <label>{label}</label>
         <select value={(petForm[field] as string) || ''} onChange={(e) => setPetForm((f) => ({ ...f, [field]: e.target.value }))}>
           <option value="">Select</option>
-          {options.map((x) => <option key={x.id} value={x.id}>{itemLabel(x)}</option>)}
+          {options.map((x) => <option key={x.id} value={x.id}>{itemLabel(x, activeLocale)}</option>)}
         </select>
       </div>
     );
@@ -863,7 +932,7 @@ export default function App() {
           {options.map((x) => (
             <label key={x.id} className="check-item">
               <input type="checkbox" checked={petForm[field].includes(x.id)} onChange={() => toggleMultiField(field, x.id)} />
-              <span>{itemLabel(x)}</span>
+              <span>{itemLabel(x, activeLocale)}</span>
             </label>
           ))}
         </div>
@@ -912,12 +981,21 @@ export default function App() {
             <label>Country</label>
             <select value={profile.country_id || ''} onChange={(e) => setProfile((p) => ({ ...p, country_id: e.target.value }))}>
               <option value="">Select country</option>
-              {countries.map((c) => <option key={c.id} value={c.id}>{c.ko_name || c.code}</option>)}
+              {countries.map((c) => <option key={c.id} value={c.id}>{countryLabel(c, activeLocale)}</option>)}
             </select>
           </div>
           <div>
             <label>Language</label>
-            <input value={profile.language || 'ko'} onChange={(e) => setProfile((p) => ({ ...p, language: e.target.value }))} />
+            <select
+              value={profile.language || activeLocale}
+              onChange={(e) => {
+                const next = normalizeLang(e.target.value);
+                setProfile((p) => ({ ...p, language: next }));
+                setActiveLocale(next);
+              }}
+            >
+              {SUPPORTED_LANGS.map((lang) => <option key={lang} value={lang}>{lang}</option>)}
+            </select>
           </div>
           <div>
             <label>Timezone</label>
@@ -935,7 +1013,7 @@ export default function App() {
           {(master[CATEGORY_KEYS.interest] || []).map((i) => (
             <label key={i.id} className="check-item">
               <input type="checkbox" checked={profile.interests.includes(i.id)} onChange={() => toggleInterest(i.id)} />
-              <span>{itemLabel(i)}</span>
+              <span>{itemLabel(i, activeLocale)}</span>
             </label>
           ))}
         </div>
@@ -950,8 +1028,8 @@ export default function App() {
               <div key={p.id} className="pet-card">
                 <div>
                   <strong>{p.name}</strong>
-                  <p className="muted">{p.pet_type_id ? itemLabel(masterById[p.pet_type_id]) : '-'} / {p.breed_id ? itemLabel(masterById[p.breed_id]) : '-'}</p>
-                  <p className="muted">Gender: {p.gender_id ? itemLabel(masterById[p.gender_id]) : '-'}</p>
+                  <p className="muted">{p.pet_type_id ? itemLabel(masterById[p.pet_type_id], activeLocale) : '-'} / {p.breed_id ? itemLabel(masterById[p.breed_id], activeLocale) : '-'}</p>
+                  <p className="muted">Gender: {p.gender_id ? itemLabel(masterById[p.gender_id], activeLocale) : '-'}</p>
                   <p className="muted">Microchip: {p.microchip_no || '-'}</p>
                 </div>
                 <div className="row">
@@ -976,7 +1054,7 @@ export default function App() {
               {renderSingleSelect('Neutered Status', 'neuter_status_id', master[CATEGORY_KEYS.neuter_status] || [])}
               {renderSingleSelect('Life Stage', 'life_stage_id', master[CATEGORY_KEYS.life_stage] || [])}
               {renderSingleSelect('Body Size', 'body_size_id', master[CATEGORY_KEYS.body_size] || [])}
-              {renderSingleSelect('Country', 'country_id', countries.map((c) => ({ id: c.id, key: c.code, ko_name: c.ko_name })))}
+              {renderSingleSelect('Country', 'country_id', countries.map((c) => ({ id: c.id, key: c.code, ko_name: c.ko_name, ko: c.ko, en: c.en, ja: c.ja, zh_cn: c.zh_cn, zh_tw: c.zh_tw, es: c.es, fr: c.fr, de: c.de, pt: c.pt, vi: c.vi, th: c.th, id_lang: c.id_lang, ar: c.ar })))}
               {renderSingleSelect('Medication Status', 'medication_status_id', master[CATEGORY_KEYS.medication_status] || [])}
               {renderSingleSelect('Weight Unit', 'weight_unit_id', master[CATEGORY_KEYS.weight_unit] || [])}
               {renderSingleSelect('Health Condition', 'health_condition_level_id', master[CATEGORY_KEYS.health_condition_level] || [])}
@@ -1146,7 +1224,7 @@ export default function App() {
                   <select value={logForm.logtype_id} onChange={(e) => setLogForm((f) => ({ ...f, logtype_id: e.target.value }))}>
                     <option value="">선택</option>
                     {(master[CATEGORY_KEYS.log_type] || []).map((x) => (
-                      <option key={x.id} value={x.id}>{x.ko_name || x.en || x.key}</option>
+                      <option key={x.id} value={x.id}>{itemLabel(x, activeLocale)}</option>
                     ))}
                   </select>
                 </div>
@@ -1170,7 +1248,7 @@ export default function App() {
                   <select value={logForm.metric_id} onChange={(e) => setLogForm((f) => ({ ...f, metric_id: e.target.value }))}>
                     <option value="">선택</option>
                     {(master[CATEGORY_KEYS.disease_measurement_type] || []).map((x) => (
-                      <option key={x.id} value={x.id}>{x.ko_name || x.en || x.key}</option>
+                      <option key={x.id} value={x.id}>{itemLabel(x, activeLocale)}</option>
                     ))}
                   </select>
                 </div>
@@ -1183,7 +1261,7 @@ export default function App() {
                   <select value={logForm.unit_id} onChange={(e) => setLogForm((f) => ({ ...f, unit_id: e.target.value }))}>
                     <option value="">선택</option>
                     {(master[CATEGORY_KEYS.weight_unit] || []).map((x) => (
-                      <option key={x.id} value={x.id}>{x.ko_name || x.en || x.key}</option>
+                      <option key={x.id} value={x.id}>{itemLabel(x, activeLocale)}</option>
                     ))}
                   </select>
                 </div>

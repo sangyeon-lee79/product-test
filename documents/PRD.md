@@ -50,6 +50,19 @@ Your pet's life portfolio
   - Health 입력 모달
   - Master Data 연결 select component 전체
 
+### 0.5 Frontend i18n Cleanup 확장 반영 (2026-03-08)
+- 대상 클라이언트:
+  - Admin Web Guardian 화면
+  - Guardian Web 앱 화면
+- 요구 반영:
+  - 하드코딩 UI 텍스트 제거, i18n key 사용 원칙 강화
+  - 마스터 드롭다운 옵션은 현재 locale 번역값으로 즉시 렌더
+  - locale 변경 시 전체 화면 텍스트/옵션 동기 갱신
+  - refresh 및 로그인 이후에도 locale 유지
+- 데이터 무결성:
+  - DB 저장은 번역문자열이 아닌 stable id/key 유지
+  - 표시 시점에만 locale translation lookup 수행
+
 ---
 
 ## 1. 제품 개요
