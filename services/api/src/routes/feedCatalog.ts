@@ -116,6 +116,7 @@ export async function handleFeedCatalog(request: Request, env: Env, url: URL): P
     const lang = resolveLang(url);
     const langCol = LANG_COLS[lang];
     const normalized = await hasColumn(env, 'master_categories', 'code');
+    const hasMasterItemCode = await hasColumn(env, 'master_items', 'code');
 
     if (path === '/api/v1/feed-catalog/types' && method === 'GET') {
       const rows = normalized
@@ -231,6 +232,8 @@ export async function handleFeedCatalog(request: Request, env: Env, url: URL): P
       const hasModelBrandMap = (await hasTable(env, 'feed_model_brand_map'))
         && (await hasColumn(env, 'feed_model_brand_map', 'model_id'))
         && (await hasColumn(env, 'feed_model_brand_map', 'brand_id'));
+      const catKeyExpr = normalized ? 'COALESCE(mc.code, mc.key)' : 'mc.key';
+      const itemKeyExpr = hasMasterItemCode ? 'COALESCE(mi.code, mi.key)' : 'mi.key';
       const binds: string[] = [];
       let where = `WHERE m.status = 'active'`;
       if (typeId) { where += ' AND m.feed_type_item_id = ?'; binds.push(typeId); }
@@ -270,8 +273,8 @@ export async function handleFeedCatalog(request: Request, env: Env, url: URL): P
          LEFT JOIN master_categories mc ON mc.id = mi.category_id
          LEFT JOIN i18n_translations tr_type
            ON tr_type.key = CASE
-             WHEN COALESCE(mc.code, mc.key) LIKE 'master.%' THEN (COALESCE(mc.code, mc.key) || '.' || COALESCE(mi.code, mi.key))
-             ELSE ('master.' || COALESCE(mc.code, mc.key) || '.' || COALESCE(mi.code, mi.key))
+             WHEN ${catKeyExpr} LIKE 'master.%' THEN (${catKeyExpr} || '.' || ${itemKeyExpr})
+             ELSE ('master.' || ${catKeyExpr} || '.' || ${itemKeyExpr})
            END
          LEFT JOIN feed_manufacturers mfr ON mfr.id = m.manufacturer_id
          LEFT JOIN feed_brands b ON b.id = m.brand_id
@@ -522,9 +525,13 @@ export async function handleFeedCatalog(request: Request, env: Env, url: URL): P
     const typeId = url.searchParams.get('feed_type_id');
     const mfrId = url.searchParams.get('manufacturer_id');
     const brandId = url.searchParams.get('brand_id');
+    const normalized = await hasColumn(env, 'master_categories', 'code');
+    const hasMasterItemCode = await hasColumn(env, 'master_items', 'code');
     const hasModelBrandMap = (await hasTable(env, 'feed_model_brand_map'))
       && (await hasColumn(env, 'feed_model_brand_map', 'model_id'))
       && (await hasColumn(env, 'feed_model_brand_map', 'brand_id'));
+    const catKeyExpr = normalized ? 'COALESCE(mc.code, mc.key)' : 'mc.key';
+    const itemKeyExpr = hasMasterItemCode ? 'COALESCE(mi.code, mi.key)' : 'mi.key';
     const parentBrandIdsExpr = hasModelBrandMap
       ? `(SELECT GROUP_CONCAT(brand_id) FROM feed_model_brand_map mbm WHERE mbm.model_id = m.id)`
       : `NULL`;
@@ -568,8 +575,8 @@ export async function handleFeedCatalog(request: Request, env: Env, url: URL): P
        LEFT JOIN master_categories mc ON mc.id = mi.category_id
        LEFT JOIN i18n_translations tr_type
          ON tr_type.key = CASE
-           WHEN COALESCE(mc.code, mc.key) LIKE 'master.%' THEN (COALESCE(mc.code, mc.key) || '.' || COALESCE(mi.code, mi.key))
-           ELSE ('master.' || COALESCE(mc.code, mc.key) || '.' || COALESCE(mi.code, mi.key))
+           WHEN ${catKeyExpr} LIKE 'master.%' THEN (${catKeyExpr} || '.' || ${itemKeyExpr})
+           ELSE ('master.' || ${catKeyExpr} || '.' || ${itemKeyExpr})
          END
        LEFT JOIN feed_manufacturers mfr ON mfr.id = m.manufacturer_id
        LEFT JOIN feed_brands b ON b.id = m.brand_id
