@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { api, type FeedPost } from '../lib/api';
-import { isLoggedIn, getStoredRole } from '../lib/auth';
+import { isLoggedIn } from '../lib/auth';
 
 function ensureArray(raw: string[] | string | null | undefined): string[] {
   if (Array.isArray(raw)) return raw;
@@ -34,7 +34,6 @@ export default function ExplorePage() {
   const [isDark,   setIsDark]   = useState(() => localStorage.getItem('petfolio-theme') === 'dark');
 
   const loggedIn = isLoggedIn();
-  const role     = getStoredRole();
   const navigate = useNavigate();
 
   useEffect(() => {
