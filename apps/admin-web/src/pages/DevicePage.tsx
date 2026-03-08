@@ -63,7 +63,8 @@ export default function DevicePage() {
 
   const loadTypes = useCallback(async () => {
     try {
-      setTypes(await api.devices.types.list(lang));
+      const rows = await api.devices.types.list(lang);
+      setTypes(sortTypesByModelCountDesc(rows));
     } catch (e) {
       setError(String(e));
     }
@@ -867,3 +868,11 @@ export default function DevicePage() {
     </>
   );
 }
+  const sortTypesByModelCountDesc = (rows: DeviceType[]): DeviceType[] => {
+    return [...rows].sort((a, b) => {
+      const ac = typeof a.model_count === 'number' ? a.model_count : 0;
+      const bc = typeof b.model_count === 'number' ? b.model_count : 0;
+      if (bc !== ac) return bc - ac;
+      return (a.sort_order ?? 0) - (b.sort_order ?? 0);
+    });
+  };
