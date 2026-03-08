@@ -117,6 +117,21 @@ API:
 - parent 검증 규칙:
   - `diet_feed_type` 생성/수정 시 parent category는 `diet_subtype`만 허용
 
+### 0.6 Admin MasterPage 카테고리 체인 수정 (2026-03-08)
+
+대상 파일:
+- `apps/admin-web/src/pages/MasterPage.tsx`
+
+원인:
+- `categoryChain` 분기에서 `diet_type`이 `['diet_type', 'diet_subtype', null, null, null]`로 정의되어 L3 컬럼 데이터 로딩 대상에서 `diet_feed_type`이 누락됨
+
+수정:
+- `diet_type` 분기를 `['diet_type', 'diet_subtype', 'diet_feed_type', null, null]`로 변경
+
+영향:
+- Admin Master 카테고리 화면에서 식단 구조가 L1/L2/L3로 정상 탐색됨
+- seed/API 정상 상태에서 UI 공백 현상 제거
+
 ---
 
 ## 1. 기술 스택

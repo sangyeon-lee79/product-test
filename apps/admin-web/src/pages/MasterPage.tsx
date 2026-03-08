@@ -108,7 +108,7 @@ export default function MasterPage() {
     if (key === 'temperament_type') return ['temperament_type', 'activity_level', null, null, null];
     if (key === 'pet_gender' || key === 'gender') return ['pet_gender', 'pet_color', null, null, null];
     if (key === 'body_size') return ['body_size', 'weight_unit', null, null, null];
-    if (key === 'diet_type') return ['diet_type', 'diet_subtype', null, null, null];
+    if (key === 'diet_type') return ['diet_type', 'diet_subtype', 'diet_feed_type', null, null];
     if (key === 'allergy_group') return ['allergy_group', 'allergy_type', null, null, null];
     if (!key) return [null, null, null, null, null];
     return [key, null, null, null, null];

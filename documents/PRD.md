@@ -94,6 +94,14 @@ Your pet's life portfolio
   - 화면 출력은 locale translation(`display_label`) 사용
   - L3는 제품/피드 관리와 연결되는 구조 정의 레이어로 사용
 
+### 0.9 Admin Master L3 노출 보정 (2026-03-08)
+- 문제:
+  - 식단관리 L3 seed/API가 준비되어 있어도 Admin Master UI 카테고리 체인 누락으로 L3가 비어 보일 수 있었음
+- 조치:
+  - `diet_type` 체인을 `L1 diet_type -> L2 diet_subtype -> L3 diet_feed_type`로 고정
+- 기대 동작:
+  - Admin Master 화면에서 L1/L2 선택 시 L3 항목이 정상 로드/표시
+
 ---
 
 ## 1. 제품 개요

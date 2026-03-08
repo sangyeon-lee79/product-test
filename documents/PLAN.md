@@ -110,6 +110,18 @@ Your pet's life portfolio
 검증:
 - [x] `npm --prefix services/api run build`
 
+## 0.10 Admin MasterPage L3 체인 누락 수정 (2026-03-08)
+
+적용 범위:
+- `apps/admin-web/src/pages/MasterPage.tsx`
+
+- [x] `diet_type` 카테고리 체인에 L3(`diet_feed_type`)를 포함하도록 수정
+- [x] 기존 누락 원인 제거: `['diet_type', 'diet_subtype', null, ...]`로 인해 L3 컬럼이 비어 보이던 문제 해결
+- [x] Admin Master UI에서 `L1 -> L2 -> L3` 탐색이 동일 화면에서 동작하도록 복구
+
+검증:
+- [x] `npm --prefix apps/admin-web run build`
+
 ---
 
 ## 0.2 통합 개발 반영 내역 (2026-03-07)
