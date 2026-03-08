@@ -110,6 +110,7 @@ export async function handleFeedCatalog(request: Request, env: Env, url: URL): P
   const path = url.pathname;
   const method = request.method;
   const isAdmin = path.startsWith('/api/v1/admin/');
+  const hasFeedManufacturerTypeMap = await hasTable(env, 'feed_manufacturer_type_map');
 
   if (!isAdmin) {
     const lang = resolveLang(url);
@@ -329,9 +330,12 @@ export async function handleFeedCatalog(request: Request, env: Env, url: URL): P
   }
 
   if (path === '/api/v1/admin/feed-catalog/manufacturers' && method === 'GET') {
+    const parentTypeIdsExpr = hasFeedManufacturerTypeMap
+      ? `(SELECT GROUP_CONCAT(type_item_id) FROM feed_manufacturer_type_map mtm WHERE mtm.manufacturer_id = mfr.id)`
+      : `NULL`;
     const rows = await env.DB.prepare(
       `SELECT mfr.*,
-              (SELECT GROUP_CONCAT(type_item_id) FROM feed_manufacturer_type_map mtm WHERE mtm.manufacturer_id = mfr.id) AS parent_type_ids,
+              ${parentTypeIdsExpr} AS parent_type_ids,
               COALESCE(NULLIF(TRIM(tr.${langCol}), ''), NULLIF(TRIM(tr.en), ''), NULLIF(TRIM(tr.ko), ''), mfr.name_en, mfr.name_ko) AS display_label
        FROM feed_manufacturers mfr
        LEFT JOIN i18n_translations tr ON tr.key = mfr.name_key
@@ -353,12 +357,15 @@ export async function handleFeedCatalog(request: Request, env: Env, url: URL): P
        VALUES (?, ?, ?, ?, ?, ?, 'active', ?, ?, ?)`
     ).bind(id, key, nameKey, ko, en, body.country ?? null, body.sort_order ?? 0, now(), now()).run();
     await upsertI18n(env, nameKey, normalizedTranslations(body.translations, ko, en));
-    if (await hasTable(env, 'feed_manufacturer_type_map')) {
+    if (hasFeedManufacturerTypeMap) {
       await syncParentMap(env, 'feed_manufacturer_type_map', 'manufacturer_id', id, 'type_item_id', body.parent_type_ids ?? []);
     }
+    const parentTypeIdsExpr = hasFeedManufacturerTypeMap
+      ? `(SELECT GROUP_CONCAT(type_item_id) FROM feed_manufacturer_type_map mtm WHERE mtm.manufacturer_id = mfr.id)`
+      : `NULL`;
     return created(await env.DB.prepare(
       `SELECT mfr.*,
-              (SELECT GROUP_CONCAT(type_item_id) FROM feed_manufacturer_type_map mtm WHERE mtm.manufacturer_id = mfr.id) AS parent_type_ids,
+              ${parentTypeIdsExpr} AS parent_type_ids,
               COALESCE(NULLIF(TRIM(tr.${langCol}), ''), NULLIF(TRIM(tr.en), ''), NULLIF(TRIM(tr.ko), ''), mfr.name_en, mfr.name_ko) AS display_label
        FROM feed_manufacturers mfr
        LEFT JOIN i18n_translations tr ON tr.key = mfr.name_key
@@ -388,12 +395,15 @@ export async function handleFeedCatalog(request: Request, env: Env, url: URL): P
       if (existing.name_key && (ko || en)) {
         await upsertI18n(env, existing.name_key, normalizedTranslations(body.translations, ko, en));
       }
-      if (body.parent_type_ids && await hasTable(env, 'feed_manufacturer_type_map')) {
+      if (body.parent_type_ids && hasFeedManufacturerTypeMap) {
         await syncParentMap(env, 'feed_manufacturer_type_map', 'manufacturer_id', mfrId, 'type_item_id', body.parent_type_ids);
       }
+      const parentTypeIdsExpr = hasFeedManufacturerTypeMap
+        ? `(SELECT GROUP_CONCAT(type_item_id) FROM feed_manufacturer_type_map mtm WHERE mtm.manufacturer_id = mfr.id)`
+        : `NULL`;
       return ok(await env.DB.prepare(
         `SELECT mfr.*,
-                (SELECT GROUP_CONCAT(type_item_id) FROM feed_manufacturer_type_map mtm WHERE mtm.manufacturer_id = mfr.id) AS parent_type_ids,
+                ${parentTypeIdsExpr} AS parent_type_ids,
                 COALESCE(NULLIF(TRIM(tr.${langCol}), ''), NULLIF(TRIM(tr.en), ''), NULLIF(TRIM(tr.ko), ''), mfr.name_en, mfr.name_ko) AS display_label
          FROM feed_manufacturers mfr
          LEFT JOIN i18n_translations tr ON tr.key = mfr.name_key
