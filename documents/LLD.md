@@ -132,6 +132,24 @@ API:
 - Admin Master 카테고리 화면에서 식단 구조가 L1/L2/L3로 정상 탐색됨
 - seed/API 정상 상태에서 UI 공백 현상 제거
 
+### 0.7 Diet L2 전체 커버 L3 보강 Seed 상세 (2026-03-08)
+
+마이그레이션:
+- `0051_diet_feed_type_l3_fill_from_all_l2.sql`
+
+로직:
+- `diet_subtype`의 모든 L2를 조회
+- 각 L2에 대해 `diet_feed_type` 자식 존재 여부 검사
+- 자식이 없을 때만 L3 `code = <l2_code>_core` / `id = mi-diet-feed-<l2_code>-core` 생성
+- i18n key `master.diet_feed_type.<l3_code>` 생성 및 업데이트
+  - `ko = <L2 ko> + " 기본형"`
+  - `en = <L2 en> + " Core"`
+  - 타 언어는 `en` fallback으로 채움
+
+특성:
+- 기존 데이터 보존(이미 L3가 있는 L2는 미변경)
+- 반복 실행 안전(idempotent)
+
 ---
 
 ## 1. 기술 스택

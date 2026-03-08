@@ -122,6 +122,19 @@ Your pet's life portfolio
 검증:
 - [x] `npm --prefix apps/admin-web run build`
 
+## 0.11 식단 L2 전체 기준 L3 자동 보강 Seed 추가 (2026-03-08)
+
+적용 범위:
+- `services/api/src/db/migrations/0051_diet_feed_type_l3_fill_from_all_l2.sql`
+
+- [x] `diet_subtype(L2)` 전체를 기준으로 L3(`diet_feed_type`) 자식이 없는 항목 자동 탐지
+- [x] 누락된 L3를 `*_core` 규칙으로 자동 생성 (기존 L3 존재 시 충돌 없이 skip)
+- [x] 저장값은 id/key 유지, 화면 라벨은 i18n key(`master.diet_feed_type.<code>`) 기반 렌더
+- [x] i18n 번역은 L2 번역을 참조해 L3 기본 라벨 자동 생성 (`ko: 기본형`, `en: Core`)
+
+검증:
+- [x] SQL migration 파일 추가/검토 완료
+
 ---
 
 ## 0.2 통합 개발 반영 내역 (2026-03-07)
