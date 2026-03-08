@@ -28,7 +28,7 @@ export default function DevicePage() {
 
   const [mfrForm, setMfrForm] = useState({ name_ko: '', name_en: '', country: '', sort_order: '0' });
   const [brandForm, setBrandForm] = useState({ name_ko: '', name_en: '' });
-  const [modelForm, setModelForm] = useState({ model_name: '', model_code: '', description: '' });
+  const [modelForm, setModelForm] = useState({ name_ko: '', name_en: '', model_code: '', description: '' });
   const [unitForm, setUnitForm] = useState({ key: '', name: '', symbol: '', sort_order: '0' });
 
   const typeLabel = (item?: DeviceType | null): string => {
@@ -149,12 +149,17 @@ export default function DevicePage() {
       setError(t('admin.device.select_manufacturer'));
       return;
     }
-    setModelForm({ model_name: '', model_code: '', description: '' });
+    setModelForm({ name_ko: '', name_en: '', model_code: '', description: '' });
     setModal({ target: 'model', mode: 'create' });
   }
 
   function openEditModel(item: DeviceModel) {
-    setModelForm({ model_name: item.model_name, model_code: item.model_code ?? '', description: item.description ?? '' });
+    setModelForm({
+      name_ko: item.model_name,
+      name_en: item.model_display_label || item.model_name,
+      model_code: item.model_code ?? '',
+      description: item.description ?? '',
+    });
     setModal({ target: 'model', mode: 'edit', id: item.id });
   }
 
@@ -198,28 +203,43 @@ export default function DevicePage() {
       if (target === 'brand') {
         if (!brandForm.name_ko || !brandForm.name_en) throw new Error('name_ko and name_en required');
         if (mode === 'create' && selectedMfr) {
-          await api.devices.brands.create({ manufacturer_id: selectedMfr.id, name_ko: brandForm.name_ko, name_en: brandForm.name_en });
+          await api.devices.brands.create({
+            manufacturer_id: selectedMfr.id,
+            name_ko: brandForm.name_ko,
+            name_en: brandForm.name_en,
+            translations: { ko: brandForm.name_ko, en: brandForm.name_en },
+          });
         } else if (id) {
-          await api.devices.brands.update(id, { name_ko: brandForm.name_ko, name_en: brandForm.name_en });
+          await api.devices.brands.update(id, {
+            name_ko: brandForm.name_ko,
+            name_en: brandForm.name_en,
+            translations: { ko: brandForm.name_ko, en: brandForm.name_en },
+          });
         }
         await loadBrands(selectedMfr?.id);
       }
 
       if (target === 'model') {
-        if (!modelForm.model_name) throw new Error('model_name required');
+        if (!modelForm.name_ko || !modelForm.name_en) throw new Error('ko/en required');
         if (mode === 'create' && selectedType && selectedMfr) {
           await api.devices.models.create({
             device_type_id: selectedType.id,
             manufacturer_id: selectedMfr.id,
             brand_id: selectedBrand?.id,
-            model_name: modelForm.model_name,
+            model_name: modelForm.name_en,
+            name_ko: modelForm.name_ko,
+            name_en: modelForm.name_en,
+            translations: { ko: modelForm.name_ko, en: modelForm.name_en },
             model_code: modelForm.model_code || undefined,
             description: modelForm.description || undefined,
           });
         } else if (id) {
           await api.devices.models.update(id, {
             device_type_id: selectedType?.id,
-            model_name: modelForm.model_name,
+            model_name: modelForm.name_en,
+            name_ko: modelForm.name_ko,
+            name_en: modelForm.name_en,
+            translations: { ko: modelForm.name_ko, en: modelForm.name_en },
             model_code: modelForm.model_code || undefined,
             description: modelForm.description || undefined,
           });
@@ -352,7 +372,7 @@ export default function DevicePage() {
                 {selectedMfr && brands.map((item) => (
                   <button key={item.id} className={`master-row-btn ${selectedBrand?.id === item.id ? 'active' : ''}`} onClick={() => { setSelectedBrand(item); setSelectedModel(null); }}>
                     <div>
-                      <div className="master-row-title">{item.name_en || item.name_ko}</div>
+                      <div className="master-row-title">{item.display_label || item.name_en || item.name_ko}</div>
                       <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>{item.name_ko}</div>
                     </div>
                     <div style={{ display: 'flex', flexDirection: 'column', gap: 4, alignItems: 'flex-end' }}>
@@ -369,7 +389,7 @@ export default function DevicePage() {
                 {selectedType && models.map((item) => (
                   <button key={item.id} className={`master-row-btn ${selectedModel?.id === item.id ? 'active' : ''}`} onClick={() => setSelectedModel(item)}>
                     <div>
-                      <div className="master-row-title">{item.model_name}</div>
+                      <div className="master-row-title">{item.model_display_label || item.model_name}</div>
                       <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>{item.model_code ?? ''} {item.mfr_display_label ?? item.mfr_name_en ?? ''}</div>
                     </div>
                     <div style={{ display: 'flex', flexDirection: 'column', gap: 4, alignItems: 'flex-end' }}>
@@ -384,7 +404,7 @@ export default function DevicePage() {
             {selectedModel && (
               <div className="card" style={{ marginTop: 12 }}>
                 <div className="card-header">
-                  <div className="card-title">{selectedModel.model_name}</div>
+                  <div className="card-title">{selectedModel.model_display_label || selectedModel.model_name}</div>
                   <div style={{ display: 'flex', gap: 8 }}>
                     <button className="btn btn-secondary btn-sm" onClick={() => openEditModel(selectedModel)}>{t('admin.master.btn_edit')}</button>
                     <button className="btn btn-danger btn-sm" onClick={() => void handleDelete('model', selectedModel.id)}>{t('admin.master.btn_delete')}</button>
@@ -393,7 +413,7 @@ export default function DevicePage() {
                 <div style={{ padding: '8px 12px', fontSize: 13, color: 'var(--text-muted)' }}>
                   <div>{t('admin.device.device_type')}: {selectedModel.type_display_label || selectedModel.type_name_en || selectedModel.type_name_ko || '—'}</div>
                   <div>{t('admin.device.manufacturer')}: {selectedModel.mfr_display_label || selectedModel.mfr_name_en || selectedModel.mfr_name_ko || '—'}</div>
-                  <div>{t('admin.device.brand')}: {selectedModel.brand_name_en || selectedModel.brand_name_ko || '—'}</div>
+                  <div>{t('admin.device.brand')}: {selectedModel.brand_display_label || selectedModel.brand_name_en || selectedModel.brand_name_ko || '—'}</div>
                   {selectedModel.model_code && <div>{t('admin.device.model_code')}: {selectedModel.model_code}</div>}
                   {selectedModel.description && <div>{t('admin.device.description')}: {selectedModel.description}</div>}
                 </div>
@@ -504,12 +524,16 @@ export default function DevicePage() {
                   {selectedBrand && (
                     <div className="form-group">
                       <label className="form-label">{t('admin.device.brand')}</label>
-                      <input className="form-input" value={selectedBrand.name_en || selectedBrand.name_ko} readOnly />
+                      <input className="form-input" value={selectedBrand.display_label || selectedBrand.name_en || selectedBrand.name_ko} readOnly />
                     </div>
                   )}
                   <div className="form-group">
-                    <label className="form-label">{t('admin.device.model_name')} *</label>
-                    <input className="form-input" value={modelForm.model_name} onChange={(e) => setModelForm((f) => ({ ...f, model_name: e.target.value }))} />
+                    <label className="form-label">{t('admin.device.name_ko')} *</label>
+                    <input className="form-input" value={modelForm.name_ko} onChange={(e) => setModelForm((f) => ({ ...f, name_ko: e.target.value }))} />
+                  </div>
+                  <div className="form-group">
+                    <label className="form-label">{t('admin.device.name_en')} *</label>
+                    <input className="form-input" value={modelForm.name_en} onChange={(e) => setModelForm((f) => ({ ...f, name_en: e.target.value }))} />
                   </div>
                   <div className="form-group">
                     <label className="form-label">{t('admin.device.model_code')}</label>

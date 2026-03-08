@@ -77,6 +77,24 @@ Your pet's life portfolio
 - [x] `npm --prefix services/api run build`
 - [x] `npm --prefix apps/admin-web run build`
 
+## 0.8 장치관리 전면 i18n 키 구조 통일 (2026-03-08)
+
+적용 범위:
+- `services/api/src/routes/devices.ts`
+- `services/api/src/db/migrations/0049_device_brand_model_i18n_normalization.sql`
+- `apps/admin-web/src/lib/api.ts`
+- `apps/admin-web/src/pages/DevicePage.tsx`
+
+- [x] 제조사/브랜드/모델 전부 `name_key` + `i18n_translations` 기반 렌더링으로 통일
+- [x] 브랜드/모델 생성/수정 API가 `translations` payload를 받아 i18n row upsert 수행
+- [x] 모델 목록/상세/Guardian 장치 목록에 `model_display_label`, `brand_display_label` 노출
+- [x] 장치유형은 여전히 L3 master item id 참조 저장(`device_type_item_id`)
+- [x] seed 보정 마이그레이션에서 brand/model translation row 생성 + locale fallback 채움
+
+검증:
+- [x] `npm --prefix services/api run build`
+- [x] `npm --prefix apps/admin-web run build`
+
 ---
 
 ## 0.2 통합 개발 반영 내역 (2026-03-07)

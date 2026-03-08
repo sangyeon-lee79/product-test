@@ -74,6 +74,16 @@ Your pet's life portfolio
   - 번역값은 `i18n_translations`에 저장/조회
   - UI 출력은 locale 번역값 우선, fallback `en -> ko`
 
+### 0.7 Device Naming 다국어 통일 (2026-03-08)
+- 제조사뿐 아니라 브랜드/모델도 동일하게 i18n key 기반 관리
+- 금지:
+  - `name_ko/name_en` 컬럼 직접 출력
+  - locale 무시한 텍스트 직접 저장/표시
+- 필수:
+  - 생성/수정 시 translation row 동기화
+  - 목록/드롭다운/상세 출력은 `display_label` 사용
+  - 저장값은 참조 ID(`device_type_item_id`, manufacturer/brand/model id) 유지
+
 ---
 
 ## 1. 제품 개요

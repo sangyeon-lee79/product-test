@@ -84,6 +84,25 @@ Admin UI:
 - 장치유형 컬럼은 master L3 조회 결과를 선택 용도로만 사용
 - 제조사 표시값은 `display_label` 우선 렌더
 
+### 0.4 Device Name i18n 확장 상세 (2026-03-08)
+
+DB:
+- `0049_device_brand_model_i18n_normalization.sql`
+  - `device_brands.name_key` 추가
+  - `device_models.name_key` 추가
+  - brand/model 기존 row의 i18n key backfill
+  - `i18n_translations`에 brand/model locale row 생성
+  - 누락 locale은 `en/ko` fallback으로 채움
+
+API:
+- Brands:
+  - `POST/PUT /api/v1/admin/devices/brands`는 `translations` 수신/저장
+  - `GET` 응답에 `display_label` 포함
+- Models:
+  - `POST/PUT /api/v1/admin/devices/models`는 `translations` 수신/저장
+  - `GET` 응답에 `model_display_label`, `brand_display_label` 포함
+- Guardian/Public/Admin 조회 모두 locale 파라미터 기준 label 계산
+
 ---
 
 ## 1. 기술 스택
