@@ -459,9 +459,12 @@ export const api = {
         request<{ id: string; deleted: boolean }>(`/api/v1/admin/devices/types/${id}`, { method: 'DELETE' }),
     },
     manufacturers: {
-      list: (lang?: string) => {
-        const q = lang ? `?lang=${encodeURIComponent(lang)}` : '';
-        return request<DeviceManufacturer[]>(`/api/v1/admin/devices/manufacturers${q}`);
+      list: (lang?: string, typeItemId?: string) => {
+        const q = new URLSearchParams();
+        if (lang) q.set('lang', lang);
+        if (typeItemId) q.set('type_item_id', typeItemId);
+        const suffix = q.toString() ? `?${q.toString()}` : '';
+        return request<DeviceManufacturer[]>(`/api/v1/admin/devices/manufacturers${suffix}`);
       },
       create: (data: { country?: string; sort_order?: number; name_ko: string; name_en?: string; parent_type_ids?: string[]; translations?: Record<string, string> }) =>
         request<DeviceManufacturer>('/api/v1/admin/devices/manufacturers', { method: 'POST', body: JSON.stringify(data) }),
@@ -541,9 +544,12 @@ export const api = {
       },
     },
     manufacturers: {
-      list: (lang?: string) => {
-        const q = lang ? `?lang=${encodeURIComponent(lang)}` : '';
-        return request<FeedManufacturer[]>(`/api/v1/admin/feed-catalog/manufacturers${q}`);
+      list: (lang?: string, typeItemId?: string) => {
+        const q = new URLSearchParams();
+        if (lang) q.set('lang', lang);
+        if (typeItemId) q.set('type_item_id', typeItemId);
+        const suffix = q.toString() ? `?${q.toString()}` : '';
+        return request<FeedManufacturer[]>(`/api/v1/admin/feed-catalog/manufacturers${suffix}`);
       },
       create: (data: { country?: string; sort_order?: number; name_ko: string; name_en?: string; parent_type_ids?: string[]; translations?: Record<string, string> }) =>
         request<FeedManufacturer>('/api/v1/admin/feed-catalog/manufacturers', { method: 'POST', body: JSON.stringify(data) }),
@@ -909,12 +915,14 @@ export interface DeviceBrand {
   id: string; manufacturer_id: string; name_key?: string | null; name_ko: string; name_en: string; display_label?: string | null;
   status: string; mfr_name_ko?: string | null;
   mfr_display_label?: string | null;
+  parent_mfr_ids?: string | null;
   created_at: string; updated_at: string;
 }
 
 export interface DeviceModel {
   id: string; device_type_id: string | null; device_type_item_id?: string | null; manufacturer_id: string; brand_id: string | null; name_key?: string | null;
   model_name: string; model_code: string | null; description: string | null;
+  parent_brand_ids?: string | null;
   status: string; created_at: string; updated_at: string;
   type_name_ko?: string | null; type_name_en?: string | null;
   type_display_label?: string | null;
@@ -957,12 +965,14 @@ export interface FeedBrand {
   id: string; manufacturer_id: string; name_key?: string | null; name_ko: string; name_en: string; display_label?: string | null;
   status: string; mfr_name_ko?: string | null;
   mfr_display_label?: string | null;
+  parent_mfr_ids?: string | null;
   created_at: string; updated_at: string;
 }
 
 export interface FeedModel {
   id: string; feed_type_item_id: string; manufacturer_id: string; brand_id: string | null; name_key?: string | null;
   model_name: string; model_code: string | null; description: string | null;
+  parent_brand_ids?: string | null;
   status: string; created_at: string; updated_at: string;
   type_name_ko?: string | null; type_name_en?: string | null;
   type_display_label?: string | null;

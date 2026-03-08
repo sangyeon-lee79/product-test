@@ -56,9 +56,9 @@ export default function DevicePage() {
     }
   }, [lang]);
 
-  const loadManufacturers = useCallback(async () => {
+  const loadManufacturers = useCallback(async (typeId?: string) => {
     try {
-      setManufacturers(await api.devices.manufacturers.list(lang));
+      setManufacturers(await api.devices.manufacturers.list(lang, typeId));
     } catch (e) {
       setError(String(e));
     }
@@ -90,9 +90,15 @@ export default function DevicePage() {
 
   useEffect(() => {
     void loadTypes();
-    void loadManufacturers();
     void loadUnits();
-  }, [loadTypes, loadManufacturers, loadUnits]);
+  }, [loadTypes, loadUnits]);
+
+  useEffect(() => {
+    void loadManufacturers(selectedType?.id);
+    setSelectedMfr(null);
+    setSelectedBrand(null);
+    setSelectedModel(null);
+  }, [selectedType?.id, loadManufacturers]);
 
   useEffect(() => {
     void loadBrands(selectedMfr?.id);
@@ -148,7 +154,8 @@ export default function DevicePage() {
 
   function openEditBrand(item: DeviceBrand) {
     setBrandForm({ name_ko: item.name_ko });
-    setBrandParentMfrIds(selectedMfr ? [selectedMfr.id] : []);
+    const parentIds = (item.parent_mfr_ids || '').split(',').map((v) => v.trim()).filter(Boolean);
+    setBrandParentMfrIds(parentIds.length > 0 ? parentIds : selectedMfr ? [selectedMfr.id] : []);
     setModal({ target: 'brand', mode: 'edit', id: item.id });
   }
 
@@ -172,7 +179,8 @@ export default function DevicePage() {
       model_code: item.model_code ?? '',
       description: item.description ?? '',
     });
-    setModelParentBrandIds(selectedBrand ? [selectedBrand.id] : []);
+    const parentIds = (item.parent_brand_ids || '').split(',').map((v) => v.trim()).filter(Boolean);
+    setModelParentBrandIds(parentIds.length > 0 ? parentIds : selectedBrand ? [selectedBrand.id] : []);
     setModal({ target: 'model', mode: 'edit', id: item.id });
   }
 

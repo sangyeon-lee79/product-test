@@ -52,9 +52,9 @@ export default function FeedPage() {
     }
   }, [lang]);
 
-  const loadManufacturers = useCallback(async () => {
+  const loadManufacturers = useCallback(async (typeId?: string) => {
     try {
-      setManufacturers(await api.feedCatalog.manufacturers.list(lang));
+      setManufacturers(await api.feedCatalog.manufacturers.list(lang, typeId));
     } catch (e) {
       setError(String(e));
     }
@@ -78,8 +78,14 @@ export default function FeedPage() {
 
   useEffect(() => {
     void loadTypes();
-    void loadManufacturers();
-  }, [loadTypes, loadManufacturers]);
+  }, [loadTypes]);
+
+  useEffect(() => {
+    void loadManufacturers(selectedType?.id);
+    setSelectedMfr(null);
+    setSelectedBrand(null);
+    setSelectedModel(null);
+  }, [selectedType?.id, loadManufacturers]);
 
   useEffect(() => {
     void loadBrands(selectedMfr?.id);
@@ -105,6 +111,47 @@ export default function FeedPage() {
     const base = ko.trim();
     const result = await api.i18n.translate(base, { ko: base });
     return { ...result.translations, ko: base };
+  }
+
+  function openCreateMfr() {
+    setMfrForm({ name_ko: '', country: '', sort_order: '0' });
+    setMfrParentTypeIds(selectedType ? [selectedType.id] : []);
+    setModal({ target: 'manufacturer', mode: 'create' });
+  }
+
+  function openEditMfr(item: FeedManufacturer) {
+    setMfrForm({ name_ko: item.name_ko || '', country: item.country || '', sort_order: String(item.sort_order || 0) });
+    setMfrParentTypeIds((item.parent_type_ids || '').split(',').map((v) => v.trim()).filter(Boolean));
+    setModal({ target: 'manufacturer', mode: 'edit', id: item.id });
+  }
+
+  function openCreateBrand() {
+    if (!selectedMfr) { setError(t('admin.feed.select_manufacturer')); return; }
+    setBrandForm({ name_ko: '' });
+    setBrandParentMfrIds([selectedMfr.id]);
+    setModal({ target: 'brand', mode: 'create' });
+  }
+
+  function openEditBrand(item: FeedBrand) {
+    setBrandForm({ name_ko: item.name_ko });
+    const parentIds = (item.parent_mfr_ids || '').split(',').map((v) => v.trim()).filter(Boolean);
+    setBrandParentMfrIds(parentIds.length > 0 ? parentIds : selectedMfr ? [selectedMfr.id] : []);
+    setModal({ target: 'brand', mode: 'edit', id: item.id });
+  }
+
+  function openCreateModel() {
+    if (!selectedType) { setError(t('admin.feed.select_type')); return; }
+    if (!selectedMfr) { setError(t('admin.feed.select_manufacturer')); return; }
+    setModelForm({ name_ko: '', model_code: '', description: '' });
+    setModelParentBrandIds(selectedBrand ? [selectedBrand.id] : []);
+    setModal({ target: 'model', mode: 'create' });
+  }
+
+  function openEditModel(item: FeedModel) {
+    setModelForm({ name_ko: item.model_name, model_code: item.model_code ?? '', description: item.description ?? '' });
+    const parentIds = (item.parent_brand_ids || '').split(',').map((v) => v.trim()).filter(Boolean);
+    setModelParentBrandIds(parentIds.length > 0 ? parentIds : selectedBrand ? [selectedBrand.id] : []);
+    setModal({ target: 'model', mode: 'edit', id: item.id });
   }
 
   async function handleSave() {
@@ -234,21 +281,21 @@ export default function FeedPage() {
   return (
     <>
       <div className="topbar">
-        <div className="topbar-title">🥣 {t('admin.feed.title', '사료 관리')}</div>
+        <div className="topbar-title">🥣 {t('admin.feed.title')}</div>
       </div>
       <div className="content">
         {error && <div className="alert alert-error">{error}</div>}
         {success && <div className="alert alert-success">{success}</div>}
-        <div className="alert" style={{ marginBottom: 12 }}>{t('admin.feed.guide', '사료유형은 식단유형 L3(diet_feed_type) 마스터를 참조합니다.')}</div>
+        <div className="alert" style={{ marginBottom: 12 }}>{t('admin.feed.guide')}</div>
 
         <div className="master-explorer-grid" style={{ gridTemplateColumns: 'repeat(4, minmax(0, 1fr))' }}>
-          <Col title={t('admin.feed.types', '사료유형 (L3)')}>
-            {types.length === 0 && <div className="master-empty">{t('admin.feed.empty', '데이터가 없습니다.')}</div>}
+          <Col title={t('admin.feed.types')}>
+            {types.length === 0 && <div className="master-empty">{t('admin.feed.empty')}</div>}
             {types.map((item) => (
               <button
                 key={item.id}
                 className={`master-row-btn ${selectedType?.id === item.id ? 'active' : ''}`}
-                onClick={() => { setSelectedType(item); setSelectedMfr(null); setSelectedBrand(null); setSelectedModel(null); }}
+                onClick={() => setSelectedType(item)}
               >
                 <div>
                   <div className="master-row-title">{typeLabel(item)}</div>
@@ -259,8 +306,8 @@ export default function FeedPage() {
             ))}
           </Col>
 
-          <Col title={t('admin.feed.manufacturers', '제조사')} onAdd={() => { setMfrForm({ name_ko: '', country: '', sort_order: '0' }); setMfrParentTypeIds(selectedType ? [selectedType.id] : []); setModal({ target: 'manufacturer', mode: 'create' }); }}>
-            {manufacturers.length === 0 && <div className="master-empty">{t('admin.feed.empty', '데이터가 없습니다.')}</div>}
+          <Col title={t('admin.feed.manufacturers')} onAdd={openCreateMfr}>
+            {manufacturers.length === 0 && <div className="master-empty">{t('admin.feed.empty')}</div>}
             {manufacturers.map((item) => (
               <button key={item.id} className={`master-row-btn ${selectedMfr?.id === item.id ? 'active' : ''}`} onClick={() => { setSelectedMfr(item); setSelectedBrand(null); setSelectedModel(null); }}>
                 <div>
@@ -269,20 +316,15 @@ export default function FeedPage() {
                 </div>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 4, alignItems: 'flex-end' }}>
                   <StatusBadge status={item.status} />
-                  <button className="btn btn-secondary btn-sm" style={{ fontSize: 10, padding: '1px 6px' }} onClick={(e) => { e.stopPropagation(); setMfrForm({ name_ko: item.name_ko || '', country: item.country || '', sort_order: String(item.sort_order || 0) }); setMfrParentTypeIds((item.parent_type_ids || '').split(',').map((v) => v.trim()).filter(Boolean)); setModal({ target: 'manufacturer', mode: 'edit', id: item.id }); }}>{t('admin.master.btn_edit')}</button>
+                  <button className="btn btn-secondary btn-sm" style={{ fontSize: 10, padding: '1px 6px' }} onClick={(e) => { e.stopPropagation(); openEditMfr(item); }}>{t('admin.master.btn_edit')}</button>
                 </div>
               </button>
             ))}
           </Col>
 
-          <Col title={t('admin.feed.brands', '브랜드')} onAdd={() => {
-            if (!selectedMfr) return setError(t('admin.feed.select_manufacturer', '제조사를 먼저 선택하세요.'));
-            setBrandForm({ name_ko: '' });
-            setBrandParentMfrIds([selectedMfr.id]);
-            setModal({ target: 'brand', mode: 'create' });
-          }}>
-            {!selectedMfr && <div className="master-empty">{t('admin.feed.select_manufacturer', '제조사를 먼저 선택하세요.')}</div>}
-            {selectedMfr && brands.length === 0 && <div className="master-empty">{t('admin.feed.empty', '데이터가 없습니다.')}</div>}
+          <Col title={t('admin.feed.brands')} onAdd={openCreateBrand}>
+            {!selectedMfr && <div className="master-empty">{t('admin.feed.select_manufacturer')}</div>}
+            {selectedMfr && brands.length === 0 && <div className="master-empty">{t('admin.feed.empty')}</div>}
             {selectedMfr && brands.map((item) => (
               <button key={item.id} className={`master-row-btn ${selectedBrand?.id === item.id ? 'active' : ''}`} onClick={() => { setSelectedBrand(item); setSelectedModel(null); }}>
                 <div>
@@ -291,21 +333,15 @@ export default function FeedPage() {
                 </div>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 4, alignItems: 'flex-end' }}>
                   <StatusBadge status={item.status} />
-                  <button className="btn btn-secondary btn-sm" style={{ fontSize: 10, padding: '1px 6px' }} onClick={(e) => { e.stopPropagation(); setBrandForm({ name_ko: item.name_ko }); setBrandParentMfrIds(selectedMfr ? [selectedMfr.id] : []); setModal({ target: 'brand', mode: 'edit', id: item.id }); }}>{t('admin.master.btn_edit')}</button>
+                  <button className="btn btn-secondary btn-sm" style={{ fontSize: 10, padding: '1px 6px' }} onClick={(e) => { e.stopPropagation(); openEditBrand(item); }}>{t('admin.master.btn_edit')}</button>
                 </div>
               </button>
             ))}
           </Col>
 
-          <Col title={t('admin.feed.models', '사료모델')} onAdd={() => {
-            if (!selectedType) return setError(t('admin.feed.select_type', '사료유형을 먼저 선택하세요.'));
-            if (!selectedMfr) return setError(t('admin.feed.select_manufacturer', '제조사를 먼저 선택하세요.'));
-            setModelForm({ name_ko: '', model_code: '', description: '' });
-            setModelParentBrandIds(selectedBrand ? [selectedBrand.id] : []);
-            setModal({ target: 'model', mode: 'create' });
-          }}>
-            {!selectedType && <div className="master-empty">{t('admin.feed.select_type', '사료유형을 먼저 선택하세요.')}</div>}
-            {selectedType && models.length === 0 && <div className="master-empty">{t('admin.feed.empty', '데이터가 없습니다.')}</div>}
+          <Col title={t('admin.feed.models')} onAdd={openCreateModel}>
+            {!selectedType && <div className="master-empty">{t('admin.feed.select_type')}</div>}
+            {selectedType && models.length === 0 && <div className="master-empty">{t('admin.feed.empty')}</div>}
             {selectedType && models.map((item) => (
               <button key={item.id} className={`master-row-btn ${selectedModel?.id === item.id ? 'active' : ''}`} onClick={() => setSelectedModel(item)}>
                 <div>
@@ -314,7 +350,7 @@ export default function FeedPage() {
                 </div>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 4, alignItems: 'flex-end' }}>
                   <StatusBadge status={item.status} />
-                  <button className="btn btn-secondary btn-sm" style={{ fontSize: 10, padding: '1px 6px' }} onClick={(e) => { e.stopPropagation(); setModelForm({ name_ko: item.model_name, model_code: item.model_code ?? '', description: item.description ?? '' }); setModelParentBrandIds(selectedBrand ? [selectedBrand.id] : []); setModal({ target: 'model', mode: 'edit', id: item.id }); }}>{t('admin.master.btn_edit')}</button>
+                  <button className="btn btn-secondary btn-sm" style={{ fontSize: 10, padding: '1px 6px' }} onClick={(e) => { e.stopPropagation(); openEditModel(item); }}>{t('admin.master.btn_edit')}</button>
                 </div>
               </button>
             ))}
@@ -326,16 +362,16 @@ export default function FeedPage() {
             <div className="card-header">
               <div className="card-title">{selectedModel.model_display_label || selectedModel.model_name}</div>
               <div style={{ display: 'flex', gap: 8 }}>
-                <button className="btn btn-secondary btn-sm" onClick={() => setModal({ target: 'model', mode: 'edit', id: selectedModel.id })}>{t('admin.master.btn_edit')}</button>
+                <button className="btn btn-secondary btn-sm" onClick={() => openEditModel(selectedModel)}>{t('admin.master.btn_edit')}</button>
                 <button className="btn btn-danger btn-sm" onClick={() => void handleDelete('model', selectedModel.id)}>{t('admin.master.btn_delete')}</button>
               </div>
             </div>
             <div style={{ padding: '8px 12px', fontSize: 13, color: 'var(--text-muted)' }}>
-              <div>{t('admin.feed.type', '사료유형')}: {selectedModel.type_display_label || selectedModel.type_name_en || selectedModel.type_name_ko || '—'}</div>
-              <div>{t('admin.feed.manufacturer', '제조사')}: {selectedModel.mfr_display_label || selectedModel.mfr_name_en || selectedModel.mfr_name_ko || '—'}</div>
-              <div>{t('admin.feed.brand', '브랜드')}: {selectedModel.brand_display_label || selectedModel.brand_name_en || selectedModel.brand_name_ko || '—'}</div>
-              {selectedModel.model_code && <div>{t('admin.feed.model_code', '모델코드')}: {selectedModel.model_code}</div>}
-              {selectedModel.description && <div>{t('admin.feed.description', '설명')}: {selectedModel.description}</div>}
+              <div>{t('admin.feed.type')}: {selectedModel.type_display_label || selectedModel.type_name_en || selectedModel.type_name_ko || '—'}</div>
+              <div>{t('admin.feed.manufacturer')}: {selectedModel.mfr_display_label || selectedModel.mfr_name_en || selectedModel.mfr_name_ko || '—'}</div>
+              <div>{t('admin.feed.brand')}: {selectedModel.brand_display_label || selectedModel.brand_name_en || selectedModel.brand_name_ko || '—'}</div>
+              {selectedModel.model_code && <div>{t('admin.feed.model_code')}: {selectedModel.model_code}</div>}
+              {selectedModel.description && <div>{t('admin.feed.description')}: {selectedModel.description}</div>}
             </div>
           </div>
         )}
@@ -347,9 +383,9 @@ export default function FeedPage() {
             <div className="modal-header">
               <div className="modal-title">
                 {modal.mode === 'create' ? t('admin.master.btn_add') : t('admin.master.btn_edit')} {' — '}
-                {modal.target === 'manufacturer' && t('admin.feed.manufacturers', '제조사')}
-                {modal.target === 'brand' && t('admin.feed.brands', '브랜드')}
-                {modal.target === 'model' && t('admin.feed.models', '사료모델')}
+                {modal.target === 'manufacturer' && t('admin.feed.manufacturers')}
+                {modal.target === 'brand' && t('admin.feed.brands')}
+                {modal.target === 'model' && t('admin.feed.models')}
               </div>
               <button className="modal-close" onClick={() => setModal(null)}>×</button>
             </div>
@@ -359,11 +395,11 @@ export default function FeedPage() {
               {modal.target === 'manufacturer' && (
                 <>
                   <div className="form-group">
-                    <label className="form-label">{t('admin.feed.name_ko', '한국어 이름')} *</label>
+                    <label className="form-label">{t('admin.feed.name_ko')} *</label>
                     <input className="form-input" value={mfrForm.name_ko} onChange={(e) => setMfrForm((f) => ({ ...f, name_ko: e.target.value }))} />
                   </div>
                   <div className="form-group">
-                    <label className="form-label">{t('admin.feed.type', '사료유형')}</label>
+                    <label className="form-label">{t('admin.feed.type')}</label>
                     <div style={{ display: 'grid', gap: 6, maxHeight: 140, overflowY: 'auto', border: '1px solid var(--border)', borderRadius: 8, padding: 8 }}>
                       {types.map((row) => (
                         <label key={row.id} style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 12 }}>
@@ -378,7 +414,7 @@ export default function FeedPage() {
                     </div>
                   </div>
                   <div className="form-group">
-                    <label className="form-label">{t('admin.feed.country', '국가')}</label>
+                    <label className="form-label">{t('admin.feed.country')}</label>
                     <input className="form-input" value={mfrForm.country} onChange={(e) => setMfrForm((f) => ({ ...f, country: e.target.value }))} placeholder="US" />
                   </div>
                   <div className="form-group">
@@ -391,15 +427,11 @@ export default function FeedPage() {
               {modal.target === 'brand' && (
                 <>
                   <div className="form-group">
-                    <label className="form-label">{t('admin.feed.manufacturer', '제조사')}</label>
-                    <input className="form-input" value={mfrLabel(selectedMfr)} readOnly />
-                  </div>
-                  <div className="form-group">
-                    <label className="form-label">{t('admin.feed.name_ko', '한국어 이름')} *</label>
+                    <label className="form-label">{t('admin.feed.name_ko')} *</label>
                     <input className="form-input" value={brandForm.name_ko} onChange={(e) => setBrandForm((f) => ({ ...f, name_ko: e.target.value }))} />
                   </div>
                   <div className="form-group">
-                    <label className="form-label">{t('admin.feed.manufacturer', '제조사')}</label>
+                    <label className="form-label">{t('admin.feed.manufacturer')}</label>
                     <div style={{ display: 'grid', gap: 6, maxHeight: 140, overflowY: 'auto', border: '1px solid var(--border)', borderRadius: 8, padding: 8 }}>
                       {manufacturers.map((row) => (
                         <label key={row.id} style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 12 }}>
@@ -419,25 +451,25 @@ export default function FeedPage() {
               {modal.target === 'model' && (
                 <>
                   <div className="form-group">
-                    <label className="form-label">{t('admin.feed.type', '사료유형')}</label>
+                    <label className="form-label">{t('admin.feed.type')}</label>
                     <input className="form-input" value={typeLabel(selectedType)} readOnly />
                   </div>
                   <div className="form-group">
-                    <label className="form-label">{t('admin.feed.manufacturer', '제조사')}</label>
+                    <label className="form-label">{t('admin.feed.manufacturer')}</label>
                     <input className="form-input" value={mfrLabel(selectedMfr)} readOnly />
                   </div>
                   {selectedBrand && (
                     <div className="form-group">
-                      <label className="form-label">{t('admin.feed.brand', '브랜드')}</label>
+                      <label className="form-label">{t('admin.feed.brand')}</label>
                       <input className="form-input" value={selectedBrand.display_label || selectedBrand.name_en || selectedBrand.name_ko} readOnly />
                     </div>
                   )}
                   <div className="form-group">
-                    <label className="form-label">{t('admin.feed.name_ko', '한국어 이름')} *</label>
+                    <label className="form-label">{t('admin.feed.name_ko')} *</label>
                     <input className="form-input" value={modelForm.name_ko} onChange={(e) => setModelForm((f) => ({ ...f, name_ko: e.target.value }))} />
                   </div>
                   <div className="form-group">
-                    <label className="form-label">{t('admin.feed.brand', '브랜드')}</label>
+                    <label className="form-label">{t('admin.feed.brand')}</label>
                     <div style={{ display: 'grid', gap: 6, maxHeight: 140, overflowY: 'auto', border: '1px solid var(--border)', borderRadius: 8, padding: 8 }}>
                       {brands.map((row) => (
                         <label key={row.id} style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 12 }}>
@@ -452,11 +484,11 @@ export default function FeedPage() {
                     </div>
                   </div>
                   <div className="form-group">
-                    <label className="form-label">{t('admin.feed.model_code', '모델코드')}</label>
+                    <label className="form-label">{t('admin.feed.model_code')}</label>
                     <input className="form-input font-mono" value={modelForm.model_code} onChange={(e) => setModelForm((f) => ({ ...f, model_code: e.target.value }))} />
                   </div>
                   <div className="form-group">
-                    <label className="form-label">{t('admin.feed.description', '설명')}</label>
+                    <label className="form-label">{t('admin.feed.description')}</label>
                     <input className="form-input" value={modelForm.description} onChange={(e) => setModelForm((f) => ({ ...f, description: e.target.value }))} />
                   </div>
                 </>

@@ -535,15 +535,27 @@ export async function handleDevices(request: Request, env: Env, url: URL): Promi
 
   // ── Manufacturers ─────────────────────────────────────────────────────────
   if (path === '/api/v1/admin/devices/manufacturers' && method === 'GET') {
+    const typeItemId = url.searchParams.get('type_item_id');
+    const hasTypeMap = await hasTable(env, 'device_manufacturer_type_map');
+    const binds: string[] = [];
+    let where = `WHERE 1=1`;
+    if (typeItemId && hasTypeMap) {
+      where += ` AND EXISTS (SELECT 1 FROM device_manufacturer_type_map mtm WHERE mtm.manufacturer_id = mfr.id AND mtm.type_item_id = ?)`;
+      binds.push(typeItemId);
+    }
+    const parentTypeIdsExpr = hasTypeMap
+      ? `(SELECT GROUP_CONCAT(type_item_id) FROM device_manufacturer_type_map mtm WHERE mtm.manufacturer_id = mfr.id)`
+      : `NULL`;
     const rows = await env.DB.prepare(
       `SELECT
          mfr.*,
-         (SELECT GROUP_CONCAT(type_item_id) FROM device_manufacturer_type_map mtm WHERE mtm.manufacturer_id = mfr.id) AS parent_type_ids,
+         ${parentTypeIdsExpr} AS parent_type_ids,
          COALESCE(NULLIF(TRIM(tr.${langCol}), ''), NULLIF(TRIM(tr.en), ''), NULLIF(TRIM(tr.ko), ''), mfr.name_en, mfr.name_ko, mfr.key) AS display_label
        FROM device_manufacturers mfr
        LEFT JOIN i18n_translations tr ON tr.key = mfr.name_key
+       ${where}
        ORDER BY mfr.sort_order, COALESCE(NULLIF(TRIM(tr.${langCol}), ''), NULLIF(TRIM(tr.en), ''), NULLIF(TRIM(tr.ko), ''), mfr.name_en, mfr.name_ko, mfr.key)`
-    ).all();
+    ).bind(...binds).all();
     return ok(rows.results);
   }
   if (path === '/api/v1/admin/devices/manufacturers' && method === 'POST') {
@@ -649,11 +661,16 @@ export async function handleDevices(request: Request, env: Env, url: URL): Promi
   // ── Brands ────────────────────────────────────────────────────────────────
   if (path === '/api/v1/admin/devices/brands' && method === 'GET') {
     const manufacturerId = url.searchParams.get('manufacturer_id');
+    const hasBrandMfrMap = await hasTable(env, 'device_brand_manufacturer_map');
+    const parentMfrIdsExpr = hasBrandMfrMap
+      ? `(SELECT GROUP_CONCAT(manufacturer_id) FROM device_brand_manufacturer_map bmm WHERE bmm.brand_id = b.id)`
+      : `NULL`;
     let q = `SELECT
                b.*,
                m.name_ko as mfr_name_ko,
                COALESCE(NULLIF(TRIM(trb.${langCol}), ''), NULLIF(TRIM(trb.en), ''), NULLIF(TRIM(trb.ko), ''), b.name_en, b.name_ko) AS display_label,
-               COALESCE(NULLIF(TRIM(trm.${langCol}), ''), NULLIF(TRIM(trm.en), ''), NULLIF(TRIM(trm.ko), ''), m.name_en, m.name_ko, m.key) AS mfr_display_label
+               COALESCE(NULLIF(TRIM(trm.${langCol}), ''), NULLIF(TRIM(trm.en), ''), NULLIF(TRIM(trm.ko), ''), m.name_en, m.name_ko, m.key) AS mfr_display_label,
+               ${parentMfrIdsExpr} AS parent_mfr_ids
              FROM device_brands b
              JOIN device_manufacturers m ON m.id = b.manufacturer_id
              LEFT JOIN i18n_translations trb ON trb.key = b.name_key
@@ -731,6 +748,10 @@ export async function handleDevices(request: Request, env: Env, url: URL): Promi
     const typeId = url.searchParams.get('device_type_id');
     const mfrId = url.searchParams.get('manufacturer_id');
     const brandId = url.searchParams.get('brand_id');
+    const hasModelBrandMap = await hasTable(env, 'device_model_brand_map');
+    const parentBrandIdsExpr = hasModelBrandMap
+      ? `(SELECT GROUP_CONCAT(brand_id) FROM device_model_brand_map mbm WHERE mbm.model_id = m.id)`
+      : `NULL`;
     const binds: string[] = [];
     let where = `WHERE 1=1`;
     if (typeId) { where += ' AND (m.device_type_item_id = ? OR (m.device_type_item_id IS NULL AND m.device_type_id = ?))'; binds.push(typeId, typeId); }
@@ -751,6 +772,7 @@ export async function handleDevices(request: Request, env: Env, url: URL): Promi
       ? await env.DB.prepare(
         `SELECT
            m.*,
+           ${parentBrandIdsExpr} AS parent_brand_ids,
            mi.code AS type_key,
            tr_type.ko AS type_name_ko,
            tr_type.en AS type_name_en,
@@ -779,6 +801,7 @@ export async function handleDevices(request: Request, env: Env, url: URL): Promi
       : await env.DB.prepare(
         `SELECT
            m.*,
+           ${parentBrandIdsExpr} AS parent_brand_ids,
            mi.key AS type_key,
            tr_type.ko AS type_name_ko,
            tr_type.en AS type_name_en,

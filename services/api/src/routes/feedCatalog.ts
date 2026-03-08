@@ -330,17 +330,25 @@ export async function handleFeedCatalog(request: Request, env: Env, url: URL): P
   }
 
   if (path === '/api/v1/admin/feed-catalog/manufacturers' && method === 'GET') {
+    const typeItemId = url.searchParams.get('type_item_id');
     const parentTypeIdsExpr = hasFeedManufacturerTypeMap
       ? `(SELECT GROUP_CONCAT(type_item_id) FROM feed_manufacturer_type_map mtm WHERE mtm.manufacturer_id = mfr.id)`
       : `NULL`;
+    const binds: string[] = [];
+    let where = `WHERE 1=1`;
+    if (typeItemId && hasFeedManufacturerTypeMap) {
+      where += ` AND EXISTS (SELECT 1 FROM feed_manufacturer_type_map mtm WHERE mtm.manufacturer_id = mfr.id AND mtm.type_item_id = ?)`;
+      binds.push(typeItemId);
+    }
     const rows = await env.DB.prepare(
       `SELECT mfr.*,
               ${parentTypeIdsExpr} AS parent_type_ids,
               COALESCE(NULLIF(TRIM(tr.${langCol}), ''), NULLIF(TRIM(tr.en), ''), NULLIF(TRIM(tr.ko), ''), mfr.name_en, mfr.name_ko) AS display_label
        FROM feed_manufacturers mfr
        LEFT JOIN i18n_translations tr ON tr.key = mfr.name_key
+       ${where}
        ORDER BY mfr.sort_order, mfr.name_en`
-    ).all();
+    ).bind(...binds).all();
     return ok(rows.results);
   }
 
@@ -418,11 +426,16 @@ export async function handleFeedCatalog(request: Request, env: Env, url: URL): P
 
   if (path === '/api/v1/admin/feed-catalog/brands' && method === 'GET') {
     const manufacturerId = url.searchParams.get('manufacturer_id');
+    const hasBrandMfrMap = await hasTable(env, 'feed_brand_manufacturer_map');
+    const parentMfrIdsExpr = hasBrandMfrMap
+      ? `(SELECT GROUP_CONCAT(manufacturer_id) FROM feed_brand_manufacturer_map bmm WHERE bmm.brand_id = b.id)`
+      : `NULL`;
     const binds: string[] = [];
     let q = `SELECT b.*,
                     m.name_ko AS mfr_name_ko,
                     COALESCE(NULLIF(TRIM(tr_mfr.${langCol}), ''), NULLIF(TRIM(tr_mfr.en), ''), NULLIF(TRIM(tr_mfr.ko), ''), m.name_en, m.name_ko) AS mfr_display_label,
-                    COALESCE(NULLIF(TRIM(tr_brand.${langCol}), ''), NULLIF(TRIM(tr_brand.en), ''), NULLIF(TRIM(tr_brand.ko), ''), b.name_en, b.name_ko) AS display_label
+                    COALESCE(NULLIF(TRIM(tr_brand.${langCol}), ''), NULLIF(TRIM(tr_brand.en), ''), NULLIF(TRIM(tr_brand.ko), ''), b.name_en, b.name_ko) AS display_label,
+                    ${parentMfrIdsExpr} AS parent_mfr_ids
              FROM feed_brands b
              JOIN feed_manufacturers m ON m.id = b.manufacturer_id
              LEFT JOIN i18n_translations tr_mfr ON tr_mfr.key = m.name_key
@@ -501,6 +514,10 @@ export async function handleFeedCatalog(request: Request, env: Env, url: URL): P
     const typeId = url.searchParams.get('feed_type_id');
     const mfrId = url.searchParams.get('manufacturer_id');
     const brandId = url.searchParams.get('brand_id');
+    const hasModelBrandMap = await hasTable(env, 'feed_model_brand_map');
+    const parentBrandIdsExpr = hasModelBrandMap
+      ? `(SELECT GROUP_CONCAT(brand_id) FROM feed_model_brand_map mbm WHERE mbm.model_id = m.id)`
+      : `NULL`;
     const binds: string[] = [];
     let where = '';
     if (typeId) { where += ' AND m.feed_type_item_id = ?'; binds.push(typeId); }
@@ -519,6 +536,7 @@ export async function handleFeedCatalog(request: Request, env: Env, url: URL): P
     }
     const rows = await env.DB.prepare(
       `SELECT m.*,
+              ${parentBrandIdsExpr} AS parent_brand_ids,
               mi.code AS type_key,
               tr_type.ko AS type_name_ko,
               tr_type.en AS type_name_en,
