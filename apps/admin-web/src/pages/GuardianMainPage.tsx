@@ -12,7 +12,7 @@ type WeightRange = '7d' | '15d' | '1m' | '3m' | '6m' | '1y' | 'all';
 type PetWizardStep = 1 | 2 | 3 | 4 | 5 | 6 | 7;
 type MeasurementWizardStep = 1 | 2;
 
-type Option = { id: string; key: string; label: string; parentId?: string | null; metadata?: Record<string, unknown> };
+type Option = { id: string; key: string; label: string; i18nKey?: string; parentId?: string | null; metadata?: Record<string, unknown> };
 const PET_WIZARD_STEPS: Array<{ step: PetWizardStep; label: string }> = [
   { step: 1, label: '기본정보' },
   { step: 2, label: '펫종류' },
@@ -158,7 +158,21 @@ function normalizeUniqueIds(values: string[]): string[] {
   return out;
 }
 
-function localizedMasterItemLabel(item: MasterItem, lang: Lang): string {
+function normalizedCategoryBaseKey(categoryKey: string): string {
+  return categoryKey.replace(/^master\./, '');
+}
+
+function localizedMasterItemLabel(
+  item: MasterItem,
+  lang: Lang,
+  t: (key: string, fallback?: string) => string,
+  categoryBaseKey?: string,
+): string {
+  if (categoryBaseKey) {
+    const i18nKey = `master.${categoryBaseKey}.${item.key}`;
+    const translated = t(i18nKey, '__MISSING__');
+    if (translated !== '__MISSING__') return translated;
+  }
   const byLang = item[lang as keyof MasterItem];
   if (typeof byLang === 'string' && byLang.trim()) return byLang.trim();
   const ko = item.ko_name || item.ko;
@@ -167,7 +181,13 @@ function localizedMasterItemLabel(item: MasterItem, lang: Lang): string {
   return item.key;
 }
 
-function toOption(items: MasterItem[], lang: Lang): Option[] {
+function toOption(
+  items: MasterItem[],
+  lang: Lang,
+  t: (key: string, fallback?: string) => string,
+  categoryKey?: string,
+): Option[] {
+  const categoryBaseKey = categoryKey ? normalizedCategoryBaseKey(categoryKey) : undefined;
   return items.map((item) => {
     let metadata: Record<string, unknown> = {};
     try {
@@ -178,7 +198,8 @@ function toOption(items: MasterItem[], lang: Lang): Option[] {
     return {
       id: item.id,
       key: item.key,
-      label: localizedMasterItemLabel(item, lang),
+      label: localizedMasterItemLabel(item, lang, t, categoryBaseKey),
+      i18nKey: categoryBaseKey ? `master.${categoryBaseKey}.${item.key}` : undefined,
       parentId: item.parent_id,
       metadata,
     };
@@ -638,25 +659,25 @@ export default function GuardianMainPage() {
       setFeeds(feedsRes.feeds || []);
       setAlbumMedia(albumRes.media || []);
 
-      setOptPetType(toOption(petTypeRows, lang).filter((item) => !item.parentId));
-      setOptBreed(toOption(breedRows, lang).filter((item) => Boolean(item.parentId)));
-      setOptGender(toOption(genderRows, lang));
-      setOptLifeStage(toOption(lifeStageRows, lang));
-      setOptColor(toOption(colorRows, lang));
-      setOptAllergy(toOption(allergyRows, lang));
-      setOptDisease(toOption(diseaseRows, lang));
-      setOptDiseaseGroup(toOption(diseaseGroupRows, lang));
-      setOptDiseaseDevice(toOption(diseaseDeviceRows, lang));
-      setOptMeasurement(toOption(measurementRows, lang));
-      setOptMeasurementContext(toOption(measurementContextRows, lang));
-      setOptSymptom(toOption(symptomRows, lang));
-      setOptVaccination(toOption(vaccinationRows, lang));
-      setOptHealthLevel(toOption(healthRows, lang));
-      setOptActivity(toOption(activityRows, lang));
-      setOptDiet(toOption(dietRows, lang));
-      setOptTemperament(toOption(temperamentRows, lang));
-      setOptCoatLength(toOption(coatLengthRows, lang));
-      setOptGrooming(toOption(groomingRows, lang));
+      setOptPetType(toOption(petTypeRows, lang, t, CATEGORY_KEYS.pet_type[0]).filter((item) => !item.parentId));
+      setOptBreed(toOption(breedRows, lang, t, CATEGORY_KEYS.pet_breed[0]).filter((item) => Boolean(item.parentId)));
+      setOptGender(toOption(genderRows, lang, t, CATEGORY_KEYS.pet_gender[0]));
+      setOptLifeStage(toOption(lifeStageRows, lang, t, CATEGORY_KEYS.life_stage[0]));
+      setOptColor(toOption(colorRows, lang, t, CATEGORY_KEYS.pet_color[0]));
+      setOptAllergy(toOption(allergyRows, lang, t, CATEGORY_KEYS.allergy_type[0]));
+      setOptDisease(toOption(diseaseRows, lang, t, CATEGORY_KEYS.disease_type[0]));
+      setOptDiseaseGroup(toOption(diseaseGroupRows, lang, t, CATEGORY_KEYS.disease_group[0]));
+      setOptDiseaseDevice(toOption(diseaseDeviceRows, lang, t, CATEGORY_KEYS.disease_device_type[0]));
+      setOptMeasurement(toOption(measurementRows, lang, t, CATEGORY_KEYS.disease_measurement_type[0]));
+      setOptMeasurementContext(toOption(measurementContextRows, lang, t, CATEGORY_KEYS.disease_measurement_context[0]));
+      setOptSymptom(toOption(symptomRows, lang, t, CATEGORY_KEYS.symptom_type[0]));
+      setOptVaccination(toOption(vaccinationRows, lang, t, CATEGORY_KEYS.vaccination_type[0]));
+      setOptHealthLevel(toOption(healthRows, lang, t, CATEGORY_KEYS.health_condition_level[0]));
+      setOptActivity(toOption(activityRows, lang, t, CATEGORY_KEYS.activity_level[0]));
+      setOptDiet(toOption(dietRows, lang, t, CATEGORY_KEYS.diet_type[0]));
+      setOptTemperament(toOption(temperamentRows, lang, t, CATEGORY_KEYS.temperament_type[0]));
+      setOptCoatLength(toOption(coatLengthRows, lang, t, CATEGORY_KEYS.coat_length[0]));
+      setOptGrooming(toOption(groomingRows, lang, t, CATEGORY_KEYS.grooming_cycle[0]));
 
       if (!silent && failedApis.length > 0) {
         setError('일부 데이터를 불러오지 못했습니다. 잠시 후 다시 시도해주세요.');
