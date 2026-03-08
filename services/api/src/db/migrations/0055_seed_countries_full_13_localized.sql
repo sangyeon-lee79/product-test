@@ -39,55 +39,38 @@ SET is_active = 1
 WHERE code IN ('KR', 'US', 'JP', 'CN', 'TW', 'ES', 'FR', 'DE', 'PT', 'VN', 'TH', 'ID', 'SA');
 
 -- 3) Default country-currency mapping (ensure one default for target countries)
-WITH mapping(country_code, currency_code, map_id) AS (
-  VALUES
-    ('KR', 'KRW', 'ccm-kr-krw'),
-    ('US', 'USD', 'ccm-us-usd'),
-    ('JP', 'JPY', 'ccm-jp-jpy'),
-    ('CN', 'CNY', 'ccm-cn-cny'),
-    ('TW', 'TWD', 'ccm-tw-twd'),
-    ('ES', 'EUR', 'ccm-es-eur'),
-    ('FR', 'EUR', 'ccm-fr-eur'),
-    ('DE', 'EUR', 'ccm-de-eur'),
-    ('PT', 'EUR', 'ccm-pt-eur'),
-    ('VN', 'VND', 'ccm-vn-vnd'),
-    ('TH', 'THB', 'ccm-th-thb'),
-    ('ID', 'IDR', 'ccm-id-idr'),
-    ('SA', 'SAR', 'ccm-sa-sar')
-)
 UPDATE country_currency_map
 SET is_default = 0
 WHERE country_id IN (
-  SELECT c.id
-  FROM countries c
-  JOIN mapping m ON m.country_code = c.code
+  SELECT id FROM countries WHERE code IN ('KR', 'US', 'JP', 'CN', 'TW', 'ES', 'FR', 'DE', 'PT', 'VN', 'TH', 'ID', 'SA')
 );
 
-WITH mapping(country_code, currency_code, map_id) AS (
-  VALUES
-    ('KR', 'KRW', 'ccm-kr-krw'),
-    ('US', 'USD', 'ccm-us-usd'),
-    ('JP', 'JPY', 'ccm-jp-jpy'),
-    ('CN', 'CNY', 'ccm-cn-cny'),
-    ('TW', 'TWD', 'ccm-tw-twd'),
-    ('ES', 'EUR', 'ccm-es-eur'),
-    ('FR', 'EUR', 'ccm-fr-eur'),
-    ('DE', 'EUR', 'ccm-de-eur'),
-    ('PT', 'EUR', 'ccm-pt-eur'),
-    ('VN', 'VND', 'ccm-vn-vnd'),
-    ('TH', 'THB', 'ccm-th-thb'),
-    ('ID', 'IDR', 'ccm-id-idr'),
-    ('SA', 'SAR', 'ccm-sa-sar')
-)
 INSERT OR REPLACE INTO country_currency_map (id, country_id, currency_id, is_default)
-SELECT
-  m.map_id,
-  c.id,
-  cur.id,
-  1
-FROM mapping m
-JOIN countries c ON c.code = m.country_code
-JOIN currencies cur ON cur.code = m.currency_code;
+SELECT 'ccm-kr-krw', c.id, cur.id, 1 FROM countries c JOIN currencies cur ON cur.code = 'KRW' WHERE c.code = 'KR';
+INSERT OR REPLACE INTO country_currency_map (id, country_id, currency_id, is_default)
+SELECT 'ccm-us-usd', c.id, cur.id, 1 FROM countries c JOIN currencies cur ON cur.code = 'USD' WHERE c.code = 'US';
+INSERT OR REPLACE INTO country_currency_map (id, country_id, currency_id, is_default)
+SELECT 'ccm-jp-jpy', c.id, cur.id, 1 FROM countries c JOIN currencies cur ON cur.code = 'JPY' WHERE c.code = 'JP';
+INSERT OR REPLACE INTO country_currency_map (id, country_id, currency_id, is_default)
+SELECT 'ccm-cn-cny', c.id, cur.id, 1 FROM countries c JOIN currencies cur ON cur.code = 'CNY' WHERE c.code = 'CN';
+INSERT OR REPLACE INTO country_currency_map (id, country_id, currency_id, is_default)
+SELECT 'ccm-tw-twd', c.id, cur.id, 1 FROM countries c JOIN currencies cur ON cur.code = 'TWD' WHERE c.code = 'TW';
+INSERT OR REPLACE INTO country_currency_map (id, country_id, currency_id, is_default)
+SELECT 'ccm-es-eur', c.id, cur.id, 1 FROM countries c JOIN currencies cur ON cur.code = 'EUR' WHERE c.code = 'ES';
+INSERT OR REPLACE INTO country_currency_map (id, country_id, currency_id, is_default)
+SELECT 'ccm-fr-eur', c.id, cur.id, 1 FROM countries c JOIN currencies cur ON cur.code = 'EUR' WHERE c.code = 'FR';
+INSERT OR REPLACE INTO country_currency_map (id, country_id, currency_id, is_default)
+SELECT 'ccm-de-eur', c.id, cur.id, 1 FROM countries c JOIN currencies cur ON cur.code = 'EUR' WHERE c.code = 'DE';
+INSERT OR REPLACE INTO country_currency_map (id, country_id, currency_id, is_default)
+SELECT 'ccm-pt-eur', c.id, cur.id, 1 FROM countries c JOIN currencies cur ON cur.code = 'EUR' WHERE c.code = 'PT';
+INSERT OR REPLACE INTO country_currency_map (id, country_id, currency_id, is_default)
+SELECT 'ccm-vn-vnd', c.id, cur.id, 1 FROM countries c JOIN currencies cur ON cur.code = 'VND' WHERE c.code = 'VN';
+INSERT OR REPLACE INTO country_currency_map (id, country_id, currency_id, is_default)
+SELECT 'ccm-th-thb', c.id, cur.id, 1 FROM countries c JOIN currencies cur ON cur.code = 'THB' WHERE c.code = 'TH';
+INSERT OR REPLACE INTO country_currency_map (id, country_id, currency_id, is_default)
+SELECT 'ccm-id-idr', c.id, cur.id, 1 FROM countries c JOIN currencies cur ON cur.code = 'IDR' WHERE c.code = 'ID';
+INSERT OR REPLACE INTO country_currency_map (id, country_id, currency_id, is_default)
+SELECT 'ccm-sa-sar', c.id, cur.id, 1 FROM countries c JOIN currencies cur ON cur.code = 'SAR' WHERE c.code = 'SA';
 
 -- 4) Country i18n (13 languages explicitly localized)
 WITH t(key, page, ko, en, ja, zh_cn, zh_tw, es, fr, de, pt, vi, th, id_lang, ar) AS (
