@@ -5,7 +5,7 @@ import { getStoredRole, isLoggedIn } from '../lib/auth';
 import { LANG_LABELS, SUPPORTED_LANGS, useI18n, useT } from '../lib/i18n';
 
 type FeedTab = 'all' | 'friends';
-type Option = { id: string; label: string };
+type Option = { id: string; key?: string | null; fallbackLabel: string };
 
 function parseJwtSub(): string | null {
   const token = localStorage.getItem('access_token');
@@ -77,6 +77,20 @@ export default function PublicHome() {
     { icon: '📅', label: t('public.nav.booking', '예약'), to: null },
     { icon: '👤', label: t('public.nav.profile', '프로필'), to: null },
   ]), [t]);
+  const translateMasterLabel = (key?: string | null, fallback?: string | null, finalFallback?: string | null) => {
+    const safeFallback = fallback || finalFallback || '-';
+    if (!key) return safeFallback;
+    const direct = t(key, '__MISSING__');
+    if (direct !== '__MISSING__') return direct;
+    return t(`master.${key}`, safeFallback);
+  };
+  const roleLabel = role === 'guardian'
+    ? t('public.role.guardian', 'Guardian')
+    : role === 'provider'
+      ? t('public.role.provider', 'Provider')
+      : role === 'admin'
+        ? t('public.role.admin', 'Admin')
+        : role;
 
   /* Dark mode */
   useEffect(() => {
@@ -110,16 +124,23 @@ export default function PublicHome() {
       const bMap = new Map<string, string>();
       const pMap = new Map<string, string>();
       for (const row of all) {
-        if (row.business_category_id) bMap.set(row.business_category_id, row.business_category_ko || row.business_category_key || row.business_category_id);
-        if (row.pet_type_id)          pMap.set(row.pet_type_id,          row.pet_type_ko  || row.pet_type_key  || row.pet_type_id);
+        if (row.business_category_id) bMap.set(row.business_category_id, `${row.business_category_key || ''}|||${row.business_category_ko || row.business_category_key || row.business_category_id}`);
+        if (row.pet_type_id)          pMap.set(row.pet_type_id,          `${row.pet_type_key || ''}|||${row.pet_type_ko || row.pet_type_key || row.pet_type_id}`);
       }
-      setBusinessOptions(Array.from(bMap.entries()).map(([id, label]) => ({ id, label })));
-      setPetTypeOptions (Array.from(pMap.entries()).map(([id, label]) => ({ id, label })));
+      setBusinessOptions(Array.from(bMap.entries()).map(([id, encoded]) => {
+        const [key, fallbackLabel] = encoded.split('|||');
+        return { id, key: key || null, fallbackLabel };
+      }));
+      setPetTypeOptions(Array.from(pMap.entries()).map(([id, encoded]) => {
+        const [key, fallbackLabel] = encoded.split('|||');
+        return { id, key: key || null, fallbackLabel };
+      }));
     } catch (e) { setError(uiErrorMessage(e, t('public.error.feed_load', '피드 데이터를 불러오지 못했습니다.'))); }
     finally { setLoading(false); }
   }
 
   useEffect(() => { loadFeed(); }, []);
+  useEffect(() => { void loadFeed(tab, businessCategoryId, petTypeId); }, [lang]);
 
   async function toggleLike(feed: FeedPost) {
     if (!loggedIn) return;
@@ -189,7 +210,7 @@ export default function PublicHome() {
   /* ── Sidebar component (inline) ───────────────────────── */
   const Sidebar = () => (
     <aside className="ig-sidebar">
-      <div className="ig-sidebar-logo">Petfolio</div>
+      <div className="ig-sidebar-logo">{t('platform.name', 'Petfolio')}</div>
 
       {/* Hero mini (비로그인) */}
       {!loggedIn && (
@@ -225,6 +246,18 @@ export default function PublicHome() {
           <span className="ig-nav-icon">{isDark ? '☀️' : '🌙'}</span>
           <span>{isDark ? t('public.theme.light', '라이트 모드') : t('public.theme.dark', '다크 모드')}</span>
         </button>
+        <div className="ig-sidebar-lang">
+          <select
+            className="form-select ig-sidebar-lang-select"
+            value={lang}
+            onChange={(e) => setLang(e.target.value as typeof lang)}
+            aria-label={t('admin.common.language', 'Language')}
+          >
+            {SUPPORTED_LANGS.map((l) => (
+              <option key={l} value={l}>{LANG_LABELS[l]}</option>
+            ))}
+          </select>
+        </div>
         {!loggedIn && (
           <Link to="/login" className="ig-nav-item">
             <span className="ig-nav-icon">🔑</span>
@@ -250,7 +283,7 @@ export default function PublicHome() {
       : (feed.author_email || '-');
     const avatarLetter = authorLine[0]?.toUpperCase() || '?';
     const canDelete  = !!(myUserId && feed.author_user_id === myUserId);
-    const displayBusiness = feed.business_category_ko || feed.business_category_key || null;
+    const displayBusiness = translateMasterLabel(feed.business_category_key, feed.business_category_ko, feed.business_category_id);
 
     return (
       <article key={feed.id} className="ig-card">
@@ -273,7 +306,7 @@ export default function PublicHome() {
         {/* Image — 1:1 */}
         {media.length === 1 && (
           <div className="ig-card-image">
-            <img src={media[0]} alt={feed.caption || 'post'} loading="lazy" />
+            <img src={media[0]} alt={feed.caption || t('public.post', '게시')} loading="lazy" />
           </div>
         )}
         {media.length > 1 && (
@@ -390,22 +423,20 @@ export default function PublicHome() {
 
       {/* ── Main area ──────────────────────────────────── */}
       <div className="ig-main">
-        <header className="ig-public-header">
-          <div className="ig-public-header-title">{t('platform.name', 'Petfolio')}</div>
-          <select
-            className="form-select ig-public-lang"
-            value={lang}
-            onChange={(e) => setLang(e.target.value as typeof lang)}
-            aria-label={t('admin.common.language', 'Language')}
-          >
-            {SUPPORTED_LANGS.map((l) => (
-              <option key={l} value={l}>{LANG_LABELS[l]}</option>
-            ))}
-          </select>
-        </header>
-
         {/* ── Feed column ──────────────────────────────── */}
         <div className="ig-feed-col">
+          <div className="ig-mobile-lang-wrap">
+            <select
+              className="form-select ig-mobile-lang-select"
+              value={lang}
+              onChange={(e) => setLang(e.target.value as typeof lang)}
+              aria-label={t('admin.common.language', 'Language')}
+            >
+              {SUPPORTED_LANGS.map((l) => (
+                <option key={l} value={l}>{LANG_LABELS[l]}</option>
+              ))}
+            </select>
+          </div>
 
           {/* Story bar */}
           {storyAuthors.length > 0 && (
@@ -439,12 +470,20 @@ export default function PublicHome() {
             <select className="form-select" value={businessCategoryId}
               onChange={(e) => { const v = e.target.value; setBusinessCategoryId(v); loadFeed(tab, v, petTypeId); }}>
               <option value="">{t('public.filter.business_all', '업종 전체')}</option>
-              {businessOptions.map((o) => <option key={o.id} value={o.id}>{o.label}</option>)}
+              {businessOptions.map((o) => (
+                <option key={o.id} value={o.id}>
+                  {translateMasterLabel(o.key, o.fallbackLabel, o.id)}
+                </option>
+              ))}
             </select>
             <select className="form-select" value={petTypeId}
               onChange={(e) => { const v = e.target.value; setPetTypeId(v); loadFeed(tab, businessCategoryId, v); }}>
               <option value="">{t('public.filter.pet_all', '펫 유형 전체')}</option>
-              {petTypeOptions.map((o) => <option key={o.id} value={o.id}>{o.label}</option>)}
+              {petTypeOptions.map((o) => (
+                <option key={o.id} value={o.id}>
+                  {translateMasterLabel(o.key, o.fallbackLabel, o.id)}
+                </option>
+              ))}
             </select>
           </div>
 
@@ -474,7 +513,7 @@ export default function PublicHome() {
                 {(myUserId || '?')[0].toUpperCase()}
               </div>
               <div className="ig-profile-mini-info">
-                <div className="ig-profile-mini-name">{role === 'guardian' ? t('public.role.guardian', 'Guardian') : role}</div>
+                <div className="ig-profile-mini-name">{roleLabel}</div>
                 <div className="ig-profile-mini-sub">{t('public.account', 'Petfolio 계정')}</div>
               </div>
             </div>
@@ -522,7 +561,7 @@ export default function PublicHome() {
 
           {/* Footer */}
           <div className="ig-right-footer">
-            <span>© 2026 Petfolio</span> · <span>{t('platform.tagline', "Your pet's life portfolio")}</span>
+            <span>{t('public.copyright', '© 2026 Petfolio')}</span> · <span>{t('platform.tagline', "Your pet's life portfolio")}</span>
             <br />
             <Link to="/admin/login">{t('public.admin', 'Admin')}</Link>
           </div>
