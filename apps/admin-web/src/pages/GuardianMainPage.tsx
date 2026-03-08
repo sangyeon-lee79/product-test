@@ -137,6 +137,18 @@ function toArray(raw: string[] | string | null | undefined): string[] {
   }
 }
 
+function normalizeUniqueIds(values: string[]): string[] {
+  const out: string[] = [];
+  const seen = new Set<string>();
+  for (const value of values) {
+    const id = String(value || '').trim();
+    if (!id || seen.has(id)) continue;
+    seen.add(id);
+    out.push(id);
+  }
+  return out;
+}
+
 function toOption(items: MasterItem[]): Option[] {
   return items.map((item) => {
     let metadata: Record<string, unknown> = {};
@@ -293,7 +305,7 @@ export default function GuardianMainPage() {
   const [petMode, setPetMode] = useState<Mode>('create');
   const [petForm, setPetForm] = useState<PetForm>(DEFAULT_PET_FORM);
   const [petWizardStep, setPetWizardStep] = useState<PetWizardStep>(1);
-  const [selectedDiseaseGroupId, setSelectedDiseaseGroupId] = useState('');
+  const [diseaseRows, setDiseaseRows] = useState<Array<{ groupId: string; diseaseId: string }>>([{ groupId: '', diseaseId: '' }]);
 
   const [bookings, setBookings] = useState<Booking[]>([]);
   const [feeds, setFeeds] = useState<FeedPost[]>([]);
@@ -356,6 +368,7 @@ export default function GuardianMainPage() {
   const [optGender, setOptGender] = useState<Option[]>([]);
   const [optLifeStage, setOptLifeStage] = useState<Option[]>([]);
   const [optColor, setOptColor] = useState<Option[]>([]);
+  const [optAllergy, setOptAllergy] = useState<Option[]>([]);
   const [optDisease, setOptDisease] = useState<Option[]>([]);
   const [optDiseaseGroup, setOptDiseaseGroup] = useState<Option[]>([]);
   const [optDiseaseDevice, setOptDiseaseDevice] = useState<Option[]>([]);
@@ -365,6 +378,7 @@ export default function GuardianMainPage() {
   const [deviceBrands, setDeviceBrands] = useState<DeviceBrand[]>([]);
   const [deviceModels, setDeviceModels] = useState<DeviceModel[]>([]);
   const [measurementUnits, setMeasurementUnits] = useState<MeasurementUnit[]>([]);
+  const [optSymptom, setOptSymptom] = useState<Option[]>([]);
   const [optVaccination, setOptVaccination] = useState<Option[]>([]);
   const [optHealthLevel, setOptHealthLevel] = useState<Option[]>([]);
   const [optActivity, setOptActivity] = useState<Option[]>([]);
@@ -419,11 +433,6 @@ export default function GuardianMainPage() {
     return optBreed.filter((b) => b.parentId === petForm.pet_type_id);
   }, [optBreed, petForm.pet_type_id]);
 
-  const diseaseOptionsFiltered = useMemo(() => {
-    if (!selectedDiseaseGroupId) return optDisease;
-    return optDisease.filter((d) => d.parentId === selectedDiseaseGroupId);
-  }, [optDisease, selectedDiseaseGroupId]);
-
   const wizardTitle = useMemo(() => {
     const dash = '-';
     if (petWizardStep === 1) return `${t('guardian.pet_wizard.basic_info', '기본정보')} - ${dash} - ${dash}`;
@@ -444,9 +453,9 @@ export default function GuardianMainPage() {
     }
     if (petWizardStep === 5) {
       const diseaseLabel = petForm.disease_history_ids.length
-        ? `${labelOf(diseaseOptionsFiltered, petForm.disease_history_ids[0], dash)}${petForm.disease_history_ids.length > 1 ? ` +${petForm.disease_history_ids.length - 1}` : ''}`
+        ? `${labelOf(optDisease, petForm.disease_history_ids[0], dash)}${petForm.disease_history_ids.length > 1 ? ` +${petForm.disease_history_ids.length - 1}` : ''}`
         : dash;
-      return `${t('master.disease_group', '질병군')} - ${labelOf(optDiseaseGroup, selectedDiseaseGroupId, dash)} - ${diseaseLabel}`;
+      return `${t('master.disease_group', '질병군')} - ${labelOf(optDiseaseGroup, diseaseRows.find((row) => row.groupId)?.groupId || '', dash)} - ${diseaseLabel}`;
     }
     if (petWizardStep === 6) {
       const temperamentLabel = petForm.temperament_ids.length
@@ -457,10 +466,11 @@ export default function GuardianMainPage() {
     return `${t('master.coat_length', '털길이')} - ${labelOf(optCoatLength, petForm.coat_length_id, dash)} - ${labelOf(optGrooming, petForm.grooming_cycle_id, dash)}`;
   }, [
     breedOptionsFiltered,
-    diseaseOptionsFiltered,
+    diseaseRows,
     optActivity,
     optCoatLength,
     optColor,
+    optDisease,
     optDiseaseGroup,
     optGender,
     optGrooming,
@@ -478,7 +488,6 @@ export default function GuardianMainPage() {
     petForm.temperament_ids,
     petForm.vaccination_ids,
     petWizardStep,
-    selectedDiseaseGroupId,
     t,
   ]);
 
@@ -525,11 +534,13 @@ export default function GuardianMainPage() {
         genderRows,
         lifeStageRows,
         colorRows,
+        allergyRows,
         diseaseRows,
         diseaseGroupRows,
         diseaseDeviceRows,
         measurementRows,
         measurementContextRows,
+        symptomRows,
         vaccinationRows,
         healthRows,
         activityRows,
@@ -548,11 +559,13 @@ export default function GuardianMainPage() {
         loadCategoryItems(CATEGORY_KEYS.pet_gender),
         loadCategoryItems(CATEGORY_KEYS.life_stage),
         loadCategoryItems(CATEGORY_KEYS.pet_color),
+        loadCategoryItems(CATEGORY_KEYS.allergy_type),
         loadCategoryItems(CATEGORY_KEYS.disease_type),
         loadCategoryItems(CATEGORY_KEYS.disease_group),
         loadCategoryItems(CATEGORY_KEYS.disease_device_type),
         loadCategoryItems(CATEGORY_KEYS.disease_measurement_type),
         loadCategoryItems(CATEGORY_KEYS.disease_measurement_context),
+        loadCategoryItems(CATEGORY_KEYS.symptom_type),
         loadCategoryItems(CATEGORY_KEYS.vaccination_type),
         loadCategoryItems(CATEGORY_KEYS.health_condition_level),
         loadCategoryItems(CATEGORY_KEYS.activity_level),
@@ -574,11 +587,13 @@ export default function GuardianMainPage() {
       setOptGender(toOption(genderRows));
       setOptLifeStage(toOption(lifeStageRows));
       setOptColor(toOption(colorRows));
+      setOptAllergy(toOption(allergyRows));
       setOptDisease(toOption(diseaseRows));
       setOptDiseaseGroup(toOption(diseaseGroupRows));
       setOptDiseaseDevice(toOption(diseaseDeviceRows));
       setOptMeasurement(toOption(measurementRows));
       setOptMeasurementContext(toOption(measurementContextRows));
+      setOptSymptom(toOption(symptomRows));
       setOptVaccination(toOption(vaccinationRows));
       setOptHealthLevel(toOption(healthRows));
       setOptActivity(toOption(activityRows));
@@ -611,10 +626,14 @@ export default function GuardianMainPage() {
 
   useEffect(() => {
     if (!petModalOpen) return;
-    if (selectedDiseaseGroupId) return;
-    const firstDisease = optDisease.find((d) => petForm.disease_history_ids.includes(d.id));
-    if (firstDisease?.parentId) setSelectedDiseaseGroupId(firstDisease.parentId);
-  }, [optDisease, petForm.disease_history_ids, petModalOpen, selectedDiseaseGroupId]);
+    const mapped = normalizeUniqueIds(petForm.disease_history_ids)
+      .map((diseaseId) => {
+        const disease = optDisease.find((d) => d.id === diseaseId);
+        return { groupId: disease?.parentId || '', diseaseId };
+      })
+      .filter((row) => row.groupId && row.diseaseId);
+    setDiseaseRows(mapped.length ? mapped : [{ groupId: '', diseaseId: '' }]);
+  }, [optDisease, petForm.disease_history_ids, petModalOpen]);
 
   const healthFeeds = useMemo(
     () => feeds.filter((f) => f.feed_type === 'health_update' && (!selectedPet || !f.pet_id || f.pet_id === selectedPet.id)),
@@ -984,7 +1003,7 @@ export default function GuardianMainPage() {
     setPetMode('create');
     setPetForm(DEFAULT_PET_FORM);
     setPetWizardStep(1);
-    setSelectedDiseaseGroupId('');
+    setDiseaseRows([{ groupId: '', diseaseId: '' }]);
     setEditingPetId('');
     setPetModalOpen(true);
   }
@@ -994,12 +1013,17 @@ export default function GuardianMainPage() {
       const res = await api.pets.detail(petId);
       const p = res.pet;
       const diseaseHistoryIds = toArray(p.disease_history_ids);
-      const firstDisease = optDisease.find((d) => diseaseHistoryIds.includes(d.id));
       setPetMode('edit');
       setActivePet(p);
       setEditingPetId(p.id);
       setPetWizardStep(1);
-      setSelectedDiseaseGroupId(firstDisease?.parentId || '');
+      const mappedDiseaseRows = normalizeUniqueIds(diseaseHistoryIds)
+        .map((diseaseId) => {
+          const disease = optDisease.find((d) => d.id === diseaseId);
+          return { groupId: disease?.parentId || '', diseaseId };
+        })
+        .filter((row) => row.groupId && row.diseaseId);
+      setDiseaseRows(mappedDiseaseRows.length ? mappedDiseaseRows : [{ groupId: '', diseaseId: '' }]);
       setPetForm({
         name: p.name || '',
         microchip_no: p.microchip_no || '',
@@ -1064,6 +1088,12 @@ export default function GuardianMainPage() {
 
     const payload = {
       ...petForm,
+      color_ids: normalizeUniqueIds(petForm.color_ids),
+      allergy_ids: normalizeUniqueIds(petForm.allergy_ids),
+      disease_history_ids: normalizeUniqueIds(petForm.disease_history_ids),
+      symptom_tag_ids: normalizeUniqueIds(petForm.symptom_tag_ids),
+      vaccination_ids: normalizeUniqueIds(petForm.vaccination_ids),
+      temperament_ids: normalizeUniqueIds(petForm.temperament_ids),
       microchip_no: petForm.microchip_no.trim() || null,
       birthday: petForm.birthday || null,
       birth_date: petForm.birthday || null,
@@ -1114,7 +1144,7 @@ export default function GuardianMainPage() {
     setActivePet(null);
     setEditingPetId('');
     setPetWizardStep(1);
-    setSelectedDiseaseGroupId('');
+    setDiseaseRows([{ groupId: '', diseaseId: '' }]);
   }
 
   function gotoNextPetStep() {
@@ -1286,22 +1316,135 @@ export default function GuardianMainPage() {
     );
   }
 
-  function renderMultiSelect(label: string, value: string[], options: Option[], onChange: (next: string[]) => void) {
+  function renderDropdownRows(
+    label: string,
+    values: string[],
+    options: Option[],
+    onChange: (next: string[]) => void,
+    addButtonLabel: string,
+  ) {
+    const selected = normalizeUniqueIds(values);
+    const rows = selected.length > 0 ? selected : [''];
+    const remaining = options.filter((o) => !selected.includes(o.id));
     return (
       <div className="form-group">
         <label className="form-label">{label}</label>
-        <select
-          className="form-select"
-          multiple
-          value={value}
-          onChange={(e) => {
-            const next = Array.from(e.target.selectedOptions).map((o) => o.value);
-            onChange(next);
-          }}
-          size={Math.min(6, Math.max(3, options.length || 3))}
-        >
-          {options.map((o) => <option key={o.id} value={o.id}>{o.label}</option>)}
-        </select>
+        <div style={{ display: 'grid', gap: 8 }}>
+          {rows.map((rowValue, index) => {
+            const rowOptions = options.filter((o) => o.id === rowValue || !selected.includes(o.id));
+            return (
+              <div key={`${label}-${index}-${rowValue || 'empty'}`} style={{ display: 'flex', gap: 8 }}>
+                <select
+                  className="form-select"
+                  value={rowValue}
+                  onChange={(e) => {
+                    const nextValue = e.target.value;
+                    if (!rowValue) {
+                      if (!nextValue) return;
+                      onChange(normalizeUniqueIds([...selected, nextValue]));
+                      return;
+                    }
+                    const next = [...selected];
+                    if (!nextValue) next.splice(index, 1);
+                    else next[index] = nextValue;
+                    onChange(normalizeUniqueIds(next));
+                  }}
+                >
+                  <option value="">{t('common.select', 'Select')}</option>
+                  {rowOptions.map((o) => <option key={o.id} value={o.id}>{o.label}</option>)}
+                </select>
+                <button
+                  type="button"
+                  className="btn btn-danger"
+                  onClick={() => onChange(selected.filter((_, i) => i !== index))}
+                  disabled={!rowValue}
+                >
+                  {t('common.delete', 'Delete')}
+                </button>
+              </div>
+            );
+          })}
+          <div>
+            <button
+              type="button"
+              className="btn btn-secondary"
+              onClick={() => {
+                if (remaining.length === 0) return;
+                onChange(normalizeUniqueIds([...selected, remaining[0].id]));
+              }}
+              disabled={remaining.length === 0}
+            >
+              {addButtonLabel}
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  function renderDiseaseRows(
+    rows: Array<{ groupId: string; diseaseId: string }>,
+    onChange: (next: Array<{ groupId: string; diseaseId: string }>) => void,
+  ) {
+    const normalizedRows = rows.filter((row) => row.groupId || row.diseaseId);
+    const displayRows = normalizedRows.length > 0 ? normalizedRows : [{ groupId: '', diseaseId: '' }];
+    return (
+      <div className="form-group">
+        <label className="form-label">{t('master.disease_group', 'Disease Group')} / {t('master.disease_type', 'Disease')}</label>
+        <div style={{ display: 'grid', gap: 8 }}>
+          {displayRows.map((row, index) => {
+            const diseaseOptions = optDisease
+              .filter((d) => !row.groupId || d.parentId === row.groupId)
+              .filter((d) => d.id === row.diseaseId || !displayRows.some((r, i) => i !== index && r.diseaseId === d.id));
+            return (
+              <div key={`disease-row-${index}-${row.groupId}-${row.diseaseId}`} style={{ display: 'grid', gap: 8, gridTemplateColumns: '1fr 1fr auto' }}>
+                <select
+                  className="form-select"
+                  value={row.groupId}
+                  onChange={(e) => {
+                    const nextGroupId = e.target.value;
+                    const next = [...displayRows];
+                    const keepDisease = optDisease.some((d) => d.id === next[index].diseaseId && d.parentId === nextGroupId);
+                    next[index] = { groupId: nextGroupId, diseaseId: keepDisease ? next[index].diseaseId : '' };
+                    onChange(next.filter((r) => r.groupId || r.diseaseId));
+                  }}
+                >
+                  <option value="">{t('common.select', 'Select')}</option>
+                  {optDiseaseGroup.map((o) => <option key={o.id} value={o.id}>{o.label}</option>)}
+                </select>
+                <select
+                  className="form-select"
+                  value={row.diseaseId}
+                  onChange={(e) => {
+                    const next = [...displayRows];
+                    next[index] = { ...next[index], diseaseId: e.target.value };
+                    onChange(next.filter((r) => r.groupId || r.diseaseId));
+                  }}
+                >
+                  <option value="">{t('common.select', 'Select')}</option>
+                  {diseaseOptions.map((o) => <option key={o.id} value={o.id}>{o.label}</option>)}
+                </select>
+                <button
+                  type="button"
+                  className="btn btn-danger"
+                  onClick={() => onChange(displayRows.filter((_, i) => i !== index))}
+                  disabled={!row.groupId && !row.diseaseId}
+                >
+                  {t('common.delete', 'Delete')}
+                </button>
+              </div>
+            );
+          })}
+          <div>
+            <button
+              type="button"
+              className="btn btn-secondary"
+              onClick={() => onChange([...displayRows.filter((r) => r.groupId || r.diseaseId), { groupId: '', diseaseId: '' }])}
+            >
+              {t('guardian.pet_wizard.add_disease', 'Add disease')}
+            </button>
+          </div>
+        </div>
       </div>
     );
   }
@@ -1805,7 +1948,13 @@ export default function GuardianMainPage() {
                 <>
                   <div className="form-row col2">
                     {renderSelect(t('master.pet_gender', 'Gender'), petForm.gender_id, optGender, (v) => setPetForm((p) => ({ ...p, gender_id: v })), true)}
-                    {renderMultiSelect(t('master.pet_color', 'Primary Color'), petForm.color_ids, optColor, (next) => setPetForm((p) => ({ ...p, color_ids: next })))}
+                    {renderDropdownRows(
+                      t('master.pet_color', 'Primary Color'),
+                      petForm.color_ids,
+                      optColor,
+                      (next) => setPetForm((p) => ({ ...p, color_ids: normalizeUniqueIds(next) })),
+                      t('guardian.pet_wizard.add_color', 'Add color'),
+                    )}
                   </div>
                 </>
               )}
@@ -1813,22 +1962,30 @@ export default function GuardianMainPage() {
               {petWizardStep === 4 && (
                 <>
                   <div className="form-row col1">
-                    {renderMultiSelect(t('master.vaccination_type', 'Vaccination'), petForm.vaccination_ids, optVaccination, (next) => setPetForm((p) => ({ ...p, vaccination_ids: next })))}
+                    {renderDropdownRows(
+                      t('master.vaccination_type', 'Vaccination'),
+                      petForm.vaccination_ids,
+                      optVaccination,
+                      (next) => setPetForm((p) => ({ ...p, vaccination_ids: normalizeUniqueIds(next) })),
+                      t('guardian.pet_wizard.add_vaccination', 'Add vaccination'),
+                    )}
                   </div>
                 </>
               )}
 
               {petWizardStep === 5 && (
                 <>
-                  <div className="form-row col2">
-                    {renderSelect(t('master.disease_group', 'Disease Group'), selectedDiseaseGroupId, optDiseaseGroup, (v) => {
-                      setSelectedDiseaseGroupId(v);
-                      setPetForm((p) => ({
-                        ...p,
-                        disease_history_ids: p.disease_history_ids.filter((id) => !v || optDisease.find((d) => d.id === id)?.parentId === v),
-                      }));
+                  <div className="form-row col1">
+                    {renderDiseaseRows(diseaseRows, (nextRows) => {
+                      const dedupByDisease = new Map<string, { groupId: string; diseaseId: string }>();
+                      for (const row of nextRows) {
+                        if (!row.groupId || !row.diseaseId) continue;
+                        dedupByDisease.set(row.diseaseId, row);
+                      }
+                      const normalizedRows = Array.from(dedupByDisease.values());
+                      setDiseaseRows(normalizedRows.length ? normalizedRows : [{ groupId: '', diseaseId: '' }]);
+                      setPetForm((p) => ({ ...p, disease_history_ids: normalizedRows.map((r) => r.diseaseId) }));
                     })}
-                    {renderMultiSelect(t('master.disease_type', 'Disease History'), petForm.disease_history_ids, diseaseOptionsFiltered, (next) => setPetForm((p) => ({ ...p, disease_history_ids: next })))}
                   </div>
                 </>
               )}
@@ -1836,8 +1993,30 @@ export default function GuardianMainPage() {
               {petWizardStep === 6 && (
                 <>
                   <div className="form-row col2">
-                    {renderMultiSelect(t('master.temperament_type', 'Temperament'), petForm.temperament_ids, optTemperament, (next) => setPetForm((p) => ({ ...p, temperament_ids: next })))}
+                    {renderDropdownRows(
+                      t('master.temperament_type', 'Temperament'),
+                      petForm.temperament_ids,
+                      optTemperament,
+                      (next) => setPetForm((p) => ({ ...p, temperament_ids: normalizeUniqueIds(next) })),
+                      t('guardian.pet_wizard.add_trait', 'Add trait'),
+                    )}
                     {renderSelect(t('master.activity_level', 'Activity Level'), petForm.activity_level_id, optActivity, (v) => setPetForm((p) => ({ ...p, activity_level_id: v })))}
+                  </div>
+                  <div className="form-row col2">
+                    {renderDropdownRows(
+                      t('master.allergy_type', 'Allergy'),
+                      petForm.allergy_ids,
+                      optAllergy,
+                      (next) => setPetForm((p) => ({ ...p, allergy_ids: normalizeUniqueIds(next) })),
+                      t('guardian.pet_wizard.add_allergy', 'Add allergy'),
+                    )}
+                    {renderDropdownRows(
+                      t('master.symptom_type', 'Symptom'),
+                      petForm.symptom_tag_ids,
+                      optSymptom,
+                      (next) => setPetForm((p) => ({ ...p, symptom_tag_ids: normalizeUniqueIds(next) })),
+                      t('guardian.pet_wizard.add_symptom', 'Add symptom'),
+                    )}
                   </div>
                 </>
               )}
