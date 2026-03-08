@@ -228,21 +228,29 @@ export async function handleFeedCatalog(request: Request, env: Env, url: URL): P
       const typeId = url.searchParams.get('feed_type_id');
       const mfrId = url.searchParams.get('manufacturer_id');
       const brandId = url.searchParams.get('brand_id');
+      const hasModelBrandMap = (await hasTable(env, 'feed_model_brand_map'))
+        && (await hasColumn(env, 'feed_model_brand_map', 'model_id'))
+        && (await hasColumn(env, 'feed_model_brand_map', 'brand_id'));
       const binds: string[] = [];
       let where = `WHERE m.status = 'active'`;
       if (typeId) { where += ' AND m.feed_type_item_id = ?'; binds.push(typeId); }
       if (mfrId) { where += ' AND m.manufacturer_id = ?'; binds.push(mfrId); }
       if (brandId) {
-        where += ` AND (
-          m.brand_id = ?
-          OR EXISTS (
-            SELECT 1
-            FROM feed_model_brand_map mbm
-            WHERE mbm.model_id = m.id
-              AND mbm.brand_id = ?
-          )
-        )`;
-        binds.push(brandId, brandId);
+        if (hasModelBrandMap) {
+          where += ` AND (
+            m.brand_id = ?
+            OR EXISTS (
+              SELECT 1
+              FROM feed_model_brand_map mbm
+              WHERE mbm.model_id = m.id
+                AND mbm.brand_id = ?
+            )
+          )`;
+          binds.push(brandId, brandId);
+        } else {
+          where += ' AND m.brand_id = ?';
+          binds.push(brandId);
+        }
       }
       const rows = await env.DB.prepare(
         `SELECT m.*,
@@ -514,7 +522,9 @@ export async function handleFeedCatalog(request: Request, env: Env, url: URL): P
     const typeId = url.searchParams.get('feed_type_id');
     const mfrId = url.searchParams.get('manufacturer_id');
     const brandId = url.searchParams.get('brand_id');
-    const hasModelBrandMap = await hasTable(env, 'feed_model_brand_map');
+    const hasModelBrandMap = (await hasTable(env, 'feed_model_brand_map'))
+      && (await hasColumn(env, 'feed_model_brand_map', 'model_id'))
+      && (await hasColumn(env, 'feed_model_brand_map', 'brand_id'));
     const parentBrandIdsExpr = hasModelBrandMap
       ? `(SELECT GROUP_CONCAT(brand_id) FROM feed_model_brand_map mbm WHERE mbm.model_id = m.id)`
       : `NULL`;
