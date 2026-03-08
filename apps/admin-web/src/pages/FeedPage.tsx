@@ -81,26 +81,45 @@ export default function FeedPage() {
   }, [loadTypes]);
 
   useEffect(() => {
-    void loadManufacturers(selectedType?.id);
+    if (!selectedType) {
+      setManufacturers([]);
+      setSelectedMfr(null);
+      setSelectedBrand(null);
+      setSelectedModel(null);
+      return;
+    }
+    void loadManufacturers(selectedType.id);
     setSelectedMfr(null);
     setSelectedBrand(null);
     setSelectedModel(null);
-  }, [selectedType?.id, loadManufacturers]);
+  }, [selectedType, loadManufacturers]);
 
   useEffect(() => {
-    void loadBrands(selectedMfr?.id);
+    if (!selectedMfr) {
+      setBrands([]);
+      setSelectedBrand(null);
+      setSelectedModel(null);
+      return;
+    }
+    void loadBrands(selectedMfr.id);
     setSelectedBrand(null);
     setSelectedModel(null);
-  }, [selectedMfr?.id, loadBrands]);
+  }, [selectedMfr, loadBrands]);
 
   useEffect(() => {
-    const filters: { feed_type_id?: string; manufacturer_id?: string; brand_id?: string } = {};
-    if (selectedType) filters.feed_type_id = selectedType.id;
+    if (!selectedType) {
+      setModels([]);
+      setSelectedModel(null);
+      return;
+    }
+    const filters: { feed_type_id?: string; manufacturer_id?: string; brand_id?: string } = {
+      feed_type_id: selectedType.id,
+    };
     if (selectedMfr) filters.manufacturer_id = selectedMfr.id;
     if (selectedBrand) filters.brand_id = selectedBrand.id;
     void loadModels(filters);
     setSelectedModel(null);
-  }, [selectedType?.id, selectedMfr?.id, selectedBrand?.id, loadModels]);
+  }, [selectedType, selectedMfr, selectedBrand, loadModels]);
 
   function flash(msg: string) {
     setSuccess(msg);
