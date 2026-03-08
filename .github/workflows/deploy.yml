@@ -49,7 +49,7 @@ jobs:
           VITE_API_URL: https://pet-life-api.adrien-lee.workers.dev
 
       - name: Install wrangler
-        run: npm install -g wrangler
+        run: npm install -g wrangler@4.71.0
 
       - name: Check auth
         run: wrangler whoami
@@ -57,8 +57,26 @@ jobs:
       - name: Create Pages project (최초 1회)
         run: wrangler pages project create pet-life-admin --production-branch=main || true
 
-      - name: Deploy to Cloudflare Pages
-        run: wrangler pages deploy apps/admin-web/dist --project-name=pet-life-admin --branch=main
+      - name: Deploy to Cloudflare Pages (with retry)
+        shell: bash
+        run: |
+          set -euo pipefail
+          for attempt in 1 2 3; do
+            echo "🚀 Pages deploy attempt ${attempt}/3"
+            if wrangler pages deploy apps/admin-web/dist --project-name=pet-life-admin --branch=main; then
+              echo "✅ Pages deploy succeeded"
+              exit 0
+            fi
+            if [ "$attempt" -lt 3 ]; then
+              sleep_seconds=$((attempt * 20))
+              echo "⚠️ Deploy failed. Retry in ${sleep_seconds}s..."
+              sleep "$sleep_seconds"
+            fi
+          done
+          echo "❌ Pages deploy failed after 3 attempts."
+          echo "Recent wrangler logs:"
+          ls -1t "$HOME/.config/.wrangler/logs/" 2>/dev/null | head -n 3 || true
+          exit 1
 
   # ─────────────────────────────────────
   # API → Cloudflare Workers
