@@ -547,7 +547,7 @@ export const api = {
       list: (lang?: string, typeItemId?: string) => {
         const q = new URLSearchParams();
         if (lang) q.set('lang', lang);
-        if (typeItemId) q.set('type_item_id', typeItemId);
+        if (typeItemId) q.set('feed_type_id', typeItemId);
         const suffix = q.toString() ? `?${q.toString()}` : '';
         return request<FeedManufacturer[]>(`/api/v1/admin/feed-catalog/manufacturers${suffix}`);
       },
