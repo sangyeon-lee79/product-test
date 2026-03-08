@@ -1,0 +1,176 @@
+{
+  "source": {
+    "site": "https://www.knrc.co.kr/shop/list.php?ca_id=10",
+    "collected_at": "2026-03-08",
+    "notes": [
+      "상품 목록/가격/상품명은 카테고리 목록 페이지 텍스트 기준으로 수집",
+      "제품 상세의 영양성분은 이미지 본문이라 자동 텍스트 추출 제한",
+      "요청에서 제공된 venison_eggshell_raw_diet 영양표는 정확값으로 반영"
+    ]
+  },
+  "food_manufacturers": [
+    {
+      "entity_type": "food_manufacturer",
+      "key": "ray_n_yvonne",
+      "parent_feed_type_keys": [
+        "raw_food_core",
+        "cooked_food_core",
+        "care_food_core",
+        "snack_food_core"
+      ],
+      "label_ko": "레이앤이본",
+      "auto_translate_from_ko": true,
+      "country_code": "KR",
+      "sort_order": 1,
+      "is_active": true
+    }
+  ],
+  "food_brands": [
+    {"entity_type":"food_brand","key":"balanced_raw_line","parent_manufacturer_keys":["ray_n_yvonne"],"parent_feed_type_keys":["raw_food_core"],"label_ko":"난각생식","auto_translate_from_ko":true,"sort_order":1,"is_active":true},
+    {"entity_type":"food_brand","key":"bone_raw_line","parent_manufacturer_keys":["ray_n_yvonne"],"parent_feed_type_keys":["raw_food_core"],"label_ko":"뼈있는 생식","auto_translate_from_ko":true,"sort_order":2,"is_active":true},
+    {"entity_type":"food_brand","key":"feline_raw_line","parent_manufacturer_keys":["ray_n_yvonne"],"parent_feed_type_keys":["raw_food_core"],"label_ko":"고양이 생식","auto_translate_from_ko":true,"sort_order":3,"is_active":true},
+
+    {"entity_type":"food_brand","key":"cooked_food_line","parent_manufacturer_keys":["ray_n_yvonne"],"parent_feed_type_keys":["cooked_food_core"],"label_ko":"요리식","auto_translate_from_ko":true,"sort_order":10,"is_active":true},
+
+    {"entity_type":"food_brand","key":"mid_protein_care_line","parent_manufacturer_keys":["ray_n_yvonne"],"parent_feed_type_keys":["care_food_core"],"label_ko":"중단백 관리식","auto_translate_from_ko":true,"sort_order":20,"is_active":true},
+    {"entity_type":"food_brand","key":"renal_care_line","parent_manufacturer_keys":["ray_n_yvonne"],"parent_feed_type_keys":["care_food_core"],"label_ko":"신장 관리식","auto_translate_from_ko":true,"sort_order":21,"is_active":true},
+    {"entity_type":"food_brand","key":"pancreatic_care_line","parent_manufacturer_keys":["ray_n_yvonne"],"parent_feed_type_keys":["care_food_core"],"label_ko":"췌장 관리식","auto_translate_from_ko":true,"sort_order":22,"is_active":true},
+
+    {"entity_type":"food_brand","key":"stew_snack_line","parent_manufacturer_keys":["ray_n_yvonne"],"parent_feed_type_keys":["snack_food_core"],"label_ko":"스튜 간식","auto_translate_from_ko":true,"sort_order":30,"is_active":true},
+    {"entity_type":"food_brand","key":"beige_freeze_dried_line","parent_manufacturer_keys":["ray_n_yvonne"],"parent_feed_type_keys":["snack_food_core"],"label_ko":"베이지끄 동결건조","auto_translate_from_ko":true,"sort_order":31,"is_active":true},
+    {"entity_type":"food_brand","key":"jerky_snack_line","parent_manufacturer_keys":["ray_n_yvonne"],"parent_feed_type_keys":["snack_food_core"],"label_ko":"육포 간식","auto_translate_from_ko":true,"sort_order":32,"is_active":true},
+    {"entity_type":"food_brand","key":"bakery_snack_line","parent_manufacturer_keys":["ray_n_yvonne"],"parent_feed_type_keys":["snack_food_core"],"label_ko":"베이커리 간식","auto_translate_from_ko":true,"sort_order":33,"is_active":true}
+  ],
+  "food_models": [
+    {"entity_type":"food_model","key":"venison_eggshell_raw_diet","parent_manufacturer_keys":["ray_n_yvonne"],"parent_brand_keys":["balanced_raw_line"],"parent_feed_type_keys":["raw_food_core"],"label_ko":"사슴고기 난각 생식 9P","auto_translate_from_ko":true,"sort_order":1,"is_active":true,"source_item_url":"https://www.knrc.co.kr/shop/item.php?it_id=1719567670"},
+    {"entity_type":"food_model","key":"lamb_bone_raw_diet","parent_manufacturer_keys":["ray_n_yvonne"],"parent_brand_keys":["bone_raw_line"],"parent_feed_type_keys":["raw_food_core"],"label_ko":"뼈있는 양고기 생식 12P","auto_translate_from_ko":true,"sort_order":2,"is_active":true,"source_item_url":"https://www.knrc.co.kr/shop/item.php?it_id=1719567500"},
+    {"entity_type":"food_model","key":"lamb_eggshell_raw_diet","parent_manufacturer_keys":["ray_n_yvonne"],"parent_brand_keys":["balanced_raw_line"],"parent_feed_type_keys":["raw_food_core"],"label_ko":"양고기 난각 생식 12P","auto_translate_from_ko":true,"sort_order":3,"is_active":true,"source_item_url":"https://www.knrc.co.kr/shop/item.php?it_id=1719567268"},
+    {"entity_type":"food_model","key":"beef_eggshell_raw_diet","parent_manufacturer_keys":["ray_n_yvonne"],"parent_brand_keys":["balanced_raw_line"],"parent_feed_type_keys":["raw_food_core"],"label_ko":"소고기 난각 생식 12P","auto_translate_from_ko":true,"sort_order":4,"is_active":true,"source_item_url":"https://www.knrc.co.kr/shop/item.php?it_id=1719567023"},
+    {"entity_type":"food_model","key":"chicken_bone_raw_diet","parent_manufacturer_keys":["ray_n_yvonne"],"parent_brand_keys":["bone_raw_line"],"parent_feed_type_keys":["raw_food_core"],"label_ko":"뼈있는 닭고기 생식 12P","auto_translate_from_ko":true,"sort_order":5,"is_active":true,"source_item_url":"https://www.knrc.co.kr/shop/item.php?it_id=1719565892"},
+    {"entity_type":"food_model","key":"feline_duck_bone_raw_diet","parent_manufacturer_keys":["ray_n_yvonne"],"parent_brand_keys":["feline_raw_line"],"parent_feed_type_keys":["raw_food_core"],"label_ko":"고양이 뼈있는 오리고기 생식 12P","auto_translate_from_ko":true,"sort_order":6,"is_active":true,"source_item_url":"https://www.knrc.co.kr/shop/item.php?it_id=1719565885"},
+    {"entity_type":"food_model","key":"duck_eggshell_raw_diet","parent_manufacturer_keys":["ray_n_yvonne"],"parent_brand_keys":["balanced_raw_line"],"parent_feed_type_keys":["raw_food_core"],"label_ko":"오리고기 난각 생식 12P","auto_translate_from_ko":true,"sort_order":7,"is_active":true,"source_item_url":"https://www.knrc.co.kr/shop/item.php?it_id=1719566320"},
+    {"entity_type":"food_model","key":"feline_duck_eggshell_raw_diet","parent_manufacturer_keys":["ray_n_yvonne"],"parent_brand_keys":["feline_raw_line"],"parent_feed_type_keys":["raw_food_core"],"label_ko":"고양이 오리고기 난각 생식 12P","auto_translate_from_ko":true,"sort_order":8,"is_active":true,"source_item_url":"https://www.knrc.co.kr/shop/item.php?it_id=1719565390"},
+    {"entity_type":"food_model","key":"feline_chicken_bone_raw_diet","parent_manufacturer_keys":["ray_n_yvonne"],"parent_brand_keys":["feline_raw_line"],"parent_feed_type_keys":["raw_food_core"],"label_ko":"고양이 뼈있는 닭고기 난각 생식 12P","auto_translate_from_ko":true,"sort_order":9,"is_active":true,"source_item_url":"https://www.knrc.co.kr/shop/item.php?it_id=1719566217"},
+    {"entity_type":"food_model","key":"chicken_eggshell_raw_diet","parent_manufacturer_keys":["ray_n_yvonne"],"parent_brand_keys":["balanced_raw_line"],"parent_feed_type_keys":["raw_food_core"],"label_ko":"닭고기 난각 생식 12P","auto_translate_from_ko":true,"sort_order":10,"is_active":true,"source_item_url":"https://www.knrc.co.kr/shop/item.php?it_id=1719565093"},
+    {"entity_type":"food_model","key":"feline_chicken_eggshell_raw_diet","parent_manufacturer_keys":["ray_n_yvonne"],"parent_brand_keys":["feline_raw_line"],"parent_feed_type_keys":["raw_food_core"],"label_ko":"고양이 닭고기 난각 생식 12P","auto_translate_from_ko":true,"sort_order":11,"is_active":true,"source_item_url":"https://www.knrc.co.kr/shop/item.php?it_id=1719564867"},
+    {"entity_type":"food_model","key":"duck_bone_raw_diet","parent_manufacturer_keys":["ray_n_yvonne"],"parent_brand_keys":["bone_raw_line"],"parent_feed_type_keys":["raw_food_core"],"label_ko":"뼈있는 오리고기 생식 12P","auto_translate_from_ko":true,"sort_order":12,"is_active":true,"source_item_url":"https://www.knrc.co.kr/shop/item.php?it_id=1719566670"},
+
+    {"entity_type":"food_model","key":"beef_cooked_diet","parent_manufacturer_keys":["ray_n_yvonne"],"parent_brand_keys":["cooked_food_line"],"parent_feed_type_keys":["cooked_food_core"],"label_ko":"소고기 요리 12P","auto_translate_from_ko":true,"sort_order":101,"is_active":true,"source_item_url":"https://www.knrc.co.kr/shop/item.php?it_id=1719566447"},
+    {"entity_type":"food_model","key":"chicken_cooked_diet","parent_manufacturer_keys":["ray_n_yvonne"],"parent_brand_keys":["cooked_food_line"],"parent_feed_type_keys":["cooked_food_core"],"label_ko":"닭고기 요리 12P","auto_translate_from_ko":true,"sort_order":102,"is_active":true,"source_item_url":"https://www.knrc.co.kr/shop/item.php?it_id=1719567550"},
+    {"entity_type":"food_model","key":"lamb_cooked_diet","parent_manufacturer_keys":["ray_n_yvonne"],"parent_brand_keys":["cooked_food_line"],"parent_feed_type_keys":["cooked_food_core"],"label_ko":"양고기 요리 12P","auto_translate_from_ko":true,"sort_order":103,"is_active":true,"source_item_url":"https://www.knrc.co.kr/shop/item.php?it_id=1719567695"},
+    {"entity_type":"food_model","key":"duck_cooked_diet","parent_manufacturer_keys":["ray_n_yvonne"],"parent_brand_keys":["cooked_food_line"],"parent_feed_type_keys":["cooked_food_core"],"label_ko":"오리고기 요리 12P","auto_translate_from_ko":true,"sort_order":104,"is_active":true,"source_item_url":"https://www.knrc.co.kr/shop/item.php?it_id=1719567953"},
+    {"entity_type":"food_model","key":"venison_cooked_diet","parent_manufacturer_keys":["ray_n_yvonne"],"parent_brand_keys":["cooked_food_line"],"parent_feed_type_keys":["cooked_food_core"],"label_ko":"사슴고기 요리 9P","auto_translate_from_ko":true,"sort_order":105,"is_active":true,"source_item_url":"https://www.knrc.co.kr/shop/item.php?it_id=1719568105"},
+
+    {"entity_type":"food_model","key":"mid_chicken_care_diet","parent_manufacturer_keys":["ray_n_yvonne"],"parent_brand_keys":["mid_protein_care_line"],"parent_feed_type_keys":["care_food_core"],"label_ko":"닭고기 중단백 관리식 12P","auto_translate_from_ko":true,"sort_order":201,"is_active":true,"source_item_url":"https://www.knrc.co.kr/shop/item.php?it_id=1719563365"},
+    {"entity_type":"food_model","key":"mid_beef_care_diet","parent_manufacturer_keys":["ray_n_yvonne"],"parent_brand_keys":["mid_protein_care_line"],"parent_feed_type_keys":["care_food_core"],"label_ko":"소고기 중단백 관리식 12P","auto_translate_from_ko":true,"sort_order":202,"is_active":true,"source_item_url":"https://www.knrc.co.kr/shop/item.php?it_id=1719564847"},
+    {"entity_type":"food_model","key":"renal_chicken_care_diet","parent_manufacturer_keys":["ray_n_yvonne"],"parent_brand_keys":["renal_care_line"],"parent_feed_type_keys":["care_food_core"],"label_ko":"닭고기 신장관리식 12P","auto_translate_from_ko":true,"sort_order":203,"is_active":true,"source_item_url":"https://www.knrc.co.kr/shop/item.php?it_id=1719565900"},
+    {"entity_type":"food_model","key":"pancreas_chicken_care_diet","parent_manufacturer_keys":["ray_n_yvonne"],"parent_brand_keys":["pancreatic_care_line"],"parent_feed_type_keys":["care_food_core"],"label_ko":"닭고기 췌장관리식 12P","auto_translate_from_ko":true,"sort_order":204,"is_active":true,"source_item_url":"https://www.knrc.co.kr/shop/item.php?it_id=1719566290"},
+    {"entity_type":"food_model","key":"pancreas_beef_care_diet","parent_manufacturer_keys":["ray_n_yvonne"],"parent_brand_keys":["pancreatic_care_line"],"parent_feed_type_keys":["care_food_core"],"label_ko":"소고기 췌장관리식 12P","auto_translate_from_ko":true,"sort_order":205,"is_active":true,"source_item_url":"https://www.knrc.co.kr/shop/item.php?it_id=1719566534"},
+
+    {"entity_type":"food_model","key":"white_chicken_stew_snack","parent_manufacturer_keys":["ray_n_yvonne"],"parent_brand_keys":["stew_snack_line"],"parent_feed_type_keys":["snack_food_core"],"label_ko":"화이트 치킨 스튜","auto_translate_from_ko":true,"sort_order":301,"is_active":true,"source_item_url":"https://www.knrc.co.kr/shop/item.php?it_id=1719457347"},
+    {"entity_type":"food_model","key":"red_beef_stew_snack","parent_manufacturer_keys":["ray_n_yvonne"],"parent_brand_keys":["stew_snack_line"],"parent_feed_type_keys":["snack_food_core"],"label_ko":"레드 비프 스튜","auto_translate_from_ko":true,"sort_order":302,"is_active":true,"source_item_url":"https://www.knrc.co.kr/shop/item.php?it_id=1719466895"},
+    {"entity_type":"food_model","key":"yellow_sweet_duck_stew_snack","parent_manufacturer_keys":["ray_n_yvonne"],"parent_brand_keys":["stew_snack_line"],"parent_feed_type_keys":["snack_food_core"],"label_ko":"옐로우 스윗 덕 스튜","auto_translate_from_ko":true,"sort_order":303,"is_active":true,"source_item_url":"https://www.knrc.co.kr/shop/item.php?it_id=1719467491"},
+    {"entity_type":"food_model","key":"lamb_broth_stew_snack","parent_manufacturer_keys":["ray_n_yvonne"],"parent_brand_keys":["stew_snack_line"],"parent_feed_type_keys":["snack_food_core"],"label_ko":"양곰탕","auto_translate_from_ko":true,"sort_order":304,"is_active":true,"source_item_url":"https://www.knrc.co.kr/shop/item.php?it_id=1719467750"},
+
+    {"entity_type":"food_model","key":"beige_chicken_freeze_dried","parent_manufacturer_keys":["ray_n_yvonne"],"parent_brand_keys":["beige_freeze_dried_line"],"parent_feed_type_keys":["snack_food_core"],"label_ko":"베이지끄 치킨","auto_translate_from_ko":true,"sort_order":311,"is_active":true,"source_item_url":"https://www.knrc.co.kr/shop/item.php?it_id=1719469776"},
+    {"entity_type":"food_model","key":"beige_duck_freeze_dried","parent_manufacturer_keys":["ray_n_yvonne"],"parent_brand_keys":["beige_freeze_dried_line"],"parent_feed_type_keys":["snack_food_core"],"label_ko":"베이지끄 덕","auto_translate_from_ko":true,"sort_order":312,"is_active":true},
+    {"entity_type":"food_model","key":"beige_beef_freeze_dried","parent_manufacturer_keys":["ray_n_yvonne"],"parent_brand_keys":["beige_freeze_dried_line"],"parent_feed_type_keys":["snack_food_core"],"label_ko":"베이지끄 비프","auto_translate_from_ko":true,"sort_order":313,"is_active":true,"source_item_url":"https://www.knrc.co.kr/shop/item.php?it_id=1719470760"},
+
+    {"entity_type":"food_model","key":"moist_chicken_jerky","parent_manufacturer_keys":["ray_n_yvonne"],"parent_brand_keys":["jerky_snack_line"],"parent_feed_type_keys":["snack_food_core"],"label_ko":"촉촉한 닭가슴살 육포","auto_translate_from_ko":true,"sort_order":321,"is_active":true,"source_item_url":"https://www.knrc.co.kr/shop/item.php?it_id=1610520571"},
+    {"entity_type":"food_model","key":"moist_duck_jerky","parent_manufacturer_keys":["ray_n_yvonne"],"parent_brand_keys":["jerky_snack_line"],"parent_feed_type_keys":["snack_food_core"],"label_ko":"촉촉한 오리안심 육포","auto_translate_from_ko":true,"sort_order":322,"is_active":true,"source_item_url":"https://www.knrc.co.kr/shop/item.php?it_id=1610520615"},
+
+    {"entity_type":"food_model","key":"egg_roll_terrine","parent_manufacturer_keys":["ray_n_yvonne"],"parent_brand_keys":["bakery_snack_line"],"parent_feed_type_keys":["snack_food_core"],"label_ko":"에그롤테린","auto_translate_from_ko":true,"sort_order":331,"is_active":true,"source_item_url":"https://www.knrc.co.kr/shop/item.php?it_id=1672369809"},
+    {"entity_type":"food_model","key":"kokko_dan_cake","parent_manufacturer_keys":["ray_n_yvonne"],"parent_brand_keys":["bakery_snack_line"],"parent_feed_type_keys":["snack_food_core"],"label_ko":"꼬꼬단케이크","auto_translate_from_ko":true,"sort_order":332,"is_active":true,"source_item_url":"https://www.knrc.co.kr/shop/item.php?it_id=1672369285"},
+    {"entity_type":"food_model","key":"fruit_cheese_snack","parent_manufacturer_keys":["ray_n_yvonne"],"parent_brand_keys":["bakery_snack_line"],"parent_feed_type_keys":["snack_food_core"],"label_ko":"과일치즈","auto_translate_from_ko":true,"sort_order":333,"is_active":true,"source_item_url":"https://www.knrc.co.kr/shop/item.php?it_id=1754980167"}
+  ],
+  "nutrient_master": [
+    {"key":"energy","label_ko":"열량","auto_translate_from_ko":true},
+    {"key":"moisture","label_ko":"수분","auto_translate_from_ko":true},
+    {"key":"crude_protein","label_ko":"조단백","auto_translate_from_ko":true},
+    {"key":"crude_fat","label_ko":"조지방","auto_translate_from_ko":true},
+    {"key":"crude_fiber","label_ko":"조섬유","auto_translate_from_ko":true},
+    {"key":"crude_ash","label_ko":"조회분","auto_translate_from_ko":true},
+    {"key":"calcium","label_ko":"칼슘","auto_translate_from_ko":true},
+    {"key":"phosphorus","label_ko":"인","auto_translate_from_ko":true},
+    {"key":"magnesium","label_ko":"마그네슘","auto_translate_from_ko":true},
+    {"key":"iron","label_ko":"철","auto_translate_from_ko":true},
+    {"key":"potassium","label_ko":"칼륨","auto_translate_from_ko":true},
+    {"key":"sodium","label_ko":"나트륨","auto_translate_from_ko":true},
+    {"key":"zinc","label_ko":"아연","auto_translate_from_ko":true},
+    {"key":"copper","label_ko":"구리","auto_translate_from_ko":true},
+    {"key":"manganese","label_ko":"망간","auto_translate_from_ko":true},
+    {"key":"selenium","label_ko":"셀레늄","auto_translate_from_ko":true},
+    {"key":"iodine","label_ko":"요오드","auto_translate_from_ko":true},
+    {"key":"taurine","label_ko":"타우린","auto_translate_from_ko":true},
+    {"key":"retinol","label_ko":"레티놀","auto_translate_from_ko":true},
+    {"key":"vitamin_d","label_ko":"비타민 D","auto_translate_from_ko":true},
+    {"key":"vitamin_e_alpha","label_ko":"비타민 E(alpha)","auto_translate_from_ko":true},
+    {"key":"vitamin_k","label_ko":"비타민 K","auto_translate_from_ko":true},
+    {"key":"thiamin","label_ko":"티아민","auto_translate_from_ko":true},
+    {"key":"riboflavin","label_ko":"리보플라빈","auto_translate_from_ko":true},
+    {"key":"pantothenic_acid","label_ko":"판토텐산","auto_translate_from_ko":true},
+    {"key":"niacin","label_ko":"나이아신","auto_translate_from_ko":true},
+    {"key":"pyridoxine","label_ko":"피리독신","auto_translate_from_ko":true},
+    {"key":"folate","label_ko":"엽산","auto_translate_from_ko":true},
+    {"key":"cobalamin","label_ko":"코발라민","auto_translate_from_ko":true},
+    {"key":"choline","label_ko":"콜린","auto_translate_from_ko":true},
+    {"key":"vitamin_c","label_ko":"비타민 C","auto_translate_from_ko":true},
+    {"key":"epa_dha","label_ko":"EPA+DHA","auto_translate_from_ko":true},
+    {"key":"omega6","label_ko":"오메가6 지방산","auto_translate_from_ko":true}
+  ],
+  "nutrient_units_and_basis": {
+    "units": [
+      {"key":"kcal","label_ko":"kcal","auto_translate_from_ko":false},
+      {"key":"percent","label_ko":"%","auto_translate_from_ko":false},
+      {"key":"mg","label_ko":"mg","auto_translate_from_ko":false},
+      {"key":"ug","label_ko":"ug","auto_translate_from_ko":false},
+      {"key":"iu","label_ko":"IU","auto_translate_from_ko":false}
+    ],
+    "basis_types": [
+      {"key":"as_fed","label_ko":"등록성분량","auto_translate_from_ko":true},
+      {"key":"dm_100g","label_ko":"DM 100g당","auto_translate_from_ko":true}
+    ]
+  },
+  "food_model_nutrients": [
+    {"food_model_key":"venison_eggshell_raw_diet","nutrient_key":"energy","basis_type":"as_fed","value":119.6,"unit":"kcal"},
+    {"food_model_key":"venison_eggshell_raw_diet","nutrient_key":"moisture","basis_type":"as_fed","value":75.32,"unit":"percent"},
+    {"food_model_key":"venison_eggshell_raw_diet","nutrient_key":"crude_protein","basis_type":"as_fed","value":14.91,"unit":"percent"},
+    {"food_model_key":"venison_eggshell_raw_diet","nutrient_key":"crude_fat","basis_type":"as_fed","value":6.0,"unit":"percent"},
+    {"food_model_key":"venison_eggshell_raw_diet","nutrient_key":"crude_fiber","basis_type":"as_fed","value":0.98,"unit":"percent"},
+    {"food_model_key":"venison_eggshell_raw_diet","nutrient_key":"crude_ash","basis_type":"as_fed","value":1.3,"unit":"percent"},
+    {"food_model_key":"venison_eggshell_raw_diet","nutrient_key":"calcium","basis_type":"as_fed","value":0.18,"unit":"percent"},
+    {"food_model_key":"venison_eggshell_raw_diet","nutrient_key":"phosphorus","basis_type":"as_fed","value":0.13,"unit":"percent"},
+
+    {"food_model_key":"venison_eggshell_raw_diet","nutrient_key":"crude_protein","basis_type":"dm_100g","value":60.43,"unit":"percent"},
+    {"food_model_key":"venison_eggshell_raw_diet","nutrient_key":"crude_fat","basis_type":"dm_100g","value":24.31,"unit":"percent"},
+    {"food_model_key":"venison_eggshell_raw_diet","nutrient_key":"crude_fiber","basis_type":"dm_100g","value":3.96,"unit":"percent"},
+    {"food_model_key":"venison_eggshell_raw_diet","nutrient_key":"crude_ash","basis_type":"dm_100g","value":5.25,"unit":"percent"},
+    {"food_model_key":"venison_eggshell_raw_diet","nutrient_key":"calcium","basis_type":"dm_100g","value":0.71,"unit":"percent"},
+    {"food_model_key":"venison_eggshell_raw_diet","nutrient_key":"phosphorus","basis_type":"dm_100g","value":0.54,"unit":"percent"},
+    {"food_model_key":"venison_eggshell_raw_diet","nutrient_key":"magnesium","basis_type":"dm_100g","value":0.08,"unit":"percent"},
+    {"food_model_key":"venison_eggshell_raw_diet","nutrient_key":"iron","basis_type":"dm_100g","value":19.52,"unit":"mg"},
+    {"food_model_key":"venison_eggshell_raw_diet","nutrient_key":"potassium","basis_type":"dm_100g","value":1.16,"unit":"percent"},
+    {"food_model_key":"venison_eggshell_raw_diet","nutrient_key":"sodium","basis_type":"dm_100g","value":0.19,"unit":"percent"},
+    {"food_model_key":"venison_eggshell_raw_diet","nutrient_key":"zinc","basis_type":"dm_100g","value":21.81,"unit":"mg"},
+    {"food_model_key":"venison_eggshell_raw_diet","nutrient_key":"copper","basis_type":"dm_100g","value":0.67,"unit":"mg"},
+    {"food_model_key":"venison_eggshell_raw_diet","nutrient_key":"manganese","basis_type":"dm_100g","value":1.54,"unit":"mg"},
+    {"food_model_key":"venison_eggshell_raw_diet","nutrient_key":"selenium","basis_type":"dm_100g","value":37.65,"unit":"ug"},
+    {"food_model_key":"venison_eggshell_raw_diet","nutrient_key":"iodine","basis_type":"dm_100g","value":386.49,"unit":"ug"},
+    {"food_model_key":"venison_eggshell_raw_diet","nutrient_key":"taurine","basis_type":"dm_100g","value":0.4,"unit":"percent"},
+    {"food_model_key":"venison_eggshell_raw_diet","nutrient_key":"retinol","basis_type":"dm_100g","value":546.04,"unit":"ug"},
+    {"food_model_key":"venison_eggshell_raw_diet","nutrient_key":"vitamin_d","basis_type":"dm_100g","value":251.52,"unit":"iu"},
+    {"food_model_key":"venison_eggshell_raw_diet","nutrient_key":"vitamin_e_alpha","basis_type":"dm_100g","value":70.77,"unit":"mg"},
+    {"food_model_key":"venison_eggshell_raw_diet","nutrient_key":"vitamin_k","basis_type":"dm_100g","value":88.09,"unit":"ug"},
+    {"food_model_key":"venison_eggshell_raw_diet","nutrient_key":"thiamin","basis_type":"dm_100g","value":8.91,"unit":"mg"},
+    {"food_model_key":"venison_eggshell_raw_diet","nutrient_key":"riboflavin","basis_type":"dm_100g","value":1.01,"unit":"mg"},
+    {"food_model_key":"venison_eggshell_raw_diet","nutrient_key":"pantothenic_acid","basis_type":"dm_100g","value":0.48,"unit":"mg"},
+    {"food_model_key":"venison_eggshell_raw_diet","nutrient_key":"niacin","basis_type":"dm_100g","value":12.55,"unit":"mg"},
+    {"food_model_key":"venison_eggshell_raw_diet","nutrient_key":"pyridoxine","basis_type":"dm_100g","value":0.93,"unit":"mg"},
+    {"food_model_key":"venison_eggshell_raw_diet","nutrient_key":"folate","basis_type":"dm_100g","value":103.75,"unit":"ug"},
+    {"food_model_key":"venison_eggshell_raw_diet","nutrient_key":"cobalamin","basis_type":"dm_100g","value":36.02,"unit":"ug"},
+    {"food_model_key":"venison_eggshell_raw_diet","nutrient_key":"choline","basis_type":"dm_100g","value":127.85,"unit":"mg"},
+    {"food_model_key":"venison_eggshell_raw_diet","nutrient_key":"vitamin_c","basis_type":"dm_100g","value":31.77,"unit":"mg"},
+    {"food_model_key":"venison_eggshell_raw_diet","nutrient_key":"epa_dha","basis_type":"dm_100g","value":0.0,"unit":"percent"},
+    {"food_model_key":"venison_eggshell_raw_diet","nutrient_key":"omega6","basis_type":"dm_100g","value":3.33,"unit":"percent"}
+  ]
+}
