@@ -11,6 +11,21 @@ import type { JwtPayload } from '../types';
 
 const LANGS = ['ko','en','ja','zh_cn','zh_tw','es','fr','de','pt','vi','th','id_lang','ar'] as const;
 const KEY_LITERAL_PATTERN = /^(master|admin)\.[a-z0-9_.-]+$/i;
+const LANG_COLS: Record<typeof LANGS[number], string> = {
+  ko: 'ko',
+  en: 'en',
+  ja: 'ja',
+  zh_cn: 'zh_cn',
+  zh_tw: 'zh_tw',
+  es: 'es',
+  fr: 'fr',
+  de: 'de',
+  pt: 'pt',
+  vi: 'vi',
+  th: 'th',
+  id_lang: 'id_lang',
+  ar: 'ar',
+};
 async function hasColumn(env: Env, table: string, column: string): Promise<boolean> {
   const rows = await env.DB.prepare(`PRAGMA table_info(${table})`).all<{ name: string }>();
   return rows.results.some((r) => r.name === column);
@@ -334,6 +349,9 @@ export async function handleMaster(request: Request, env: Env, url: URL): Promis
     const categoryKey = url.searchParams.get('category_key');
     if (!categoryKey) return err('category_key required');
     const parentId = (url.searchParams.get('parent_id') || '').trim() || null;
+    const langRaw = (url.searchParams.get('lang') || 'ko') as typeof LANGS[number];
+    const lang = LANGS.includes(langRaw) ? langRaw : 'ko';
+    const langCol = LANG_COLS[lang];
 
     const normalized = await hasColumn(env, 'master_categories', 'code');
     const cat = normalized
@@ -365,6 +383,7 @@ export async function handleMaster(request: Request, env: Env, url: URL): Promis
           mi.metadata,
           mi.created_at,
           mi.updated_at,
+          COALESCE(NULLIF(TRIM(tr.${langCol}), ''), NULLIF(TRIM(tr.ko), ''), NULLIF(TRIM(tr.en), ''), '') AS display_label,
           tr.ko as ko_name,
           tr.en, tr.ja, tr.zh_cn, tr.zh_tw, tr.es, tr.fr, tr.de, tr.pt, tr.vi, tr.th, tr.id_lang, tr.ar
         FROM master_items mi
@@ -381,6 +400,7 @@ export async function handleMaster(request: Request, env: Env, url: URL): Promis
       : await env.DB.prepare(`
         SELECT
           mi.*,
+          COALESCE(NULLIF(TRIM(tr.${langCol}), ''), NULLIF(TRIM(tr.ko), ''), NULLIF(TRIM(tr.en), ''), '') AS display_label,
           tr.ko as ko_name,
           tr.en, tr.ja, tr.zh_cn, tr.zh_tw, tr.es, tr.fr, tr.de, tr.pt, tr.vi, tr.th, tr.id_lang, tr.ar
         FROM master_items mi

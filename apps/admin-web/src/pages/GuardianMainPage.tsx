@@ -178,7 +178,7 @@ function localizedMasterItemLabel(
   const ko = item.ko_name || item.ko;
   if (ko && ko.trim()) return ko.trim();
   if (typeof item.en === 'string' && item.en.trim()) return item.en.trim();
-  return item.key;
+  return '-';
 }
 
 function toOption(
@@ -198,7 +198,7 @@ function toOption(
     return {
       id: item.id,
       key: item.key,
-      label: localizedMasterItemLabel(item, lang, t, categoryBaseKey),
+      label: (item.display_label || '').trim() || localizedMasterItemLabel(item, lang, t, categoryBaseKey),
       i18nKey: categoryBaseKey ? `master.${categoryBaseKey}.${item.key}` : undefined,
       parentId: item.parent_id,
       metadata,
@@ -334,10 +334,10 @@ function uiErrorMessage(error: unknown, fallback: string): string {
   return fallback;
 }
 
-async function loadCategoryItems(candidates: string[]): Promise<MasterItem[]> {
+async function loadCategoryItems(candidates: string[], lang?: Lang): Promise<MasterItem[]> {
   for (const key of candidates) {
     try {
-      const rows = await api.master.public.items(key);
+      const rows = await api.master.public.items(key, undefined, lang);
       if (rows.length > 0) return rows;
     } catch {
       // try next candidate
@@ -630,25 +630,25 @@ export default function GuardianMainPage() {
         safe(api.friends.requests.list('inbox'), { requests: [], scope: 'inbox' }, 'friends.requests'),
         safe(api.feeds.list({ tab, limit: 30 }), { feeds: [] }, 'feeds.list'),
         safe(api.petAlbum.list({ include_pending: true, limit: 400 }), { media: [] }, 'petAlbum.list'),
-        loadCategoryItems(CATEGORY_KEYS.pet_type),
-        loadCategoryItems(CATEGORY_KEYS.pet_breed),
-        loadCategoryItems(CATEGORY_KEYS.pet_gender),
-        loadCategoryItems(CATEGORY_KEYS.life_stage),
-        loadCategoryItems(CATEGORY_KEYS.pet_color),
-        loadCategoryItems(CATEGORY_KEYS.allergy_type),
-        loadCategoryItems(CATEGORY_KEYS.disease_type),
-        loadCategoryItems(CATEGORY_KEYS.disease_group),
-        loadCategoryItems(CATEGORY_KEYS.disease_device_type),
-        loadCategoryItems(CATEGORY_KEYS.disease_measurement_type),
-        loadCategoryItems(CATEGORY_KEYS.disease_measurement_context),
-        loadCategoryItems(CATEGORY_KEYS.symptom_type),
-        loadCategoryItems(CATEGORY_KEYS.vaccination_type),
-        loadCategoryItems(CATEGORY_KEYS.health_condition_level),
-        loadCategoryItems(CATEGORY_KEYS.activity_level),
-        loadCategoryItems(CATEGORY_KEYS.diet_type),
-        loadCategoryItems(CATEGORY_KEYS.temperament_type),
-        loadCategoryItems(CATEGORY_KEYS.coat_length),
-        loadCategoryItems(CATEGORY_KEYS.grooming_cycle),
+        loadCategoryItems(CATEGORY_KEYS.pet_type, lang),
+        loadCategoryItems(CATEGORY_KEYS.pet_breed, lang),
+        loadCategoryItems(CATEGORY_KEYS.pet_gender, lang),
+        loadCategoryItems(CATEGORY_KEYS.life_stage, lang),
+        loadCategoryItems(CATEGORY_KEYS.pet_color, lang),
+        loadCategoryItems(CATEGORY_KEYS.allergy_type, lang),
+        loadCategoryItems(CATEGORY_KEYS.disease_type, lang),
+        loadCategoryItems(CATEGORY_KEYS.disease_group, lang),
+        loadCategoryItems(CATEGORY_KEYS.disease_device_type, lang),
+        loadCategoryItems(CATEGORY_KEYS.disease_measurement_type, lang),
+        loadCategoryItems(CATEGORY_KEYS.disease_measurement_context, lang),
+        loadCategoryItems(CATEGORY_KEYS.symptom_type, lang),
+        loadCategoryItems(CATEGORY_KEYS.vaccination_type, lang),
+        loadCategoryItems(CATEGORY_KEYS.health_condition_level, lang),
+        loadCategoryItems(CATEGORY_KEYS.activity_level, lang),
+        loadCategoryItems(CATEGORY_KEYS.diet_type, lang),
+        loadCategoryItems(CATEGORY_KEYS.temperament_type, lang),
+        loadCategoryItems(CATEGORY_KEYS.coat_length, lang),
+        loadCategoryItems(CATEGORY_KEYS.grooming_cycle, lang),
       ]);
 
       setPets(petsRes.pets || []);

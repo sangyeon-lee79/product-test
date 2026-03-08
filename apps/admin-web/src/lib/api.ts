@@ -143,10 +143,11 @@ export const api = {
   master: {
     public: {
       categories: () => request<Array<{ id: string; key: string; sort_order: number; is_active: number }>>('/api/v1/master/categories'),
-      items: (categoryKey: string, parentId?: string | null) => {
+      items: (categoryKey: string, parentId?: string | null, lang?: string) => {
         const q = new URLSearchParams();
         q.set('category_key', categoryKey);
         if (parentId) q.set('parent_id', parentId);
+        if (lang) q.set('lang', lang);
         return request<MasterItem[]>(`/api/v1/master/items?${q.toString()}`);
       },
     },
@@ -544,6 +545,7 @@ export interface MasterCategory {
 export interface MasterItem {
   id: string; category_id: string; key: string; parent_id: string | null;
   sort_order: number; is_active: number; metadata: string;
+  display_label?: string | null;
   created_at: string; updated_at: string; category_key?: string; ko_name?: string | null;
   ko?: string | null; en?: string | null; ja?: string | null;
   zh_cn?: string | null; zh_tw?: string | null; es?: string | null;
