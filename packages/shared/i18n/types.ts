@@ -2,7 +2,7 @@
  * @petfolio/shared/i18n/types.ts
  * 다국어 관련 타입 정의
  */
-import { Lang } from './constants';
+import type { Lang } from './constants';
 
 export * from './constants';
 

@@ -20,6 +20,11 @@ type TargetLang = Exclude<Lang, 'ko'>;
 
 const TARGET_LANGS = LANGS.filter((l): l is TargetLang => l !== 'ko');
 
+const DEFAULT_RPM_LIMIT = 60;
+const DEFAULT_DAILY_CHAR_LIMIT = 200000;
+const GOOGLE_TOKEN_AUDIENCE = 'https://oauth2.googleapis.com/token';
+const GOOGLE_TRANSLATE_SCOPE = 'https://www.googleapis.com/auth/cloud-translation';
+
 type TranslationMap = Record<TargetLang, string>;
 
 interface TranslationMemoryRow {
