@@ -103,6 +103,20 @@ API:
   - `GET` 응답에 `model_display_label`, `brand_display_label` 포함
 - Guardian/Public/Admin 조회 모두 locale 파라미터 기준 label 계산
 
+### 0.5 Diet Master L3 Seed 상세 (2026-03-08)
+
+마이그레이션:
+- `0050_diet_feed_type_l3_seed.sql`
+  - 카테고리 `diet_feed_type` 생성/활성화
+  - L1/L2 baseline key 보정 후 L3 item seed 추가
+  - L3 item은 `parent_item_id`로 L2(`diet_subtype`)를 참조
+  - category/item i18n key(`master.diet_feed_type*`) translation row 생성
+
+라우트:
+- `GET /api/v1/master/diet-feed-types?parent_id=...`
+- parent 검증 규칙:
+  - `diet_feed_type` 생성/수정 시 parent category는 `diet_subtype`만 허용
+
 ---
 
 ## 1. 기술 스택

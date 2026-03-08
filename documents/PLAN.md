@@ -95,6 +95,21 @@ Your pet's life portfolio
 - [x] `npm --prefix services/api run build`
 - [x] `npm --prefix apps/admin-web run build`
 
+## 0.9 식단관리 Master Category L3 Seed 추가 (2026-03-08)
+
+적용 범위:
+- `services/api/src/db/migrations/0050_diet_feed_type_l3_seed.sql`
+- `services/api/src/routes/master.ts`
+
+- [x] 카테고리 구조 확장: `L1 diet_type -> L2 diet_subtype -> L3 diet_feed_type`
+- [x] L3 `diet_feed_type` 카테고리/아이템 seed 추가 (부모=L2 유지)
+- [x] 모든 seed는 key 저장 + i18n translation row 생성 구조 적용
+- [x] `/api/v1/master/diet-feed-types?parent_id=` 공개 조회 엔드포인트 추가
+- [x] parent 계층 검증 규칙 추가: `diet_feed_type -> diet_subtype`
+
+검증:
+- [x] `npm --prefix services/api run build`
+
 ---
 
 ## 0.2 통합 개발 반영 내역 (2026-03-07)

@@ -212,6 +212,7 @@ const REQUIRES_PARENT_CATEGORY_CODES = new Set([
   'disease_measurement_type',
   'disease_measurement_context',
   'diet_subtype',
+  'diet_feed_type',
   'allergy_type',
 ]);
 
@@ -221,6 +222,7 @@ const EXPECTED_PARENT_CATEGORY_BY_CHILD: Record<string, string> = {
   disease_measurement_type: 'disease_device_type',
   disease_measurement_context: 'disease_measurement_type',
   diet_subtype: 'diet_type',
+  diet_feed_type: 'diet_subtype',
   allergy_type: 'allergy_group',
 };
 
@@ -295,6 +297,10 @@ export async function handleMaster(request: Request, env: Env, url: URL): Promis
   if (!isAdmin && path === '/api/v1/master/diet-subtypes' && request.method === 'GET') {
     const parentId = (url.searchParams.get('parent_id') || '').trim() || null;
     return listPublicItems(env, 'diet_subtype', parentId);
+  }
+  if (!isAdmin && path === '/api/v1/master/diet-feed-types' && request.method === 'GET') {
+    const parentId = (url.searchParams.get('parent_id') || '').trim() || null;
+    return listPublicItems(env, 'diet_feed_type', parentId);
   }
   if (!isAdmin && path === '/api/v1/master/allergy-groups' && request.method === 'GET') {
     return listPublicItems(env, 'allergy_group');

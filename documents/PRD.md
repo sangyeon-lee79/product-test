@@ -84,6 +84,16 @@ Your pet's life portfolio
   - 목록/드롭다운/상세 출력은 `display_label` 사용
   - 저장값은 참조 ID(`device_type_item_id`, manufacturer/brand/model id) 유지
 
+### 0.8 식단관리 Master Category L3 구조 반영 (2026-03-08)
+- Master 구조:
+  - L1: `diet_type` (식단유형)
+  - L2: `diet_subtype` (식단하위유형)
+  - L3: `diet_feed_type` (사료종류)
+- 정책:
+  - DB 저장값은 key/id 참조만 사용
+  - 화면 출력은 locale translation(`display_label`) 사용
+  - L3는 제품/피드 관리와 연결되는 구조 정의 레이어로 사용
+
 ---
 
 ## 1. 제품 개요
