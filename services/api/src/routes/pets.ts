@@ -408,22 +408,36 @@ async function createPet(request: Request, env: Env, payload: JwtPayload): Promi
     ? body.birthday.trim()
     : (typeof body.birth_date === 'string' && body.birth_date.trim() ? body.birth_date.trim() : null);
   const currentWeight = parseOptionalNumber(body.current_weight ?? body.weight_kg);
+  const [hasGroomingCycleColumn, hasColorIdsColumn, hasTemperamentIdsColumn] = await Promise.all([
+    hasColumn(env, 'pets', 'grooming_cycle_id'),
+    hasColumn(env, 'pets', 'color_ids'),
+    hasColumn(env, 'pets', 'temperament_ids'),
+  ]);
 
-  await env.DB.prepare(`
-    INSERT INTO pets (
-      id, guardian_user_id, name, microchip_number, pet_type_id, breed_id, gender_id,
-      life_stage_id, body_size_id, country_id, diet_type_id, coat_length_id, coat_type_id, grooming_cycle_id,
-      color_ids, temperament_ids,
-      activity_level_id, health_level_id, gender_legacy, species_legacy, birth_date,
-      weight_kg, is_neutered, avatar_url, status, created_at, updated_at
-    ) VALUES (
-      ?, ?, ?, ?, ?, ?, ?,
-      ?, ?, ?, ?, ?, ?, ?,
-      ?, ?,
-      ?, ?, ?, ?, ?,
-      ?, ?, ?, 'active', ?, ?
-    )
-  `).bind(
+  const insertColumns: string[] = [
+    'id',
+    'guardian_user_id',
+    'name',
+    'microchip_number',
+    'pet_type_id',
+    'breed_id',
+    'gender_id',
+    'life_stage_id',
+    'body_size_id',
+    'country_id',
+    'diet_type_id',
+    'coat_length_id',
+    'coat_type_id',
+    'activity_level_id',
+    'health_level_id',
+    'gender_legacy',
+    'species_legacy',
+    'birth_date',
+    'weight_kg',
+    'is_neutered',
+    'avatar_url',
+  ];
+  const insertValues: unknown[] = [
     id,
     payload.sub,
     String(body.name).trim(),
@@ -437,9 +451,6 @@ async function createPet(request: Request, env: Env, payload: JwtPayload): Promi
     body.diet_type_id ?? null,
     body.coat_length_id ?? null,
     body.coat_type_id ?? null,
-    body.grooming_cycle_id ?? null,
-    JSON.stringify(parseIdArray(body.color_ids)),
-    JSON.stringify(parseIdArray(body.temperament_ids)),
     body.activity_level_id ?? null,
     body.health_condition_level_id ?? null,
     genderLegacy,
@@ -448,9 +459,26 @@ async function createPet(request: Request, env: Env, payload: JwtPayload): Promi
     currentWeight,
     body.is_neutered ? 1 : 0,
     (typeof body.avatar_url === 'string' ? body.avatar_url.trim() : null) ?? null,
-    ts,
-    ts,
-  ).run();
+  ];
+
+  if (hasGroomingCycleColumn) {
+    insertColumns.push('grooming_cycle_id');
+    insertValues.push(body.grooming_cycle_id ?? null);
+  }
+  if (hasColorIdsColumn) {
+    insertColumns.push('color_ids');
+    insertValues.push(JSON.stringify(parseIdArray(body.color_ids)));
+  }
+  if (hasTemperamentIdsColumn) {
+    insertColumns.push('temperament_ids');
+    insertValues.push(JSON.stringify(parseIdArray(body.temperament_ids)));
+  }
+
+  const placeholders = insertColumns.map(() => '?').join(', ');
+  await env.DB.prepare(
+    `INSERT INTO pets (${insertColumns.join(', ')}, status, created_at, updated_at)
+     VALUES (${placeholders}, 'active', ?, ?)`
+  ).bind(...insertValues, ts, ts).run();
 
   const diseaseHistoryIds = parseIdArray(body.disease_history_ids);
   await replaceDiseaseSelections(
@@ -533,6 +561,11 @@ async function updatePet(request: Request, env: Env, payload: JwtPayload, petId:
 
   const sets: string[] = ['updated_at = ?'];
   const vals: unknown[] = [now()];
+  const [hasGroomingCycleColumn, hasColorIdsColumn, hasTemperamentIdsColumn] = await Promise.all([
+    hasColumn(env, 'pets', 'grooming_cycle_id'),
+    hasColumn(env, 'pets', 'color_ids'),
+    hasColumn(env, 'pets', 'temperament_ids'),
+  ]);
 
   const scalarMap: Record<string, string> = {
     name: 'name',
@@ -547,9 +580,9 @@ async function updatePet(request: Request, env: Env, payload: JwtPayload, petId:
     diet_type_id: 'diet_type_id',
     coat_length_id: 'coat_length_id',
     coat_type_id: 'coat_type_id',
-    grooming_cycle_id: 'grooming_cycle_id',
     avatar_url: 'avatar_url',
   };
+  if (hasGroomingCycleColumn) scalarMap.grooming_cycle_id = 'grooming_cycle_id';
 
   for (const [inputKey, column] of Object.entries(scalarMap)) {
     if (Object.prototype.hasOwnProperty.call(body, inputKey)) {
@@ -583,11 +616,11 @@ async function updatePet(request: Request, env: Env, payload: JwtPayload, petId:
     sets.push('is_neutered = ?');
     vals.push(body.is_neutered ? 1 : 0);
   }
-  if (Object.prototype.hasOwnProperty.call(body, 'color_ids')) {
+  if (hasColorIdsColumn && Object.prototype.hasOwnProperty.call(body, 'color_ids')) {
     sets.push('color_ids = ?');
     vals.push(JSON.stringify(parseIdArray(body.color_ids)));
   }
-  if (Object.prototype.hasOwnProperty.call(body, 'temperament_ids')) {
+  if (hasTemperamentIdsColumn && Object.prototype.hasOwnProperty.call(body, 'temperament_ids')) {
     sets.push('temperament_ids = ?');
     vals.push(JSON.stringify(parseIdArray(body.temperament_ids)));
   }
