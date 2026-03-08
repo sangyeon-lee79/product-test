@@ -523,16 +523,21 @@ export async function handleFeedCatalog(request: Request, env: Env, url: URL): P
     if (typeId) { where += ' AND m.feed_type_item_id = ?'; binds.push(typeId); }
     if (mfrId) { where += ' AND m.manufacturer_id = ?'; binds.push(mfrId); }
     if (brandId) {
-      where += ` AND (
-        m.brand_id = ?
-        OR EXISTS (
-          SELECT 1
-          FROM feed_model_brand_map mbm
-          WHERE mbm.model_id = m.id
-            AND mbm.brand_id = ?
-        )
-      )`;
-      binds.push(brandId, brandId);
+      if (hasModelBrandMap) {
+        where += ` AND (
+          m.brand_id = ?
+          OR EXISTS (
+            SELECT 1
+            FROM feed_model_brand_map mbm
+            WHERE mbm.model_id = m.id
+              AND mbm.brand_id = ?
+          )
+        )`;
+        binds.push(brandId, brandId);
+      } else {
+        where += ' AND m.brand_id = ?';
+        binds.push(brandId);
+      }
     }
     const rows = await env.DB.prepare(
       `SELECT m.*,
