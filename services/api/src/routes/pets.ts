@@ -412,12 +412,14 @@ async function createPet(request: Request, env: Env, payload: JwtPayload): Promi
   await env.DB.prepare(`
     INSERT INTO pets (
       id, guardian_user_id, name, microchip_number, pet_type_id, breed_id, gender_id,
-      life_stage_id, body_size_id, country_id, diet_type_id, coat_length_id, coat_type_id,
+      life_stage_id, body_size_id, country_id, diet_type_id, coat_length_id, coat_type_id, grooming_cycle_id,
+      color_ids, temperament_ids,
       activity_level_id, health_level_id, gender_legacy, species_legacy, birth_date,
       weight_kg, is_neutered, avatar_url, status, created_at, updated_at
     ) VALUES (
       ?, ?, ?, ?, ?, ?, ?,
-      ?, ?, ?, ?, ?, ?,
+      ?, ?, ?, ?, ?, ?, ?,
+      ?, ?,
       ?, ?, ?, ?, ?,
       ?, ?, ?, 'active', ?, ?
     )
@@ -435,6 +437,9 @@ async function createPet(request: Request, env: Env, payload: JwtPayload): Promi
     body.diet_type_id ?? null,
     body.coat_length_id ?? null,
     body.coat_type_id ?? null,
+    body.grooming_cycle_id ?? null,
+    JSON.stringify(parseIdArray(body.color_ids)),
+    JSON.stringify(parseIdArray(body.temperament_ids)),
     body.activity_level_id ?? null,
     body.health_condition_level_id ?? null,
     genderLegacy,
@@ -542,6 +547,7 @@ async function updatePet(request: Request, env: Env, payload: JwtPayload, petId:
     diet_type_id: 'diet_type_id',
     coat_length_id: 'coat_length_id',
     coat_type_id: 'coat_type_id',
+    grooming_cycle_id: 'grooming_cycle_id',
     avatar_url: 'avatar_url',
   };
 
@@ -576,6 +582,14 @@ async function updatePet(request: Request, env: Env, payload: JwtPayload, petId:
   if (Object.prototype.hasOwnProperty.call(body, 'is_neutered')) {
     sets.push('is_neutered = ?');
     vals.push(body.is_neutered ? 1 : 0);
+  }
+  if (Object.prototype.hasOwnProperty.call(body, 'color_ids')) {
+    sets.push('color_ids = ?');
+    vals.push(JSON.stringify(parseIdArray(body.color_ids)));
+  }
+  if (Object.prototype.hasOwnProperty.call(body, 'temperament_ids')) {
+    sets.push('temperament_ids = ?');
+    vals.push(JSON.stringify(parseIdArray(body.temperament_ids)));
   }
 
   vals.push(petId);

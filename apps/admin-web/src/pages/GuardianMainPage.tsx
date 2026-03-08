@@ -382,6 +382,7 @@ export default function GuardianMainPage() {
   const [optVaccination, setOptVaccination] = useState<Option[]>([]);
   const [optHealthLevel, setOptHealthLevel] = useState<Option[]>([]);
   const [optActivity, setOptActivity] = useState<Option[]>([]);
+  const [optDiet, setOptDiet] = useState<Option[]>([]);
   const [optTemperament, setOptTemperament] = useState<Option[]>([]);
   const [optCoatLength, setOptCoatLength] = useState<Option[]>([]);
   const [optGrooming, setOptGrooming] = useState<Option[]>([]);
@@ -508,6 +509,18 @@ export default function GuardianMainPage() {
     [optHealthLevel, selectedPet?.health_condition_level_id],
   );
 
+  const petSummaryDetails = useMemo(() => {
+    if (!selectedPet) return null;
+    return {
+      diet: summarizeOptions(optDiet, selectedPet.diet_type_id ? [selectedPet.diet_type_id] : []),
+      disease: summarizeOptions(optDisease, selectedPet.disease_history_ids),
+      vaccination: summarizeOptions(optVaccination, selectedPet.vaccination_ids),
+      temperament: summarizeOptions(optTemperament, selectedPet.temperament_ids),
+      color: summarizeOptions(optColor, selectedPet.color_ids),
+      grooming: summarizeOptions(optGrooming, selectedPet.grooming_cycle_id ? [selectedPet.grooming_cycle_id] : []),
+    };
+  }, [optColor, optDiet, optDisease, optGrooming, optTemperament, optVaccination, selectedPet]);
+
   async function loadAll(tab = feedTab) {
     setLoading(true);
     setError('');
@@ -544,6 +557,7 @@ export default function GuardianMainPage() {
         vaccinationRows,
         healthRows,
         activityRows,
+        dietRows,
         temperamentRows,
         coatLengthRows,
         groomingRows,
@@ -569,6 +583,7 @@ export default function GuardianMainPage() {
         loadCategoryItems(CATEGORY_KEYS.vaccination_type),
         loadCategoryItems(CATEGORY_KEYS.health_condition_level),
         loadCategoryItems(CATEGORY_KEYS.activity_level),
+        loadCategoryItems(CATEGORY_KEYS.diet_type),
         loadCategoryItems(CATEGORY_KEYS.temperament_type),
         loadCategoryItems(CATEGORY_KEYS.coat_length),
         loadCategoryItems(CATEGORY_KEYS.grooming_cycle),
@@ -597,6 +612,7 @@ export default function GuardianMainPage() {
       setOptVaccination(toOption(vaccinationRows));
       setOptHealthLevel(toOption(healthRows));
       setOptActivity(toOption(activityRows));
+      setOptDiet(toOption(dietRows));
       setOptTemperament(toOption(temperamentRows));
       setOptCoatLength(toOption(coatLengthRows));
       setOptGrooming(toOption(groomingRows));
@@ -1119,21 +1135,32 @@ export default function GuardianMainPage() {
     };
 
     try {
+      let savedPet: Pet | null = null;
       if (petMode === 'create') {
-        await api.pets.create(payload);
+        const res = await api.pets.create(payload);
+        savedPet = res.pet;
       } else {
         const targetPetId = editingPetId || activePet?.id || selectedPet?.id || '';
         if (!targetPetId) {
           setError('수정 대상 펫을 찾을 수 없습니다. 다시 시도해 주세요.');
           return;
         }
-        await api.pets.update(targetPetId, payload);
+        const res = await api.pets.update(targetPetId, payload);
+        savedPet = res.pet;
+      }
+      if (savedPet) {
+        setPets((prev) => {
+          const exists = prev.some((p) => p.id === savedPet?.id);
+          if (!exists) return [...prev, savedPet as Pet];
+          return prev.map((p) => (p.id === savedPet?.id ? (savedPet as Pet) : p));
+        });
+        setSelectedPetId(savedPet.id);
       }
       setPetModalOpen(false);
       setActivePet(null);
       setEditingPetId('');
       setPetForm(DEFAULT_PET_FORM);
-      await loadAll(feedTab);
+      void loadAll(feedTab);
     } catch (e) {
       setError(uiErrorMessage(e, t('guardian.alert.pet_save_failed', '반려동물 저장에 실패했습니다.')));
     }
@@ -1321,7 +1348,6 @@ export default function GuardianMainPage() {
     values: string[],
     options: Option[],
     onChange: (next: string[]) => void,
-    addButtonLabel: string,
   ) {
     const selected = normalizeUniqueIds(values);
     const rows = selected.length > 0 ? selected : [''];
@@ -1358,8 +1384,15 @@ export default function GuardianMainPage() {
                   className="btn btn-danger"
                   onClick={() => onChange(selected.filter((_, i) => i !== index))}
                   disabled={!rowValue}
+                  aria-label={t('common.delete', 'Delete')}
+                  title={t('common.delete', 'Delete')}
                 >
-                  {t('common.delete', 'Delete')}
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                    <path d="M3 6h18" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+                    <path d="M8 6V4h8v2" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+                    <path d="M7 6l1 14h8l1-14" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                    <path d="M10 10v7M14 10v7" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+                  </svg>
                 </button>
               </div>
             );
@@ -1373,8 +1406,12 @@ export default function GuardianMainPage() {
                 onChange(normalizeUniqueIds([...selected, remaining[0].id]));
               }}
               disabled={remaining.length === 0}
+              aria-label={t('common.add', 'Add')}
+              title={t('common.add', 'Add')}
             >
-              {addButtonLabel}
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                <path d="M12 5v14M5 12h14" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+              </svg>
             </button>
           </div>
         </div>
@@ -1429,8 +1466,15 @@ export default function GuardianMainPage() {
                   className="btn btn-danger"
                   onClick={() => onChange(displayRows.filter((_, i) => i !== index))}
                   disabled={!row.groupId && !row.diseaseId}
+                  aria-label={t('common.delete', 'Delete')}
+                  title={t('common.delete', 'Delete')}
                 >
-                  {t('common.delete', 'Delete')}
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                    <path d="M3 6h18" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+                    <path d="M8 6V4h8v2" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+                    <path d="M7 6l1 14h8l1-14" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                    <path d="M10 10v7M14 10v7" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+                  </svg>
                 </button>
               </div>
             );
@@ -1440,13 +1484,25 @@ export default function GuardianMainPage() {
               type="button"
               className="btn btn-secondary"
               onClick={() => onChange([...displayRows.filter((r) => r.groupId || r.diseaseId), { groupId: '', diseaseId: '' }])}
+              aria-label={t('common.add', 'Add')}
+              title={t('common.add', 'Add')}
             >
-              {t('guardian.pet_wizard.add_disease', 'Add disease')}
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                <path d="M12 5v14M5 12h14" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+              </svg>
             </button>
           </div>
         </div>
       </div>
     );
+  }
+
+  function summarizeOptions(options: Option[], raw: string[] | string | null | undefined, max = 2): { text: string; tooltip: string } {
+    const ids = normalizeUniqueIds(toArray(raw));
+    if (ids.length === 0) return { text: t('common.none', '-'), tooltip: '' };
+    const labels = ids.map((id) => labelOf(options, id, id));
+    const text = labels.length > max ? `${labels.slice(0, max).join(', ')} +${labels.length - max}` : labels.join(', ');
+    return { text, tooltip: labels.join('\n') };
   }
 
   function renderCombinedHealthChart(weightRows: PetWeightLog[], measurementRows: PetHealthMeasurementLog[]) {
@@ -1868,13 +1924,43 @@ export default function GuardianMainPage() {
                 {selectedPet && (
                   <div className="guardian-pet-detail mt-3">
                     <p><strong>{t('guardian.mypets.basic_info', 'Basic Info')}</strong></p>
-                    <p className="text-sm">{t('master.pet_type', 'Pet Type')}: {labelOf(optPetType, selectedPet.pet_type_id, t('common.none', '-'))}</p>
-                    <p className="text-sm">{t('master.pet_breed', 'Breed')}: {labelOf(optBreed, selectedPet.breed_id, t('common.none', '-'))}</p>
-                    <p className="text-sm">{t('master.pet_gender', 'Gender')}: {labelOf(optGender, selectedPet.gender_id, t('common.none', '-'))}</p>
-                    <p className="text-sm">{t('master.health_condition_level', 'Health Condition Level')}: {labelOf(optHealthLevel, selectedPet.health_condition_level_id, t('common.none', '-'))}</p>
-                    <p className="text-sm">Birthday: {selectedPet.birthday || selectedPet.birth_date || t('common.none', '-')}</p>
-                    <p className="text-sm">Current Weight: {selectedPet.current_weight ?? selectedPet.weight_kg ?? t('common.none', '-')}</p>
-                    <p className="text-sm">{t('guardian.form.microchip', 'Microchip Number')}: {selectedPet.microchip_no || t('common.none', '-')}</p>
+                    <p className="text-sm">
+                      {labelOf(optPetType, selectedPet.pet_type_id, t('common.none', '-'))}
+                      {' · '}
+                      {labelOf(optBreed, selectedPet.breed_id, t('common.none', '-'))}
+                      {' · '}
+                      {labelOf(optGender, selectedPet.gender_id, t('common.none', '-'))}
+                    </p>
+                    <p className="text-sm">
+                      {t('master.health_condition_level', 'Health Condition Level')}: {labelOf(optHealthLevel, selectedPet.health_condition_level_id, t('common.none', '-'))}
+                      {' · '}
+                      {t('master.life_stage', 'Life Stage')}: {labelOf(optLifeStage, selectedPet.life_stage_id, t('common.none', '-'))}
+                    </p>
+                    <p className="text-sm">
+                      {t('guardian.form.birthday', 'Birthday')}: {selectedPet.birthday || selectedPet.birth_date || t('common.none', '-')}
+                      {' · '}
+                      {t('guardian.form.current_weight', 'Current Weight')}: {selectedPet.current_weight ?? selectedPet.weight_kg ?? t('common.none', '-')}
+                    </p>
+                    <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginTop: 6 }}>
+                      <span className="badge badge-gray" title={petSummaryDetails?.diet.tooltip || ''}>
+                        {t('master.diet_type', 'Diet')}: {petSummaryDetails?.diet.text || t('common.none', '-')}
+                      </span>
+                      <span className="badge badge-gray" title={petSummaryDetails?.disease.tooltip || ''}>
+                        {t('master.disease_type', 'Disease')}: {petSummaryDetails?.disease.text || t('common.none', '-')}
+                      </span>
+                      <span className="badge badge-gray" title={petSummaryDetails?.vaccination.tooltip || ''}>
+                        {t('master.vaccination_type', 'Vaccination')}: {petSummaryDetails?.vaccination.text || t('common.none', '-')}
+                      </span>
+                      <span className="badge badge-gray" title={petSummaryDetails?.temperament.tooltip || ''}>
+                        {t('master.temperament_type', 'Temperament')}: {petSummaryDetails?.temperament.text || t('common.none', '-')}
+                      </span>
+                      <span className="badge badge-gray" title={petSummaryDetails?.color.tooltip || ''}>
+                        {t('master.pet_color', 'Color')}: {petSummaryDetails?.color.text || t('common.none', '-')}
+                      </span>
+                      <span className="badge badge-gray" title={petSummaryDetails?.grooming.tooltip || ''}>
+                        {t('master.grooming_cycle', 'Grooming')}: {petSummaryDetails?.grooming.text || t('common.none', '-')}
+                      </span>
+                    </div>
                   </div>
                 )}
               </div>
@@ -1953,7 +2039,6 @@ export default function GuardianMainPage() {
                       petForm.color_ids,
                       optColor,
                       (next) => setPetForm((p) => ({ ...p, color_ids: normalizeUniqueIds(next) })),
-                      t('guardian.pet_wizard.add_color', 'Add color'),
                     )}
                   </div>
                 </>
@@ -1967,7 +2052,6 @@ export default function GuardianMainPage() {
                       petForm.vaccination_ids,
                       optVaccination,
                       (next) => setPetForm((p) => ({ ...p, vaccination_ids: normalizeUniqueIds(next) })),
-                      t('guardian.pet_wizard.add_vaccination', 'Add vaccination'),
                     )}
                   </div>
                 </>
@@ -1998,7 +2082,6 @@ export default function GuardianMainPage() {
                       petForm.temperament_ids,
                       optTemperament,
                       (next) => setPetForm((p) => ({ ...p, temperament_ids: normalizeUniqueIds(next) })),
-                      t('guardian.pet_wizard.add_trait', 'Add trait'),
                     )}
                     {renderSelect(t('master.activity_level', 'Activity Level'), petForm.activity_level_id, optActivity, (v) => setPetForm((p) => ({ ...p, activity_level_id: v })))}
                   </div>
@@ -2008,14 +2091,12 @@ export default function GuardianMainPage() {
                       petForm.allergy_ids,
                       optAllergy,
                       (next) => setPetForm((p) => ({ ...p, allergy_ids: normalizeUniqueIds(next) })),
-                      t('guardian.pet_wizard.add_allergy', 'Add allergy'),
                     )}
                     {renderDropdownRows(
                       t('master.symptom_type', 'Symptom'),
                       petForm.symptom_tag_ids,
                       optSymptom,
                       (next) => setPetForm((p) => ({ ...p, symptom_tag_ids: normalizeUniqueIds(next) })),
-                      t('guardian.pet_wizard.add_symptom', 'Add symptom'),
                     )}
                   </div>
                 </>
