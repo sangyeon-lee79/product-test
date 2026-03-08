@@ -1,6 +1,6 @@
 {
-	"name": "api",
-	"version": "0.0.0",
+	"name": "@petfolio/api",
+	"version": "0.1.0",
 	"private": true,
 	"scripts": {
 		"build": "tsc --noEmit",
@@ -12,6 +12,9 @@
 		"start": "wrangler dev",
 		"test": "vitest",
 		"cf-typegen": "wrangler types"
+	},
+	"dependencies": {
+		"@petfolio/shared": "*"
 	},
 	"devDependencies": {
 		"@cloudflare/vitest-pool-workers": "^0.12.4",
