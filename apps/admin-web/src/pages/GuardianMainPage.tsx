@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { api, type Booking, type DeviceBrand, type DeviceManufacturer, type DeviceModel, type FeedPost, type FriendRequest, type HealthMeasurementSummary, type MasterItem, type MeasurementUnit, type Pet, type PetAlbumMedia, type PetHealthMeasurementLog, type PetWeightLog, type WeightSummary } from '../lib/api';
-import { useT } from '../lib/i18n';
+import { useI18n, useT, type Lang } from '../lib/i18n';
 import { getStoredRole } from '../lib/auth';
 import PetGalleryPanel from '../components/PetGalleryPanel';
 
@@ -12,7 +12,7 @@ type WeightRange = '7d' | '15d' | '1m' | '3m' | '6m' | '1y' | 'all';
 type PetWizardStep = 1 | 2 | 3 | 4 | 5 | 6 | 7;
 type MeasurementWizardStep = 1 | 2;
 
-type Option = { id: string; label: string; parentId?: string | null; metadata?: Record<string, unknown> };
+type Option = { id: string; key: string; label: string; parentId?: string | null; metadata?: Record<string, unknown> };
 const PET_WIZARD_STEPS: Array<{ step: PetWizardStep; label: string }> = [
   { step: 1, label: '기본정보' },
   { step: 2, label: '펫종류' },
@@ -158,7 +158,16 @@ function normalizeUniqueIds(values: string[]): string[] {
   return out;
 }
 
-function toOption(items: MasterItem[]): Option[] {
+function localizedMasterItemLabel(item: MasterItem, lang: Lang): string {
+  const byLang = item[lang as keyof MasterItem];
+  if (typeof byLang === 'string' && byLang.trim()) return byLang.trim();
+  const ko = item.ko_name || item.ko;
+  if (ko && ko.trim()) return ko.trim();
+  if (typeof item.en === 'string' && item.en.trim()) return item.en.trim();
+  return item.key;
+}
+
+function toOption(items: MasterItem[], lang: Lang): Option[] {
   return items.map((item) => {
     let metadata: Record<string, unknown> = {};
     try {
@@ -168,7 +177,8 @@ function toOption(items: MasterItem[]): Option[] {
     }
     return {
       id: item.id,
-      label: item.ko_name || item.ko || item.key,
+      key: item.key,
+      label: localizedMasterItemLabel(item, lang),
       parentId: item.parent_id,
       metadata,
     };
@@ -186,7 +196,24 @@ function formatDate(value?: string | null, fallback = '-'): string {
 
 function labelOf(options: Option[], id: string | null | undefined, fallback: string): string {
   if (!id) return fallback;
-  return options.find((o) => o.id === id)?.label || id;
+  const matched = options.find((o) => o.id === id || o.key === id);
+  return matched?.label || fallback;
+}
+
+function normalizeSingleStableId(value: string | null | undefined, options: Option[], allowUnknownWhenOptionsMissing = true): string {
+  const raw = String(value || '').trim();
+  if (!raw) return '';
+  if (options.length === 0) return allowUnknownWhenOptionsMissing ? raw : '';
+  const matched = options.find((o) => o.id === raw || o.key === raw);
+  return matched?.id || '';
+}
+
+function normalizeMultiStableIds(raw: string[] | string | null | undefined, options: Option[], allowUnknownWhenOptionsMissing = true): string[] {
+  return normalizeUniqueIds(
+    toArray(raw)
+      .map((value) => normalizeSingleStableId(value, options, allowUnknownWhenOptionsMissing))
+      .filter(Boolean),
+  );
 }
 
 function feedTypeLabel(t: (key: string, fallback?: string) => string, value: string): string {
@@ -301,6 +328,7 @@ async function loadCategoryItems(candidates: string[]): Promise<MasterItem[]> {
 export default function GuardianMainPage() {
   const { pet_id: petIdParam } = useParams();
   const t = useT();
+  const { lang } = useI18n();
   const role = getStoredRole();
   const isGuardian = role === 'guardian';
   const [loading, setLoading] = useState(true);
@@ -380,6 +408,7 @@ export default function GuardianMainPage() {
   const [optGender, setOptGender] = useState<Option[]>([]);
   const [optLifeStage, setOptLifeStage] = useState<Option[]>([]);
   const [optColor, setOptColor] = useState<Option[]>([]);
+  const [optAllergy, setOptAllergy] = useState<Option[]>([]);
   const [optDisease, setOptDisease] = useState<Option[]>([]);
   const [optDiseaseGroup, setOptDiseaseGroup] = useState<Option[]>([]);
   const [optDiseaseDevice, setOptDiseaseDevice] = useState<Option[]>([]);
@@ -559,6 +588,7 @@ export default function GuardianMainPage() {
         genderRows,
         lifeStageRows,
         colorRows,
+        allergyRows,
         diseaseRows,
         diseaseGroupRows,
         diseaseDeviceRows,
@@ -584,6 +614,7 @@ export default function GuardianMainPage() {
         loadCategoryItems(CATEGORY_KEYS.pet_gender),
         loadCategoryItems(CATEGORY_KEYS.life_stage),
         loadCategoryItems(CATEGORY_KEYS.pet_color),
+        loadCategoryItems(CATEGORY_KEYS.allergy_type),
         loadCategoryItems(CATEGORY_KEYS.disease_type),
         loadCategoryItems(CATEGORY_KEYS.disease_group),
         loadCategoryItems(CATEGORY_KEYS.disease_device_type),
@@ -607,24 +638,25 @@ export default function GuardianMainPage() {
       setFeeds(feedsRes.feeds || []);
       setAlbumMedia(albumRes.media || []);
 
-      setOptPetType(toOption(petTypeRows).filter((item) => !item.parentId));
-      setOptBreed(toOption(breedRows).filter((item) => Boolean(item.parentId)));
-      setOptGender(toOption(genderRows));
-      setOptLifeStage(toOption(lifeStageRows));
-      setOptColor(toOption(colorRows));
-      setOptDisease(toOption(diseaseRows));
-      setOptDiseaseGroup(toOption(diseaseGroupRows));
-      setOptDiseaseDevice(toOption(diseaseDeviceRows));
-      setOptMeasurement(toOption(measurementRows));
-      setOptMeasurementContext(toOption(measurementContextRows));
-      setOptSymptom(toOption(symptomRows));
-      setOptVaccination(toOption(vaccinationRows));
-      setOptHealthLevel(toOption(healthRows));
-      setOptActivity(toOption(activityRows));
-      setOptDiet(toOption(dietRows));
-      setOptTemperament(toOption(temperamentRows));
-      setOptCoatLength(toOption(coatLengthRows));
-      setOptGrooming(toOption(groomingRows));
+      setOptPetType(toOption(petTypeRows, lang).filter((item) => !item.parentId));
+      setOptBreed(toOption(breedRows, lang).filter((item) => Boolean(item.parentId)));
+      setOptGender(toOption(genderRows, lang));
+      setOptLifeStage(toOption(lifeStageRows, lang));
+      setOptColor(toOption(colorRows, lang));
+      setOptAllergy(toOption(allergyRows, lang));
+      setOptDisease(toOption(diseaseRows, lang));
+      setOptDiseaseGroup(toOption(diseaseGroupRows, lang));
+      setOptDiseaseDevice(toOption(diseaseDeviceRows, lang));
+      setOptMeasurement(toOption(measurementRows, lang));
+      setOptMeasurementContext(toOption(measurementContextRows, lang));
+      setOptSymptom(toOption(symptomRows, lang));
+      setOptVaccination(toOption(vaccinationRows, lang));
+      setOptHealthLevel(toOption(healthRows, lang));
+      setOptActivity(toOption(activityRows, lang));
+      setOptDiet(toOption(dietRows, lang));
+      setOptTemperament(toOption(temperamentRows, lang));
+      setOptCoatLength(toOption(coatLengthRows, lang));
+      setOptGrooming(toOption(groomingRows, lang));
 
       if (!silent && failedApis.length > 0) {
         setError('일부 데이터를 불러오지 못했습니다. 잠시 후 다시 시도해주세요.');
@@ -640,6 +672,10 @@ export default function GuardianMainPage() {
     loadAll();
   }, []);
 
+  useEffect(() => {
+    void loadAll(feedTab, { silent: true });
+  }, [lang]);
+
   useEffect(() => () => {
     if (feedImagePreviewUrl) URL.revokeObjectURL(feedImagePreviewUrl);
   }, [feedImagePreviewUrl]);
@@ -651,9 +687,10 @@ export default function GuardianMainPage() {
 
   useEffect(() => {
     if (!petModalOpen) return;
-    const mapped = normalizeUniqueIds(petForm.disease_history_ids)
+    const normalizedDiseaseIds = normalizeMultiStableIds(petForm.disease_history_ids, optDisease);
+    const mapped = normalizedDiseaseIds
       .map((diseaseId) => {
-        const disease = optDisease.find((d) => d.id === diseaseId);
+        const disease = optDisease.find((d) => d.id === diseaseId || d.key === diseaseId);
         return { groupId: disease?.parentId || '', diseaseId };
       })
       .filter((row) => row.groupId && row.diseaseId);
@@ -745,7 +782,7 @@ export default function GuardianMainPage() {
   }
 
   const diseaseOptionsForHealth = useMemo(() => {
-    const selectedIds = toArray(selectedPet?.disease_history_ids);
+    const selectedIds = normalizeMultiStableIds(selectedPet?.disease_history_ids, optDisease);
     if (!selectedIds.length) return optDisease;
     const set = new Set(selectedIds);
     return optDisease.filter((item) => set.has(item.id));
@@ -779,28 +816,36 @@ export default function GuardianMainPage() {
   const manufacturerOptions = useMemo(
     () => deviceManufacturers
       .filter((row) => row.status === 'active')
-      .map((row) => ({ id: row.id, label: row.name_ko || row.name_en || row.key })),
-    [deviceManufacturers],
+      .map((row) => ({
+        id: row.id,
+        key: row.key,
+        label: lang === 'ko' ? (row.name_ko || row.name_en || row.key) : (row.name_en || row.name_ko || row.key),
+      })),
+    [deviceManufacturers, lang],
   );
 
   const brandOptions = useMemo(
     () => deviceBrands
       .filter((row) => row.status === 'active')
-      .map((row) => ({ id: row.id, label: row.name_ko || row.name_en || row.id })),
-    [deviceBrands],
+      .map((row) => ({
+        id: row.id,
+        key: row.name_en || row.name_ko || row.id,
+        label: lang === 'ko' ? (row.name_ko || row.name_en || row.id) : (row.name_en || row.name_ko || row.id),
+      })),
+    [deviceBrands, lang],
   );
 
   const modelOptions = useMemo(
     () => deviceModels
       .filter((row) => row.status === 'active')
-      .map((row) => ({ id: row.id, label: row.model_name || row.model_code || row.id })),
+      .map((row) => ({ id: row.id, key: row.model_code || row.model_name || row.id, label: row.model_name || row.model_code || row.id })),
     [deviceModels],
   );
 
   const measurementUnitOptions = useMemo(
     () => measurementUnits
       .filter((row) => row.status === 'active')
-      .map((row) => ({ id: row.id, label: row.symbol ? `${row.name} (${row.symbol})` : row.name })),
+      .map((row) => ({ id: row.id, key: row.key || row.id, label: row.symbol ? `${row.name} (${row.symbol})` : row.name })),
     [measurementUnits],
   );
 
@@ -890,16 +935,21 @@ export default function GuardianMainPage() {
 
   async function createHealthMeasurementLog() {
     if (!selectedPet?.id) return;
+    const stableDiseaseId = normalizeSingleStableId(measurementForm.disease_item_id, optDisease, false);
+    const stableDeviceTypeId = normalizeSingleStableId(measurementForm.device_type_item_id, optDiseaseDevice, false);
+    const stableMeasurementItemId = normalizeSingleStableId(measurementForm.measurement_item_id, optMeasurement, false);
+    const stableMeasurementContextId = normalizeSingleStableId(measurementForm.measurement_context_id, optMeasurementContext, false);
+    const stableUnitId = normalizeSingleStableId(measurementForm.unit_item_id, measurementUnitOptions, false);
     const value = Number(measurementForm.value);
-    if (!measurementForm.disease_item_id) {
+    if (!stableDiseaseId) {
       setError('질병을 선택해 주세요.');
       return;
     }
-    if (!measurementForm.device_type_item_id) {
+    if (!stableDeviceTypeId) {
       setError('장치 유형을 선택해 주세요.');
       return;
     }
-    if (!measurementForm.measurement_item_id) {
+    if (!stableMeasurementItemId) {
       setError('측정항목을 선택해 주세요.');
       return;
     }
@@ -913,13 +963,13 @@ export default function GuardianMainPage() {
     }
     try {
       await api.pets.healthMeasurements.create(selectedPet.id, {
-        disease_item_id: measurementForm.disease_item_id,
-        device_type_item_id: measurementForm.device_type_item_id || null,
+        disease_item_id: stableDiseaseId,
+        device_type_item_id: stableDeviceTypeId || null,
         device_model_id: measurementForm.model_id || null,
-        measurement_item_id: measurementForm.measurement_item_id,
-        measurement_context_id: measurementForm.measurement_context_id || null,
+        measurement_item_id: stableMeasurementItemId,
+        measurement_context_id: stableMeasurementContextId || null,
         value,
-        unit_item_id: measurementForm.unit_item_id || null,
+        unit_item_id: stableUnitId || null,
         measured_at: measurementForm.measured_at || new Date().toISOString(),
         memo: measurementForm.memo.trim() || null,
       });
@@ -935,16 +985,21 @@ export default function GuardianMainPage() {
 
   async function updateHealthMeasurementLog() {
     if (!selectedPet?.id || !editingMeasurementLogId) return;
+    const stableDiseaseId = normalizeSingleStableId(measurementForm.disease_item_id, optDisease, false);
+    const stableDeviceTypeId = normalizeSingleStableId(measurementForm.device_type_item_id, optDiseaseDevice, false);
+    const stableMeasurementItemId = normalizeSingleStableId(measurementForm.measurement_item_id, optMeasurement, false);
+    const stableMeasurementContextId = normalizeSingleStableId(measurementForm.measurement_context_id, optMeasurementContext, false);
+    const stableUnitId = normalizeSingleStableId(measurementForm.unit_item_id, measurementUnitOptions, false);
     const value = Number(measurementForm.value);
-    if (!measurementForm.disease_item_id) {
+    if (!stableDiseaseId) {
       setError('질병을 선택해 주세요.');
       return;
     }
-    if (!measurementForm.device_type_item_id) {
+    if (!stableDeviceTypeId) {
       setError('장치 유형을 선택해 주세요.');
       return;
     }
-    if (!measurementForm.measurement_item_id) {
+    if (!stableMeasurementItemId) {
       setError('측정항목을 선택해 주세요.');
       return;
     }
@@ -958,13 +1013,13 @@ export default function GuardianMainPage() {
     }
     try {
       await api.pets.healthMeasurements.update(selectedPet.id, editingMeasurementLogId, {
-        disease_item_id: measurementForm.disease_item_id,
-        device_type_item_id: measurementForm.device_type_item_id || null,
+        disease_item_id: stableDiseaseId,
+        device_type_item_id: stableDeviceTypeId || null,
         device_model_id: measurementForm.model_id || null,
-        measurement_item_id: measurementForm.measurement_item_id,
-        measurement_context_id: measurementForm.measurement_context_id || null,
+        measurement_item_id: stableMeasurementItemId,
+        measurement_context_id: stableMeasurementContextId || null,
         value,
-        unit_item_id: measurementForm.unit_item_id || null,
+        unit_item_id: stableUnitId || null,
         measured_at: measurementForm.measured_at || new Date().toISOString(),
         memo: measurementForm.memo.trim() || null,
       });
@@ -1037,14 +1092,14 @@ export default function GuardianMainPage() {
     try {
       const res = await api.pets.detail(petId);
       const p = res.pet;
-      const diseaseHistoryIds = toArray(p.disease_history_ids);
+      const diseaseHistoryIds = normalizeMultiStableIds(p.disease_history_ids, optDisease);
       setPetMode('edit');
       setActivePet(p);
       setEditingPetId(p.id);
       setPetWizardStep(1);
       const mappedDiseaseRows = normalizeUniqueIds(diseaseHistoryIds)
         .map((diseaseId) => {
-          const disease = optDisease.find((d) => d.id === diseaseId);
+          const disease = optDisease.find((d) => d.id === diseaseId || d.key === diseaseId);
           return { groupId: disease?.parentId || '', diseaseId };
         })
         .filter((row) => row.groupId && row.diseaseId);
@@ -1057,27 +1112,27 @@ export default function GuardianMainPage() {
         current_weight_measured_at: '',
         current_weight_notes: '',
         notes: p.notes || '',
-        pet_type_id: p.pet_type_id || '',
-        breed_id: p.breed_id || '',
-        gender_id: p.gender_id || '',
+        pet_type_id: normalizeSingleStableId(p.pet_type_id, optPetType),
+        breed_id: normalizeSingleStableId(p.breed_id, optBreed),
+        gender_id: normalizeSingleStableId(p.gender_id, optGender),
         neuter_status_id: p.neuter_status_id || '',
-        life_stage_id: p.life_stage_id || '',
+        life_stage_id: normalizeSingleStableId(p.life_stage_id, optLifeStage),
         body_size_id: p.body_size_id || '',
         country_id: p.country_id || '',
-        allergy_ids: toArray(p.allergy_ids),
+        allergy_ids: normalizeMultiStableIds(p.allergy_ids, optAllergy),
         disease_history_ids: diseaseHistoryIds,
-        symptom_tag_ids: toArray(p.symptom_tag_ids),
-        vaccination_ids: toArray(p.vaccination_ids),
+        symptom_tag_ids: normalizeMultiStableIds(p.symptom_tag_ids, optSymptom),
+        vaccination_ids: normalizeMultiStableIds(p.vaccination_ids, optVaccination),
         weight_unit_id: p.weight_unit_id || '',
-        health_condition_level_id: p.health_condition_level_id || '',
-        activity_level_id: p.activity_level_id || '',
-        diet_type_id: p.diet_type_id || '',
-        temperament_ids: toArray(p.temperament_ids),
+        health_condition_level_id: normalizeSingleStableId(p.health_condition_level_id, optHealthLevel),
+        activity_level_id: normalizeSingleStableId(p.activity_level_id, optActivity),
+        diet_type_id: normalizeSingleStableId(p.diet_type_id, optDiet),
+        temperament_ids: normalizeMultiStableIds(p.temperament_ids, optTemperament),
         ownership_type_id: p.ownership_type_id || '',
-        coat_length_id: p.coat_length_id || '',
+        coat_length_id: normalizeSingleStableId(p.coat_length_id, optCoatLength),
         coat_type_id: p.coat_type_id || '',
-        grooming_cycle_id: p.grooming_cycle_id || '',
-        color_ids: toArray(p.color_ids),
+        grooming_cycle_id: normalizeSingleStableId(p.grooming_cycle_id, optGrooming),
+        color_ids: normalizeMultiStableIds(p.color_ids, optColor),
       });
       setPetModalOpen(true);
     } catch (e) {
@@ -1086,11 +1141,12 @@ export default function GuardianMainPage() {
   }
 
   async function savePet() {
+    const stablePetTypeId = normalizeSingleStableId(petForm.pet_type_id, optPetType, false);
     if (!petForm.name.trim()) {
       setError(t('guardian.alert.name_required', 'Pet name is required.'));
       return;
     }
-    if (!petForm.pet_type_id) {
+    if (!stablePetTypeId) {
       setError(t('guardian.alert.pet_type_required', 'Pet type is required.'));
       return;
     }
@@ -1113,12 +1169,12 @@ export default function GuardianMainPage() {
 
     const payload = {
       ...petForm,
-      color_ids: normalizeUniqueIds(petForm.color_ids),
-      allergy_ids: normalizeUniqueIds(petForm.allergy_ids),
-      disease_history_ids: normalizeUniqueIds(petForm.disease_history_ids),
-      symptom_tag_ids: normalizeUniqueIds(petForm.symptom_tag_ids),
-      vaccination_ids: normalizeUniqueIds(petForm.vaccination_ids),
-      temperament_ids: normalizeUniqueIds(petForm.temperament_ids),
+      color_ids: normalizeMultiStableIds(petForm.color_ids, optColor, false),
+      allergy_ids: normalizeMultiStableIds(petForm.allergy_ids, optAllergy, false),
+      disease_history_ids: normalizeMultiStableIds(petForm.disease_history_ids, optDisease, false),
+      symptom_tag_ids: normalizeMultiStableIds(petForm.symptom_tag_ids, optSymptom, false),
+      vaccination_ids: normalizeMultiStableIds(petForm.vaccination_ids, optVaccination, false),
+      temperament_ids: normalizeMultiStableIds(petForm.temperament_ids, optTemperament, false),
       microchip_no: petForm.microchip_no.trim() || null,
       birthday: petForm.birthday || null,
       birth_date: petForm.birthday || null,
@@ -1127,20 +1183,21 @@ export default function GuardianMainPage() {
       current_weight_measured_at: petForm.current_weight_measured_at || null,
       current_weight_notes: petForm.current_weight_notes.trim() || null,
       notes: petForm.notes.trim() || null,
-      breed_id: petForm.breed_id || null,
-      gender_id: petForm.gender_id || null,
+      pet_type_id: stablePetTypeId,
+      breed_id: normalizeSingleStableId(petForm.breed_id, optBreed, false) || null,
+      gender_id: normalizeSingleStableId(petForm.gender_id, optGender, false) || null,
       neuter_status_id: petForm.neuter_status_id || null,
-      life_stage_id: petForm.life_stage_id || null,
+      life_stage_id: normalizeSingleStableId(petForm.life_stage_id, optLifeStage, false) || null,
       body_size_id: petForm.body_size_id || null,
       country_id: petForm.country_id || null,
       weight_unit_id: petForm.weight_unit_id || null,
-      health_condition_level_id: petForm.health_condition_level_id || null,
-      activity_level_id: petForm.activity_level_id || null,
-      diet_type_id: petForm.diet_type_id || null,
+      health_condition_level_id: normalizeSingleStableId(petForm.health_condition_level_id, optHealthLevel, false) || null,
+      activity_level_id: normalizeSingleStableId(petForm.activity_level_id, optActivity, false) || null,
+      diet_type_id: normalizeSingleStableId(petForm.diet_type_id, optDiet, false) || null,
       ownership_type_id: petForm.ownership_type_id || null,
-      coat_length_id: petForm.coat_length_id || null,
+      coat_length_id: normalizeSingleStableId(petForm.coat_length_id, optCoatLength, false) || null,
       coat_type_id: petForm.coat_type_id || null,
-      grooming_cycle_id: petForm.grooming_cycle_id || null,
+      grooming_cycle_id: normalizeSingleStableId(petForm.grooming_cycle_id, optGrooming, false) || null,
     };
 
     try {
@@ -1359,7 +1416,7 @@ export default function GuardianMainPage() {
     options: Option[],
     onChange: (next: string[]) => void,
   ) {
-    const selected = normalizeUniqueIds(values);
+    const selected = normalizeMultiStableIds(values, options);
     const rows = selected.length > 0 ? selected : [''];
     const remaining = options.filter((o) => !selected.includes(o.id));
     return (
@@ -1433,7 +1490,13 @@ export default function GuardianMainPage() {
     rows: Array<{ groupId: string; diseaseId: string }>,
     onChange: (next: Array<{ groupId: string; diseaseId: string }>) => void,
   ) {
-    const normalizedRows = rows.filter((row) => row.groupId || row.diseaseId);
+    const normalizedRows = rows
+      .map((row) => {
+        const groupId = normalizeSingleStableId(row.groupId, optDiseaseGroup);
+        const diseaseId = normalizeSingleStableId(row.diseaseId, optDisease);
+        return { groupId, diseaseId };
+      })
+      .filter((row) => row.groupId || row.diseaseId);
     const displayRows = normalizedRows.length > 0 ? normalizedRows : [{ groupId: '', diseaseId: '' }];
     return (
       <div className="form-group">
@@ -1508,9 +1571,9 @@ export default function GuardianMainPage() {
   }
 
   function summarizeOptions(options: Option[], raw: string[] | string | null | undefined, max = 2): { text: string; tooltip: string } {
-    const ids = normalizeUniqueIds(toArray(raw));
+    const ids = normalizeMultiStableIds(raw, options);
     if (ids.length === 0) return { text: t('common.none', '-'), tooltip: '' };
-    const labels = ids.map((id) => labelOf(options, id, id));
+    const labels = ids.map((id) => labelOf(options, id, t('common.none', '-')));
     const text = labels.length > max ? `${labels.slice(0, max).join(', ')} +${labels.length - max}` : labels.join(', ');
     return { text, tooltip: labels.join('\n') };
   }
@@ -2131,6 +2194,15 @@ export default function GuardianMainPage() {
                     {renderSelect(t('master.activity_level', 'Activity Level'), petForm.activity_level_id, optActivity, (v) => setPetForm((p) => ({ ...p, activity_level_id: v })))}
                   </div>
                   <div className="form-row col2">
+                    {renderSelect(t('master.diet_type', 'Diet Type'), petForm.diet_type_id, optDiet, (v) => setPetForm((p) => ({ ...p, diet_type_id: v })))}
+                    {renderDropdownRows(
+                      t('master.allergy_type', 'Allergy'),
+                      petForm.allergy_ids,
+                      optAllergy,
+                      (next) => setPetForm((p) => ({ ...p, allergy_ids: normalizeUniqueIds(next) })),
+                    )}
+                  </div>
+                  <div className="form-row col1">
                     {renderDropdownRows(
                       t('master.symptom_type', 'Symptom'),
                       petForm.symptom_tag_ids,

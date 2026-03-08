@@ -19,6 +19,26 @@ Your pet's life portfolio
   - 이 저장소의 실제 DDL 소스는 `services/api/src/db/migrations/*.sql`
   - 일부 구간은 설계안(PostgreSQL 스타일)과 구현(SQLite 호환) 표기가 공존한다.
 
+### 0.1 Master Locale/Stable-ID 클라이언트 구현 규칙 (2026-03-08)
+
+대상: `apps/admin-web/src/pages/GuardianMainPage.tsx` (Pet Wizard, Profile 요약, Health 입력 모달, Master 연결 select 공통)
+
+- Option 모델:
+  - `Option = { id, key, label, parentId }`
+  - `label`은 `current lang` 우선, fallback `ko -> en -> key`
+- 저장 전 정규화:
+  - `normalizeSingleStableId(value, options)`:
+    - 입력이 id 또는 key여도 최종 `id`로 변환
+  - `normalizeMultiStableIds(values, options)`:
+    - 다중 선택값을 `id[]`로 정규화 + dedupe
+  - strict 저장 경로에서는 매칭 실패값 drop (번역문자열/raw 저장 방지)
+- 렌더:
+  - `labelOf(options, storedValue)`가 id/key 모두 해석하여 locale 라벨 반환
+  - 요약 카드/tooltip은 항상 `labelOf` 기반으로 계산
+- 재조회/즉시 갱신:
+  - locale 변경 시 master 옵션 재조회 (`loadAll(..., { silent: true })`)
+  - 저장 직후에도 동일 로직으로 재조회하여 locale 라벨 일관성 유지
+
 ---
 
 ## 1. 기술 스택

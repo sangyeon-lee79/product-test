@@ -28,6 +28,21 @@ Your pet's life portfolio
 
 ---
 
+## 0.5 Master Locale/Stable-ID 규칙 반영 (2026-03-08)
+
+적용 범위: Guardian `Pet Wizard`, 질병/예방접종/성격기질/대표색상/식단유형/알러지/증상, Profile 요약 카드, Health 입력 모달, Master 연결 select 공통.
+
+- [x] 드롭다운 표시값은 현재 locale 번역값 사용 (`ko/en/ja/...` 우선, fallback `ko -> en -> key`)
+- [x] 저장은 번역 문자열 금지, `master_item_id`(또는 key 입력 legacy는 저장 전 id로 정규화)만 허용
+- [x] 화면 렌더링은 저장된 id/key를 기준으로 현재 locale 번역값 재해석 후 표시
+- [x] 저장 직후/재조회/언어 전환 시 동일 규칙 유지 (locale 변경 시 master option 재조회)
+- [x] 중복 선택 방지/행 삭제/추가 패턴 유지
+
+검증:
+- [x] `apps/admin-web` 빌드 통과 (`npm --prefix apps/admin-web run build`)
+
+---
+
 ## 0.2 통합 개발 반영 내역 (2026-03-07)
 
 아래는 최근 연속 개발에서 실제 코드/DB에 반영된 항목 요약이다.

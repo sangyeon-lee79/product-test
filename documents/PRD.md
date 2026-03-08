@@ -32,6 +32,24 @@ Your pet's life portfolio
 - 모바일/웹 공통 피드 리스트 + 좋아요/댓글 UX 일관화 및 실기기 QA
 - S7 질병 기록 + 타임라인 (logs/log_values/log_media DB + API + Mobile/Web UI)
 
+### 0.4 Master Dropdown Locale/Stable-ID 정책 (2026-03-08 반영)
+- 드롭다운 옵션 표시:
+  - 현재 선택 locale 기준 번역값 사용
+  - locale 누락 시 `ko`, 이후 `en`, 이후 key fallback
+- 저장 정책:
+  - 번역 문자열 저장 금지
+  - `master_item_id` 또는 `master_item_key`를 stable value로 저장
+  - 클라이언트 저장 payload는 가능한 `master_item_id`로 정규화 후 전송
+- 렌더 정책:
+  - Profile/Wizard/Health 포함 전 화면에서 저장된 id/key를 기준으로 현재 locale 라벨 재계산
+  - 언어 변경 시 화면 전체가 즉시 locale 라벨로 갱신되어야 함
+- 적용 화면:
+  - Pet Wizard 드롭다운 전체
+  - 질병 / 예방접종 / 성격기질 / 대표색상 / 식단유형 / 알러지 / 증상
+  - Profile 요약 카드
+  - Health 입력 모달
+  - Master Data 연결 select component 전체
+
 ---
 
 ## 1. 제품 개요
