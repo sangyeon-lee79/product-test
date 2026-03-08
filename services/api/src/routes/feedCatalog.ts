@@ -1,8 +1,8 @@
 import type { Env, JwtPayload } from '../types';
 import { ok, created, err, newId, now } from '../types';
 import { requireAuth, requireRole } from '../middleware/auth';
+import { SUPPORTED_LANGS as LANGS } from '@petfolio/shared';
 
-const LANGS = ['ko', 'en', 'ja', 'zh_cn', 'zh_tw', 'es', 'fr', 'de', 'pt', 'vi', 'th', 'id_lang', 'ar'] as const;
 const LANG_COLS: Record<typeof LANGS[number], string> = {
   ko: 'ko',
   en: 'en',

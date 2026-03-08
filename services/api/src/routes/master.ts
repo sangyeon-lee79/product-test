@@ -8,9 +8,8 @@ import type { Env } from '../types';
 import { ok, created, err, newId, now } from '../types';
 import { requireAuth, requireRole } from '../middleware/auth';
 import type { JwtPayload } from '../types';
+import { SUPPORTED_LANGS as LANGS, KEY_LITERAL_PATTERN } from '@petfolio/shared';
 
-const LANGS = ['ko','en','ja','zh_cn','zh_tw','es','fr','de','pt','vi','th','id_lang','ar'] as const;
-const KEY_LITERAL_PATTERN = /^(master|admin)\.[a-z0-9_.-]+$/i;
 const LANG_COLS: Record<typeof LANGS[number], string> = {
   ko: 'ko',
   en: 'en',

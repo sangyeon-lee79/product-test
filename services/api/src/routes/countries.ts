@@ -8,8 +8,8 @@ import type { Env } from '../types';
 import { ok, created, err, newId, now } from '../types';
 import { requireAuth, requireRole } from '../middleware/auth';
 import type { JwtPayload } from '../types';
+import { SUPPORTED_LANGS as LANGS } from '@petfolio/shared';
 
-const LANGS = ['ko','en','ja','zh_cn','zh_tw','es','fr','de','pt','vi','th','id_lang','ar'] as const;
 const CURRENCY_CATALOG: Record<string, { symbol: string; decimal_places: number }> = {
   KRW: { symbol: '₩', decimal_places: 0 },
   USD: { symbol: '$', decimal_places: 2 },
