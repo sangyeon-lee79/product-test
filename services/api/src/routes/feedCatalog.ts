@@ -38,6 +38,29 @@ async function hasColumn(env: Env, table: string, column: string): Promise<boole
   return rows.results.some((r) => r.name === column);
 }
 
+async function hasTable(env: Env, table: string): Promise<boolean> {
+  const row = await env.DB.prepare(
+    "SELECT name FROM sqlite_master WHERE type = 'table' AND name = ? LIMIT 1"
+  ).bind(table).first<{ name?: string }>();
+  return Boolean(row?.name);
+}
+
+async function syncParentMap(
+  env: Env,
+  table: string,
+  childCol: string,
+  childId: string,
+  parentCol: string,
+  parentIds: string[],
+) {
+  await env.DB.prepare(`DELETE FROM ${table} WHERE ${childCol} = ?`).bind(childId).run();
+  for (const parentId of Array.from(new Set(parentIds.filter(Boolean)))) {
+    await env.DB.prepare(
+      `INSERT OR IGNORE INTO ${table} (id, ${childCol}, ${parentCol}, created_at) VALUES (?, ?, ?, ?)`
+    ).bind(newId(), childId, parentId, now()).run();
+  }
+}
+
 function normalizedTranslations(input: Record<string, string> | undefined, ko: string, en: string): Record<string, string> {
   const fallback = en || ko;
   const out: Record<string, string> = {};
@@ -143,14 +166,22 @@ export async function handleFeedCatalog(request: Request, env: Env, url: URL): P
       const binds: string[] = [];
       let where = `WHERE mfr.status = 'active'`;
       if (typeItemId) {
-        where += ` AND EXISTS (
-          SELECT 1
-          FROM feed_models fm
-          WHERE fm.manufacturer_id = mfr.id
-            AND fm.feed_type_item_id = ?
-            AND fm.status = 'active'
+        where += ` AND (
+          EXISTS (
+            SELECT 1
+            FROM feed_manufacturer_type_map mtm
+            WHERE mtm.manufacturer_id = mfr.id
+              AND mtm.type_item_id = ?
+          )
+          OR EXISTS (
+            SELECT 1
+            FROM feed_models fm
+            WHERE fm.manufacturer_id = mfr.id
+              AND fm.feed_type_item_id = ?
+              AND fm.status = 'active'
+          )
         )`;
-        binds.push(typeItemId);
+        binds.push(typeItemId, typeItemId);
       }
       const rows = await env.DB.prepare(
         `SELECT mfr.*,
@@ -176,8 +207,16 @@ export async function handleFeedCatalog(request: Request, env: Env, url: URL): P
                LEFT JOIN i18n_translations tr_brand ON tr_brand.key = b.name_key
                WHERE b.status = 'active'`;
       if (manufacturerId) {
-        q += ' AND b.manufacturer_id = ?';
-        binds.push(manufacturerId);
+        q += ` AND (
+          b.manufacturer_id = ?
+          OR EXISTS (
+            SELECT 1
+            FROM feed_brand_manufacturer_map bmm
+            WHERE bmm.brand_id = b.id
+              AND bmm.manufacturer_id = ?
+          )
+        )`;
+        binds.push(manufacturerId, manufacturerId);
       }
       q += ' ORDER BY b.name_en';
       const rows = await env.DB.prepare(q).bind(...binds).all();
@@ -192,7 +231,18 @@ export async function handleFeedCatalog(request: Request, env: Env, url: URL): P
       let where = `WHERE m.status = 'active'`;
       if (typeId) { where += ' AND m.feed_type_item_id = ?'; binds.push(typeId); }
       if (mfrId) { where += ' AND m.manufacturer_id = ?'; binds.push(mfrId); }
-      if (brandId) { where += ' AND m.brand_id = ?'; binds.push(brandId); }
+      if (brandId) {
+        where += ` AND (
+          m.brand_id = ?
+          OR EXISTS (
+            SELECT 1
+            FROM feed_model_brand_map mbm
+            WHERE mbm.model_id = m.id
+              AND mbm.brand_id = ?
+          )
+        )`;
+        binds.push(brandId, brandId);
+      }
       const rows = await env.DB.prepare(
         `SELECT m.*,
                 mi.code AS type_key,
@@ -281,6 +331,7 @@ export async function handleFeedCatalog(request: Request, env: Env, url: URL): P
   if (path === '/api/v1/admin/feed-catalog/manufacturers' && method === 'GET') {
     const rows = await env.DB.prepare(
       `SELECT mfr.*,
+              (SELECT GROUP_CONCAT(type_item_id) FROM feed_manufacturer_type_map mtm WHERE mtm.manufacturer_id = mfr.id) AS parent_type_ids,
               COALESCE(NULLIF(TRIM(tr.${langCol}), ''), NULLIF(TRIM(tr.en), ''), NULLIF(TRIM(tr.ko), ''), mfr.name_en, mfr.name_ko) AS display_label
        FROM feed_manufacturers mfr
        LEFT JOIN i18n_translations tr ON tr.key = mfr.name_key
@@ -290,10 +341,10 @@ export async function handleFeedCatalog(request: Request, env: Env, url: URL): P
   }
 
   if (path === '/api/v1/admin/feed-catalog/manufacturers' && method === 'POST') {
-    const body = await request.json<{ country?: string; sort_order?: number; translations?: Record<string, string>; name_ko?: string; name_en?: string }>();
+    const body = await request.json<{ country?: string; sort_order?: number; translations?: Record<string, string>; name_ko?: string; name_en?: string; parent_type_ids?: string[] }>();
     const ko = (body.translations?.ko || body.name_ko || '').trim();
-    const en = (body.translations?.en || body.name_en || '').trim();
-    if (!ko || !en) return err('ko and en required', 400, 'missing_field');
+    const en = (body.translations?.en || body.name_en || ko).trim();
+    if (!ko) return err('ko required', 400, 'missing_field');
     const key = `mfr_${randomToken(8)}`;
     const nameKey = `feed.manufacturer.${key}`;
     const id = newId();
@@ -302,8 +353,12 @@ export async function handleFeedCatalog(request: Request, env: Env, url: URL): P
        VALUES (?, ?, ?, ?, ?, ?, 'active', ?, ?, ?)`
     ).bind(id, key, nameKey, ko, en, body.country ?? null, body.sort_order ?? 0, now(), now()).run();
     await upsertI18n(env, nameKey, normalizedTranslations(body.translations, ko, en));
+    if (await hasTable(env, 'feed_manufacturer_type_map')) {
+      await syncParentMap(env, 'feed_manufacturer_type_map', 'manufacturer_id', id, 'type_item_id', body.parent_type_ids ?? []);
+    }
     return created(await env.DB.prepare(
       `SELECT mfr.*,
+              (SELECT GROUP_CONCAT(type_item_id) FROM feed_manufacturer_type_map mtm WHERE mtm.manufacturer_id = mfr.id) AS parent_type_ids,
               COALESCE(NULLIF(TRIM(tr.${langCol}), ''), NULLIF(TRIM(tr.en), ''), NULLIF(TRIM(tr.ko), ''), mfr.name_en, mfr.name_ko) AS display_label
        FROM feed_manufacturers mfr
        LEFT JOIN i18n_translations tr ON tr.key = mfr.name_key
@@ -315,7 +370,7 @@ export async function handleFeedCatalog(request: Request, env: Env, url: URL): P
   if (mfrIdMatch) {
     const mfrId = mfrIdMatch[1];
     if (method === 'PUT') {
-      const body = await request.json<{ name_ko?: string; name_en?: string; country?: string; sort_order?: number; status?: string; translations?: Record<string, string> }>();
+      const body = await request.json<{ name_ko?: string; name_en?: string; country?: string; sort_order?: number; status?: string; translations?: Record<string, string>; parent_type_ids?: string[] }>();
       const existing = await env.DB.prepare('SELECT name_key, name_ko, name_en FROM feed_manufacturers WHERE id = ?').bind(mfrId).first<{ name_key?: string | null; name_ko?: string | null; name_en?: string | null }>();
       if (!existing) return err('manufacturer not found', 404, 'not_found');
       const sets: string[] = [];
@@ -329,12 +384,16 @@ export async function handleFeedCatalog(request: Request, env: Env, url: URL): P
       vals.push(now(), mfrId);
       await env.DB.prepare(`UPDATE feed_manufacturers SET ${sets.join(', ')} WHERE id = ?`).bind(...vals).run();
       const ko = (body.translations?.ko || body.name_ko || existing.name_ko || '').trim();
-      const en = (body.translations?.en || body.name_en || existing.name_en || '').trim();
+      const en = (body.translations?.en || body.name_en || ko || existing.name_en || '').trim();
       if (existing.name_key && (ko || en)) {
         await upsertI18n(env, existing.name_key, normalizedTranslations(body.translations, ko, en));
       }
+      if (body.parent_type_ids && await hasTable(env, 'feed_manufacturer_type_map')) {
+        await syncParentMap(env, 'feed_manufacturer_type_map', 'manufacturer_id', mfrId, 'type_item_id', body.parent_type_ids);
+      }
       return ok(await env.DB.prepare(
         `SELECT mfr.*,
+                (SELECT GROUP_CONCAT(type_item_id) FROM feed_manufacturer_type_map mtm WHERE mtm.manufacturer_id = mfr.id) AS parent_type_ids,
                 COALESCE(NULLIF(TRIM(tr.${langCol}), ''), NULLIF(TRIM(tr.en), ''), NULLIF(TRIM(tr.ko), ''), mfr.name_en, mfr.name_ko) AS display_label
          FROM feed_manufacturers mfr
          LEFT JOIN i18n_translations tr ON tr.key = mfr.name_key
@@ -358,25 +417,40 @@ export async function handleFeedCatalog(request: Request, env: Env, url: URL): P
              JOIN feed_manufacturers m ON m.id = b.manufacturer_id
              LEFT JOIN i18n_translations tr_mfr ON tr_mfr.key = m.name_key
              LEFT JOIN i18n_translations tr_brand ON tr_brand.key = b.name_key`;
-    if (manufacturerId) { q += ' WHERE b.manufacturer_id = ?'; binds.push(manufacturerId); }
+    if (manufacturerId) {
+      q += ` WHERE (
+        b.manufacturer_id = ?
+        OR EXISTS (
+          SELECT 1
+          FROM feed_brand_manufacturer_map bmm
+          WHERE bmm.brand_id = b.id
+            AND bmm.manufacturer_id = ?
+        )
+      )`;
+      binds.push(manufacturerId, manufacturerId);
+    }
     q += ' ORDER BY b.name_en';
     const rows = await env.DB.prepare(q).bind(...binds).all();
     return ok(rows.results);
   }
 
   if (path === '/api/v1/admin/feed-catalog/brands' && method === 'POST') {
-    const body = await request.json<{ manufacturer_id: string; translations?: Record<string, string>; name_ko?: string; name_en?: string }>();
+    const body = await request.json<{ manufacturer_id?: string; manufacturer_ids?: string[]; translations?: Record<string, string>; name_ko?: string; name_en?: string }>();
     const ko = (body.translations?.ko || body.name_ko || '').trim();
-    const en = (body.translations?.en || body.name_en || '').trim();
-    if (!body.manufacturer_id || !ko || !en) return err('manufacturer_id, ko, en required', 400, 'missing_field');
+    const en = (body.translations?.en || body.name_en || ko).trim();
+    const manufacturerIds = Array.from(new Set([...(body.manufacturer_ids ?? []), ...(body.manufacturer_id ? [body.manufacturer_id] : [])].filter(Boolean)));
+    if (manufacturerIds.length === 0 || !ko) return err('manufacturer_ids and ko required', 400, 'missing_field');
     const key = `brand_${randomToken(8)}`;
     const nameKey = `feed.brand.${key}`;
     const id = newId();
     await env.DB.prepare(
       `INSERT INTO feed_brands (id, manufacturer_id, name_key, name_ko, name_en, status, created_at, updated_at)
        VALUES (?, ?, ?, ?, ?, 'active', ?, ?)`
-    ).bind(id, body.manufacturer_id, nameKey, ko, en, now(), now()).run();
+    ).bind(id, manufacturerIds[0], nameKey, ko, en, now(), now()).run();
     await upsertI18n(env, nameKey, normalizedTranslations(body.translations, ko, en));
+    if (await hasTable(env, 'feed_brand_manufacturer_map')) {
+      await syncParentMap(env, 'feed_brand_manufacturer_map', 'brand_id', id, 'manufacturer_id', manufacturerIds);
+    }
     return created(await env.DB.prepare(`SELECT * FROM feed_brands WHERE id = ?`).bind(id).first());
   }
 
@@ -384,21 +458,26 @@ export async function handleFeedCatalog(request: Request, env: Env, url: URL): P
   if (brandIdMatch) {
     const brandId = brandIdMatch[1];
     if (method === 'PUT') {
-      const body = await request.json<{ name_ko?: string; name_en?: string; status?: string; translations?: Record<string, string> }>();
+      const body = await request.json<{ name_ko?: string; name_en?: string; status?: string; translations?: Record<string, string>; manufacturer_ids?: string[]; manufacturer_id?: string }>();
       const existing = await env.DB.prepare('SELECT name_key, name_ko, name_en FROM feed_brands WHERE id = ?').bind(brandId).first<{ name_key?: string | null; name_ko?: string | null; name_en?: string | null }>();
       if (!existing) return err('brand not found', 404, 'not_found');
       const sets: string[] = [];
       const vals: Array<string | number | null> = [];
       if (body.name_ko !== undefined) { sets.push('name_ko = ?'); vals.push(body.name_ko); }
       if (body.name_en !== undefined) { sets.push('name_en = ?'); vals.push(body.name_en); }
+      const manufacturerIds = Array.from(new Set([...(body.manufacturer_ids ?? []), ...(body.manufacturer_id ? [body.manufacturer_id] : [])].filter(Boolean)));
+      if (manufacturerIds.length > 0) { sets.push('manufacturer_id = ?'); vals.push(manufacturerIds[0]); }
       if (body.status !== undefined) { sets.push('status = ?'); vals.push(body.status); }
       sets.push('updated_at = ?');
       vals.push(now(), brandId);
       await env.DB.prepare(`UPDATE feed_brands SET ${sets.join(', ')} WHERE id = ?`).bind(...vals).run();
       const ko = (body.translations?.ko || body.name_ko || existing.name_ko || '').trim();
-      const en = (body.translations?.en || body.name_en || existing.name_en || '').trim();
+      const en = (body.translations?.en || body.name_en || ko || existing.name_en || '').trim();
       if (existing.name_key && (ko || en)) {
         await upsertI18n(env, existing.name_key, normalizedTranslations(body.translations, ko, en));
+      }
+      if (manufacturerIds.length > 0 && await hasTable(env, 'feed_brand_manufacturer_map')) {
+        await syncParentMap(env, 'feed_brand_manufacturer_map', 'brand_id', brandId, 'manufacturer_id', manufacturerIds);
       }
       return ok(await env.DB.prepare(`SELECT * FROM feed_brands WHERE id = ?`).bind(brandId).first());
     }
@@ -416,7 +495,18 @@ export async function handleFeedCatalog(request: Request, env: Env, url: URL): P
     let where = '';
     if (typeId) { where += ' AND m.feed_type_item_id = ?'; binds.push(typeId); }
     if (mfrId) { where += ' AND m.manufacturer_id = ?'; binds.push(mfrId); }
-    if (brandId) { where += ' AND m.brand_id = ?'; binds.push(brandId); }
+    if (brandId) {
+      where += ` AND (
+        m.brand_id = ?
+        OR EXISTS (
+          SELECT 1
+          FROM feed_model_brand_map mbm
+          WHERE mbm.model_id = m.id
+            AND mbm.brand_id = ?
+        )
+      )`;
+      binds.push(brandId, brandId);
+    }
     const rows = await env.DB.prepare(
       `SELECT m.*,
               mi.code AS type_key,
@@ -450,10 +540,10 @@ export async function handleFeedCatalog(request: Request, env: Env, url: URL): P
   }
 
   if (path === '/api/v1/admin/feed-catalog/models' && method === 'POST') {
-    const body = await request.json<{ feed_type_id: string; manufacturer_id: string; brand_id?: string; model_name?: string; model_code?: string; description?: string; translations?: Record<string, string>; name_ko?: string; name_en?: string }>();
+    const body = await request.json<{ feed_type_id: string; manufacturer_id: string; brand_id?: string; brand_ids?: string[]; model_name?: string; model_code?: string; description?: string; translations?: Record<string, string>; name_ko?: string; name_en?: string }>();
     const ko = (body.translations?.ko || body.name_ko || body.model_name || '').trim();
-    const en = (body.translations?.en || body.name_en || body.model_name || '').trim();
-    if (!body.feed_type_id || !body.manufacturer_id || !ko || !en) return err('feed_type_id, manufacturer_id, ko, en required', 400, 'missing_field');
+    const en = (body.translations?.en || body.name_en || ko || body.model_name || '').trim();
+    if (!body.feed_type_id || !body.manufacturer_id || !ko) return err('feed_type_id, manufacturer_id, ko required', 400, 'missing_field');
     const key = `model_${randomToken(8)}`;
     const nameKey = `feed.model.${key}`;
     const id = newId();
@@ -473,6 +563,10 @@ export async function handleFeedCatalog(request: Request, env: Env, url: URL): P
       now()
     ).run();
     await upsertI18n(env, nameKey, normalizedTranslations(body.translations, ko, en));
+    const brandIds = Array.from(new Set([...(body.brand_ids ?? []), ...(body.brand_id ? [body.brand_id] : [])].filter(Boolean)));
+    if (brandIds.length > 0 && await hasTable(env, 'feed_model_brand_map')) {
+      await syncParentMap(env, 'feed_model_brand_map', 'model_id', id, 'brand_id', brandIds);
+    }
     return created(await env.DB.prepare(`SELECT * FROM feed_models WHERE id = ?`).bind(id).first());
   }
 
@@ -480,17 +574,19 @@ export async function handleFeedCatalog(request: Request, env: Env, url: URL): P
   if (modelIdMatch) {
     const modelId = modelIdMatch[1];
     if (method === 'PUT') {
-      const body = await request.json<{ model_name?: string; model_code?: string; description?: string; status?: string; feed_type_id?: string; manufacturer_id?: string; brand_id?: string | null; translations?: Record<string, string>; name_ko?: string; name_en?: string }>();
+      const body = await request.json<{ model_name?: string; model_code?: string; description?: string; status?: string; feed_type_id?: string; manufacturer_id?: string; brand_id?: string | null; brand_ids?: string[]; translations?: Record<string, string>; name_ko?: string; name_en?: string }>();
       const existing = await env.DB.prepare('SELECT name_key, model_name FROM feed_models WHERE id = ?').bind(modelId).first<{ name_key?: string | null; model_name?: string | null }>();
       if (!existing) return err('model not found', 404, 'not_found');
       const sets: string[] = [];
       const vals: Array<string | number | null> = [];
       const ko = (body.translations?.ko || body.name_ko || body.model_name || '').trim();
-      const en = (body.translations?.en || body.name_en || body.model_name || '').trim();
+      const en = (body.translations?.en || body.name_en || ko || body.model_name || '').trim();
       const nextName = (en || ko || body.model_name || existing.model_name || '').trim();
+      const brandIds = Array.from(new Set([...(body.brand_ids ?? []), ...(body.brand_id ? [body.brand_id] : [])].filter(Boolean)));
       if (body.feed_type_id) { sets.push('feed_type_item_id = ?'); vals.push(body.feed_type_id); }
       if (body.manufacturer_id) { sets.push('manufacturer_id = ?'); vals.push(body.manufacturer_id); }
       if (body.brand_id !== undefined) { sets.push('brand_id = ?'); vals.push(body.brand_id || null); }
+      else if (brandIds.length > 0) { sets.push('brand_id = ?'); vals.push(brandIds[0]); }
       if (body.model_code !== undefined) { sets.push('model_code = ?'); vals.push(body.model_code || null); }
       if (body.description !== undefined) { sets.push('description = ?'); vals.push(body.description || null); }
       if (body.status !== undefined) { sets.push('status = ?'); vals.push(body.status); }
@@ -500,6 +596,9 @@ export async function handleFeedCatalog(request: Request, env: Env, url: URL): P
       await env.DB.prepare(`UPDATE feed_models SET ${sets.join(', ')} WHERE id = ?`).bind(...vals).run();
       if (existing.name_key && (ko || en || body.translations)) {
         await upsertI18n(env, existing.name_key, normalizedTranslations(body.translations, ko || existing.model_name || '', en || ko || existing.model_name || ''));
+      }
+      if (brandIds.length > 0 && await hasTable(env, 'feed_model_brand_map')) {
+        await syncParentMap(env, 'feed_model_brand_map', 'model_id', modelId, 'brand_id', brandIds);
       }
       return ok(await env.DB.prepare(`SELECT * FROM feed_models WHERE id = ?`).bind(modelId).first());
     }

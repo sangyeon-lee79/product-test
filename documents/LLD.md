@@ -213,6 +213,38 @@ Frontend:
   - `country.*` 키는 13개 언어 컬럼에 직접 현지화 번역 입력
   - `currency.*` 키는 ko/en 우선값 + 나머지 언어 fallback
 
+### 0.11 Device/Feed Catalog 다중 부모 매핑 + 입력 규칙 변경 (2026-03-08)
+
+마이그레이션:
+- `0056_device_feed_multi_parent_maps.sql`
+  - device:
+    - `device_manufacturer_type_map`
+    - `device_brand_manufacturer_map`
+    - `device_model_brand_map`
+  - feed:
+    - `feed_manufacturer_type_map`
+    - `feed_brand_manufacturer_map`
+    - `feed_model_brand_map`
+  - 기존 단일 FK 값 기반 backfill 포함
+
+API 변경:
+- `routes/devices.ts`, `routes/feedCatalog.ts`
+  - list 필터가 매핑 테이블을 함께 참조하도록 확장
+  - create/update payload:
+    - 제조사: `parent_type_ids[]`
+    - 브랜드: `manufacturer_ids[]`
+    - 모델/제품: `brand_ids[]`
+  - i18n 입력:
+    - `ko` 필수
+    - `en` 미입력 시 `ko` fallback 허용
+    - translations upsert 유지
+
+Frontend 변경:
+- `DevicePage.tsx`, `FeedPage.tsx`
+  - 부모값 multi-select UI 추가
+  - 영어 수동 입력 필드 제거
+  - 저장 시 `api.i18n.translate(ko)` 호출로 translations 자동 생성 후 전송
+
 ---
 
 ## 1. 기술 스택

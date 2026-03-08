@@ -176,6 +176,26 @@ Your pet's life portfolio
 - [x] 국가명 i18n 13개 언어 컬럼(`ko/en/ja/zh_cn/zh_tw/es/fr/de/pt/vi/th/id_lang/ar`) 현지화 값 반영
 - [x] 통화명 i18n key(`currency.*`) 보강
 
+## 0.15 장치/사료 관리자 다중 부모 + 자동번역 구조 전환 (2026-03-08)
+
+적용 범위:
+- `services/api/src/db/migrations/0056_device_feed_multi_parent_maps.sql`
+- `services/api/src/routes/devices.ts`
+- `services/api/src/routes/feedCatalog.ts`
+- `apps/admin-web/src/pages/DevicePage.tsx`
+- `apps/admin-web/src/pages/FeedPage.tsx`
+- `apps/admin-web/src/lib/api.ts`
+
+- [x] 단계별 다중 부모 연결 테이블 추가 (제조사↔유형, 브랜드↔제조사, 모델/제품↔브랜드)
+- [x] 장치/사료 관리자 조회 필터를 매핑 테이블 기반 다중 부모 대응으로 확장
+- [x] 제조사/브랜드/모델(제품) 등록에서 영어 수동 입력 제거
+- [x] 한국어 이름 입력 + 자동번역(`api.i18n.translate`)으로 다국어 translations 생성
+- [x] 저장값은 stable id/key, 화면 표시는 locale 번역값 유지
+
+검증:
+- [x] `npm --prefix services/api run build`
+- [x] `npm --prefix apps/admin-web run build`
+
 ---
 
 ## 0.2 통합 개발 반영 내역 (2026-03-07)
@@ -580,6 +600,7 @@ DB 테이블/마이그레이션
     - Disease 선택 → Symptom 연결 → Metric 연결 → Unit/LogType 연결
     - 연결 속성 편집 (required, sort_order, active, default)
 [x] Metric은 최소 1개 LogType에 연결 필수 (검증 로직)
+
 
 ## S3-4. Seed 데이터 & 검증
 [x] "당뇨(diabetes)" 기준 풀 매핑 (0005_seed_master.sql)
