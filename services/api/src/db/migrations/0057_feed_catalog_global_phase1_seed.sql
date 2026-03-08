@@ -232,9 +232,9 @@ SELECT
 FROM seed_mfr_type smt
 JOIN feed_manufacturers m ON m.key = smt.mfr_key
 JOIN master_items mi
-  ON mi.key = smt.feed_type_code
+  ON mi.code = smt.feed_type_code
  AND mi.category_id = (
-   SELECT id FROM master_categories WHERE key IN ('diet_feed_type', 'master.diet_feed_type') LIMIT 1
+   SELECT id FROM master_categories WHERE code IN ('diet_feed_type', 'master.diet_feed_type') LIMIT 1
  );
 
 WITH seed_brand(key, mfr_key, name_key, name_ko, name_en) AS (
@@ -374,9 +374,9 @@ SELECT
   datetime('now')
 FROM seed_model s
 JOIN master_items t
-  ON t.key = s.feed_type_code
+  ON t.code = s.feed_type_code
  AND t.category_id = (
-   SELECT id FROM master_categories WHERE key IN ('diet_feed_type', 'master.diet_feed_type') LIMIT 1
+   SELECT id FROM master_categories WHERE code IN ('diet_feed_type', 'master.diet_feed_type') LIMIT 1
  )
 JOIN feed_manufacturers m ON m.key = s.mfr_key
 JOIN feed_brands b ON b.name_key = 'feed.brand.' || s.brand_key;
@@ -417,9 +417,9 @@ SET
     SELECT t.id
     FROM seed_model s
     JOIN master_items t
-      ON t.key = s.feed_type_code
+      ON t.code = s.feed_type_code
      AND t.category_id = (
-       SELECT id FROM master_categories WHERE key IN ('diet_feed_type', 'master.diet_feed_type') LIMIT 1
+       SELECT id FROM master_categories WHERE code IN ('diet_feed_type', 'master.diet_feed_type') LIMIT 1
      )
     WHERE s.name_key = feed_models.name_key
   ),
