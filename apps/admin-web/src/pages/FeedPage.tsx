@@ -45,8 +45,9 @@ export default function FeedPage() {
   const typeLabel = (item?: FeedType | null): string => {
     if (!item) return '-';
     const display = (item.display_label || '').trim();
-    if (display) return display;
-    return item.name_en || item.name_ko || item.key || '-';
+    const base = display || item.name_en || item.name_ko || item.key || '-';
+    const count = typeof item.model_count === 'number' ? item.model_count : null;
+    return count === null ? base : `${base} [ ${count} ]`;
   };
 
   const mfrLabel = (item?: FeedManufacturer | null): string => {

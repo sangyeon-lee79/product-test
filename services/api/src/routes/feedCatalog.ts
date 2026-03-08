@@ -126,6 +126,12 @@ export async function handleFeedCatalog(request: Request, env: Env, url: URL): P
              mi.code AS key,
              mi.sort_order,
              'active' AS status,
+             COALESCE((
+               SELECT COUNT(*)
+               FROM feed_models fm
+               WHERE fm.feed_type_item_id = mi.id
+                 AND fm.status = 'active'
+             ), 0) AS model_count,
              COALESCE(NULLIF(TRIM(tr.${langCol}), ''), NULLIF(TRIM(tr.en), ''), NULLIF(TRIM(tr.ko), ''), mi.code) AS display_label,
              tr.ko AS ko_name,
              tr.en AS name_en
@@ -146,6 +152,12 @@ export async function handleFeedCatalog(request: Request, env: Env, url: URL): P
              mi.key AS key,
              mi.sort_order,
              'active' AS status,
+             COALESCE((
+               SELECT COUNT(*)
+               FROM feed_models fm
+               WHERE fm.feed_type_item_id = mi.id
+                 AND fm.status = 'active'
+             ), 0) AS model_count,
              COALESCE(NULLIF(TRIM(tr.${langCol}), ''), NULLIF(TRIM(tr.en), ''), NULLIF(TRIM(tr.ko), ''), mi.key) AS display_label,
              tr.ko AS ko_name,
              tr.en AS name_en
@@ -305,6 +317,12 @@ export async function handleFeedCatalog(request: Request, env: Env, url: URL): P
            mi.code AS key,
            mi.sort_order,
            mi.status,
+           COALESCE((
+             SELECT COUNT(*)
+             FROM feed_models fm
+             WHERE fm.feed_type_item_id = mi.id
+               AND fm.status = 'active'
+           ), 0) AS model_count,
            COALESCE(NULLIF(TRIM(tr.${langCol}), ''), NULLIF(TRIM(tr.en), ''), NULLIF(TRIM(tr.ko), ''), mi.code) AS display_label,
            tr.ko AS ko_name,
            tr.en AS name_en
@@ -324,6 +342,12 @@ export async function handleFeedCatalog(request: Request, env: Env, url: URL): P
            mi.key AS key,
            mi.sort_order,
            CASE WHEN mi.is_active = 1 THEN 'active' ELSE 'inactive' END AS status,
+           COALESCE((
+             SELECT COUNT(*)
+             FROM feed_models fm
+             WHERE fm.feed_type_item_id = mi.id
+               AND fm.status = 'active'
+           ), 0) AS model_count,
            COALESCE(NULLIF(TRIM(tr.${langCol}), ''), NULLIF(TRIM(tr.en), ''), NULLIF(TRIM(tr.ko), ''), mi.key) AS display_label,
            tr.ko AS ko_name,
            tr.en AS name_en

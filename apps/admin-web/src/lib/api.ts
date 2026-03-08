@@ -901,6 +901,7 @@ export interface FriendConnection {
 
 export interface DeviceType {
   id: string; key: string; name_ko?: string | null; name_en?: string | null; display_label?: string | null;
+  model_count?: number;
   status: string; sort_order: number; created_at: string; updated_at: string;
 }
 
@@ -955,6 +956,7 @@ export interface GuardianDevice {
 
 export interface FeedType {
   id: string; key: string; name_ko?: string | null; name_en?: string | null; display_label?: string | null;
+  model_count?: number;
   status: string; sort_order: number; created_at: string; updated_at: string;
 }
 

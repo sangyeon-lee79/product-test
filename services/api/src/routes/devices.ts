@@ -154,6 +154,15 @@ export async function handleDevices(request: Request, env: Env, url: URL): Promi
              mi.code AS key,
              mi.sort_order,
              'active' AS status,
+             COALESCE((
+               SELECT COUNT(*)
+               FROM device_models dm
+               WHERE dm.status = 'active'
+                 AND (
+                   dm.device_type_item_id = mi.id
+                   OR dm.device_type_id = mi.id
+                 )
+             ), 0) AS model_count,
              COALESCE(NULLIF(TRIM(tr.${langCol}), ''), NULLIF(TRIM(tr.en), ''), NULLIF(TRIM(tr.ko), ''), mi.code) AS display_label,
              tr.ko AS ko_name,
              tr.en AS name_en
@@ -174,6 +183,15 @@ export async function handleDevices(request: Request, env: Env, url: URL): Promi
              mi.key AS key,
              mi.sort_order,
              'active' AS status,
+             COALESCE((
+               SELECT COUNT(*)
+               FROM device_models dm
+               WHERE dm.status = 'active'
+                 AND (
+                   dm.device_type_item_id = mi.id
+                   OR dm.device_type_id = mi.id
+                 )
+             ), 0) AS model_count,
              COALESCE(NULLIF(TRIM(tr.${langCol}), ''), NULLIF(TRIM(tr.en), ''), NULLIF(TRIM(tr.ko), ''), mi.key) AS display_label,
              tr.ko AS ko_name,
              tr.en AS name_en
@@ -491,6 +509,15 @@ export async function handleDevices(request: Request, env: Env, url: URL): Promi
            mi.code AS key,
            mi.sort_order,
            'active' AS status,
+           COALESCE((
+             SELECT COUNT(*)
+             FROM device_models dm
+             WHERE dm.status = 'active'
+               AND (
+                 dm.device_type_item_id = mi.id
+                 OR dm.device_type_id = mi.id
+               )
+           ), 0) AS model_count,
            COALESCE(NULLIF(TRIM(tr.${langCol}), ''), NULLIF(TRIM(tr.en), ''), NULLIF(TRIM(tr.ko), ''), mi.code) AS display_label,
            tr.ko AS ko_name,
            tr.en AS name_en
@@ -511,6 +538,15 @@ export async function handleDevices(request: Request, env: Env, url: URL): Promi
            mi.key AS key,
            mi.sort_order,
            'active' AS status,
+           COALESCE((
+             SELECT COUNT(*)
+             FROM device_models dm
+             WHERE dm.status = 'active'
+               AND (
+                 dm.device_type_item_id = mi.id
+                 OR dm.device_type_id = mi.id
+               )
+           ), 0) AS model_count,
            COALESCE(NULLIF(TRIM(tr.${langCol}), ''), NULLIF(TRIM(tr.en), ''), NULLIF(TRIM(tr.ko), ''), mi.key) AS display_label,
            tr.ko AS ko_name,
            tr.en AS name_en
