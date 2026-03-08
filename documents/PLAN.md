@@ -59,6 +59,24 @@ Your pet's life portfolio
 - [x] `npm --prefix apps/admin-web run build`
 - [x] `npm --prefix apps/guardian-web run build` (Node 20.19+ 권장 경고 존재, 빌드 성공)
 
+## 0.7 장치관리/제조사 구조 정규화 (2026-03-08)
+
+적용 범위:
+- `services/api/src/routes/devices.ts`
+- `services/api/src/db/migrations/0048_device_type_master_ref_and_mfr_i18n.sql`
+- `apps/admin-web/src/pages/DevicePage.tsx`
+
+- [x] 장치유형은 `disease_device_type` (카테고리 L3) 마스터 참조로 조회/선택
+- [x] 장치모델 저장 시 `device_type_item_id`(L3 master item id) 저장
+- [x] 제조사명은 `name_key` + `i18n_translations` 기반으로 locale 렌더링
+- [x] 제조사 생성 시 랜덤 key(`mfr_*`) 자동 생성 + i18n row 자동 upsert
+- [x] Admin Device UI에서 장치유형 텍스트 직접 생성/수정 제거 (read-only master 참조)
+- [x] 제조사 리스트/모델 상세 표시값 locale 번역값 우선 렌더링(`display_label`)
+
+검증:
+- [x] `npm --prefix services/api run build`
+- [x] `npm --prefix apps/admin-web run build`
+
 ---
 
 ## 0.2 통합 개발 반영 내역 (2026-03-07)

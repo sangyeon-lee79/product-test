@@ -686,10 +686,10 @@ export default function MasterPage() {
                     const dtId = e.target.value;
                     setItemDeviceTypeId(dtId);
                     const dt = deviceTypes.find(d => d.id === dtId);
-                    if (dt && !itemTrans.ko) setItemTrans(f => ({ ...f, ko: dt.name_ko, en: dt.name_en }));
+                    if (dt && !itemTrans.ko) setItemTrans(f => ({ ...f, ko: dt.name_ko ?? '', en: dt.name_en ?? '' }));
                   }}>
                     <option value="">{t('admin.device.select_type', '유형을 선택하세요')}</option>
-                    {deviceTypes.map(dt => <option key={dt.id} value={dt.id}>{dt.name_ko} ({dt.name_en})</option>)}
+                    {deviceTypes.map(dt => <option key={dt.id} value={dt.id}>{(dt.display_label || dt.name_en || dt.name_ko || dt.key)} ({dt.key})</option>)}
                   </select>
                 </div>
               )}

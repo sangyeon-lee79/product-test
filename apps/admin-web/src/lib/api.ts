@@ -447,7 +447,10 @@ export const api = {
   },
   devices: {
     types: {
-      list: () => request<DeviceType[]>('/api/v1/admin/devices/types'),
+      list: (lang?: string) => {
+        const q = lang ? `?lang=${encodeURIComponent(lang)}` : '';
+        return request<DeviceType[]>(`/api/v1/admin/devices/types${q}`);
+      },
       create: (data: { key?: string; name_ko: string; name_en: string; sort_order?: number }) =>
         request<DeviceType>('/api/v1/admin/devices/types', { method: 'POST', body: JSON.stringify(data) }),
       update: (id: string, data: Partial<{ name_ko: string; name_en: string; sort_order: number; status: string }>) =>
@@ -456,10 +459,13 @@ export const api = {
         request<{ id: string; deleted: boolean }>(`/api/v1/admin/devices/types/${id}`, { method: 'DELETE' }),
     },
     manufacturers: {
-      list: () => request<DeviceManufacturer[]>('/api/v1/admin/devices/manufacturers'),
-      create: (data: { key?: string; name_ko: string; name_en: string; country?: string; sort_order?: number }) =>
+      list: (lang?: string) => {
+        const q = lang ? `?lang=${encodeURIComponent(lang)}` : '';
+        return request<DeviceManufacturer[]>(`/api/v1/admin/devices/manufacturers${q}`);
+      },
+      create: (data: { country?: string; sort_order?: number; name_ko: string; name_en: string; translations?: Record<string, string> }) =>
         request<DeviceManufacturer>('/api/v1/admin/devices/manufacturers', { method: 'POST', body: JSON.stringify(data) }),
-      update: (id: string, data: Partial<{ name_ko: string; name_en: string; country: string; sort_order: number; status: string }>) =>
+      update: (id: string, data: Partial<{ name_ko: string; name_en: string; country: string; sort_order: number; status: string; translations: Record<string, string> }>) =>
         request<DeviceManufacturer>(`/api/v1/admin/devices/manufacturers/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
       delete: (id: string) =>
         request<{ id: string; deleted: boolean }>(`/api/v1/admin/devices/manufacturers/${id}`, { method: 'DELETE' }),
@@ -500,20 +506,27 @@ export const api = {
         request<MeasurementUnit>(`/api/v1/admin/devices/units/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
     },
     public: {
-      types: () => request<DeviceType[]>('/api/v1/devices/types'),
-      manufacturers: (deviceTypeId?: string) => {
-        const q = deviceTypeId ? `?device_type_id=${encodeURIComponent(deviceTypeId)}` : '';
-        return request<DeviceManufacturer[]>(`/api/v1/devices/manufacturers${q}`);
+      types: (lang?: string) => {
+        const q = lang ? `?lang=${encodeURIComponent(lang)}` : '';
+        return request<DeviceType[]>(`/api/v1/devices/types${q}`);
+      },
+      manufacturers: (deviceTypeId?: string, lang?: string) => {
+        const q = new URLSearchParams();
+        if (deviceTypeId) q.set('device_type_id', deviceTypeId);
+        if (lang) q.set('lang', lang);
+        const suffix = q.toString() ? `?${q.toString()}` : '';
+        return request<DeviceManufacturer[]>(`/api/v1/devices/manufacturers${suffix}`);
       },
       brands: (manufacturerId?: string) => {
         const q = manufacturerId ? `?manufacturer_id=${encodeURIComponent(manufacturerId)}` : '';
         return request<DeviceBrand[]>(`/api/v1/devices/brands${q}`);
       },
-      models: (filters?: { device_type_id?: string; manufacturer_id?: string; brand_id?: string }) => {
+      models: (filters?: { device_type_id?: string; manufacturer_id?: string; brand_id?: string }, lang?: string) => {
         const q = new URLSearchParams();
         if (filters?.device_type_id) q.set('device_type_id', filters.device_type_id);
         if (filters?.manufacturer_id) q.set('manufacturer_id', filters.manufacturer_id);
         if (filters?.brand_id) q.set('brand_id', filters.brand_id);
+        if (lang) q.set('lang', lang);
         const suffix = q.toString() ? `?${q.toString()}` : '';
         return request<DeviceModel[]>(`/api/v1/devices/models${suffix}`);
       },
@@ -807,12 +820,12 @@ export interface FriendConnection {
 }
 
 export interface DeviceType {
-  id: string; key: string; name_ko: string; name_en: string;
+  id: string; key: string; name_ko?: string | null; name_en?: string | null; display_label?: string | null;
   status: string; sort_order: number; created_at: string; updated_at: string;
 }
 
 export interface DeviceManufacturer {
-  id: string; key: string; name_ko: string; name_en: string;
+  id: string; key: string; name_key?: string | null; name_ko: string; name_en: string; display_label?: string | null;
   country: string | null; status: string; sort_order: number;
   created_at: string; updated_at: string;
 }
@@ -824,11 +837,13 @@ export interface DeviceBrand {
 }
 
 export interface DeviceModel {
-  id: string; device_type_id: string; manufacturer_id: string; brand_id: string | null;
+  id: string; device_type_id: string | null; device_type_item_id?: string | null; manufacturer_id: string; brand_id: string | null;
   model_name: string; model_code: string | null; description: string | null;
   status: string; created_at: string; updated_at: string;
   type_name_ko?: string | null; type_name_en?: string | null;
+  type_display_label?: string | null;
   mfr_name_ko?: string | null; mfr_name_en?: string | null;
+  mfr_display_label?: string | null;
   brand_name_ko?: string | null; brand_name_en?: string | null;
 }
 

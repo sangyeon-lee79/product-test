@@ -59,6 +59,31 @@ Your pet's life portfolio
   - Guardian Web `guardian_locale` 로컬 저장소 유지
   - profile language 변경 시 locale 즉시 반영 + 재조회
 
+### 0.3 Device Management 정규화 상세 (2026-03-08)
+
+DB 마이그레이션:
+- `0048_device_type_master_ref_and_mfr_i18n.sql`
+  - `device_models.device_type_item_id` 추가 (master_items FK)
+  - `device_manufacturers.name_key` 추가 (i18n key)
+  - 기존 데이터 backfill:
+    - `device_models.device_type_item_id` <- `master_items.device_type_id` 매핑
+    - 제조사 `name_key` 생성 + i18n row 생성/보정
+
+API:
+- `GET /api/v1/devices/types`, `GET /api/v1/admin/devices/types`
+  - source: master category `disease_device_type`
+  - locale 파라미터(`lang`) 기반 `display_label` 반환
+- `POST/PUT /api/v1/admin/devices/manufacturers`
+  - 제조사 생성/수정 시 `name_key` 연결 i18n upsert 수행
+- `POST/PUT /api/v1/admin/devices/models`
+  - 입력 `device_type_id`를 L3 master item id로 해석
+  - 저장 필드: `device_type_item_id` (필수), legacy `device_type_id`는 backward compatibility 용 보조 매핑
+
+Admin UI:
+- `DevicePage`는 장치유형 생성/수정 UI 제거
+- 장치유형 컬럼은 master L3 조회 결과를 선택 용도로만 사용
+- 제조사 표시값은 `display_label` 우선 렌더
+
 ---
 
 ## 1. 기술 스택

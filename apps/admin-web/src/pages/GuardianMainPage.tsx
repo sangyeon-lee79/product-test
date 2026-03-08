@@ -851,7 +851,7 @@ export default function GuardianMainPage() {
       .map((row) => ({
         id: row.id,
         key: row.key,
-        label: lang === 'ko' ? (row.name_ko || row.name_en || row.key) : (row.name_en || row.name_ko || row.key),
+        label: (row.display_label || '').trim() || (lang === 'ko' ? (row.name_ko || row.name_en || row.key) : (row.name_en || row.name_ko || row.key)),
       })),
     [deviceManufacturers, lang],
   );

@@ -63,6 +63,17 @@ Your pet's life portfolio
   - DB 저장은 번역문자열이 아닌 stable id/key 유지
   - 표시 시점에만 locale translation lookup 수행
 
+### 0.6 Device Management 규칙 강화 (2026-03-08)
+- 장치유형(Device Type):
+  - 자유 텍스트 입력/저장 금지
+  - 카테고리 L3(`disease_device_type`) master item 참조만 허용
+  - 저장값은 `device_type_item_id`(stable id), 표시값은 locale 번역 라벨
+- 제조사(Manufacturer):
+  - 제조사명은 i18n key 기반 관리
+  - 생성 시 랜덤 식별 key(`mfr_*`) 자동 생성
+  - 번역값은 `i18n_translations`에 저장/조회
+  - UI 출력은 locale 번역값 우선, fallback `en -> ko`
+
 ---
 
 ## 1. 제품 개요

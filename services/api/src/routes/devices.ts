@@ -10,10 +10,95 @@ import type { JwtPayload } from '../types';
 
 // ─── Helpers ───────────────────────────────────────────────────────────────
 
+const LANGS = ['ko', 'en', 'ja', 'zh_cn', 'zh_tw', 'es', 'fr', 'de', 'pt', 'vi', 'th', 'id_lang', 'ar'] as const;
+const LANG_COLS: Record<typeof LANGS[number], string> = {
+  ko: 'ko',
+  en: 'en',
+  ja: 'ja',
+  zh_cn: 'zh_cn',
+  zh_tw: 'zh_tw',
+  es: 'es',
+  fr: 'fr',
+  de: 'de',
+  pt: 'pt',
+  vi: 'vi',
+  th: 'th',
+  id_lang: 'id_lang',
+  ar: 'ar',
+};
+
 function slugify(text: string): string {
   return text.trim().toLowerCase()
     .replace(/[^a-z0-9]+/g, '_')
     .replace(/^_|_$/g, '');
+}
+
+function randomToken(length = 8): string {
+  const chars = 'abcdefghijklmnopqrstuvwxyz0123456789';
+  const bytes = new Uint8Array(length);
+  crypto.getRandomValues(bytes);
+  let out = '';
+  for (let i = 0; i < length; i += 1) out += chars[bytes[i] % chars.length];
+  return out;
+}
+
+function resolveLang(url: URL): typeof LANGS[number] {
+  const raw = (url.searchParams.get('lang') || 'ko').toLowerCase() as typeof LANGS[number];
+  return LANGS.includes(raw) ? raw : 'ko';
+}
+
+async function hasColumn(env: Env, table: string, column: string): Promise<boolean> {
+  const rows = await env.DB.prepare(`PRAGMA table_info(${table})`).all<{ name: string }>();
+  return rows.results.some((r) => r.name === column);
+}
+
+async function upsertI18n(env: Env, i18nKey: string, translations: Record<string, string>) {
+  const existing = await env.DB.prepare('SELECT id FROM i18n_translations WHERE key = ?').bind(i18nKey).first<{ id: string }>();
+  const values = LANGS.map((lang) => (translations[lang] || '').trim() || null);
+  if (existing) {
+    await env.DB.prepare(
+      `UPDATE i18n_translations
+       SET ko = COALESCE(?, ko),
+           en = COALESCE(?, en),
+           ja = COALESCE(?, ja),
+           zh_cn = COALESCE(?, zh_cn),
+           zh_tw = COALESCE(?, zh_tw),
+           es = COALESCE(?, es),
+           fr = COALESCE(?, fr),
+           de = COALESCE(?, de),
+           pt = COALESCE(?, pt),
+           vi = COALESCE(?, vi),
+           th = COALESCE(?, th),
+           id_lang = COALESCE(?, id_lang),
+           ar = COALESCE(?, ar),
+           updated_at = ?
+       WHERE id = ?`
+    ).bind(...values, now(), existing.id).run();
+    return;
+  }
+  await env.DB.prepare(
+    `INSERT INTO i18n_translations
+      (id, key, page, ko, en, ja, zh_cn, zh_tw, es, fr, de, pt, vi, th, id_lang, ar, is_active, created_at, updated_at)
+     VALUES (?, ?, 'device', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1, ?, ?)`
+  ).bind(newId(), i18nKey, ...values, now(), now()).run();
+}
+
+async function resolveLegacyDeviceTypeId(env: Env, masterItemId: string): Promise<string | null> {
+  const normalized = await hasColumn(env, 'master_items', 'code');
+  const row = normalized
+    ? await env.DB.prepare(
+      `SELECT device_type_id
+       FROM master_items
+       WHERE id = ? AND status = 'active'
+       LIMIT 1`
+    ).bind(masterItemId).first<{ device_type_id: string | null }>()
+    : await env.DB.prepare(
+      `SELECT device_type_id
+       FROM master_items
+       WHERE id = ? AND is_active = 1
+       LIMIT 1`
+    ).bind(masterItemId).first<{ device_type_id: string | null }>();
+  return row?.device_type_id ?? null;
 }
 
 // ─── Main Handler ───────────────────────────────────────────────────────────
@@ -26,19 +111,83 @@ export async function handleDevices(request: Request, env: Env, url: URL): Promi
   // ─── Public endpoints ────────────────────────────────────────────────────
 
   if (!isAdmin && !path.startsWith('/api/v1/pets/')) {
+    const lang = resolveLang(url);
+    const langCol = LANG_COLS[lang];
+    const normalized = await hasColumn(env, 'master_categories', 'code');
+
     // GET /api/v1/devices/types
     if (path === '/api/v1/devices/types' && method === 'GET') {
-      const rows = await env.DB.prepare(
-        `SELECT * FROM device_types WHERE status = 'active' ORDER BY sort_order, name_ko`
-      ).all();
+      const rows = normalized
+        ? await env.DB.prepare(
+          `SELECT
+             mi.id,
+             mi.code AS key,
+             mi.sort_order,
+             'active' AS status,
+             COALESCE(NULLIF(TRIM(tr.${langCol}), ''), NULLIF(TRIM(tr.en), ''), NULLIF(TRIM(tr.ko), ''), mi.code) AS display_label,
+             tr.ko AS ko_name,
+             tr.en AS name_en
+           FROM master_items mi
+           JOIN master_categories mc ON mc.id = mi.category_id
+           LEFT JOIN i18n_translations tr
+             ON tr.key = CASE
+               WHEN mc.code LIKE 'master.%' THEN (mc.code || '.' || mi.code)
+               ELSE ('master.' || mc.code || '.' || mi.code)
+             END
+           WHERE mc.code = 'disease_device_type'
+             AND mi.status = 'active'
+           ORDER BY mi.sort_order, mi.code`
+        ).all()
+        : await env.DB.prepare(
+          `SELECT
+             mi.id,
+             mi.key AS key,
+             mi.sort_order,
+             'active' AS status,
+             COALESCE(NULLIF(TRIM(tr.${langCol}), ''), NULLIF(TRIM(tr.en), ''), NULLIF(TRIM(tr.ko), ''), mi.key) AS display_label,
+             tr.ko AS ko_name,
+             tr.en AS name_en
+           FROM master_items mi
+           JOIN master_categories mc ON mc.id = mi.category_id
+           LEFT JOIN i18n_translations tr
+             ON tr.key = CASE
+               WHEN mc.key LIKE 'master.%' THEN (mc.key || '.' || mi.key)
+               ELSE ('master.' || mc.key || '.' || mi.key)
+             END
+           WHERE mc.key IN ('disease_device_type', 'master.disease_device_type')
+             AND mi.is_active = 1
+           ORDER BY mi.sort_order, mi.key`
+        ).all();
       return ok(rows.results);
     }
 
     // GET /api/v1/devices/manufacturers?device_type_id=
     if (path === '/api/v1/devices/manufacturers' && method === 'GET') {
+      const typeItemId = (url.searchParams.get('device_type_id') || '').trim();
+      const binds: string[] = [];
+      let where = `WHERE mfr.status = 'active'`;
+      if (typeItemId) {
+        where += ` AND EXISTS (
+          SELECT 1
+          FROM device_models dm
+          WHERE dm.manufacturer_id = mfr.id
+            AND dm.status = 'active'
+            AND (
+              dm.device_type_item_id = ?
+              OR (dm.device_type_item_id IS NULL AND dm.device_type_id = ?)
+            )
+        )`;
+        binds.push(typeItemId, typeItemId);
+      }
       const rows = await env.DB.prepare(
-        `SELECT * FROM device_manufacturers WHERE status = 'active' ORDER BY sort_order, name_ko`
-      ).all();
+        `SELECT
+           mfr.*,
+           COALESCE(NULLIF(TRIM(tr.${langCol}), ''), NULLIF(TRIM(tr.en), ''), NULLIF(TRIM(tr.ko), ''), mfr.name_en, mfr.name_ko, mfr.key) AS display_label
+         FROM device_manufacturers mfr
+         LEFT JOIN i18n_translations tr ON tr.key = mfr.name_key
+         ${where}
+         ORDER BY mfr.sort_order, COALESCE(NULLIF(TRIM(tr.${langCol}), ''), NULLIF(TRIM(tr.en), ''), NULLIF(TRIM(tr.ko), ''), mfr.name_en, mfr.name_ko, mfr.key)`
+      ).bind(...binds).all();
       return ok(rows.results);
     }
 
@@ -48,7 +197,7 @@ export async function handleDevices(request: Request, env: Env, url: URL): Promi
       let q = `SELECT * FROM device_brands WHERE status = 'active'`;
       const binds: string[] = [];
       if (manufacturerId) { q += ' AND manufacturer_id = ?'; binds.push(manufacturerId); }
-      q += ' ORDER BY name_ko';
+      q += ' ORDER BY COALESCE(name_en, name_ko)';
       const rows = await env.DB.prepare(q).bind(...binds).all();
       return ok(rows.results);
     }
@@ -60,20 +209,58 @@ export async function handleDevices(request: Request, env: Env, url: URL): Promi
       const brandId = url.searchParams.get('brand_id');
       const binds: string[] = [];
       let where = `WHERE m.status = 'active'`;
-      if (typeId) { where += ' AND m.device_type_id = ?'; binds.push(typeId); }
+      if (typeId) { where += ' AND (m.device_type_item_id = ? OR (m.device_type_item_id IS NULL AND m.device_type_id = ?))'; binds.push(typeId, typeId); }
       if (mfrId) { where += ' AND m.manufacturer_id = ?'; binds.push(mfrId); }
       if (brandId) { where += ' AND m.brand_id = ?'; binds.push(brandId); }
-      const rows = await env.DB.prepare(
-        `SELECT m.*, dt.name_ko as type_name_ko, dt.name_en as type_name_en,
-                mfr.name_ko as mfr_name_ko, mfr.name_en as mfr_name_en,
-                b.name_ko as brand_name_ko, b.name_en as brand_name_en
-         FROM device_models m
-         LEFT JOIN device_types dt ON dt.id = m.device_type_id
-         LEFT JOIN device_manufacturers mfr ON mfr.id = m.manufacturer_id
-         LEFT JOIN device_brands b ON b.id = m.brand_id
-         ${where}
-         ORDER BY m.model_name`
-      ).bind(...binds).all();
+      const rows = normalized
+        ? await env.DB.prepare(
+          `SELECT m.*,
+                  mi.code AS type_key,
+                  tr_type.ko AS type_name_ko,
+                  tr_type.en AS type_name_en,
+                  COALESCE(NULLIF(TRIM(tr_type.${langCol}), ''), NULLIF(TRIM(tr_type.en), ''), NULLIF(TRIM(tr_type.ko), ''), mi.code) AS type_display_label,
+                  mfr.name_ko as mfr_name_ko,
+                  mfr.name_en as mfr_name_en,
+                  COALESCE(NULLIF(TRIM(tr_mfr.${langCol}), ''), NULLIF(TRIM(tr_mfr.en), ''), NULLIF(TRIM(tr_mfr.ko), ''), mfr.name_en, mfr.name_ko, mfr.key) AS mfr_display_label,
+                  b.name_ko as brand_name_ko, b.name_en as brand_name_en
+           FROM device_models m
+           LEFT JOIN master_items mi ON mi.id = m.device_type_item_id
+           LEFT JOIN master_categories mc ON mc.id = mi.category_id
+           LEFT JOIN i18n_translations tr_type
+             ON tr_type.key = CASE
+               WHEN mc.code LIKE 'master.%' THEN (mc.code || '.' || mi.code)
+               ELSE ('master.' || mc.code || '.' || mi.code)
+             END
+           LEFT JOIN device_manufacturers mfr ON mfr.id = m.manufacturer_id
+           LEFT JOIN i18n_translations tr_mfr ON tr_mfr.key = mfr.name_key
+           LEFT JOIN device_brands b ON b.id = m.brand_id
+           ${where}
+           ORDER BY m.model_name`
+        ).bind(...binds).all()
+        : await env.DB.prepare(
+          `SELECT m.*,
+                  mi.key AS type_key,
+                  tr_type.ko AS type_name_ko,
+                  tr_type.en AS type_name_en,
+                  COALESCE(NULLIF(TRIM(tr_type.${langCol}), ''), NULLIF(TRIM(tr_type.en), ''), NULLIF(TRIM(tr_type.ko), ''), mi.key) AS type_display_label,
+                  mfr.name_ko as mfr_name_ko,
+                  mfr.name_en as mfr_name_en,
+                  COALESCE(NULLIF(TRIM(tr_mfr.${langCol}), ''), NULLIF(TRIM(tr_mfr.en), ''), NULLIF(TRIM(tr_mfr.ko), ''), mfr.name_en, mfr.name_ko, mfr.key) AS mfr_display_label,
+                  b.name_ko as brand_name_ko, b.name_en as brand_name_en
+           FROM device_models m
+           LEFT JOIN master_items mi ON mi.id = m.device_type_item_id
+           LEFT JOIN master_categories mc ON mc.id = mi.category_id
+           LEFT JOIN i18n_translations tr_type
+             ON tr_type.key = CASE
+               WHEN mc.key LIKE 'master.%' THEN (mc.key || '.' || mi.key)
+               ELSE ('master.' || mc.key || '.' || mi.key)
+             END
+           LEFT JOIN device_manufacturers mfr ON mfr.id = m.manufacturer_id
+           LEFT JOIN i18n_translations tr_mfr ON tr_mfr.key = mfr.name_key
+           LEFT JOIN device_brands b ON b.id = m.brand_id
+           ${where}
+           ORDER BY m.model_name`
+        ).bind(...binds).all();
       return ok(rows.results);
     }
 
@@ -108,19 +295,56 @@ export async function handleDevices(request: Request, env: Env, url: URL): Promi
 
     // GET list
     if (!deviceId && method === 'GET') {
-      const rows = await env.DB.prepare(
-        `SELECT gd.*, dm.model_name, dm.model_code,
-                dt.name_ko as type_name_ko, dt.name_en as type_name_en, dt.key as type_key,
-                mfr.name_ko as mfr_name_ko, mfr.name_en as mfr_name_en,
-                b.name_ko as brand_name_ko, b.name_en as brand_name_en
-         FROM guardian_devices gd
-         JOIN device_models dm ON dm.id = gd.device_model_id
-         LEFT JOIN device_types dt ON dt.id = dm.device_type_id
-         LEFT JOIN device_manufacturers mfr ON mfr.id = dm.manufacturer_id
-         LEFT JOIN device_brands b ON b.id = dm.brand_id
-         WHERE gd.pet_id = ? AND gd.status != 'deleted'
-         ORDER BY gd.created_at DESC`
-      ).bind(petId).all();
+      const lang = resolveLang(url);
+      const langCol = LANG_COLS[lang];
+      const normalized = await hasColumn(env, 'master_items', 'code');
+      const rows = normalized
+        ? await env.DB.prepare(
+          `SELECT gd.*, dm.model_name, dm.model_code,
+                  mi.code as type_key,
+                  tr_type.ko as type_name_ko, tr_type.en as type_name_en,
+                  COALESCE(NULLIF(TRIM(tr_type.${langCol}), ''), NULLIF(TRIM(tr_type.en), ''), NULLIF(TRIM(tr_type.ko), ''), mi.code) AS type_display_label,
+                  mfr.name_ko as mfr_name_ko, mfr.name_en as mfr_name_en,
+                  COALESCE(NULLIF(TRIM(tr_mfr.${langCol}), ''), NULLIF(TRIM(tr_mfr.en), ''), NULLIF(TRIM(tr_mfr.ko), ''), mfr.name_en, mfr.name_ko, mfr.key) AS mfr_display_label,
+                  b.name_ko as brand_name_ko, b.name_en as brand_name_en
+           FROM guardian_devices gd
+           JOIN device_models dm ON dm.id = gd.device_model_id
+           LEFT JOIN master_items mi ON mi.id = dm.device_type_item_id
+           LEFT JOIN master_categories mc ON mc.id = mi.category_id
+           LEFT JOIN i18n_translations tr_type
+             ON tr_type.key = CASE
+               WHEN mc.code LIKE 'master.%' THEN (mc.code || '.' || mi.code)
+               ELSE ('master.' || mc.code || '.' || mi.code)
+             END
+           LEFT JOIN device_manufacturers mfr ON mfr.id = dm.manufacturer_id
+           LEFT JOIN i18n_translations tr_mfr ON tr_mfr.key = mfr.name_key
+           LEFT JOIN device_brands b ON b.id = dm.brand_id
+           WHERE gd.pet_id = ? AND gd.status != 'deleted'
+           ORDER BY gd.created_at DESC`
+        ).bind(petId).all()
+        : await env.DB.prepare(
+          `SELECT gd.*, dm.model_name, dm.model_code,
+                  mi.key as type_key,
+                  tr_type.ko as type_name_ko, tr_type.en as type_name_en,
+                  COALESCE(NULLIF(TRIM(tr_type.${langCol}), ''), NULLIF(TRIM(tr_type.en), ''), NULLIF(TRIM(tr_type.ko), ''), mi.key) AS type_display_label,
+                  mfr.name_ko as mfr_name_ko, mfr.name_en as mfr_name_en,
+                  COALESCE(NULLIF(TRIM(tr_mfr.${langCol}), ''), NULLIF(TRIM(tr_mfr.en), ''), NULLIF(TRIM(tr_mfr.ko), ''), mfr.name_en, mfr.name_ko, mfr.key) AS mfr_display_label,
+                  b.name_ko as brand_name_ko, b.name_en as brand_name_en
+           FROM guardian_devices gd
+           JOIN device_models dm ON dm.id = gd.device_model_id
+           LEFT JOIN master_items mi ON mi.id = dm.device_type_item_id
+           LEFT JOIN master_categories mc ON mc.id = mi.category_id
+           LEFT JOIN i18n_translations tr_type
+             ON tr_type.key = CASE
+               WHEN mc.key LIKE 'master.%' THEN (mc.key || '.' || mi.key)
+               ELSE ('master.' || mc.key || '.' || mi.key)
+             END
+           LEFT JOIN device_manufacturers mfr ON mfr.id = dm.manufacturer_id
+           LEFT JOIN i18n_translations tr_mfr ON tr_mfr.key = mfr.name_key
+           LEFT JOIN device_brands b ON b.id = dm.brand_id
+           WHERE gd.pet_id = ? AND gd.status != 'deleted'
+           ORDER BY gd.created_at DESC`
+        ).bind(petId).all();
       return ok({ devices: rows.results });
     }
 
@@ -172,78 +396,158 @@ export async function handleDevices(request: Request, env: Env, url: URL): Promi
   if (authResult instanceof Response) return authResult;
   const roleResult = requireRole(authResult as JwtPayload, ['admin']);
   if (roleResult instanceof Response) return roleResult;
+  const lang = resolveLang(url);
+  const langCol = LANG_COLS[lang];
+  const normalizedMaster = await hasColumn(env, 'master_categories', 'code');
 
   // ── Device Types ──────────────────────────────────────────────────────────
   if (path === '/api/v1/admin/devices/types' && method === 'GET') {
-    const rows = await env.DB.prepare(`SELECT * FROM device_types ORDER BY sort_order, name_ko`).all();
+    const rows = normalizedMaster
+      ? await env.DB.prepare(
+        `SELECT
+           mi.id,
+           mi.code AS key,
+           mi.sort_order,
+           'active' AS status,
+           COALESCE(NULLIF(TRIM(tr.${langCol}), ''), NULLIF(TRIM(tr.en), ''), NULLIF(TRIM(tr.ko), ''), mi.code) AS display_label,
+           tr.ko AS ko_name,
+           tr.en AS name_en
+         FROM master_items mi
+         JOIN master_categories mc ON mc.id = mi.category_id
+         LEFT JOIN i18n_translations tr
+           ON tr.key = CASE
+             WHEN mc.code LIKE 'master.%' THEN (mc.code || '.' || mi.code)
+             ELSE ('master.' || mc.code || '.' || mi.code)
+           END
+         WHERE mc.code = 'disease_device_type'
+           AND mi.status = 'active'
+         ORDER BY mi.sort_order, mi.code`
+      ).all()
+      : await env.DB.prepare(
+        `SELECT
+           mi.id,
+           mi.key AS key,
+           mi.sort_order,
+           'active' AS status,
+           COALESCE(NULLIF(TRIM(tr.${langCol}), ''), NULLIF(TRIM(tr.en), ''), NULLIF(TRIM(tr.ko), ''), mi.key) AS display_label,
+           tr.ko AS ko_name,
+           tr.en AS name_en
+         FROM master_items mi
+         JOIN master_categories mc ON mc.id = mi.category_id
+         LEFT JOIN i18n_translations tr
+           ON tr.key = CASE
+             WHEN mc.key LIKE 'master.%' THEN (mc.key || '.' || mi.key)
+             ELSE ('master.' || mc.key || '.' || mi.key)
+           END
+         WHERE mc.key IN ('disease_device_type', 'master.disease_device_type')
+           AND mi.is_active = 1
+         ORDER BY mi.sort_order, mi.key`
+      ).all();
     return ok(rows.results);
-  }
-  if (path === '/api/v1/admin/devices/types' && method === 'POST') {
-    const body = await request.json<{ key?: string; name_ko: string; name_en: string; sort_order?: number }>();
-    if (!body.name_ko || !body.name_en) return err('name_ko and name_en required', 400, 'missing_field');
-    const key = (body.key || slugify(body.name_ko)).toLowerCase().replace(/[^a-z0-9_]/g, '_');
-    const id = newId();
-    await env.DB.prepare(
-      `INSERT INTO device_types (id, key, name_ko, name_en, status, sort_order, created_at, updated_at)
-       VALUES (?, ?, ?, ?, 'active', ?, ?, ?)`
-    ).bind(id, key, body.name_ko, body.name_en, body.sort_order ?? 0, now(), now()).run();
-    const row = await env.DB.prepare(`SELECT * FROM device_types WHERE id = ?`).bind(id).first();
-    return created(row);
   }
 
   const typeIdMatch = path.match(/^\/api\/v1\/admin\/devices\/types\/([^/]+)$/);
   if (typeIdMatch) {
-    const typeId = typeIdMatch[1];
-    if (method === 'PUT') {
-      const body = await request.json<{ name_ko?: string; name_en?: string; sort_order?: number; status?: string }>();
-      const sets: string[] = ['updated_at = ?'];
-      const vals: (string | number | null)[] = [now()];
-      if (body.name_ko) { sets.push('name_ko = ?'); vals.push(body.name_ko); }
-      if (body.name_en) { sets.push('name_en = ?'); vals.push(body.name_en); }
-      if (body.sort_order != null) { sets.push('sort_order = ?'); vals.push(body.sort_order); }
-      if (body.status) { sets.push('status = ?'); vals.push(body.status); }
-      vals.push(typeId);
-      await env.DB.prepare(`UPDATE device_types SET ${sets.join(', ')} WHERE id = ?`).bind(...vals).run();
-      return ok(await env.DB.prepare(`SELECT * FROM device_types WHERE id = ?`).bind(typeId).first());
-    }
-    if (method === 'DELETE') {
-      await env.DB.prepare(`UPDATE device_types SET status = 'inactive', updated_at = ? WHERE id = ?`).bind(now(), typeId).run();
-      return ok({ id: typeId, deleted: true });
-    }
+    return err('Device type is managed by master category L3 (read-only)', 400, 'read_only');
   }
 
   // ── Manufacturers ─────────────────────────────────────────────────────────
   if (path === '/api/v1/admin/devices/manufacturers' && method === 'GET') {
-    const rows = await env.DB.prepare(`SELECT * FROM device_manufacturers ORDER BY sort_order, name_ko`).all();
+    const rows = await env.DB.prepare(
+      `SELECT
+         mfr.*,
+         COALESCE(NULLIF(TRIM(tr.${langCol}), ''), NULLIF(TRIM(tr.en), ''), NULLIF(TRIM(tr.ko), ''), mfr.name_en, mfr.name_ko, mfr.key) AS display_label
+       FROM device_manufacturers mfr
+       LEFT JOIN i18n_translations tr ON tr.key = mfr.name_key
+       ORDER BY mfr.sort_order, COALESCE(NULLIF(TRIM(tr.${langCol}), ''), NULLIF(TRIM(tr.en), ''), NULLIF(TRIM(tr.ko), ''), mfr.name_en, mfr.name_ko, mfr.key)`
+    ).all();
     return ok(rows.results);
   }
   if (path === '/api/v1/admin/devices/manufacturers' && method === 'POST') {
-    const body = await request.json<{ key?: string; name_ko: string; name_en: string; country?: string; sort_order?: number }>();
-    if (!body.name_ko || !body.name_en) return err('name_ko and name_en required', 400, 'missing_field');
-    const key = (body.key || slugify(body.name_en)).toLowerCase().replace(/[^a-z0-9_]/g, '_');
+    const body = await request.json<{ country?: string; sort_order?: number; translations?: Record<string, string>; name_ko?: string; name_en?: string }>();
+    const ko = (body.translations?.ko || body.name_ko || '').trim();
+    const en = (body.translations?.en || body.name_en || '').trim();
+    if (!ko || !en) return err('ko and en translation required', 400, 'missing_field');
+    const key = `mfr_${randomToken(8)}`;
+    const nameKey = `device.manufacturer.${key}`;
+    const translations: Record<string, string> = {
+      ko,
+      en,
+      ja: (body.translations?.ja || '').trim(),
+      zh_cn: (body.translations?.zh_cn || '').trim(),
+      zh_tw: (body.translations?.zh_tw || '').trim(),
+      es: (body.translations?.es || '').trim(),
+      fr: (body.translations?.fr || '').trim(),
+      de: (body.translations?.de || '').trim(),
+      pt: (body.translations?.pt || '').trim(),
+      vi: (body.translations?.vi || '').trim(),
+      th: (body.translations?.th || '').trim(),
+      id_lang: (body.translations?.id_lang || '').trim(),
+      ar: (body.translations?.ar || '').trim(),
+    };
     const id = newId();
     await env.DB.prepare(
-      `INSERT INTO device_manufacturers (id, key, name_ko, name_en, country, status, sort_order, created_at, updated_at)
-       VALUES (?, ?, ?, ?, ?, 'active', ?, ?, ?)`
-    ).bind(id, key, body.name_ko, body.name_en, body.country ?? null, body.sort_order ?? 0, now(), now()).run();
-    return created(await env.DB.prepare(`SELECT * FROM device_manufacturers WHERE id = ?`).bind(id).first());
+      `INSERT INTO device_manufacturers (id, key, name_key, name_ko, name_en, country, status, sort_order, created_at, updated_at)
+       VALUES (?, ?, ?, ?, ?, ?, 'active', ?, ?, ?)`
+    ).bind(id, key, nameKey, ko, en, body.country ?? null, body.sort_order ?? 0, now(), now()).run();
+    await upsertI18n(env, nameKey, translations);
+    return created(
+      await env.DB.prepare(
+        `SELECT
+           mfr.*,
+           COALESCE(NULLIF(TRIM(tr.${langCol}), ''), NULLIF(TRIM(tr.en), ''), NULLIF(TRIM(tr.ko), ''), mfr.name_en, mfr.name_ko, mfr.key) AS display_label
+         FROM device_manufacturers mfr
+         LEFT JOIN i18n_translations tr ON tr.key = mfr.name_key
+         WHERE mfr.id = ?`
+      ).bind(id).first()
+    );
   }
 
   const mfrIdMatch = path.match(/^\/api\/v1\/admin\/devices\/manufacturers\/([^/]+)$/);
   if (mfrIdMatch) {
     const mfrId = mfrIdMatch[1];
     if (method === 'PUT') {
-      const body = await request.json<{ name_ko?: string; name_en?: string; country?: string; sort_order?: number; status?: string }>();
+      const body = await request.json<{ translations?: Record<string, string>; name_ko?: string; name_en?: string; country?: string; sort_order?: number; status?: string }>();
+      const existing = await env.DB.prepare('SELECT name_key, name_ko, name_en FROM device_manufacturers WHERE id = ?').bind(mfrId).first<{ name_key?: string | null; name_ko?: string | null; name_en?: string | null }>();
+      if (!existing) return err('manufacturer not found', 404, 'not_found');
       const sets: string[] = ['updated_at = ?'];
       const vals: (string | number | null)[] = [now()];
-      if (body.name_ko) { sets.push('name_ko = ?'); vals.push(body.name_ko); }
-      if (body.name_en) { sets.push('name_en = ?'); vals.push(body.name_en); }
+      const ko = (body.translations?.ko || body.name_ko || existing.name_ko || '').trim();
+      const en = (body.translations?.en || body.name_en || existing.name_en || '').trim();
+      if (ko) { sets.push('name_ko = ?'); vals.push(ko); }
+      if (en) { sets.push('name_en = ?'); vals.push(en); }
       if ('country' in body) { sets.push('country = ?'); vals.push(body.country ?? null); }
       if (body.sort_order != null) { sets.push('sort_order = ?'); vals.push(body.sort_order); }
       if (body.status) { sets.push('status = ?'); vals.push(body.status); }
       vals.push(mfrId);
       await env.DB.prepare(`UPDATE device_manufacturers SET ${sets.join(', ')} WHERE id = ?`).bind(...vals).run();
-      return ok(await env.DB.prepare(`SELECT * FROM device_manufacturers WHERE id = ?`).bind(mfrId).first());
+      if (existing.name_key) {
+        await upsertI18n(env, existing.name_key, {
+          ko,
+          en,
+          ja: (body.translations?.ja || '').trim(),
+          zh_cn: (body.translations?.zh_cn || '').trim(),
+          zh_tw: (body.translations?.zh_tw || '').trim(),
+          es: (body.translations?.es || '').trim(),
+          fr: (body.translations?.fr || '').trim(),
+          de: (body.translations?.de || '').trim(),
+          pt: (body.translations?.pt || '').trim(),
+          vi: (body.translations?.vi || '').trim(),
+          th: (body.translations?.th || '').trim(),
+          id_lang: (body.translations?.id_lang || '').trim(),
+          ar: (body.translations?.ar || '').trim(),
+        });
+      }
+      return ok(
+        await env.DB.prepare(
+          `SELECT
+             mfr.*,
+             COALESCE(NULLIF(TRIM(tr.${langCol}), ''), NULLIF(TRIM(tr.en), ''), NULLIF(TRIM(tr.ko), ''), mfr.name_en, mfr.name_ko, mfr.key) AS display_label
+           FROM device_manufacturers mfr
+           LEFT JOIN i18n_translations tr ON tr.key = mfr.name_key
+           WHERE mfr.id = ?`
+        ).bind(mfrId).first()
+      );
     }
     if (method === 'DELETE') {
       await env.DB.prepare(`UPDATE device_manufacturers SET status = 'inactive', updated_at = ? WHERE id = ?`).bind(now(), mfrId).run();
@@ -299,35 +603,95 @@ export async function handleDevices(request: Request, env: Env, url: URL): Promi
     const brandId = url.searchParams.get('brand_id');
     const binds: string[] = [];
     let where = `WHERE 1=1`;
-    if (typeId) { where += ' AND m.device_type_id = ?'; binds.push(typeId); }
+    if (typeId) { where += ' AND (m.device_type_item_id = ? OR (m.device_type_item_id IS NULL AND m.device_type_id = ?))'; binds.push(typeId, typeId); }
     if (mfrId) { where += ' AND m.manufacturer_id = ?'; binds.push(mfrId); }
     if (brandId) { where += ' AND m.brand_id = ?'; binds.push(brandId); }
-    const rows = await env.DB.prepare(
-      `SELECT m.*, dt.name_ko as type_name_ko, mfr.name_ko as mfr_name_ko, b.name_ko as brand_name_ko
-       FROM device_models m
-       LEFT JOIN device_types dt ON dt.id = m.device_type_id
-       LEFT JOIN device_manufacturers mfr ON mfr.id = m.manufacturer_id
-       LEFT JOIN device_brands b ON b.id = m.brand_id
-       ${where} ORDER BY m.model_name`
-    ).bind(...binds).all();
+    const rows = normalizedMaster
+      ? await env.DB.prepare(
+        `SELECT
+           m.*,
+           mi.code AS type_key,
+           tr_type.ko AS type_name_ko,
+           tr_type.en AS type_name_en,
+           COALESCE(NULLIF(TRIM(tr_type.${langCol}), ''), NULLIF(TRIM(tr_type.en), ''), NULLIF(TRIM(tr_type.ko), ''), mi.code) AS type_display_label,
+           mfr.name_ko as mfr_name_ko,
+           mfr.name_en as mfr_name_en,
+           COALESCE(NULLIF(TRIM(tr_mfr.${langCol}), ''), NULLIF(TRIM(tr_mfr.en), ''), NULLIF(TRIM(tr_mfr.ko), ''), mfr.name_en, mfr.name_ko, mfr.key) AS mfr_display_label,
+           b.name_ko as brand_name_ko, b.name_en as brand_name_en
+         FROM device_models m
+         LEFT JOIN master_items mi ON mi.id = m.device_type_item_id
+         LEFT JOIN master_categories mc ON mc.id = mi.category_id
+         LEFT JOIN i18n_translations tr_type
+           ON tr_type.key = CASE
+             WHEN mc.code LIKE 'master.%' THEN (mc.code || '.' || mi.code)
+             ELSE ('master.' || mc.code || '.' || mi.code)
+           END
+         LEFT JOIN device_manufacturers mfr ON mfr.id = m.manufacturer_id
+         LEFT JOIN i18n_translations tr_mfr ON tr_mfr.key = mfr.name_key
+         LEFT JOIN device_brands b ON b.id = m.brand_id
+         ${where} ORDER BY m.model_name`
+      ).bind(...binds).all()
+      : await env.DB.prepare(
+        `SELECT
+           m.*,
+           mi.key AS type_key,
+           tr_type.ko AS type_name_ko,
+           tr_type.en AS type_name_en,
+           COALESCE(NULLIF(TRIM(tr_type.${langCol}), ''), NULLIF(TRIM(tr_type.en), ''), NULLIF(TRIM(tr_type.ko), ''), mi.key) AS type_display_label,
+           mfr.name_ko as mfr_name_ko,
+           mfr.name_en as mfr_name_en,
+           COALESCE(NULLIF(TRIM(tr_mfr.${langCol}), ''), NULLIF(TRIM(tr_mfr.en), ''), NULLIF(TRIM(tr_mfr.ko), ''), mfr.name_en, mfr.name_ko, mfr.key) AS mfr_display_label,
+           b.name_ko as brand_name_ko, b.name_en as brand_name_en
+         FROM device_models m
+         LEFT JOIN master_items mi ON mi.id = m.device_type_item_id
+         LEFT JOIN master_categories mc ON mc.id = mi.category_id
+         LEFT JOIN i18n_translations tr_type
+           ON tr_type.key = CASE
+             WHEN mc.key LIKE 'master.%' THEN (mc.key || '.' || mi.key)
+             ELSE ('master.' || mc.key || '.' || mi.key)
+           END
+         LEFT JOIN device_manufacturers mfr ON mfr.id = m.manufacturer_id
+         LEFT JOIN i18n_translations tr_mfr ON tr_mfr.key = mfr.name_key
+         LEFT JOIN device_brands b ON b.id = m.brand_id
+         ${where} ORDER BY m.model_name`
+      ).bind(...binds).all();
     return ok(rows.results);
   }
   if (path === '/api/v1/admin/devices/models' && method === 'POST') {
     const body = await request.json<{ device_type_id: string; manufacturer_id: string; brand_id?: string; model_name: string; model_code?: string; description?: string }>();
     if (!body.device_type_id || !body.manufacturer_id || !body.model_name) return err('device_type_id, manufacturer_id, model_name required', 400, 'missing_field');
+    const legacyTypeId = await resolveLegacyDeviceTypeId(env, body.device_type_id);
     const id = newId();
     await env.DB.prepare(
-      `INSERT INTO device_models (id, device_type_id, manufacturer_id, brand_id, model_name, model_code, description, status, created_at, updated_at)
-       VALUES (?, ?, ?, ?, ?, ?, ?, 'active', ?, ?)`
-    ).bind(id, body.device_type_id, body.manufacturer_id, body.brand_id ?? null, body.model_name, body.model_code ?? null, body.description ?? null, now(), now()).run();
-    return created(await env.DB.prepare(
-      `SELECT m.*, dt.name_ko as type_name_ko, mfr.name_ko as mfr_name_ko, b.name_ko as brand_name_ko
-       FROM device_models m
-       LEFT JOIN device_types dt ON dt.id = m.device_type_id
-       LEFT JOIN device_manufacturers mfr ON mfr.id = m.manufacturer_id
-       LEFT JOIN device_brands b ON b.id = m.brand_id
-       WHERE m.id = ?`
-    ).bind(id).first());
+      `INSERT INTO device_models (id, device_type_item_id, device_type_id, manufacturer_id, brand_id, model_name, model_code, description, status, created_at, updated_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'active', ?, ?)`
+    ).bind(id, body.device_type_id, legacyTypeId, body.manufacturer_id, body.brand_id ?? null, body.model_name, body.model_code ?? null, body.description ?? null, now(), now()).run();
+    return created(
+      await env.DB.prepare(
+        `SELECT
+           m.*,
+           mi.code AS type_key,
+           tr_type.ko AS type_name_ko,
+           tr_type.en AS type_name_en,
+           COALESCE(NULLIF(TRIM(tr_type.${langCol}), ''), NULLIF(TRIM(tr_type.en), ''), NULLIF(TRIM(tr_type.ko), ''), mi.code) AS type_display_label,
+           mfr.name_ko as mfr_name_ko,
+           mfr.name_en as mfr_name_en,
+           COALESCE(NULLIF(TRIM(tr_mfr.${langCol}), ''), NULLIF(TRIM(tr_mfr.en), ''), NULLIF(TRIM(tr_mfr.ko), ''), mfr.name_en, mfr.name_ko, mfr.key) AS mfr_display_label,
+           b.name_ko as brand_name_ko, b.name_en as brand_name_en
+         FROM device_models m
+         LEFT JOIN master_items mi ON mi.id = m.device_type_item_id
+         LEFT JOIN master_categories mc ON mc.id = mi.category_id
+         LEFT JOIN i18n_translations tr_type
+           ON tr_type.key = CASE
+             WHEN mc.code LIKE 'master.%' THEN (mc.code || '.' || mi.code)
+             ELSE ('master.' || mc.code || '.' || mi.code)
+           END
+         LEFT JOIN device_manufacturers mfr ON mfr.id = m.manufacturer_id
+         LEFT JOIN i18n_translations tr_mfr ON tr_mfr.key = mfr.name_key
+         LEFT JOIN device_brands b ON b.id = m.brand_id
+         WHERE m.id = ?`
+      ).bind(id).first()
+    );
   }
 
   const modelIdMatch = path.match(/^\/api\/v1\/admin\/devices\/models\/([^/]+)$/);
@@ -341,7 +705,13 @@ export async function handleDevices(request: Request, env: Env, url: URL): Promi
       if ('model_code' in body) { sets.push('model_code = ?'); vals.push(body.model_code ?? null); }
       if ('description' in body) { sets.push('description = ?'); vals.push(body.description ?? null); }
       if (body.status) { sets.push('status = ?'); vals.push(body.status); }
-      if (body.device_type_id) { sets.push('device_type_id = ?'); vals.push(body.device_type_id); }
+      if (body.device_type_id) {
+        sets.push('device_type_item_id = ?');
+        vals.push(body.device_type_id);
+        const legacyTypeId = await resolveLegacyDeviceTypeId(env, body.device_type_id);
+        sets.push('device_type_id = ?');
+        vals.push(legacyTypeId);
+      }
       if (body.manufacturer_id) { sets.push('manufacturer_id = ?'); vals.push(body.manufacturer_id); }
       if ('brand_id' in body) { sets.push('brand_id = ?'); vals.push(body.brand_id ?? null); }
       vals.push(modelId);
