@@ -34,11 +34,16 @@ export default function DevicePage() {
 
   const [mfrForm, setMfrForm] = useState({ key: '', country: '', sort_order: '0' });
   const [mfrTrans, setMfrTrans] = useState<Record<string, string>>(emptyTrans());
-  const [brandForm, setBrandForm] = useState({ name_ko: '' });
-  const [modelForm, setModelForm] = useState({ name_ko: '', model_code: '', description: '' });
+  const [brandForm, setBrandForm] = useState({ key: '', sort_order: '0' });
+  const [brandTrans, setBrandTrans] = useState<Record<string, string>>(emptyTrans());
+  const [modelForm, setModelForm] = useState({ key: '', sort_order: '0', model_code: '', description: '' });
+  const [modelTrans, setModelTrans] = useState<Record<string, string>>(emptyTrans());
   const [unitForm, setUnitForm] = useState({ key: '', name: '', symbol: '', sort_order: '0' });
   const [mfrParentTypeIds, setMfrParentTypeIds] = useState<string[]>([]);
+  const [brandParentTypeIds, setBrandParentTypeIds] = useState<string[]>([]);
   const [brandParentMfrIds, setBrandParentMfrIds] = useState<string[]>([]);
+  const [modelParentTypeIds, setModelParentTypeIds] = useState<string[]>([]);
+  const [modelParentMfrId, setModelParentMfrId] = useState<string>('');
   const [modelParentBrandIds, setModelParentBrandIds] = useState<string[]>([]);
 
   const typeLabel = (item?: DeviceType | null): string => {
@@ -127,17 +132,27 @@ export default function DevicePage() {
     setTimeout(() => setSuccess(''), 3000);
   }
 
-  async function buildTranslations(ko: string): Promise<Record<string, string>> {
-    const base = ko.trim();
-    const result = await api.i18n.translate(base, { ko: base });
-    return { ...result.translations, ko: base };
-  }
-
   function manufacturerToTranslations(item: DeviceManufacturer): Record<string, string> {
     return {
       ...emptyTrans(),
       ko: item.name_ko || '',
       en: item.name_en || '',
+    };
+  }
+
+  function brandToTranslations(item: DeviceBrand): Record<string, string> {
+    return {
+      ...emptyTrans(),
+      ko: item.name_ko || '',
+      en: item.name_en || '',
+    };
+  }
+
+  function modelToTranslations(item: DeviceModel): Record<string, string> {
+    return {
+      ...emptyTrans(),
+      ko: item.model_name || '',
+      en: item.model_name || '',
     };
   }
 
@@ -205,45 +220,61 @@ export default function DevicePage() {
   }
 
   function openCreateBrand() {
-    if (!selectedMfr) {
-      setError(t('admin.device.select_manufacturer'));
-      return;
-    }
-    setBrandForm({ name_ko: '' });
-    setBrandParentMfrIds([selectedMfr.id]);
+    setBrandForm({ key: '', sort_order: '0' });
+    setBrandTrans(emptyTrans());
+    setBrandParentTypeIds(selectedType ? [selectedType.id] : []);
+    setBrandParentMfrIds(selectedMfr ? [selectedMfr.id] : []);
+    if (manufacturers.length === 0) void loadManufacturers();
     setModal({ target: 'brand', mode: 'create' });
   }
 
   function openEditBrand(item: DeviceBrand) {
-    setBrandForm({ name_ko: item.name_ko });
+    setBrandForm({ key: item.key || '', sort_order: String(item.sort_order || 0) });
+    setBrandTrans(brandToTranslations(item));
+    setBrandParentTypeIds((item.parent_type_ids || '').split(',').map((v) => v.trim()).filter(Boolean));
     const parentIds = (item.parent_mfr_ids || '').split(',').map((v) => v.trim()).filter(Boolean);
     setBrandParentMfrIds(parentIds.length > 0 ? parentIds : selectedMfr ? [selectedMfr.id] : []);
     setModal({ target: 'brand', mode: 'edit', id: item.id });
+    if (item.name_key) {
+      void api.i18n.list({ prefix: item.name_key, limit: 50 }).then((res) => {
+        const row = res.items.find((it) => it.key === item.name_key);
+        if (row) setBrandTrans(i18nRowToTranslations(row));
+      }).catch(() => {});
+    }
+    if (manufacturers.length === 0) void loadManufacturers();
   }
 
   function openCreateModel() {
-    if (!selectedType) {
-      setError(t('admin.device.select_type'));
-      return;
-    }
-    if (!selectedMfr) {
-      setError(t('admin.device.select_manufacturer'));
-      return;
-    }
-    setModelForm({ name_ko: '', model_code: '', description: '' });
+    setModelForm({ key: '', sort_order: '0', model_code: '', description: '' });
+    setModelTrans(emptyTrans());
+    setModelParentTypeIds(selectedType ? [selectedType.id] : []);
+    setModelParentMfrId(selectedMfr?.id || '');
     setModelParentBrandIds(selectedBrand ? [selectedBrand.id] : []);
+    if (manufacturers.length === 0) void loadManufacturers();
     setModal({ target: 'model', mode: 'create' });
   }
 
   function openEditModel(item: DeviceModel) {
     setModelForm({
-      name_ko: item.model_name,
+      key: item.key || '',
+      sort_order: String(item.sort_order || 0),
       model_code: item.model_code ?? '',
       description: item.description ?? '',
     });
+    setModelTrans(modelToTranslations(item));
+    setModelParentTypeIds((item.parent_type_ids || '').split(',').map((v) => v.trim()).filter(Boolean));
+    setModelParentMfrId(item.manufacturer_id || selectedMfr?.id || '');
     const parentIds = (item.parent_brand_ids || '').split(',').map((v) => v.trim()).filter(Boolean);
     setModelParentBrandIds(parentIds.length > 0 ? parentIds : selectedBrand ? [selectedBrand.id] : []);
     setModal({ target: 'model', mode: 'edit', id: item.id });
+    if (item.name_key) {
+      void api.i18n.list({ prefix: item.name_key, limit: 50 }).then((res) => {
+        const row = res.items.find((it) => it.key === item.name_key);
+        if (row) setModelTrans(i18nRowToTranslations(row));
+      }).catch(() => {});
+    }
+    if (item.manufacturer_id) void loadBrands(item.manufacturer_id);
+    else if (manufacturers.length === 0) void loadManufacturers();
   }
 
   function openCreateUnit() {
@@ -297,55 +328,79 @@ export default function DevicePage() {
       }
 
       if (target === 'brand') {
-        if (!brandForm.name_ko) throw new Error('name_ko required');
-        const translations = await buildTranslations(brandForm.name_ko);
-        if (mode === 'create' && selectedMfr) {
-          await api.devices.brands.create({
-            manufacturer_id: selectedMfr.id,
-            manufacturer_ids: brandParentMfrIds,
-            name_ko: brandForm.name_ko,
-            translations,
-          });
-        } else if (id) {
-          await api.devices.brands.update(id, {
-            name_ko: brandForm.name_ko,
-            manufacturer_ids: brandParentMfrIds,
-            translations,
-          });
+        if (brandParentTypeIds.length === 0 || brandParentMfrIds.length === 0) throw new Error(t('admin.master.err_required'));
+        const ko = (brandTrans.ko || '').trim();
+        if (!ko) throw new Error(t('admin.master.err_required'));
+        const key = (brandForm.key || '').trim().replace(/^master\./, '');
+        if (key && !/^[a-z0-9_]+$/.test(key)) throw new Error(t('admin.master.err_key_fmt'));
+        let translations: Record<string, string> = { ...brandTrans, ko };
+        const hasMissing = SUPPORTED_LANGS.some((langCode) => langCode !== 'ko' && !(translations[langCode] || '').trim());
+        if (hasMissing) {
+          const result = await api.i18n.translate(ko, translations);
+          translations = { ...result.translations, ...translations, ko };
         }
-        await loadBrands(selectedMfr?.id);
+        const missingLangs = findMissingTranslationLangs(translations);
+        if (missingLangs.length > 0) {
+          throw new Error(t('admin.master.err_trans_missing').replace('{langs}', missingLangs.map((langCode) => (LANG_LABELS as Record<string, string>)[langCode] || langCode).join(', ')));
+        }
+        const payload = {
+          key: mode === 'create' ? key || undefined : undefined,
+          name_ko: ko,
+          name_en: translations.en || undefined,
+          manufacturer_id: brandParentMfrIds[0],
+          manufacturer_ids: brandParentMfrIds,
+          parent_type_ids: brandParentTypeIds,
+          sort_order: parseInt(brandForm.sort_order, 10) || 0,
+          translations,
+        };
+        if (mode === 'create') {
+          await api.devices.brands.create(payload);
+        } else if (id) {
+          await api.devices.brands.update(id, payload);
+        }
+        await loadBrands(brandParentMfrIds[0] || selectedMfr?.id);
       }
 
       if (target === 'model') {
-        if (!modelForm.name_ko) throw new Error('ko required');
-        const translations = await buildTranslations(modelForm.name_ko);
-        if (mode === 'create' && selectedType && selectedMfr) {
-          await api.devices.models.create({
-            device_type_id: selectedType.id,
-            manufacturer_id: selectedMfr.id,
-            brand_id: selectedBrand?.id,
-            brand_ids: modelParentBrandIds,
-            model_name: modelForm.name_ko,
-            name_ko: modelForm.name_ko,
-            translations,
-            model_code: modelForm.model_code || undefined,
-            description: modelForm.description || undefined,
-          });
+        if (modelParentTypeIds.length === 0 || !modelParentMfrId || modelParentBrandIds.length === 0) throw new Error(t('admin.master.err_required'));
+        const ko = (modelTrans.ko || '').trim();
+        if (!ko) throw new Error(t('admin.master.err_required'));
+        const key = (modelForm.key || '').trim().replace(/^master\./, '');
+        if (key && !/^[a-z0-9_]+$/.test(key)) throw new Error(t('admin.master.err_key_fmt'));
+        let translations: Record<string, string> = { ...modelTrans, ko };
+        const hasMissing = SUPPORTED_LANGS.some((langCode) => langCode !== 'ko' && !(translations[langCode] || '').trim());
+        if (hasMissing) {
+          const result = await api.i18n.translate(ko, translations);
+          translations = { ...result.translations, ...translations, ko };
+        }
+        const missingLangs = findMissingTranslationLangs(translations);
+        if (missingLangs.length > 0) {
+          throw new Error(t('admin.master.err_trans_missing').replace('{langs}', missingLangs.map((langCode) => (LANG_LABELS as Record<string, string>)[langCode] || langCode).join(', ')));
+        }
+        const payload = {
+          key: mode === 'create' ? key || undefined : undefined,
+          device_type_id: modelParentTypeIds[0],
+          parent_type_ids: modelParentTypeIds,
+          manufacturer_id: modelParentMfrId,
+          brand_id: modelParentBrandIds[0],
+          brand_ids: modelParentBrandIds,
+          model_name: ko,
+          name_ko: ko,
+          name_en: translations.en || undefined,
+          sort_order: parseInt(modelForm.sort_order, 10) || 0,
+          translations,
+          model_code: modelForm.model_code || undefined,
+          description: modelForm.description || undefined,
+        };
+        if (mode === 'create') {
+          await api.devices.models.create(payload);
         } else if (id) {
-          await api.devices.models.update(id, {
-            device_type_id: selectedType?.id,
-            model_name: modelForm.name_ko,
-            name_ko: modelForm.name_ko,
-            brand_ids: modelParentBrandIds,
-            translations,
-            model_code: modelForm.model_code || undefined,
-            description: modelForm.description || undefined,
-          });
+          await api.devices.models.update(id, payload);
         }
         const filters: { device_type_id?: string; manufacturer_id?: string; brand_id?: string } = {};
-        if (selectedType) filters.device_type_id = selectedType.id;
-        if (selectedMfr) filters.manufacturer_id = selectedMfr.id;
-        if (selectedBrand) filters.brand_id = selectedBrand.id;
+        filters.device_type_id = modelParentTypeIds[0] || selectedType?.id;
+        filters.manufacturer_id = modelParentMfrId || selectedMfr?.id;
+        filters.brand_id = modelParentBrandIds[0] || selectedBrand?.id;
         await loadModels(filters);
       }
 
@@ -626,15 +681,22 @@ export default function DevicePage() {
               {modal.target === 'brand' && (
                 <>
                   <div className="form-group">
-                    <label className="form-label">{t('admin.device.manufacturer')}</label>
-                    <input className="form-input" value={mfrLabel(selectedMfr)} readOnly />
+                    <label className="form-label">{t('admin.device.device_type')} *</label>
+                    <div style={{ display: 'grid', gap: 6, maxHeight: 140, overflowY: 'auto', border: '1px solid var(--border)', borderRadius: 8, padding: 8 }}>
+                      {types.map((row) => (
+                        <label key={row.id} style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 12 }}>
+                          <input
+                            type="checkbox"
+                            checked={brandParentTypeIds.includes(row.id)}
+                            onChange={(e) => setBrandParentTypeIds((prev) => e.target.checked ? [...new Set([...prev, row.id])] : prev.filter((id) => id !== row.id))}
+                          />
+                          <span>{typeLabel(row)}</span>
+                        </label>
+                      ))}
+                    </div>
                   </div>
                   <div className="form-group">
-                    <label className="form-label">{t('admin.device.name_ko')} *</label>
-                    <input className="form-input" value={brandForm.name_ko} onChange={(e) => setBrandForm((f) => ({ ...f, name_ko: e.target.value }))} />
-                  </div>
-                  <div className="form-group">
-                    <label className="form-label">{t('admin.device.manufacturer')}</label>
+                    <label className="form-label">{t('admin.device.manufacturer')} *</label>
                     <div style={{ display: 'grid', gap: 6, maxHeight: 140, overflowY: 'auto', border: '1px solid var(--border)', borderRadius: 8, padding: 8 }}>
                       {manufacturers.map((row) => (
                         <label key={row.id} style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 12 }}>
@@ -648,32 +710,73 @@ export default function DevicePage() {
                       ))}
                     </div>
                   </div>
+                  <div className="form-group">
+                    <label className="form-label">{t('admin.master.field_key')}</label>
+                    {modal.mode === 'create' ? (
+                      <input className="form-input font-mono" value={brandForm.key} onChange={(e) => setBrandForm((f) => ({ ...f, key: e.target.value }))} placeholder={t('admin.master.ph_key')} />
+                    ) : (
+                      <input className="form-input font-mono" value={brandForm.key} readOnly />
+                    )}
+                  </div>
+                  <div className="form-group">
+                    <label className="form-label">{t('admin.master.field_sort')}</label>
+                    <input className="form-input" type="number" value={brandForm.sort_order} onChange={(e) => setBrandForm((f) => ({ ...f, sort_order: e.target.value }))} />
+                  </div>
+                  <div style={{ borderTop: '1px solid var(--border)', paddingTop: 12, marginTop: 4 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
+                      <div style={{ fontSize: 13, fontWeight: 600 }}>{t('admin.master.btn_trans_auto')}</div>
+                      <button className="btn btn-secondary btn-sm" onClick={() => void autoTranslate(brandTrans.ko, brandTrans, setBrandTrans)} disabled={translating || !brandTrans.ko}>
+                        {translating ? t('admin.master.loading_trans') : t('admin.master.btn_trans_auto')}
+                      </button>
+                    </div>
+                    {SUPPORTED_LANGS.map((langCode) => (
+                      <div key={langCode} className="form-group" style={{ marginBottom: 6, display: 'flex', alignItems: 'center', gap: 8 }}>
+                        <label style={{ fontSize: 12, width: 110, flexShrink: 0, color: langCode === 'ko' ? 'var(--text)' : 'var(--text-muted)' }}>
+                          {LANG_LABELS[langCode]}{langCode === 'ko' ? ' *' : ''}
+                        </label>
+                        <input className="form-input" style={{ fontSize: 13 }} value={brandTrans[langCode] ?? ''} onChange={(e) => setBrandTrans((f) => ({ ...f, [langCode]: e.target.value }))} />
+                      </div>
+                    ))}
+                  </div>
                 </>
               )}
 
               {modal.target === 'model' && (
                 <>
                   <div className="form-group">
-                    <label className="form-label">{t('admin.device.device_type')}</label>
-                    <input className="form-input" value={typeLabel(selectedType)} readOnly />
-                  </div>
-                  <div className="form-group">
-                    <label className="form-label">{t('admin.device.manufacturer')}</label>
-                    <input className="form-input" value={mfrLabel(selectedMfr)} readOnly />
-                  </div>
-                  {selectedBrand && (
-                    <div className="form-group">
-                      <label className="form-label">{t('admin.device.brand')}</label>
-                      <input className="form-input" value={selectedBrand.display_label || selectedBrand.name_en || selectedBrand.name_ko} readOnly />
+                    <label className="form-label">{t('admin.device.device_type')} *</label>
+                    <div style={{ display: 'grid', gap: 6, maxHeight: 120, overflowY: 'auto', border: '1px solid var(--border)', borderRadius: 8, padding: 8 }}>
+                      {types.map((row) => (
+                        <label key={row.id} style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 12 }}>
+                          <input
+                            type="checkbox"
+                            checked={modelParentTypeIds.includes(row.id)}
+                            onChange={(e) => setModelParentTypeIds((prev) => e.target.checked ? [...new Set([...prev, row.id])] : prev.filter((id) => id !== row.id))}
+                          />
+                          <span>{typeLabel(row)}</span>
+                        </label>
+                      ))}
                     </div>
-                  )}
-                  <div className="form-group">
-                    <label className="form-label">{t('admin.device.name_ko')} *</label>
-                    <input className="form-input" value={modelForm.name_ko} onChange={(e) => setModelForm((f) => ({ ...f, name_ko: e.target.value }))} />
                   </div>
                   <div className="form-group">
-                    <label className="form-label">{t('admin.device.brand')}</label>
-                    <div style={{ display: 'grid', gap: 6, maxHeight: 140, overflowY: 'auto', border: '1px solid var(--border)', borderRadius: 8, padding: 8 }}>
+                    <label className="form-label">{t('admin.device.manufacturer')} *</label>
+                    <select
+                      className="form-input"
+                      value={modelParentMfrId}
+                      onChange={(e) => {
+                        const mfrId = e.target.value;
+                        setModelParentMfrId(mfrId);
+                        setModelParentBrandIds([]);
+                        if (mfrId) void loadBrands(mfrId);
+                      }}
+                    >
+                      <option value="">{t('admin.device.select_manufacturer')}</option>
+                      {manufacturers.map((row) => <option key={row.id} value={row.id}>{mfrLabel(row)}</option>)}
+                    </select>
+                  </div>
+                  <div className="form-group">
+                    <label className="form-label">{t('admin.device.brand')} *</label>
+                    <div style={{ display: 'grid', gap: 6, maxHeight: 120, overflowY: 'auto', border: '1px solid var(--border)', borderRadius: 8, padding: 8 }}>
                       {brands.map((row) => (
                         <label key={row.id} style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 12 }}>
                           <input
@@ -687,12 +790,40 @@ export default function DevicePage() {
                     </div>
                   </div>
                   <div className="form-group">
+                    <label className="form-label">{t('admin.master.field_key')}</label>
+                    {modal.mode === 'create' ? (
+                      <input className="form-input font-mono" value={modelForm.key} onChange={(e) => setModelForm((f) => ({ ...f, key: e.target.value }))} placeholder={t('admin.master.ph_key')} />
+                    ) : (
+                      <input className="form-input font-mono" value={modelForm.key} readOnly />
+                    )}
+                  </div>
+                  <div className="form-group">
+                    <label className="form-label">{t('admin.master.field_sort')}</label>
+                    <input className="form-input" type="number" value={modelForm.sort_order} onChange={(e) => setModelForm((f) => ({ ...f, sort_order: e.target.value }))} />
+                  </div>
+                  <div className="form-group">
                     <label className="form-label">{t('admin.device.model_code')}</label>
                     <input className="form-input font-mono" value={modelForm.model_code} onChange={(e) => setModelForm((f) => ({ ...f, model_code: e.target.value }))} />
                   </div>
                   <div className="form-group">
                     <label className="form-label">{t('admin.device.description')}</label>
                     <input className="form-input" value={modelForm.description} onChange={(e) => setModelForm((f) => ({ ...f, description: e.target.value }))} />
+                  </div>
+                  <div style={{ borderTop: '1px solid var(--border)', paddingTop: 12, marginTop: 4 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
+                      <div style={{ fontSize: 13, fontWeight: 600 }}>{t('admin.master.btn_trans_auto')}</div>
+                      <button className="btn btn-secondary btn-sm" onClick={() => void autoTranslate(modelTrans.ko, modelTrans, setModelTrans)} disabled={translating || !modelTrans.ko}>
+                        {translating ? t('admin.master.loading_trans') : t('admin.master.btn_trans_auto')}
+                      </button>
+                    </div>
+                    {SUPPORTED_LANGS.map((langCode) => (
+                      <div key={langCode} className="form-group" style={{ marginBottom: 6, display: 'flex', alignItems: 'center', gap: 8 }}>
+                        <label style={{ fontSize: 12, width: 110, flexShrink: 0, color: langCode === 'ko' ? 'var(--text)' : 'var(--text-muted)' }}>
+                          {LANG_LABELS[langCode]}{langCode === 'ko' ? ' *' : ''}
+                        </label>
+                        <input className="form-input" style={{ fontSize: 13 }} value={modelTrans[langCode] ?? ''} onChange={(e) => setModelTrans((f) => ({ ...f, [langCode]: e.target.value }))} />
+                      </div>
+                    ))}
                   </div>
                 </>
               )}

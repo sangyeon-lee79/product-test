@@ -478,9 +478,9 @@ export const api = {
         const q = manufacturerId ? `?manufacturer_id=${encodeURIComponent(manufacturerId)}` : '';
         return request<DeviceBrand[]>(`/api/v1/admin/devices/brands${q}`);
       },
-      create: (data: { manufacturer_id?: string; manufacturer_ids?: string[]; name_ko: string; name_en?: string; translations?: Record<string, string> }) =>
+      create: (data: { key?: string; manufacturer_id?: string; manufacturer_ids?: string[]; parent_type_ids?: string[]; sort_order?: number; name_ko: string; name_en?: string; translations?: Record<string, string> }) =>
         request<DeviceBrand>('/api/v1/admin/devices/brands', { method: 'POST', body: JSON.stringify(data) }),
-      update: (id: string, data: Partial<{ name_ko: string; name_en: string; status: string; manufacturer_id: string; manufacturer_ids: string[]; translations: Record<string, string> }>) =>
+      update: (id: string, data: Partial<{ key: string; name_ko: string; name_en: string; status: string; manufacturer_id: string; manufacturer_ids: string[]; parent_type_ids: string[]; sort_order: number; translations: Record<string, string> }>) =>
         request<DeviceBrand>(`/api/v1/admin/devices/brands/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
       delete: (id: string) =>
         request<{ id: string; deleted: boolean }>(`/api/v1/admin/devices/brands/${id}`, { method: 'DELETE' }),
@@ -494,9 +494,9 @@ export const api = {
         const suffix = q.toString() ? `?${q.toString()}` : '';
         return request<DeviceModel[]>(`/api/v1/admin/devices/models${suffix}`);
       },
-      create: (data: { device_type_id: string; manufacturer_id: string; brand_id?: string; brand_ids?: string[]; model_name?: string; model_code?: string; description?: string; name_ko?: string; name_en?: string; translations?: Record<string, string> }) =>
+      create: (data: { key?: string; device_type_id: string; parent_type_ids?: string[]; manufacturer_id: string; brand_id?: string; brand_ids?: string[]; model_name?: string; model_code?: string; description?: string; sort_order?: number; name_ko?: string; name_en?: string; translations?: Record<string, string> }) =>
         request<DeviceModel>('/api/v1/admin/devices/models', { method: 'POST', body: JSON.stringify(data) }),
-      update: (id: string, data: Partial<{ model_name: string; model_code: string; description: string; status: string; device_type_id: string; manufacturer_id: string; brand_id: string | null; brand_ids: string[]; name_ko: string; name_en: string; translations: Record<string, string> }>) =>
+      update: (id: string, data: Partial<{ key: string; model_name: string; model_code: string; description: string; status: string; device_type_id: string; parent_type_ids: string[]; manufacturer_id: string; brand_id: string | null; brand_ids: string[]; sort_order: number; name_ko: string; name_en: string; translations: Record<string, string> }>) =>
         request<DeviceModel>(`/api/v1/admin/devices/models/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
       delete: (id: string) =>
         request<{ id: string; deleted: boolean }>(`/api/v1/admin/devices/models/${id}`, { method: 'DELETE' }),
@@ -563,9 +563,9 @@ export const api = {
         const q = manufacturerId ? `?manufacturer_id=${encodeURIComponent(manufacturerId)}` : '';
         return request<FeedBrand[]>(`/api/v1/admin/feed-catalog/brands${q}`);
       },
-      create: (data: { manufacturer_id?: string; manufacturer_ids?: string[]; name_ko: string; name_en?: string; translations?: Record<string, string> }) =>
+      create: (data: { key?: string; manufacturer_id?: string; manufacturer_ids?: string[]; parent_type_ids?: string[]; sort_order?: number; name_ko: string; name_en?: string; translations?: Record<string, string> }) =>
         request<FeedBrand>('/api/v1/admin/feed-catalog/brands', { method: 'POST', body: JSON.stringify(data) }),
-      update: (id: string, data: Partial<{ name_ko: string; name_en: string; status: string; manufacturer_id: string; manufacturer_ids: string[]; translations: Record<string, string> }>) =>
+      update: (id: string, data: Partial<{ key: string; name_ko: string; name_en: string; status: string; manufacturer_id: string; manufacturer_ids: string[]; parent_type_ids: string[]; sort_order: number; translations: Record<string, string> }>) =>
         request<FeedBrand>(`/api/v1/admin/feed-catalog/brands/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
       delete: (id: string) =>
         request<{ id: string; deleted: boolean }>(`/api/v1/admin/feed-catalog/brands/${id}`, { method: 'DELETE' }),
@@ -579,9 +579,9 @@ export const api = {
         const suffix = q.toString() ? `?${q.toString()}` : '';
         return request<FeedModel[]>(`/api/v1/admin/feed-catalog/models${suffix}`);
       },
-      create: (data: { feed_type_id: string; manufacturer_id: string; brand_id?: string; brand_ids?: string[]; model_name?: string; model_code?: string; description?: string; name_ko?: string; name_en?: string; translations?: Record<string, string> }) =>
+      create: (data: { key?: string; feed_type_id: string; parent_type_ids?: string[]; manufacturer_id: string; brand_id?: string; brand_ids?: string[]; model_name?: string; model_code?: string; description?: string; sort_order?: number; name_ko?: string; name_en?: string; translations?: Record<string, string> }) =>
         request<FeedModel>('/api/v1/admin/feed-catalog/models', { method: 'POST', body: JSON.stringify(data) }),
-      update: (id: string, data: Partial<{ model_name: string; model_code: string; description: string; status: string; feed_type_id: string; manufacturer_id: string; brand_id: string | null; brand_ids: string[]; name_ko: string; name_en: string; translations: Record<string, string> }>) =>
+      update: (id: string, data: Partial<{ key: string; model_name: string; model_code: string; description: string; status: string; feed_type_id: string; parent_type_ids: string[]; manufacturer_id: string; brand_id: string | null; brand_ids: string[]; sort_order: number; name_ko: string; name_en: string; translations: Record<string, string> }>) =>
         request<FeedModel>(`/api/v1/admin/feed-catalog/models/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
       delete: (id: string) =>
         request<{ id: string; deleted: boolean }>(`/api/v1/admin/feed-catalog/models/${id}`, { method: 'DELETE' }),
@@ -912,17 +912,21 @@ export interface DeviceManufacturer {
 }
 
 export interface DeviceBrand {
-  id: string; manufacturer_id: string; name_key?: string | null; name_ko: string; name_en: string; display_label?: string | null;
+  id: string; key?: string | null; manufacturer_id: string; name_key?: string | null; name_ko: string; name_en: string; display_label?: string | null;
+  parent_type_ids?: string | null;
   status: string; mfr_name_ko?: string | null;
   mfr_display_label?: string | null;
   parent_mfr_ids?: string | null;
+  sort_order?: number;
   created_at: string; updated_at: string;
 }
 
 export interface DeviceModel {
-  id: string; device_type_id: string | null; device_type_item_id?: string | null; manufacturer_id: string; brand_id: string | null; name_key?: string | null;
+  id: string; key?: string | null; device_type_id: string | null; device_type_item_id?: string | null; manufacturer_id: string; brand_id: string | null; name_key?: string | null;
   model_name: string; model_code: string | null; description: string | null;
+  parent_type_ids?: string | null;
   parent_brand_ids?: string | null;
+  sort_order?: number;
   status: string; created_at: string; updated_at: string;
   type_name_ko?: string | null; type_name_en?: string | null;
   type_display_label?: string | null;
@@ -962,17 +966,21 @@ export interface FeedManufacturer {
 }
 
 export interface FeedBrand {
-  id: string; manufacturer_id: string; name_key?: string | null; name_ko: string; name_en: string; display_label?: string | null;
+  id: string; key?: string | null; manufacturer_id: string; name_key?: string | null; name_ko: string; name_en: string; display_label?: string | null;
+  parent_type_ids?: string | null;
   status: string; mfr_name_ko?: string | null;
   mfr_display_label?: string | null;
   parent_mfr_ids?: string | null;
+  sort_order?: number;
   created_at: string; updated_at: string;
 }
 
 export interface FeedModel {
-  id: string; feed_type_item_id: string; manufacturer_id: string; brand_id: string | null; name_key?: string | null;
+  id: string; key?: string | null; feed_type_item_id: string; manufacturer_id: string; brand_id: string | null; name_key?: string | null;
   model_name: string; model_code: string | null; description: string | null;
+  parent_type_ids?: string | null;
   parent_brand_ids?: string | null;
+  sort_order?: number;
   status: string; created_at: string; updated_at: string;
   type_name_ko?: string | null; type_name_en?: string | null;
   type_display_label?: string | null;
