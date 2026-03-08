@@ -97,19 +97,39 @@ export default function FeedPage() {
   }, [loadTypes]);
 
   useEffect(() => {
-    void loadManufacturers(selectedType?.id);
+    if (!selectedType) {
+      setManufacturers([]);
+      setBrands([]);
+      setModels([]);
+      setSelectedMfr(null);
+      setSelectedBrand(null);
+      setSelectedModel(null);
+      return;
+    }
+    void loadManufacturers(selectedType.id);
     setSelectedMfr(null);
     setSelectedBrand(null);
     setSelectedModel(null);
   }, [selectedType?.id, loadManufacturers]);
 
   useEffect(() => {
-    void loadBrands(selectedMfr?.id);
+    if (!selectedMfr) {
+      setBrands([]);
+      setSelectedBrand(null);
+      setSelectedModel(null);
+      return;
+    }
+    void loadBrands(selectedMfr.id);
     setSelectedBrand(null);
     setSelectedModel(null);
   }, [selectedMfr?.id, loadBrands]);
 
   useEffect(() => {
+    if (!selectedType) {
+      setModels([]);
+      setSelectedModel(null);
+      return;
+    }
     const filters: { feed_type_id?: string; manufacturer_id?: string; brand_id?: string } = {};
     if (selectedType) filters.feed_type_id = selectedType.id;
     if (selectedMfr) filters.manufacturer_id = selectedMfr.id;
@@ -141,6 +161,7 @@ export default function FeedPage() {
         const parentTypeIds = mfrParentTypeIds.length > 0
           ? mfrParentTypeIds
           : (selectedType ? [selectedType.id] : []);
+        if (parentTypeIds.length === 0) throw new Error(t('admin.feed.select_type', '사료유형을 먼저 선택하세요.'));
         const payload = {
           name_ko: mfrForm.name_ko,
           country: mfrForm.country || undefined,
@@ -290,8 +311,14 @@ export default function FeedPage() {
             ))}
           </Col>
 
-          <Col title={t('admin.feed.manufacturers', '제조사')} onAdd={() => { setMfrForm({ name_ko: '', country: '', sort_order: '0' }); setMfrParentTypeIds(selectedType ? [selectedType.id] : []); setModal({ target: 'manufacturer', mode: 'create' }); }}>
-            {manufacturers.length === 0 && <div className="master-empty">{t('admin.feed.empty', '데이터가 없습니다.')}</div>}
+          <Col title={t('admin.feed.manufacturers', '제조사')} onAdd={() => {
+            if (!selectedType) return setError(t('admin.feed.select_type', '사료유형을 먼저 선택하세요.'));
+            setMfrForm({ name_ko: '', country: '', sort_order: '0' });
+            setMfrParentTypeIds([selectedType.id]);
+            setModal({ target: 'manufacturer', mode: 'create' });
+          }}>
+            {!selectedType && <div className="master-empty">{t('admin.feed.select_type', '사료유형을 먼저 선택하세요.')}</div>}
+            {selectedType && manufacturers.length === 0 && <div className="master-empty">{t('admin.feed.empty', '데이터가 없습니다.')}</div>}
             {manufacturers.map((item) => (
               <button key={item.id} className={`master-row-btn ${selectedMfr?.id === item.id ? 'active' : ''}`} onClick={() => { setSelectedMfr(item); setSelectedBrand(null); setSelectedModel(null); }}>
                 <div>
