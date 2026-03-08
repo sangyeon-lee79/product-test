@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { api, type FeedComment, type FeedPost } from '../lib/api';
 import { getStoredRole, isLoggedIn } from '../lib/auth';
+import { LANG_LABELS, SUPPORTED_LANGS, useI18n, useT } from '../lib/i18n';
 
 type FeedTab = 'all' | 'friends';
 type Option = { id: string; label: string };
@@ -36,25 +37,16 @@ function formatDate(iso?: string | null): string {
 function uiErrorMessage(error: unknown, fallback: string): string {
   if (error instanceof Error) {
     const msg = error.message || '';
-    if (msg.includes('Failed to fetch') || msg.includes('NetworkError'))
-      return '데이터를 불러오지 못했습니다. 잠시 후 다시 시도해주세요.';
+    if (msg.includes('Failed to fetch') || msg.includes('NetworkError')) return fallback;
     return msg;
   }
   return fallback;
 }
 
-/* ── Nav items config ─────────────────────────────────────── */
-const NAV_ITEMS = [
-  { icon: '🏠', label: '홈',     to: '/'        },
-  { icon: '🔍', label: '탐색',   to: '/explore' },
-  { icon: '🔔', label: '알림',   to: null       },
-  { icon: '🐾', label: '내 펫',  to: '/guardian'},
-  { icon: '📅', label: '예약',   to: null       },
-  { icon: '👤', label: '프로필', to: null       },
-];
-
 /* ── Component ────────────────────────────────────────────── */
 export default function PublicHome() {
+  const t = useT();
+  const { lang, setLang } = useI18n();
   /* ── State (모든 기존 state 유지) ─────────────────────── */
   const [loading, setLoading] = useState(true);
   const [error, setError]     = useState('');
@@ -77,6 +69,14 @@ export default function PublicHome() {
   const role       = getStoredRole();
   const myUserId   = useMemo(() => parseJwtSub(), []);
   const navigate   = useNavigate();
+  const NAV_ITEMS = useMemo(() => ([
+    { icon: '🏠', label: t('public.nav.home', '홈'), to: '/' },
+    { icon: '🔍', label: t('public.nav.explore', '탐색'), to: '/explore' },
+    { icon: '🔔', label: t('public.nav.alerts', '알림'), to: null },
+    { icon: '🐾', label: t('public.nav.mypet', '내 펫'), to: '/guardian' },
+    { icon: '📅', label: t('public.nav.booking', '예약'), to: null },
+    { icon: '👤', label: t('public.nav.profile', '프로필'), to: null },
+  ]), [t]);
 
   /* Dark mode */
   useEffect(() => {
@@ -115,7 +115,7 @@ export default function PublicHome() {
       }
       setBusinessOptions(Array.from(bMap.entries()).map(([id, label]) => ({ id, label })));
       setPetTypeOptions (Array.from(pMap.entries()).map(([id, label]) => ({ id, label })));
-    } catch (e) { setError(uiErrorMessage(e, '피드 데이터를 불러오지 못했습니다.')); }
+    } catch (e) { setError(uiErrorMessage(e, t('public.error.feed_load', '피드 데이터를 불러오지 못했습니다.'))); }
     finally { setLoading(false); }
   }
 
@@ -126,7 +126,7 @@ export default function PublicHome() {
     try {
       Number(feed.liked_by_me || 0) > 0 ? await api.feeds.unlike(feed.id) : await api.feeds.like(feed.id);
       await loadFeed();
-    } catch (e) { setError(uiErrorMessage(e, '좋아요 처리에 실패했습니다.')); }
+    } catch (e) { setError(uiErrorMessage(e, t('public.error.like', '좋아요 처리에 실패했습니다.'))); }
   }
 
   async function toggleComments(feedId: string) {
@@ -136,7 +136,7 @@ export default function PublicHome() {
     try {
       const res = await api.feeds.comments.list(feedId);
       setCommentMap((p) => ({ ...p, [feedId]: res.comments || [] }));
-    } catch (e) { setError(uiErrorMessage(e, '댓글을 불러오지 못했습니다.')); }
+    } catch (e) { setError(uiErrorMessage(e, t('public.error.comment_load', '댓글을 불러오지 못했습니다.'))); }
   }
 
   async function createComment(feedId: string) {
@@ -149,7 +149,7 @@ export default function PublicHome() {
       setCommentMap((p) => ({ ...p, [feedId]: res.comments || [] }));
       setCommentInput((p) => ({ ...p, [feedId]: '' }));
       await loadFeed();
-    } catch (e) { setError(uiErrorMessage(e, '댓글 등록에 실패했습니다.')); }
+    } catch (e) { setError(uiErrorMessage(e, t('public.error.comment_create', '댓글 등록에 실패했습니다.'))); }
   }
 
   async function saveEditedComment(feedId: string, commentId: string) {
@@ -160,7 +160,7 @@ export default function PublicHome() {
       const res = await api.feeds.comments.list(feedId);
       setCommentMap((p) => ({ ...p, [feedId]: res.comments || [] }));
       setEditingCommentId(null); setEditingContent('');
-    } catch (e) { setError(uiErrorMessage(e, '댓글 수정에 실패했습니다.')); }
+    } catch (e) { setError(uiErrorMessage(e, t('public.error.comment_update', '댓글 수정에 실패했습니다.'))); }
   }
 
   async function deleteComment(feedId: string, commentId: string) {
@@ -169,7 +169,7 @@ export default function PublicHome() {
       const res = await api.feeds.comments.list(feedId);
       setCommentMap((p) => ({ ...p, [feedId]: res.comments || [] }));
       await loadFeed();
-    } catch (e) { setError(uiErrorMessage(e, '댓글 삭제에 실패했습니다.')); }
+    } catch (e) { setError(uiErrorMessage(e, t('public.error.comment_delete', '댓글 삭제에 실패했습니다.'))); }
   }
 
   async function sendFriendRequest() {
@@ -179,11 +179,11 @@ export default function PublicHome() {
     setFriendMessage('');
     try {
       const res = await api.friends.requests.create({ receiver_email: email });
-      if (res.status === 'already_friends')  setFriendMessage('이미 연결된 사용자입니다.');
-      else if (res.status === 'request_sent') setFriendMessage('연결 요청을 보냈습니다.');
-      else                                    setFriendMessage('요청 처리 완료');
+      if (res.status === 'already_friends')  setFriendMessage(t('public.friend.already', '이미 연결된 사용자입니다.'));
+      else if (res.status === 'request_sent') setFriendMessage(t('public.friend.sent', '연결 요청을 보냈습니다.'));
+      else                                    setFriendMessage(t('public.friend.done', '요청 처리 완료'));
       setFriendEmail('');
-    } catch (e) { setFriendMessage(uiErrorMessage(e, '요청 처리에 실패했습니다.')); }
+    } catch (e) { setFriendMessage(uiErrorMessage(e, t('public.friend.error', '요청 처리에 실패했습니다.'))); }
   }
 
   /* ── Sidebar component (inline) ───────────────────────── */
@@ -194,9 +194,9 @@ export default function PublicHome() {
       {/* Hero mini (비로그인) */}
       {!loggedIn && (
         <div className="ig-hero-mini">
-          <h3>반려동물의 삶을<br />아름답게 기록하다</h3>
-          <p>SNS + 포트폴리오 아카이브</p>
-          <Link to="/signup" className="btn btn-primary btn-sm" style={{ width: '100%', justifyContent: 'center' }}>시작하기</Link>
+          <h3>{t('public.hero.title', '반려동물의 삶을')}<br />{t('public.hero.title_2', '아름답게 기록하다')}</h3>
+          <p>{t('public.hero.sub', 'SNS + 포트폴리오 아카이브')}</p>
+          <Link to="/signup" className="btn btn-primary btn-sm" style={{ width: '100%', justifyContent: 'center' }}>{t('public.cta.start', '시작하기')}</Link>
         </div>
       )}
 
@@ -223,17 +223,17 @@ export default function PublicHome() {
       <div className="ig-sidebar-footer">
         <button className="ig-dark-toggle" onClick={() => setIsDark((d) => !d)}>
           <span className="ig-nav-icon">{isDark ? '☀️' : '🌙'}</span>
-          <span>{isDark ? '라이트 모드' : '다크 모드'}</span>
+          <span>{isDark ? t('public.theme.light', '라이트 모드') : t('public.theme.dark', '다크 모드')}</span>
         </button>
         {!loggedIn && (
           <Link to="/login" className="ig-nav-item">
             <span className="ig-nav-icon">🔑</span>
-            <span>로그인</span>
+            <span>{t('public.auth.login', '로그인')}</span>
           </Link>
         )}
         <Link to="/admin/login" className="ig-nav-item" style={{ opacity: .5 }}>
           <span className="ig-nav-icon">⚙️</span>
-          <span>Admin</span>
+          <span>{t('public.admin', 'Admin')}</span>
         </Link>
       </div>
     </aside>
@@ -297,11 +297,11 @@ export default function PublicHome() {
             className={`ig-action-btn${isLiked ? ' liked' : ''}`}
             onClick={() => toggleLike(feed)}
             disabled={!loggedIn}
-            title={!loggedIn ? '로그인 후 이용 가능' : ''}
+            title={!loggedIn ? t('public.hint.login_required', '로그인 후 이용 가능') : ''}
           >
             {isLiked ? '♥' : '♡'}
           </button>
-          <button className="ig-action-btn" onClick={() => toggleComments(feed.id)} title="댓글">
+          <button className="ig-action-btn" onClick={() => toggleComments(feed.id)} title={t('public.comment', '댓글')}>
             💬
           </button>
           <div className="ig-spacer" />
@@ -309,7 +309,7 @@ export default function PublicHome() {
 
         {/* Like count */}
         {(feed.like_count || 0) > 0 && (
-          <div className="ig-card-likes">좋아요 {feed.like_count}개</div>
+          <div className="ig-card-likes">{t('public.like_count', '좋아요')} {feed.like_count}{t('public.count_suffix', '개')}</div>
         )}
 
         {/* Caption (images present) */}
@@ -328,8 +328,8 @@ export default function PublicHome() {
         {/* Comment peek / toggle */}
         <div className="ig-card-comment-peek" onClick={() => toggleComments(feed.id)}>
           {(feed.comment_count || 0) > 0
-            ? `댓글 ${feed.comment_count}개 모두 보기`
-            : '댓글 달기…'}
+            ? `${t('public.comment', '댓글')} ${feed.comment_count}${t('public.count_suffix', '개')} ${t('public.comment.view_all', '모두 보기')}`
+            : t('public.comment.write', '댓글 달기…')}
         </div>
 
         {/* Comment section */}
@@ -345,8 +345,8 @@ export default function PublicHome() {
                       {isEditing ? (
                         <div className="ig-comment-input-row">
                           <input className="ig-comment-input" value={editingContent} onChange={(e) => setEditingContent(e.target.value)} />
-                          <button className="ig-comment-post-btn" onClick={() => saveEditedComment(feed.id, c.id)}>저장</button>
-                          <button className="ig-comment-post-btn" style={{ color: 'var(--text-muted)' }} onClick={() => { setEditingCommentId(null); setEditingContent(''); }}>취소</button>
+                          <button className="ig-comment-post-btn" onClick={() => saveEditedComment(feed.id, c.id)}>{t('common.save', '저장')}</button>
+                          <button className="ig-comment-post-btn" style={{ color: 'var(--text-muted)' }} onClick={() => { setEditingCommentId(null); setEditingContent(''); }}>{t('common.cancel', '취소')}</button>
                         </div>
                       ) : (
                         <>
@@ -355,8 +355,8 @@ export default function PublicHome() {
                           <div className="ig-comment-meta">{formatDate(c.created_at)}</div>
                           {mine && (
                             <div className="ig-comment-actions">
-                              <button className="ig-comment-post-btn" style={{ fontSize: 11 }} onClick={() => { setEditingCommentId(c.id); setEditingContent(c.content); }}>수정</button>
-                              <button className="ig-comment-post-btn" style={{ fontSize: 11, color: 'var(--danger)' }} onClick={() => deleteComment(feed.id, c.id)}>삭제</button>
+                              <button className="ig-comment-post-btn" style={{ fontSize: 11 }} onClick={() => { setEditingCommentId(c.id); setEditingContent(c.content); }}>{t('common.edit', '수정')}</button>
+                              <button className="ig-comment-post-btn" style={{ fontSize: 11, color: 'var(--danger)' }} onClick={() => deleteComment(feed.id, c.id)}>{t('common.delete', '삭제')}</button>
                             </div>
                           )}
                         </>
@@ -369,13 +369,13 @@ export default function PublicHome() {
             <div className="ig-comment-input-row">
               <input
                 className="ig-comment-input"
-                placeholder={loggedIn ? '댓글 달기…' : '로그인 후 댓글 작성 가능'}
+                placeholder={loggedIn ? t('public.comment.write', '댓글 달기…') : t('public.comment.login_hint', '로그인 후 댓글 작성 가능')}
                 value={commentInput[feed.id] || ''}
                 onChange={(e) => setCommentInput((p) => ({ ...p, [feed.id]: e.target.value }))}
                 onKeyDown={(e) => e.key === 'Enter' && createComment(feed.id)}
                 disabled={!loggedIn}
               />
-              <button className="ig-comment-post-btn" onClick={() => createComment(feed.id)} disabled={!loggedIn}>게시</button>
+              <button className="ig-comment-post-btn" onClick={() => createComment(feed.id)} disabled={!loggedIn}>{t('public.post', '게시')}</button>
             </div>
           </div>
         )}
@@ -390,6 +390,19 @@ export default function PublicHome() {
 
       {/* ── Main area ──────────────────────────────────── */}
       <div className="ig-main">
+        <header className="ig-public-header">
+          <div className="ig-public-header-title">{t('platform.name', 'Petfolio')}</div>
+          <select
+            className="form-select ig-public-lang"
+            value={lang}
+            onChange={(e) => setLang(e.target.value as typeof lang)}
+            aria-label={t('admin.common.language', 'Language')}
+          >
+            {SUPPORTED_LANGS.map((l) => (
+              <option key={l} value={l}>{LANG_LABELS[l]}</option>
+            ))}
+          </select>
+        </header>
 
         {/* ── Feed column ──────────────────────────────── */}
         <div className="ig-feed-col">
@@ -412,12 +425,12 @@ export default function PublicHome() {
           <div className="ig-feed-tabs">
             <button className={`ig-feed-tab${tab === 'all' ? ' active' : ''}`}
               onClick={() => { setTab('all'); loadFeed('all', businessCategoryId, petTypeId); }}>
-              전체 피드
+              {t('public.feed.all', '전체 피드')}
             </button>
             <button className={`ig-feed-tab${tab === 'friends' ? ' active' : ''}`}
               onClick={() => { setTab('friends'); loadFeed('friends', businessCategoryId, petTypeId); }}
-              disabled={!loggedIn} title={!loggedIn ? '로그인 후 이용 가능' : ''}>
-              친구 피드
+              disabled={!loggedIn} title={!loggedIn ? t('public.hint.login_required', '로그인 후 이용 가능') : ''}>
+              {t('public.feed.friends', '친구 피드')}
             </button>
           </div>
 
@@ -425,12 +438,12 @@ export default function PublicHome() {
           <div className="ig-filter-row">
             <select className="form-select" value={businessCategoryId}
               onChange={(e) => { const v = e.target.value; setBusinessCategoryId(v); loadFeed(tab, v, petTypeId); }}>
-              <option value="">업종 전체</option>
+              <option value="">{t('public.filter.business_all', '업종 전체')}</option>
               {businessOptions.map((o) => <option key={o.id} value={o.id}>{o.label}</option>)}
             </select>
             <select className="form-select" value={petTypeId}
               onChange={(e) => { const v = e.target.value; setPetTypeId(v); loadFeed(tab, businessCategoryId, v); }}>
-              <option value="">펫 유형 전체</option>
+              <option value="">{t('public.filter.pet_all', '펫 유형 전체')}</option>
               {petTypeOptions.map((o) => <option key={o.id} value={o.id}>{o.label}</option>)}
             </select>
           </div>
@@ -443,8 +456,8 @@ export default function PublicHome() {
           ) : feeds.length === 0 ? (
             <div className="ig-card" style={{ padding: 40, textAlign: 'center', color: 'var(--text-muted)' }}>
               <div style={{ fontSize: 36, marginBottom: 12 }}>🐾</div>
-              <p style={{ fontWeight: 600, marginBottom: 4 }}>아직 피드가 없습니다</p>
-              <p style={{ fontSize: 13 }}>첫 번째 이야기를 올려보세요.</p>
+              <p style={{ fontWeight: 600, marginBottom: 4 }}>{t('public.feed.empty_title', '아직 피드가 없습니다')}</p>
+              <p style={{ fontSize: 13 }}>{t('public.feed.empty_desc', '첫 번째 이야기를 올려보세요.')}</p>
             </div>
           ) : (
             feeds.map(renderFeedCard)
@@ -461,29 +474,29 @@ export default function PublicHome() {
                 {(myUserId || '?')[0].toUpperCase()}
               </div>
               <div className="ig-profile-mini-info">
-                <div className="ig-profile-mini-name">{role === 'guardian' ? 'Guardian' : role}</div>
-                <div className="ig-profile-mini-sub">Petfolio 계정</div>
+                <div className="ig-profile-mini-name">{role === 'guardian' ? t('public.role.guardian', 'Guardian') : role}</div>
+                <div className="ig-profile-mini-sub">{t('public.account', 'Petfolio 계정')}</div>
               </div>
             </div>
           ) : (
             <div style={{ display: 'flex', gap: 8, marginBottom: 20 }}>
-              <Link to="/login"  className="btn btn-secondary btn-sm" style={{ flex: 1, justifyContent: 'center' }}>로그인</Link>
-              <Link to="/signup" className="btn btn-primary btn-sm"   style={{ flex: 1, justifyContent: 'center' }}>시작하기</Link>
+              <Link to="/login"  className="btn btn-secondary btn-sm" style={{ flex: 1, justifyContent: 'center' }}>{t('public.auth.login', '로그인')}</Link>
+              <Link to="/signup" className="btn btn-primary btn-sm"   style={{ flex: 1, justifyContent: 'center' }}>{t('public.cta.start', '시작하기')}</Link>
             </div>
           )}
 
           {/* Suggested users */}
           {suggestedUsers.length > 0 && (
             <div className="ig-right-section">
-              <div className="ig-right-title">추천 Guardian</div>
+              <div className="ig-right-title">{t('public.recommend.guardian', '추천 Guardian')}</div>
               {suggestedUsers.map((u) => (
                 <div key={u} className="ig-right-user">
                   <div className="ig-right-user-avatar">{u[0].toUpperCase()}</div>
                   <div className="ig-right-user-info">
                     <div className="ig-right-user-name">{u.split('@')[0]}</div>
-                    <div className="ig-right-user-sub">Petfolio 가디언</div>
+                    <div className="ig-right-user-sub">{t('public.recommend.guardian_sub', 'Petfolio 가디언')}</div>
                   </div>
-                  <button className="ig-follow-btn" disabled={!loggedIn}>팔로우</button>
+                  <button className="ig-follow-btn" disabled={!loggedIn}>{t('public.follow', '팔로우')}</button>
                 </div>
               ))}
             </div>
@@ -492,16 +505,16 @@ export default function PublicHome() {
           {/* Guardian ↔ Supplier 연결 요청 */}
           {loggedIn && (role === 'guardian' || role === 'provider') && (
             <div className="ig-right-section">
-              <div className="ig-right-title">Guardian ↔ Supplier 연결</div>
+              <div className="ig-right-title">{t('public.friend.title', 'Guardian ↔ Supplier 연결')}</div>
               <div style={{ display: 'flex', gap: 6, marginBottom: 6 }}>
                 <input
                   className="form-input" style={{ fontSize: 12, padding: '6px 8px' }}
-                  placeholder="상대 이메일"
+                  placeholder={t('public.friend.email', '상대 이메일')}
                   value={friendEmail}
                   onChange={(e) => setFriendEmail(e.target.value)}
                   onKeyDown={(e) => e.key === 'Enter' && sendFriendRequest()}
                 />
-                <button className="btn btn-secondary btn-sm" onClick={sendFriendRequest}>요청</button>
+                <button className="btn btn-secondary btn-sm" onClick={sendFriendRequest}>{t('public.friend.request', '요청')}</button>
               </div>
               {friendMessage && <p style={{ fontSize: 12, color: 'var(--primary)' }}>{friendMessage}</p>}
             </div>
@@ -509,9 +522,9 @@ export default function PublicHome() {
 
           {/* Footer */}
           <div className="ig-right-footer">
-            <span>© 2026 Petfolio</span> · <span>반려동물 포트폴리오 플랫폼</span>
+            <span>© 2026 Petfolio</span> · <span>{t('platform.tagline', "Your pet's life portfolio")}</span>
             <br />
-            <Link to="/admin/login">Admin</Link>
+            <Link to="/admin/login">{t('public.admin', 'Admin')}</Link>
           </div>
         </aside>
       </div>
