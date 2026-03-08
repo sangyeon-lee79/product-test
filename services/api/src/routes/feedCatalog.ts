@@ -228,7 +228,8 @@ export async function handleFeedCatalog(request: Request, env: Env, url: URL): P
 
   const user = await requireAuth(request, env);
   if (!user) return err('Unauthorized', 401, 'unauthorized');
-  if (!requireRole(user as JwtPayload, ['admin'])) return err('Forbidden', 403, 'forbidden');
+  const roleResult = requireRole(user as JwtPayload, ['admin']);
+  if (roleResult instanceof Response) return roleResult;
 
   const lang = resolveLang(url);
   const langCol = LANG_COLS[lang];
