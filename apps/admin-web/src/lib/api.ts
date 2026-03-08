@@ -93,6 +93,15 @@ async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
   return json.data as T;
 }
 
+function buildQuery(params: Record<string, string | number | boolean | undefined | null>): string {
+  const q = new URLSearchParams();
+  for (const [k, v] of Object.entries(params)) {
+    if (v !== undefined && v !== null && v !== false && v !== '' && v !== 0) q.set(k, String(v));
+  }
+  const s = q.toString();
+  return s ? `?${s}` : '';
+}
+
 export const api = {
   // Auth
   testLogin: (email: string) =>
@@ -117,15 +126,10 @@ export const api = {
 
   // i18n
   i18n: {
-    list: (params?: { page?: number; prefix?: string; limit?: number; active_only?: boolean }) => {
-      const q = new URLSearchParams();
-      if (params?.page) q.set('page', String(params.page));
-      if (params?.prefix) q.set('prefix', params.prefix);
-      if (params?.limit) q.set('limit', String(params.limit));
-      if (params?.active_only) q.set('active_only', 'true');
-      return request<{ items: I18nRow[]; total: number; page: number; limit: number }>
-        (`/api/v1/admin/i18n?${q}`);
-    },
+    list: (params?: { page?: number; prefix?: string; limit?: number; active_only?: boolean }) =>
+      request<{ items: I18nRow[]; total: number; page: number; limit: number }>(
+        `/api/v1/admin/i18n${buildQuery({ page: params?.page, prefix: params?.prefix, limit: params?.limit, active_only: params?.active_only })}`,
+      ),
     create: (data: Partial<I18nRow>) =>
       request<I18nRow>('/api/v1/admin/i18n', { method: 'POST', body: JSON.stringify(data) }),
     update: (id: string, data: Partial<I18nRow>) =>
@@ -143,13 +147,8 @@ export const api = {
   master: {
     public: {
       categories: () => request<Array<{ id: string; key: string; sort_order: number; is_active: number }>>('/api/v1/master/categories'),
-      items: (categoryKey: string, parentId?: string | null, lang?: string) => {
-        const q = new URLSearchParams();
-        q.set('category_key', categoryKey);
-        if (parentId) q.set('parent_id', parentId);
-        if (lang) q.set('lang', lang);
-        return request<MasterItem[]>(`/api/v1/master/items?${q.toString()}`);
-      },
+      items: (categoryKey: string, parentId?: string | null, lang?: string) =>
+        request<MasterItem[]>(`/api/v1/master/items${buildQuery({ category_key: categoryKey, parent_id: parentId, lang })}`),
     },
     categories: {
       list: () => request<MasterCategory[]>('/api/v1/admin/master/categories'),
@@ -161,10 +160,8 @@ export const api = {
         request<{ id: string; deleted: boolean }>(`/api/v1/admin/master/categories/${id}`, { method: 'DELETE' }),
     },
     items: {
-      list: (categoryKey?: string) => {
-        const q = categoryKey ? `?category_key=${encodeURIComponent(categoryKey)}` : '';
-        return request<MasterItem[]>(`/api/v1/admin/master/items${q}`);
-      },
+      list: (categoryKey?: string) =>
+        request<MasterItem[]>(`/api/v1/admin/master/items${buildQuery({ category_key: categoryKey })}`),
       create: (data: { category_id: string; sort_order?: number; metadata?: Record<string, unknown>; translations?: Record<string, string>; parent_id?: string | null; device_type_id?: string | null }) =>
         request<MasterItem>('/api/v1/admin/master/items', { method: 'POST', body: JSON.stringify(data) }),
       update: (id: string, data: { sort_order?: number; parent_id?: string | null; is_active?: number; metadata?: Record<string, unknown>; translations?: Record<string, string>; device_type_id?: string | null }) =>
@@ -187,16 +184,8 @@ export const api = {
       }),
   },
   feeds: {
-    list: (params?: { feed_type?: string; business_category_id?: string; pet_type_id?: string; tab?: string; limit?: number }) => {
-      const q = new URLSearchParams();
-      if (params?.feed_type) q.set('feed_type', params.feed_type);
-      if (params?.business_category_id) q.set('business_category_id', params.business_category_id);
-      if (params?.pet_type_id) q.set('pet_type_id', params.pet_type_id);
-      if (params?.tab) q.set('tab', params.tab);
-      if (params?.limit) q.set('limit', String(params.limit));
-      const suffix = q.toString() ? `?${q.toString()}` : '';
-      return request<{ feeds: FeedPost[] }>(`/api/v1/feeds${suffix}`);
-    },
+    list: (params?: { feed_type?: string; business_category_id?: string; pet_type_id?: string; tab?: string; limit?: number }) =>
+      request<{ feeds: FeedPost[] }>(`/api/v1/feeds${buildQuery({ feed_type: params?.feed_type, business_category_id: params?.business_category_id, pet_type_id: params?.pet_type_id, tab: params?.tab, limit: params?.limit })}`),
     like: (feedId: string) =>
       request<{ liked: boolean }>(`/api/v1/feeds/${feedId}/like`, { method: 'POST' }),
     unlike: (feedId: string) =>
@@ -259,12 +248,8 @@ export const api = {
     update: (id: string, data: Partial<Pet>) => request<{ pet: Pet }>(`/api/v1/pets/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
     remove: (id: string) => request<{ deleted: boolean }>(`/api/v1/pets/${id}`, { method: 'DELETE' }),
     weightLogs: {
-      list: (petId: string, params?: { range?: '7d' | '15d' | '1m' | '3m' | '6m' | '1y' | 'all' }) => {
-        const q = new URLSearchParams();
-        if (params?.range) q.set('range', params.range);
-        const suffix = q.toString() ? `?${q.toString()}` : '';
-        return request<{ logs: PetWeightLog[]; range: string; summary: WeightSummary }>(`/api/v1/pets/${petId}/weight-logs${suffix}`);
-      },
+      list: (petId: string, params?: { range?: '7d' | '15d' | '1m' | '3m' | '6m' | '1y' | 'all' }) =>
+        request<{ logs: PetWeightLog[]; range: string; summary: WeightSummary }>(`/api/v1/pets/${petId}/weight-logs${buildQuery({ range: params?.range })}`),
       create: (petId: string, data: {
         weight_value: number;
         weight_unit_id?: string | null;
@@ -308,12 +293,8 @@ export const api = {
       }) => request<{ id: string }>(`/api/v1/pets/${petId}/disease-devices`, { method: 'POST', body: JSON.stringify(data) }),
     },
     glucoseLogs: {
-      list: (petId: string, params?: { range?: '1w' | '1m' | '3m' | '6m' | '1y' | 'all' }) => {
-        const q = new URLSearchParams();
-        if (params?.range) q.set('range', params.range);
-        const suffix = q.toString() ? `?${q.toString()}` : '';
-        return request<{ logs: PetGlucoseLog[]; summary: GlucoseSummary | null; range: string }>(`/api/v1/pets/${petId}/glucose-logs${suffix}`);
-      },
+      list: (petId: string, params?: { range?: '1w' | '1m' | '3m' | '6m' | '1y' | 'all' }) =>
+        request<{ logs: PetGlucoseLog[]; summary: GlucoseSummary | null; range: string }>(`/api/v1/pets/${petId}/glucose-logs${buildQuery({ range: params?.range })}`),
       create: (petId: string, data: {
         disease_item_id?: string;
         device_item_id?: string | null;
@@ -335,12 +316,8 @@ export const api = {
       remove: (petId: string, logId: string) => request<{ deleted: boolean; id: string }>(`/api/v1/pets/${petId}/glucose-logs/${logId}`, { method: 'DELETE' }),
     },
     healthMeasurements: {
-      list: (petId: string, params?: { range?: '7d' | '15d' | '1m' | '3m' | '6m' | '1y' | 'all' }) => {
-        const q = new URLSearchParams();
-        if (params?.range) q.set('range', params.range);
-        const suffix = q.toString() ? `?${q.toString()}` : '';
-        return request<{ logs: PetHealthMeasurementLog[]; summary: HealthMeasurementSummary | null; range: string }>(`/api/v1/pets/${petId}/health-measurements${suffix}`);
-      },
+      list: (petId: string, params?: { range?: '7d' | '15d' | '1m' | '3m' | '6m' | '1y' | 'all' }) =>
+        request<{ logs: PetHealthMeasurementLog[]; summary: HealthMeasurementSummary | null; range: string }>(`/api/v1/pets/${petId}/health-measurements${buildQuery({ range: params?.range })}`),
       create: (petId: string, data: {
         disease_item_id: string;
         device_type_item_id?: string | null;
@@ -373,21 +350,12 @@ export const api = {
         method: 'DELETE',
       }),
     },
-    checkMicrochip: (microchipNo: string, excludePetId?: string) => {
-      const q = new URLSearchParams();
-      q.set('microchip_no', microchipNo);
-      if (excludePetId) q.set('exclude_pet_id', excludePetId);
-      return request<{ available: boolean; reason?: string; pet_id?: string }>(`/api/v1/pets/check-microchip?${q.toString()}`);
-    },
+    checkMicrochip: (microchipNo: string, excludePetId?: string) =>
+      request<{ available: boolean; reason?: string; pet_id?: string }>(`/api/v1/pets/check-microchip${buildQuery({ microchip_no: microchipNo, exclude_pet_id: excludePetId })}`),
   },
   storage: {
-    presignedUrl: (params: { type: 'user_avatar' | 'pet_avatar' | 'log_media' | 'feed_media' | 'completion_photo' | 'store_photo' | 'service_photo'; ext: string; subdir?: string }) => {
-      const q = new URLSearchParams();
-      q.set('type', params.type);
-      q.set('ext', params.ext);
-      if (params.subdir) q.set('subdir', params.subdir);
-      return request<{ upload_url: string; file_key: string; public_url: string; expires_in: number }>(`/api/v1/storage/presigned-url?${q.toString()}`);
-    },
+    presignedUrl: (params: { type: 'user_avatar' | 'pet_avatar' | 'log_media' | 'feed_media' | 'completion_photo' | 'store_photo' | 'service_photo'; ext: string; subdir?: string }) =>
+      request<{ upload_url: string; file_key: string; public_url: string; expires_in: number }>(`/api/v1/storage/presigned-url${buildQuery({ type: params.type, ext: params.ext, subdir: params.subdir })}`),
   },
   bookings: {
     list: () => request<{ bookings: Booking[] }>('/api/v1/bookings'),
@@ -400,17 +368,8 @@ export const api = {
       sort?: 'latest' | 'oldest';
       include_pending?: boolean;
       limit?: number;
-    }) => {
-      const q = new URLSearchParams();
-      if (params?.pet_id) q.set('pet_id', params.pet_id);
-      if (params?.source_type) q.set('source_type', params.source_type);
-      if (params?.media_type) q.set('media_type', params.media_type);
-      if (params?.sort) q.set('sort', params.sort);
-      if (params?.include_pending) q.set('include_pending', 'true');
-      if (params?.limit) q.set('limit', String(params.limit));
-      const suffix = q.toString() ? `?${q.toString()}` : '';
-      return request<{ media: PetAlbumMedia[] }>(`/api/v1/pet-album${suffix}`);
-    },
+    }) =>
+      request<{ media: PetAlbumMedia[] }>(`/api/v1/pet-album${buildQuery({ pet_id: params?.pet_id, source_type: params?.source_type, media_type: params?.media_type, sort: params?.sort, include_pending: params?.include_pending, limit: params?.limit })}`),
     detail: (id: string) => request<{ media: PetAlbumMedia }>(`/api/v1/pet-album/${id}`),
     create: (data: {
       pet_id: string;
@@ -459,13 +418,8 @@ export const api = {
         request<{ id: string; deleted: boolean }>(`/api/v1/admin/devices/types/${id}`, { method: 'DELETE' }),
     },
     manufacturers: {
-      list: (lang?: string, typeItemId?: string) => {
-        const q = new URLSearchParams();
-        if (lang) q.set('lang', lang);
-        if (typeItemId) q.set('type_item_id', typeItemId);
-        const suffix = q.toString() ? `?${q.toString()}` : '';
-        return request<DeviceManufacturer[]>(`/api/v1/admin/devices/manufacturers${suffix}`);
-      },
+      list: (lang?: string, typeItemId?: string) =>
+        request<DeviceManufacturer[]>(`/api/v1/admin/devices/manufacturers${buildQuery({ lang, type_item_id: typeItemId })}`),
       create: (data: { key?: string; country?: string; sort_order?: number; name_ko: string; name_en?: string; parent_type_ids?: string[]; translations?: Record<string, string> }) =>
         request<DeviceManufacturer>('/api/v1/admin/devices/manufacturers', { method: 'POST', body: JSON.stringify(data) }),
       update: (id: string, data: Partial<{ key: string; name_ko: string; name_en: string; country: string; sort_order: number; status: string; parent_type_ids: string[]; translations: Record<string, string> }>) =>
@@ -474,13 +428,8 @@ export const api = {
         request<{ id: string; deleted: boolean }>(`/api/v1/admin/devices/manufacturers/${id}`, { method: 'DELETE' }),
     },
     brands: {
-      list: (manufacturerId?: string, typeItemId?: string) => {
-        const q = new URLSearchParams();
-        if (manufacturerId) q.set('manufacturer_id', manufacturerId);
-        if (typeItemId) q.set('type_item_id', typeItemId);
-        const suffix = q.toString() ? `?${q.toString()}` : '';
-        return request<DeviceBrand[]>(`/api/v1/admin/devices/brands${suffix}`);
-      },
+      list: (manufacturerId?: string, typeItemId?: string) =>
+        request<DeviceBrand[]>(`/api/v1/admin/devices/brands${buildQuery({ manufacturer_id: manufacturerId, type_item_id: typeItemId })}`),
       create: (data: { key?: string; manufacturer_id?: string; manufacturer_ids?: string[]; parent_type_ids?: string[]; sort_order?: number; name_ko: string; name_en?: string; translations?: Record<string, string> }) =>
         request<DeviceBrand>('/api/v1/admin/devices/brands', { method: 'POST', body: JSON.stringify(data) }),
       update: (id: string, data: Partial<{ key: string; name_ko: string; name_en: string; status: string; manufacturer_id: string; manufacturer_ids: string[]; parent_type_ids: string[]; sort_order: number; translations: Record<string, string> }>) =>
@@ -489,14 +438,8 @@ export const api = {
         request<{ id: string; deleted: boolean }>(`/api/v1/admin/devices/brands/${id}`, { method: 'DELETE' }),
     },
     models: {
-      list: (filters?: { device_type_id?: string; manufacturer_id?: string; brand_id?: string }) => {
-        const q = new URLSearchParams();
-        if (filters?.device_type_id) q.set('device_type_id', filters.device_type_id);
-        if (filters?.manufacturer_id) q.set('manufacturer_id', filters.manufacturer_id);
-        if (filters?.brand_id) q.set('brand_id', filters.brand_id);
-        const suffix = q.toString() ? `?${q.toString()}` : '';
-        return request<DeviceModel[]>(`/api/v1/admin/devices/models${suffix}`);
-      },
+      list: (filters?: { device_type_id?: string; manufacturer_id?: string; brand_id?: string }) =>
+        request<DeviceModel[]>(`/api/v1/admin/devices/models${buildQuery({ device_type_id: filters?.device_type_id, manufacturer_id: filters?.manufacturer_id, brand_id: filters?.brand_id })}`),
       create: (data: { key?: string; device_type_id: string; parent_type_ids?: string[]; manufacturer_id: string; brand_id?: string; brand_ids?: string[]; model_name?: string; model_code?: string; description?: string; sort_order?: number; name_ko?: string; name_en?: string; translations?: Record<string, string> }) =>
         request<DeviceModel>('/api/v1/admin/devices/models', { method: 'POST', body: JSON.stringify(data) }),
       update: (id: string, data: Partial<{ key: string; model_name: string; model_code: string; description: string; status: string; device_type_id: string; parent_type_ids: string[]; manufacturer_id: string; brand_id: string | null; brand_ids: string[]; sort_order: number; name_ko: string; name_en: string; translations: Record<string, string> }>) =>
@@ -516,29 +459,12 @@ export const api = {
         const q = lang ? `?lang=${encodeURIComponent(lang)}` : '';
         return request<DeviceType[]>(`/api/v1/devices/types${q}`);
       },
-      manufacturers: (deviceTypeId?: string, lang?: string) => {
-        const q = new URLSearchParams();
-        if (deviceTypeId) q.set('device_type_id', deviceTypeId);
-        if (lang) q.set('lang', lang);
-        const suffix = q.toString() ? `?${q.toString()}` : '';
-        return request<DeviceManufacturer[]>(`/api/v1/devices/manufacturers${suffix}`);
-      },
-      brands: (manufacturerId?: string, deviceTypeId?: string) => {
-        const q = new URLSearchParams();
-        if (manufacturerId) q.set('manufacturer_id', manufacturerId);
-        if (deviceTypeId) q.set('device_type_id', deviceTypeId);
-        const suffix = q.toString() ? `?${q.toString()}` : '';
-        return request<DeviceBrand[]>(`/api/v1/devices/brands${suffix}`);
-      },
-      models: (filters?: { device_type_id?: string; manufacturer_id?: string; brand_id?: string }, lang?: string) => {
-        const q = new URLSearchParams();
-        if (filters?.device_type_id) q.set('device_type_id', filters.device_type_id);
-        if (filters?.manufacturer_id) q.set('manufacturer_id', filters.manufacturer_id);
-        if (filters?.brand_id) q.set('brand_id', filters.brand_id);
-        if (lang) q.set('lang', lang);
-        const suffix = q.toString() ? `?${q.toString()}` : '';
-        return request<DeviceModel[]>(`/api/v1/devices/models${suffix}`);
-      },
+      manufacturers: (deviceTypeId?: string, lang?: string) =>
+        request<DeviceManufacturer[]>(`/api/v1/devices/manufacturers${buildQuery({ device_type_id: deviceTypeId, lang })}`),
+      brands: (manufacturerId?: string, deviceTypeId?: string) =>
+        request<DeviceBrand[]>(`/api/v1/devices/brands${buildQuery({ manufacturer_id: manufacturerId, device_type_id: deviceTypeId })}`),
+      models: (filters?: { device_type_id?: string; manufacturer_id?: string; brand_id?: string }, lang?: string) =>
+        request<DeviceModel[]>(`/api/v1/devices/models${buildQuery({ device_type_id: filters?.device_type_id, manufacturer_id: filters?.manufacturer_id, brand_id: filters?.brand_id, lang })}`),
       units: () => request<MeasurementUnit[]>('/api/v1/devices/units'),
     },
   },
@@ -550,13 +476,8 @@ export const api = {
       },
     },
     manufacturers: {
-      list: (lang?: string, typeItemId?: string) => {
-        const q = new URLSearchParams();
-        if (lang) q.set('lang', lang);
-        if (typeItemId) q.set('type_item_id', typeItemId);
-        const suffix = q.toString() ? `?${q.toString()}` : '';
-        return request<FeedManufacturer[]>(`/api/v1/admin/feed-catalog/manufacturers${suffix}`);
-      },
+      list: (lang?: string, typeItemId?: string) =>
+        request<FeedManufacturer[]>(`/api/v1/admin/feed-catalog/manufacturers${buildQuery({ lang, type_item_id: typeItemId })}`),
       create: (data: { key?: string; country?: string; sort_order?: number; name_ko: string; name_en?: string; parent_type_ids?: string[]; translations?: Record<string, string> }) =>
         request<FeedManufacturer>('/api/v1/admin/feed-catalog/manufacturers', { method: 'POST', body: JSON.stringify(data) }),
       update: (id: string, data: Partial<{ key: string; name_ko: string; name_en: string; country: string; sort_order: number; status: string; parent_type_ids: string[]; translations: Record<string, string> }>) =>
@@ -565,13 +486,8 @@ export const api = {
         request<{ id: string; deleted: boolean }>(`/api/v1/admin/feed-catalog/manufacturers/${id}`, { method: 'DELETE' }),
     },
     brands: {
-      list: (manufacturerId?: string, typeItemId?: string) => {
-        const q = new URLSearchParams();
-        if (manufacturerId) q.set('manufacturer_id', manufacturerId);
-        if (typeItemId) q.set('type_item_id', typeItemId);
-        const suffix = q.toString() ? `?${q.toString()}` : '';
-        return request<FeedBrand[]>(`/api/v1/admin/feed-catalog/brands${suffix}`);
-      },
+      list: (manufacturerId?: string, typeItemId?: string) =>
+        request<FeedBrand[]>(`/api/v1/admin/feed-catalog/brands${buildQuery({ manufacturer_id: manufacturerId, type_item_id: typeItemId })}`),
       create: (data: { key?: string; manufacturer_id?: string; manufacturer_ids?: string[]; parent_type_ids?: string[]; sort_order?: number; name_ko: string; name_en?: string; translations?: Record<string, string> }) =>
         request<FeedBrand>('/api/v1/admin/feed-catalog/brands', { method: 'POST', body: JSON.stringify(data) }),
       update: (id: string, data: Partial<{ key: string; name_ko: string; name_en: string; status: string; manufacturer_id: string; manufacturer_ids: string[]; parent_type_ids: string[]; sort_order: number; translations: Record<string, string> }>) =>
@@ -580,14 +496,8 @@ export const api = {
         request<{ id: string; deleted: boolean }>(`/api/v1/admin/feed-catalog/brands/${id}`, { method: 'DELETE' }),
     },
     models: {
-      list: (filters?: { feed_type_id?: string; manufacturer_id?: string; brand_id?: string }) => {
-        const q = new URLSearchParams();
-        if (filters?.feed_type_id) q.set('feed_type_id', filters.feed_type_id);
-        if (filters?.manufacturer_id) q.set('manufacturer_id', filters.manufacturer_id);
-        if (filters?.brand_id) q.set('brand_id', filters.brand_id);
-        const suffix = q.toString() ? `?${q.toString()}` : '';
-        return request<FeedModel[]>(`/api/v1/admin/feed-catalog/models${suffix}`);
-      },
+      list: (filters?: { feed_type_id?: string; manufacturer_id?: string; brand_id?: string }) =>
+        request<FeedModel[]>(`/api/v1/admin/feed-catalog/models${buildQuery({ feed_type_id: filters?.feed_type_id, manufacturer_id: filters?.manufacturer_id, brand_id: filters?.brand_id })}`),
       create: (data: { key?: string; feed_type_id: string; parent_type_ids?: string[]; manufacturer_id: string; brand_id?: string; brand_ids?: string[]; model_name?: string; model_code?: string; description?: string; sort_order?: number; name_ko?: string; name_en?: string; translations?: Record<string, string> }) =>
         request<FeedModel>('/api/v1/admin/feed-catalog/models', { method: 'POST', body: JSON.stringify(data) }),
       update: (id: string, data: Partial<{ key: string; model_name: string; model_code: string; description: string; status: string; feed_type_id: string; parent_type_ids: string[]; manufacturer_id: string; brand_id: string | null; brand_ids: string[]; sort_order: number; name_ko: string; name_en: string; translations: Record<string, string> }>) =>
@@ -600,29 +510,12 @@ export const api = {
         const q = lang ? `?lang=${encodeURIComponent(lang)}` : '';
         return request<FeedType[]>(`/api/v1/feed-catalog/types${q}`);
       },
-      manufacturers: (feedTypeId?: string, lang?: string) => {
-        const q = new URLSearchParams();
-        if (feedTypeId) q.set('feed_type_id', feedTypeId);
-        if (lang) q.set('lang', lang);
-        const suffix = q.toString() ? `?${q.toString()}` : '';
-        return request<FeedManufacturer[]>(`/api/v1/feed-catalog/manufacturers${suffix}`);
-      },
-      brands: (manufacturerId?: string, feedTypeId?: string) => {
-        const q = new URLSearchParams();
-        if (manufacturerId) q.set('manufacturer_id', manufacturerId);
-        if (feedTypeId) q.set('feed_type_id', feedTypeId);
-        const suffix = q.toString() ? `?${q.toString()}` : '';
-        return request<FeedBrand[]>(`/api/v1/feed-catalog/brands${suffix}`);
-      },
-      models: (filters?: { feed_type_id?: string; manufacturer_id?: string; brand_id?: string }, lang?: string) => {
-        const q = new URLSearchParams();
-        if (filters?.feed_type_id) q.set('feed_type_id', filters.feed_type_id);
-        if (filters?.manufacturer_id) q.set('manufacturer_id', filters.manufacturer_id);
-        if (filters?.brand_id) q.set('brand_id', filters.brand_id);
-        if (lang) q.set('lang', lang);
-        const suffix = q.toString() ? `?${q.toString()}` : '';
-        return request<FeedModel[]>(`/api/v1/feed-catalog/models${suffix}`);
-      },
+      manufacturers: (feedTypeId?: string, lang?: string) =>
+        request<FeedManufacturer[]>(`/api/v1/feed-catalog/manufacturers${buildQuery({ feed_type_id: feedTypeId, lang })}`),
+      brands: (manufacturerId?: string, feedTypeId?: string) =>
+        request<FeedBrand[]>(`/api/v1/feed-catalog/brands${buildQuery({ manufacturer_id: manufacturerId, feed_type_id: feedTypeId })}`),
+      models: (filters?: { feed_type_id?: string; manufacturer_id?: string; brand_id?: string }, lang?: string) =>
+        request<FeedModel[]>(`/api/v1/feed-catalog/models${buildQuery({ feed_type_id: filters?.feed_type_id, manufacturer_id: filters?.manufacturer_id, brand_id: filters?.brand_id, lang })}`),
     },
   },
 };

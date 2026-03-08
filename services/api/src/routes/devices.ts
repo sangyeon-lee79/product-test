@@ -4,37 +4,13 @@
 // Guardian: /api/v1/pets/:petId/guardian-devices
 
 import type { Env } from '../types';
-import { ok, created, err, newId, now } from '../types';
+import { ok, created, err, newId, now, randomToken } from '../types';
 import { requireAuth, requireRole } from '../middleware/auth';
 import type { JwtPayload } from '../types';
 import { SUPPORTED_LANGS as LANGS } from '@petfolio/shared';
 
 // ─── Helpers ───────────────────────────────────────────────────────────────
 
-const LANG_COLS: Record<typeof LANGS[number], string> = {
-  ko: 'ko',
-  en: 'en',
-  ja: 'ja',
-  zh_cn: 'zh_cn',
-  zh_tw: 'zh_tw',
-  es: 'es',
-  fr: 'fr',
-  de: 'de',
-  pt: 'pt',
-  vi: 'vi',
-  th: 'th',
-  id_lang: 'id_lang',
-  ar: 'ar',
-};
-
-function randomToken(length = 8): string {
-  const chars = 'abcdefghijklmnopqrstuvwxyz0123456789';
-  const bytes = new Uint8Array(length);
-  crypto.getRandomValues(bytes);
-  let out = '';
-  for (let i = 0; i < length; i += 1) out += chars[bytes[i] % chars.length];
-  return out;
-}
 
 function resolveLang(url: URL): typeof LANGS[number] {
   const raw = (url.searchParams.get('lang') || 'ko').toLowerCase() as typeof LANGS[number];
@@ -142,7 +118,7 @@ export async function handleDevices(request: Request, env: Env, url: URL): Promi
 
   if (!isAdmin && !path.startsWith('/api/v1/pets/')) {
     const lang = resolveLang(url);
-    const langCol = LANG_COLS[lang];
+    const langCol = lang;
     const normalized = await hasColumn(env, 'master_categories', 'code');
 
     // GET /api/v1/devices/types
@@ -429,7 +405,7 @@ export async function handleDevices(request: Request, env: Env, url: URL): Promi
     // GET list
     if (!deviceId && method === 'GET') {
       const lang = resolveLang(url);
-      const langCol = LANG_COLS[lang];
+      const langCol = lang;
       const normalized = await hasColumn(env, 'master_items', 'code');
       const rows = normalized
         ? await env.DB.prepare(
@@ -538,7 +514,7 @@ export async function handleDevices(request: Request, env: Env, url: URL): Promi
   const roleResult = requireRole(authResult as JwtPayload, ['admin']);
   if (roleResult instanceof Response) return roleResult;
   const lang = resolveLang(url);
-  const langCol = LANG_COLS[lang];
+  const langCol = lang;
   const normalizedMaster = await hasColumn(env, 'master_categories', 'code');
 
   // ── Device Types ──────────────────────────────────────────────────────────

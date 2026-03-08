@@ -1,32 +1,8 @@
 import type { Env, JwtPayload } from '../types';
-import { ok, created, err, newId, now } from '../types';
+import { ok, created, err, newId, now, randomToken } from '../types';
 import { requireAuth, requireRole } from '../middleware/auth';
 import { SUPPORTED_LANGS as LANGS } from '@petfolio/shared';
 
-const LANG_COLS: Record<typeof LANGS[number], string> = {
-  ko: 'ko',
-  en: 'en',
-  ja: 'ja',
-  zh_cn: 'zh_cn',
-  zh_tw: 'zh_tw',
-  es: 'es',
-  fr: 'fr',
-  de: 'de',
-  pt: 'pt',
-  vi: 'vi',
-  th: 'th',
-  id_lang: 'id_lang',
-  ar: 'ar',
-};
-
-function randomToken(length = 8): string {
-  const chars = 'abcdefghijklmnopqrstuvwxyz0123456789';
-  const bytes = new Uint8Array(length);
-  crypto.getRandomValues(bytes);
-  let out = '';
-  for (let i = 0; i < length; i += 1) out += chars[bytes[i] % chars.length];
-  return out;
-}
 
 function resolveLang(url: URL): typeof LANGS[number] {
   const raw = (url.searchParams.get('lang') || 'ko').toLowerCase() as typeof LANGS[number];
@@ -114,64 +90,35 @@ export async function handleFeedCatalog(request: Request, env: Env, url: URL): P
 
   if (!isAdmin) {
     const lang = resolveLang(url);
-    const langCol = LANG_COLS[lang];
-    const normalized = await hasColumn(env, 'master_categories', 'code');
-    const hasMasterItemCode = await hasColumn(env, 'master_items', 'code');
+    const langCol = lang;
 
     if (path === '/api/v1/feed-catalog/types' && method === 'GET') {
-      const rows = normalized
-        ? await env.DB.prepare(
-          `SELECT
-             mi.id,
-             mi.code AS key,
-             mi.sort_order,
-             'active' AS status,
-             COALESCE((
-               SELECT COUNT(*)
-               FROM feed_models fm
-               WHERE fm.feed_type_item_id = mi.id
-                 AND fm.status = 'active'
-             ), 0) AS model_count,
-             COALESCE(NULLIF(TRIM(tr.${langCol}), ''), NULLIF(TRIM(tr.en), ''), NULLIF(TRIM(tr.ko), ''), mi.code) AS display_label,
-             tr.ko AS ko_name,
-             tr.en AS name_en
-           FROM master_items mi
-           JOIN master_categories mc ON mc.id = mi.category_id
-           LEFT JOIN i18n_translations tr
-             ON tr.key = CASE
-               WHEN mc.code LIKE 'master.%' THEN (mc.code || '.' || mi.code)
-               ELSE ('master.' || mc.code || '.' || mi.code)
-             END
-           WHERE mc.code = 'diet_feed_type'
-             AND mi.status = 'active'
-           ORDER BY mi.sort_order, mi.code`
-        ).all()
-        : await env.DB.prepare(
-          `SELECT
-             mi.id,
-             mi.key AS key,
-             mi.sort_order,
-             'active' AS status,
-             COALESCE((
-               SELECT COUNT(*)
-               FROM feed_models fm
-               WHERE fm.feed_type_item_id = mi.id
-                 AND fm.status = 'active'
-             ), 0) AS model_count,
-             COALESCE(NULLIF(TRIM(tr.${langCol}), ''), NULLIF(TRIM(tr.en), ''), NULLIF(TRIM(tr.ko), ''), mi.key) AS display_label,
-             tr.ko AS ko_name,
-             tr.en AS name_en
-           FROM master_items mi
-           JOIN master_categories mc ON mc.id = mi.category_id
-           LEFT JOIN i18n_translations tr
-             ON tr.key = CASE
-               WHEN mc.key LIKE 'master.%' THEN (mc.key || '.' || mi.key)
-               ELSE ('master.' || mc.key || '.' || mi.key)
-             END
-           WHERE mc.key IN ('diet_feed_type', 'master.diet_feed_type')
-             AND mi.is_active = 1
-           ORDER BY mi.sort_order, mi.key`
-        ).all();
+      const rows = await env.DB.prepare(
+        `SELECT
+           mi.id,
+           mi.code AS key,
+           mi.sort_order,
+           'active' AS status,
+           COALESCE((
+             SELECT COUNT(*)
+             FROM feed_models fm
+             WHERE fm.feed_type_item_id = mi.id
+               AND fm.status = 'active'
+           ), 0) AS model_count,
+           COALESCE(NULLIF(TRIM(tr.${langCol}), ''), NULLIF(TRIM(tr.en), ''), NULLIF(TRIM(tr.ko), ''), mi.code) AS display_label,
+           tr.ko AS ko_name,
+           tr.en AS name_en
+         FROM master_items mi
+         JOIN master_categories mc ON mc.id = mi.category_id
+         LEFT JOIN i18n_translations tr
+           ON tr.key = CASE
+             WHEN mc.code LIKE 'master.%' THEN (mc.code || '.' || mi.code)
+             ELSE ('master.' || mc.code || '.' || mi.code)
+           END
+         WHERE mc.code = 'diet_feed_type'
+           AND mi.status = 'active'
+         ORDER BY mi.sort_order, mi.code`
+      ).all();
       return ok(rows.results);
     }
 
@@ -279,8 +226,6 @@ export async function handleFeedCatalog(request: Request, env: Env, url: URL): P
       const hasModelBrandMap = (await hasTable(env, 'feed_model_brand_map'))
         && (await hasColumn(env, 'feed_model_brand_map', 'model_id'))
         && (await hasColumn(env, 'feed_model_brand_map', 'brand_id'));
-      const catKeyExpr = normalized ? 'COALESCE(mc.code, mc.key)' : 'mc.key';
-      const itemKeyExpr = hasMasterItemCode ? 'COALESCE(mi.code, mi.key)' : 'mi.key';
       const binds: string[] = [];
       let where = `WHERE m.status = 'active'`;
       if (typeId) { where += ' AND m.feed_type_item_id = ?'; binds.push(typeId); }
@@ -304,10 +249,10 @@ export async function handleFeedCatalog(request: Request, env: Env, url: URL): P
       }
       const rows = await env.DB.prepare(
         `SELECT m.*,
-                ${itemKeyExpr} AS type_key,
+                mi.code AS type_key,
                 tr_type.ko AS type_name_ko,
                 tr_type.en AS type_name_en,
-                COALESCE(NULLIF(TRIM(tr_type.${langCol}), ''), NULLIF(TRIM(tr_type.en), ''), NULLIF(TRIM(tr_type.ko), ''), ${itemKeyExpr}) AS type_display_label,
+                COALESCE(NULLIF(TRIM(tr_type.${langCol}), ''), NULLIF(TRIM(tr_type.en), ''), NULLIF(TRIM(tr_type.ko), ''), mi.code) AS type_display_label,
                 mfr.name_ko AS mfr_name_ko,
                 mfr.name_en AS mfr_name_en,
                 COALESCE(NULLIF(TRIM(tr_mfr.${langCol}), ''), NULLIF(TRIM(tr_mfr.en), ''), NULLIF(TRIM(tr_mfr.ko), ''), mfr.name_en, mfr.name_ko) AS mfr_display_label,
@@ -320,8 +265,8 @@ export async function handleFeedCatalog(request: Request, env: Env, url: URL): P
          LEFT JOIN master_categories mc ON mc.id = mi.category_id
          LEFT JOIN i18n_translations tr_type
            ON tr_type.key = CASE
-             WHEN ${catKeyExpr} LIKE 'master.%' THEN (${catKeyExpr} || '.' || ${itemKeyExpr})
-             ELSE ('master.' || ${catKeyExpr} || '.' || ${itemKeyExpr})
+             WHEN mc.code LIKE 'master.%' THEN (mc.code || '.' || mi.code)
+             ELSE ('master.' || mc.code || '.' || mi.code)
            END
          LEFT JOIN feed_manufacturers mfr ON mfr.id = m.manufacturer_id
          LEFT JOIN feed_brands b ON b.id = m.brand_id
@@ -341,61 +286,34 @@ export async function handleFeedCatalog(request: Request, env: Env, url: URL): P
   if (roleResult instanceof Response) return roleResult;
 
   const lang = resolveLang(url);
-  const langCol = LANG_COLS[lang];
-  const normalized = await hasColumn(env, 'master_categories', 'code');
+  const langCol = lang;
 
   if (path === '/api/v1/admin/feed-catalog/types' && method === 'GET') {
-    const rows = normalized
-      ? await env.DB.prepare(
-        `SELECT
-           mi.id,
-           mi.code AS key,
-           mi.sort_order,
-           mi.status,
-           COALESCE((
-             SELECT COUNT(*)
-             FROM feed_models fm
-             WHERE fm.feed_type_item_id = mi.id
-               AND fm.status = 'active'
-           ), 0) AS model_count,
-           COALESCE(NULLIF(TRIM(tr.${langCol}), ''), NULLIF(TRIM(tr.en), ''), NULLIF(TRIM(tr.ko), ''), mi.code) AS display_label,
-           tr.ko AS ko_name,
-           tr.en AS name_en
-         FROM master_items mi
-         JOIN master_categories mc ON mc.id = mi.category_id
-         LEFT JOIN i18n_translations tr
-           ON tr.key = CASE
-             WHEN mc.code LIKE 'master.%' THEN (mc.code || '.' || mi.code)
-             ELSE ('master.' || mc.code || '.' || mi.code)
-           END
-         WHERE mc.code = 'diet_feed_type'
-         ORDER BY mi.sort_order, mi.code`
-      ).all()
-      : await env.DB.prepare(
-        `SELECT
-           mi.id,
-           mi.key AS key,
-           mi.sort_order,
-           CASE WHEN mi.is_active = 1 THEN 'active' ELSE 'inactive' END AS status,
-           COALESCE((
-             SELECT COUNT(*)
-             FROM feed_models fm
-             WHERE fm.feed_type_item_id = mi.id
-               AND fm.status = 'active'
-           ), 0) AS model_count,
-           COALESCE(NULLIF(TRIM(tr.${langCol}), ''), NULLIF(TRIM(tr.en), ''), NULLIF(TRIM(tr.ko), ''), mi.key) AS display_label,
-           tr.ko AS ko_name,
-           tr.en AS name_en
-         FROM master_items mi
-         JOIN master_categories mc ON mc.id = mi.category_id
-         LEFT JOIN i18n_translations tr
-           ON tr.key = CASE
-             WHEN mc.key LIKE 'master.%' THEN (mc.key || '.' || mi.key)
-             ELSE ('master.' || mc.key || '.' || mi.key)
-           END
-         WHERE mc.key IN ('diet_feed_type', 'master.diet_feed_type')
-         ORDER BY mi.sort_order, mi.key`
-      ).all();
+    const rows = await env.DB.prepare(
+      `SELECT
+         mi.id,
+         mi.code AS key,
+         mi.sort_order,
+         mi.status,
+         COALESCE((
+           SELECT COUNT(*)
+           FROM feed_models fm
+           WHERE fm.feed_type_item_id = mi.id
+             AND fm.status = 'active'
+         ), 0) AS model_count,
+         COALESCE(NULLIF(TRIM(tr.${langCol}), ''), NULLIF(TRIM(tr.en), ''), NULLIF(TRIM(tr.ko), ''), mi.code) AS display_label,
+         tr.ko AS ko_name,
+         tr.en AS name_en
+       FROM master_items mi
+       JOIN master_categories mc ON mc.id = mi.category_id
+       LEFT JOIN i18n_translations tr
+         ON tr.key = CASE
+           WHEN mc.code LIKE 'master.%' THEN (mc.code || '.' || mi.code)
+           ELSE ('master.' || mc.code || '.' || mi.code)
+         END
+       WHERE mc.code = 'diet_feed_type'
+       ORDER BY mi.sort_order, mi.code`
+    ).all();
     return ok(rows.results);
   }
 
@@ -619,13 +537,9 @@ export async function handleFeedCatalog(request: Request, env: Env, url: URL): P
     const typeId = url.searchParams.get('feed_type_id');
     const mfrId = url.searchParams.get('manufacturer_id');
     const brandId = url.searchParams.get('brand_id');
-    const normalized = await hasColumn(env, 'master_categories', 'code');
-    const hasMasterItemCode = await hasColumn(env, 'master_items', 'code');
     const hasModelBrandMap = (await hasTable(env, 'feed_model_brand_map'))
       && (await hasColumn(env, 'feed_model_brand_map', 'model_id'))
       && (await hasColumn(env, 'feed_model_brand_map', 'brand_id'));
-    const catKeyExpr = normalized ? 'COALESCE(mc.code, mc.key)' : 'mc.key';
-    const itemKeyExpr = hasMasterItemCode ? 'COALESCE(mi.code, mi.key)' : 'mi.key';
     const parentBrandIdsExpr = hasModelBrandMap
       ? `(SELECT GROUP_CONCAT(brand_id) FROM feed_model_brand_map mbm WHERE mbm.model_id = m.id)`
       : `NULL`;
@@ -654,10 +568,10 @@ export async function handleFeedCatalog(request: Request, env: Env, url: URL): P
       const rows = await env.DB.prepare(
         `SELECT m.*,
                 ${parentBrandIdsExpr} AS parent_brand_ids,
-                ${itemKeyExpr} AS type_key,
+                mi.code AS type_key,
                 tr_type.ko AS type_name_ko,
                 tr_type.en AS type_name_en,
-                COALESCE(NULLIF(TRIM(tr_type.${langCol}), ''), NULLIF(TRIM(tr_type.en), ''), NULLIF(TRIM(tr_type.ko), ''), ${itemKeyExpr}) AS type_display_label,
+                COALESCE(NULLIF(TRIM(tr_type.${langCol}), ''), NULLIF(TRIM(tr_type.en), ''), NULLIF(TRIM(tr_type.ko), ''), mi.code) AS type_display_label,
                 mfr.name_ko AS mfr_name_ko,
                 mfr.name_en AS mfr_name_en,
                 COALESCE(NULLIF(TRIM(tr_mfr.${langCol}), ''), NULLIF(TRIM(tr_mfr.en), ''), NULLIF(TRIM(tr_mfr.ko), ''), mfr.name_en, mfr.name_ko) AS mfr_display_label,
@@ -670,8 +584,8 @@ export async function handleFeedCatalog(request: Request, env: Env, url: URL): P
          LEFT JOIN master_categories mc ON mc.id = mi.category_id
          LEFT JOIN i18n_translations tr_type
            ON tr_type.key = CASE
-             WHEN ${catKeyExpr} LIKE 'master.%' THEN (${catKeyExpr} || '.' || ${itemKeyExpr})
-             ELSE ('master.' || ${catKeyExpr} || '.' || ${itemKeyExpr})
+             WHEN mc.code LIKE 'master.%' THEN (mc.code || '.' || mi.code)
+             ELSE ('master.' || mc.code || '.' || mi.code)
            END
          LEFT JOIN feed_manufacturers mfr ON mfr.id = m.manufacturer_id
          LEFT JOIN feed_brands b ON b.id = m.brand_id

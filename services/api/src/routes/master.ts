@@ -5,39 +5,16 @@
 // CRUD /api/v1/admin/master/items             — Admin
 
 import type { Env } from '../types';
-import { ok, created, err, newId, now } from '../types';
+import { ok, created, err, newId, now, randomToken } from '../types';
 import { requireAuth, requireRole } from '../middleware/auth';
 import type { JwtPayload } from '../types';
 import { SUPPORTED_LANGS as LANGS, KEY_LITERAL_PATTERN } from '@petfolio/shared';
 
-const LANG_COLS: Record<typeof LANGS[number], string> = {
-  ko: 'ko',
-  en: 'en',
-  ja: 'ja',
-  zh_cn: 'zh_cn',
-  zh_tw: 'zh_tw',
-  es: 'es',
-  fr: 'fr',
-  de: 'de',
-  pt: 'pt',
-  vi: 'vi',
-  th: 'th',
-  id_lang: 'id_lang',
-  ar: 'ar',
-};
 async function hasColumn(env: Env, table: string, column: string): Promise<boolean> {
   const rows = await env.DB.prepare(`PRAGMA table_info(${table})`).all<{ name: string }>();
   return rows.results.some((r) => r.name === column);
 }
 
-function randomToken(length = 6): string {
-  const chars = 'abcdefghijklmnopqrstuvwxyz0123456789';
-  const bytes = new Uint8Array(length);
-  crypto.getRandomValues(bytes);
-  let out = '';
-  for (let i = 0; i < length; i++) out += chars[bytes[i] % chars.length];
-  return out;
-}
 
 function normalizeMasterKey(raw: string): string {
   return raw.trim().replace(/^master\./, '');
@@ -48,28 +25,20 @@ function isValidMasterKey(raw: string): boolean {
 }
 
 async function generateItemKey(env: Env, categoryId: string): Promise<string> {
-  const normalized = await hasColumn(env, 'master_items', 'code');
   for (let i = 0; i < 10; i++) {
     const candidate = `master_item.${randomToken(6)}`;
-    const exists = normalized
-      ? await env.DB.prepare(
-        'SELECT id FROM master_items WHERE category_id = ? AND code = ?'
-      ).bind(categoryId, candidate).first()
-      : await env.DB.prepare(
-        'SELECT id FROM master_items WHERE category_id = ? AND key = ?'
-      ).bind(categoryId, candidate).first();
+    const exists = await env.DB.prepare(
+      'SELECT id FROM master_items WHERE category_id = ? AND code = ?'
+    ).bind(categoryId, candidate).first();
     if (!exists) return candidate;
   }
   throw new Error('Failed to generate unique item key');
 }
 
 async function generateCategoryKey(env: Env): Promise<string> {
-  const normalized = await hasColumn(env, 'master_categories', 'code');
   for (let i = 0; i < 10; i++) {
     const candidate = `cat_${randomToken(8)}`;
-    const exists = normalized
-      ? await env.DB.prepare('SELECT id FROM master_categories WHERE code = ?').bind(candidate).first()
-      : await env.DB.prepare('SELECT id FROM master_categories WHERE key = ?').bind(candidate).first();
+    const exists = await env.DB.prepare('SELECT id FROM master_categories WHERE code = ?').bind(candidate).first();
     if (!exists) return candidate;
   }
   throw new Error('Failed to generate unique category key');
@@ -86,71 +55,44 @@ function itemI18nKey(categoryKey: string, itemKey: string): string {
 }
 
 async function resolveCategoryIdByKey(env: Env, categoryKey: string): Promise<string | null> {
-  const normalized = await hasColumn(env, 'master_categories', 'code');
-  const row = normalized
-    ? await env.DB.prepare(
-      `SELECT id
-       FROM master_categories
-       WHERE status = 'active'
-         AND (code = ? OR ('master.' || code) = ? OR REPLACE(code, 'master.', '') = ?)
-       LIMIT 1`
-    ).bind(categoryKey, categoryKey, categoryKey).first<{ id: string }>()
-    : await env.DB.prepare(
-      `SELECT id
-       FROM master_categories
-       WHERE is_active = 1 AND key = ?
-       LIMIT 1`
-    ).bind(categoryKey).first<{ id: string }>();
+  const row = await env.DB.prepare(
+    `SELECT id
+     FROM master_categories
+     WHERE status = 'active'
+       AND (code = ? OR ('master.' || code) = ? OR REPLACE(code, 'master.', '') = ?)
+     LIMIT 1`
+  ).bind(categoryKey, categoryKey, categoryKey).first<{ id: string }>();
   return row?.id ?? null;
 }
 
 async function listPublicItems(env: Env, categoryKey: string, parentId?: string | null): Promise<Response> {
   const categoryId = await resolveCategoryIdByKey(env, categoryKey);
   if (!categoryId) return err('Category not found', 404);
-  const normalized = await hasColumn(env, 'master_categories', 'code');
-  const rows = normalized
-    ? await env.DB.prepare(
-      `SELECT
-         mi.id,
-         mi.category_id,
-         mi.code AS key,
-         mi.parent_item_id AS parent_id,
-         mi.sort_order,
-         CASE WHEN mi.status = 'active' THEN 1 ELSE 0 END AS is_active,
-         mi.metadata,
-         mi.created_at,
-         mi.updated_at,
-         tr.ko AS ko_name,
-         tr.en, tr.ja, tr.zh_cn, tr.zh_tw, tr.es, tr.fr, tr.de, tr.pt, tr.vi, tr.th, tr.id_lang, tr.ar
-       FROM master_items mi
-       LEFT JOIN master_categories mc ON mc.id = mi.category_id
-       LEFT JOIN i18n_translations tr
-         ON tr.key = CASE
-           WHEN mc.code LIKE 'master.%' THEN (mc.code || '.' || mi.code)
-           ELSE ('master.' || mc.code || '.' || mi.code)
-         END
-       WHERE mi.category_id = ?
-         AND mi.status = 'active'
-         AND (? IS NULL OR mi.parent_item_id = ?)
-       ORDER BY mi.sort_order, mi.code`
-    ).bind(categoryId, parentId ?? null, parentId ?? null).all()
-    : await env.DB.prepare(
-      `SELECT
-         mi.*,
-         tr.ko AS ko_name,
-         tr.en, tr.ja, tr.zh_cn, tr.zh_tw, tr.es, tr.fr, tr.de, tr.pt, tr.vi, tr.th, tr.id_lang, tr.ar
-       FROM master_items mi
-       LEFT JOIN master_categories mc ON mc.id = mi.category_id
-       LEFT JOIN i18n_translations tr
-         ON tr.key = CASE
-           WHEN mc.key LIKE 'master.%' THEN (mc.key || '.' || mi.key)
-           ELSE ('master.' || mc.key || '.' || mi.key)
-         END
-       WHERE mi.category_id = ?
-         AND mi.is_active = 1
-         AND (? IS NULL OR mi.parent_id = ?)
-       ORDER BY mi.sort_order, mi.key`
-    ).bind(categoryId, parentId ?? null, parentId ?? null).all();
+  const rows = await env.DB.prepare(
+    `SELECT
+       mi.id,
+       mi.category_id,
+       mi.code AS key,
+       mi.parent_item_id AS parent_id,
+       mi.sort_order,
+       CASE WHEN mi.status = 'active' THEN 1 ELSE 0 END AS is_active,
+       mi.metadata,
+       mi.created_at,
+       mi.updated_at,
+       tr.ko AS ko_name,
+       tr.en, tr.ja, tr.zh_cn, tr.zh_tw, tr.es, tr.fr, tr.de, tr.pt, tr.vi, tr.th, tr.id_lang, tr.ar
+     FROM master_items mi
+     LEFT JOIN master_categories mc ON mc.id = mi.category_id
+     LEFT JOIN i18n_translations tr
+       ON tr.key = CASE
+         WHEN mc.code LIKE 'master.%' THEN (mc.code || '.' || mi.code)
+         ELSE ('master.' || mc.code || '.' || mi.code)
+       END
+     WHERE mi.category_id = ?
+       AND mi.status = 'active'
+       AND (? IS NULL OR mi.parent_item_id = ?)
+     ORDER BY mi.sort_order, mi.code`
+  ).bind(categoryId, parentId ?? null, parentId ?? null).all();
   return ok(rows.results);
 }
 
@@ -226,20 +168,12 @@ const EXPECTED_PARENT_CATEGORY_BY_CHILD: Record<string, string> = {
 };
 
 async function getParentCategoryKeyByItemId(env: Env, itemId: string): Promise<string | null> {
-  const normalized = await hasColumn(env, 'master_items', 'code');
-  const row = normalized
-    ? await env.DB.prepare(
-      `SELECT mc.code AS category_key
-       FROM master_items mi
-       JOIN master_categories mc ON mc.id = mi.category_id
-       WHERE mi.id = ?`
-    ).bind(itemId).first<{ category_key: string }>()
-    : await env.DB.prepare(
-      `SELECT mc.key AS category_key
-       FROM master_items mi
-       JOIN master_categories mc ON mc.id = mi.category_id
-       WHERE mi.id = ?`
-    ).bind(itemId).first<{ category_key: string }>();
+  const row = await env.DB.prepare(
+    `SELECT mc.code AS category_key
+     FROM master_items mi
+     JOIN master_categories mc ON mc.id = mi.category_id
+     WHERE mi.id = ?`
+  ).bind(itemId).first<{ category_key: string }>();
   return row?.category_key ? normalizeMasterKey(row.category_key) : null;
 }
 
@@ -329,23 +263,18 @@ export async function handleMaster(request: Request, env: Env, url: URL): Promis
 
   // ─── 공개: 카테고리 목록 ──────────────────────────────────────────────────
   if (!isAdmin && path === '/api/v1/master/categories' && request.method === 'GET') {
-    const normalized = await hasColumn(env, 'master_categories', 'code');
-    const rows = normalized
-      ? await env.DB.prepare(
-        `SELECT
-           id,
-           code AS key,
-           sort_order,
-           CASE WHEN status = 'active' THEN 1 ELSE 0 END AS is_active,
-           created_at,
-           updated_at
-         FROM master_categories
-         WHERE status = 'active'
-         ORDER BY sort_order, code`
-      ).all()
-      : await env.DB.prepare(
-        'SELECT * FROM master_categories WHERE is_active = 1 ORDER BY sort_order, key'
-      ).all();
+    const rows = await env.DB.prepare(
+      `SELECT
+         id,
+         code AS key,
+         sort_order,
+         CASE WHEN status = 'active' THEN 1 ELSE 0 END AS is_active,
+         created_at,
+         updated_at
+       FROM master_categories
+       WHERE status = 'active'
+       ORDER BY sort_order, code`
+    ).all();
     return ok(rows.results);
   }
 
@@ -356,69 +285,46 @@ export async function handleMaster(request: Request, env: Env, url: URL): Promis
     const parentId = (url.searchParams.get('parent_id') || '').trim() || null;
     const langRaw = (url.searchParams.get('lang') || 'ko') as typeof LANGS[number];
     const lang = LANGS.includes(langRaw) ? langRaw : 'ko';
-    const langCol = LANG_COLS[lang];
+    const langCol = lang;
 
-    const normalized = await hasColumn(env, 'master_categories', 'code');
-    const cat = normalized
-      ? await env.DB.prepare(
-        `SELECT id
-         FROM master_categories
-         WHERE status = 'active'
-           AND (
-             code = ?
-             OR ('master.' || code) = ?
-             OR REPLACE(code, 'master.', '') = ?
-           )
-         LIMIT 1`
-      ).bind(categoryKey, categoryKey, categoryKey).first<{ id: string }>()
-      : await env.DB.prepare(
-        'SELECT id FROM master_categories WHERE key = ? AND is_active = 1'
-      ).bind(categoryKey).first<{ id: string }>();
+    const cat = await env.DB.prepare(
+      `SELECT id
+       FROM master_categories
+       WHERE status = 'active'
+         AND (
+           code = ?
+           OR ('master.' || code) = ?
+           OR REPLACE(code, 'master.', '') = ?
+         )
+       LIMIT 1`
+    ).bind(categoryKey, categoryKey, categoryKey).first<{ id: string }>();
     if (!cat) return err('Category not found', 404);
 
-    const rows = normalized
-      ? await env.DB.prepare(`
-        SELECT
-          mi.id,
-          mi.category_id,
-          mi.code AS key,
-          mi.parent_item_id AS parent_id,
-          mi.sort_order,
-          CASE WHEN mi.status = 'active' THEN 1 ELSE 0 END AS is_active,
-          mi.metadata,
-          mi.created_at,
-          mi.updated_at,
-          COALESCE(NULLIF(TRIM(tr.${langCol}), ''), NULLIF(TRIM(tr.ko), ''), NULLIF(TRIM(tr.en), ''), '') AS display_label,
-          tr.ko as ko_name,
-          tr.en, tr.ja, tr.zh_cn, tr.zh_tw, tr.es, tr.fr, tr.de, tr.pt, tr.vi, tr.th, tr.id_lang, tr.ar
-        FROM master_items mi
-        LEFT JOIN master_categories mc ON mc.id = mi.category_id
-        LEFT JOIN i18n_translations tr
-          ON tr.key = CASE
-            WHEN mc.code LIKE 'master.%' THEN (mc.code || '.' || mi.code)
-            ELSE ('master.' || mc.code || '.' || mi.code)
-          END
-        WHERE mi.category_id = ? AND mi.status = 'active'
-          AND (? IS NULL OR mi.parent_item_id = ?)
-        ORDER BY mi.sort_order, mi.code
-      `).bind(cat.id, parentId, parentId).all()
-      : await env.DB.prepare(`
-        SELECT
-          mi.*,
-          COALESCE(NULLIF(TRIM(tr.${langCol}), ''), NULLIF(TRIM(tr.ko), ''), NULLIF(TRIM(tr.en), ''), '') AS display_label,
-          tr.ko as ko_name,
-          tr.en, tr.ja, tr.zh_cn, tr.zh_tw, tr.es, tr.fr, tr.de, tr.pt, tr.vi, tr.th, tr.id_lang, tr.ar
-        FROM master_items mi
-        LEFT JOIN master_categories mc ON mc.id = mi.category_id
-        LEFT JOIN i18n_translations tr
-          ON tr.key = CASE
-            WHEN mc.key LIKE 'master.%' THEN (mc.key || '.' || mi.key)
-            ELSE ('master.' || mc.key || '.' || mi.key)
-          END
-        WHERE mi.category_id = ? AND mi.is_active = 1
-          AND (? IS NULL OR mi.parent_id = ?)
-        ORDER BY mi.sort_order, mi.key
-      `).bind(cat.id, parentId, parentId).all();
+    const rows = await env.DB.prepare(`
+      SELECT
+        mi.id,
+        mi.category_id,
+        mi.code AS key,
+        mi.parent_item_id AS parent_id,
+        mi.sort_order,
+        CASE WHEN mi.status = 'active' THEN 1 ELSE 0 END AS is_active,
+        mi.metadata,
+        mi.created_at,
+        mi.updated_at,
+        COALESCE(NULLIF(TRIM(tr.${langCol}), ''), NULLIF(TRIM(tr.ko), ''), NULLIF(TRIM(tr.en), ''), '') AS display_label,
+        tr.ko as ko_name,
+        tr.en, tr.ja, tr.zh_cn, tr.zh_tw, tr.es, tr.fr, tr.de, tr.pt, tr.vi, tr.th, tr.id_lang, tr.ar
+      FROM master_items mi
+      LEFT JOIN master_categories mc ON mc.id = mi.category_id
+      LEFT JOIN i18n_translations tr
+        ON tr.key = CASE
+          WHEN mc.code LIKE 'master.%' THEN (mc.code || '.' || mi.code)
+          ELSE ('master.' || mc.code || '.' || mi.code)
+        END
+      WHERE mi.category_id = ? AND mi.status = 'active'
+        AND (? IS NULL OR mi.parent_item_id = ?)
+      ORDER BY mi.sort_order, mi.code
+    `).bind(cat.id, parentId, parentId).all();
     return ok(rows.results);
   }
 
@@ -428,7 +334,6 @@ export async function handleMaster(request: Request, env: Env, url: URL): Promis
     if (auth instanceof Response) return auth;
     const roleErr = requireRole(auth as JwtPayload, ['admin']);
     if (roleErr) return roleErr;
-    const normalized = await hasColumn(env, 'master_categories', 'code');
 
     // ─── Admin: 카테고리 CRUD ───────────────────────────────────────────────
     if (path.startsWith('/api/v1/admin/master/categories')) {
@@ -436,73 +341,45 @@ export async function handleMaster(request: Request, env: Env, url: URL): Promis
       const id = idMatch?.[1];
 
       if (request.method === 'GET' && !id) {
-        const rows = normalized
-          ? await env.DB.prepare(
-            `SELECT
-               mc.id,
-               mc.code AS key,
-               mc.sort_order,
-               CASE WHEN mc.status = 'active' THEN 1 ELSE 0 END AS is_active,
-               mc.created_at,
-               mc.updated_at,
-               tr.ko AS ko_name,
-               tr.en, tr.ja, tr.zh_cn, tr.zh_tw, tr.es, tr.fr, tr.de, tr.pt, tr.vi, tr.th, tr.id_lang, tr.ar
-             FROM master_categories mc
-             LEFT JOIN i18n_translations tr
-               ON tr.key = CASE
-                 WHEN mc.code LIKE 'master.%' THEN mc.code
-                 ELSE ('master.' || mc.code)
-               END
-             ORDER BY mc.sort_order, mc.code`
-          ).all()
-          : await env.DB.prepare(
-            `SELECT
-               mc.*,
-               tr.ko AS ko_name,
-               tr.en, tr.ja, tr.zh_cn, tr.zh_tw, tr.es, tr.fr, tr.de, tr.pt, tr.vi, tr.th, tr.id_lang, tr.ar
-             FROM master_categories mc
-             LEFT JOIN i18n_translations tr
-               ON tr.key = CASE
-                 WHEN mc.key LIKE 'master.%' THEN mc.key
-                 ELSE ('master.' || mc.key)
-               END
-             ORDER BY mc.sort_order, mc.key`
-          ).all();
+        const rows = await env.DB.prepare(
+          `SELECT
+             mc.id,
+             mc.code AS key,
+             mc.sort_order,
+             CASE WHEN mc.status = 'active' THEN 1 ELSE 0 END AS is_active,
+             mc.created_at,
+             mc.updated_at,
+             tr.ko AS ko_name,
+             tr.en, tr.ja, tr.zh_cn, tr.zh_tw, tr.es, tr.fr, tr.de, tr.pt, tr.vi, tr.th, tr.id_lang, tr.ar
+           FROM master_categories mc
+           LEFT JOIN i18n_translations tr
+             ON tr.key = CASE
+               WHEN mc.code LIKE 'master.%' THEN mc.code
+               ELSE ('master.' || mc.code)
+             END
+           ORDER BY mc.sort_order, mc.code`
+        ).all();
         return ok(rows.results);
       }
       if (request.method === 'GET' && id) {
-        const row = normalized
-          ? await env.DB.prepare(
-            `SELECT
-               mc.id,
-               mc.code AS key,
-               mc.sort_order,
-               CASE WHEN mc.status = 'active' THEN 1 ELSE 0 END AS is_active,
-               mc.created_at,
-               mc.updated_at,
-               tr.ko AS ko_name,
-               tr.en, tr.ja, tr.zh_cn, tr.zh_tw, tr.es, tr.fr, tr.de, tr.pt, tr.vi, tr.th, tr.id_lang, tr.ar
-             FROM master_categories mc
-             LEFT JOIN i18n_translations tr
-               ON tr.key = CASE
-                 WHEN mc.code LIKE 'master.%' THEN mc.code
-                 ELSE ('master.' || mc.code)
-               END
-             WHERE mc.id = ?`
-          ).bind(id).first()
-          : await env.DB.prepare(
-            `SELECT
-               mc.*,
-               tr.ko AS ko_name,
-               tr.en, tr.ja, tr.zh_cn, tr.zh_tw, tr.es, tr.fr, tr.de, tr.pt, tr.vi, tr.th, tr.id_lang, tr.ar
-             FROM master_categories mc
-             LEFT JOIN i18n_translations tr
-               ON tr.key = CASE
-                 WHEN mc.key LIKE 'master.%' THEN mc.key
-                 ELSE ('master.' || mc.key)
-               END
-             WHERE mc.id = ?`
-          ).bind(id).first();
+        const row = await env.DB.prepare(
+          `SELECT
+             mc.id,
+             mc.code AS key,
+             mc.sort_order,
+             CASE WHEN mc.status = 'active' THEN 1 ELSE 0 END AS is_active,
+             mc.created_at,
+             mc.updated_at,
+             tr.ko AS ko_name,
+             tr.en, tr.ja, tr.zh_cn, tr.zh_tw, tr.es, tr.fr, tr.de, tr.pt, tr.vi, tr.th, tr.id_lang, tr.ar
+           FROM master_categories mc
+           LEFT JOIN i18n_translations tr
+             ON tr.key = CASE
+               WHEN mc.code LIKE 'master.%' THEN mc.code
+               ELSE ('master.' || mc.code)
+             END
+           WHERE mc.id = ?`
+        ).bind(id).first();
         if (!row) return err('Not found', 404);
         return ok(row);
       }
@@ -518,9 +395,7 @@ export async function handleMaster(request: Request, env: Env, url: URL): Promis
         const missing = missingTranslationLangs(translations);
         if (missing.length > 0) return err(`번역값 누락: ${missing.join(', ')}`, 400, 'missing_translations');
 
-        const exists = normalized
-          ? await env.DB.prepare('SELECT id FROM master_categories WHERE code = ? LIMIT 1').bind(inputKey).first<{ id: string }>()
-          : await env.DB.prepare('SELECT id FROM master_categories WHERE key = ? LIMIT 1').bind(inputKey).first<{ id: string }>();
+        const exists = await env.DB.prepare('SELECT id FROM master_categories WHERE code = ? LIMIT 1').bind(inputKey).first<{ id: string }>();
         if (exists) return err('이미 존재하는 key 입니다.', 409, 'duplicate_key');
 
         const i18nKey = categoryI18nKey(inputKey);
@@ -531,15 +406,9 @@ export async function handleMaster(request: Request, env: Env, url: URL): Promis
         if (!i18nReady) return err('i18n 생성이 완료되지 않아 저장할 수 없습니다.', 400, 'i18n_not_ready');
 
         const row = { id: newId(), key: inputKey, sort_order: body.sort_order ?? 0, is_active: 1, created_at: now(), updated_at: now() };
-        if (normalized) {
-          await env.DB.prepare(
-            "INSERT INTO master_categories (id,code,sort_order,status,created_at,updated_at) VALUES (?,?,?,'active',?,?)"
-          ).bind(row.id, row.key, row.sort_order, row.created_at, row.updated_at).run();
-        } else {
-          await env.DB.prepare(
-            'INSERT INTO master_categories (id,key,sort_order,is_active,created_at,updated_at) VALUES (?,?,?,?,?,?)'
-          ).bind(row.id, row.key, row.sort_order, row.is_active, row.created_at, row.updated_at).run();
-        }
+        await env.DB.prepare(
+          "INSERT INTO master_categories (id,code,sort_order,status,created_at,updated_at) VALUES (?,?,?,'active',?,?)"
+        ).bind(row.id, row.key, row.sort_order, row.created_at, row.updated_at).run();
         return created({ ...row, ko_name: koName });
       }
       if (request.method === 'PUT' && id) {
@@ -549,13 +418,8 @@ export async function handleMaster(request: Request, env: Env, url: URL): Promis
         const vals: (string | number)[] = [now()];
         if (body.sort_order !== undefined) { sets.push('sort_order = ?'); vals.push(body.sort_order); }
         if (body.is_active !== undefined) {
-          if (normalized) {
-            sets.push('status = ?');
-            vals.push(body.is_active ? 'active' : 'inactive');
-          } else {
-            sets.push('is_active = ?');
-            vals.push(body.is_active ? 1 : 0);
-          }
+          sets.push('status = ?');
+          vals.push(body.is_active ? 'active' : 'inactive');
         }
         vals.push(id);
         const result = await env.DB.prepare(`UPDATE master_categories SET ${sets.join(', ')} WHERE id = ?`).bind(...vals).run();
@@ -565,9 +429,7 @@ export async function handleMaster(request: Request, env: Env, url: URL): Promis
           const translations = normalizeTranslations(body.translations);
           const missing = missingTranslationLangs(translations);
           if (missing.length > 0) return err(`번역값 누락: ${missing.join(', ')}`, 400, 'missing_translations');
-          const cat = normalized
-            ? await env.DB.prepare('SELECT code AS key FROM master_categories WHERE id = ?').bind(id).first<{ key: string }>()
-            : await env.DB.prepare('SELECT key FROM master_categories WHERE id = ?').bind(id).first<{ key: string }>();
+          const cat = await env.DB.prepare('SELECT code AS key FROM master_categories WHERE id = ?').bind(id).first<{ key: string }>();
           if (cat?.key) {
             const i18nKey = categoryI18nKey(cat.key);
             const invalidReason = hasInvalidTranslationValue(translations, i18nKey);
@@ -576,48 +438,30 @@ export async function handleMaster(request: Request, env: Env, url: URL): Promis
           }
         }
 
-        return ok(await (normalized
-          ? env.DB.prepare(
-            `SELECT
-               mc.id,
-               mc.code AS key,
-               mc.sort_order,
-               CASE WHEN mc.status = 'active' THEN 1 ELSE 0 END AS is_active,
-               mc.created_at,
-               mc.updated_at,
-               tr.ko AS ko_name,
-               tr.en, tr.ja, tr.zh_cn, tr.zh_tw, tr.es, tr.fr, tr.de, tr.pt, tr.vi, tr.th, tr.id_lang, tr.ar
-             FROM master_categories mc
-             LEFT JOIN i18n_translations tr
-               ON tr.key = CASE
-                 WHEN mc.code LIKE 'master.%' THEN mc.code
-                 ELSE ('master.' || mc.code)
-               END
-             WHERE mc.id = ?`
-          ).bind(id).first()
-          : env.DB.prepare(
-            `SELECT
-               mc.*,
-               tr.ko AS ko_name,
-               tr.en, tr.ja, tr.zh_cn, tr.zh_tw, tr.es, tr.fr, tr.de, tr.pt, tr.vi, tr.th, tr.id_lang, tr.ar
-             FROM master_categories mc
-             LEFT JOIN i18n_translations tr
-               ON tr.key = CASE
-                 WHEN mc.key LIKE 'master.%' THEN mc.key
-                 ELSE ('master.' || mc.key)
-               END
-             WHERE mc.id = ?`
-          ).bind(id).first()));
+        return ok(await env.DB.prepare(
+          `SELECT
+             mc.id,
+             mc.code AS key,
+             mc.sort_order,
+             CASE WHEN mc.status = 'active' THEN 1 ELSE 0 END AS is_active,
+             mc.created_at,
+             mc.updated_at,
+             tr.ko AS ko_name,
+             tr.en, tr.ja, tr.zh_cn, tr.zh_tw, tr.es, tr.fr, tr.de, tr.pt, tr.vi, tr.th, tr.id_lang, tr.ar
+           FROM master_categories mc
+           LEFT JOIN i18n_translations tr
+             ON tr.key = CASE
+               WHEN mc.code LIKE 'master.%' THEN mc.code
+               ELSE ('master.' || mc.code)
+             END
+           WHERE mc.id = ?`
+        ).bind(id).first());
       }
       if (request.method === 'DELETE' && id) {
         // 사용중이면 비활성화, 아이템 없으면 실제 삭제
         const itemCount = await env.DB.prepare('SELECT COUNT(*) as c FROM master_items WHERE category_id = ?').bind(id).first<{ c: number }>();
         if ((itemCount?.c ?? 0) > 0) {
-          if (normalized) {
-            await env.DB.prepare("UPDATE master_categories SET status = 'inactive', updated_at = ? WHERE id = ?").bind(now(), id).run();
-          } else {
-            await env.DB.prepare('UPDATE master_categories SET is_active = 0, updated_at = ? WHERE id = ?').bind(now(), id).run();
-          }
+          await env.DB.prepare("UPDATE master_categories SET status = 'inactive', updated_at = ? WHERE id = ?").bind(now(), id).run();
           return ok({ id, deleted: false, message: 'Deactivated (items exist)' });
         }
         await env.DB.prepare('DELETE FROM master_categories WHERE id = ?').bind(id).run();
@@ -632,95 +476,60 @@ export async function handleMaster(request: Request, env: Env, url: URL): Promis
 
       if (request.method === 'GET' && !id) {
         const categoryKey = url.searchParams.get('category_key');
-        let query = normalized
-          ? `SELECT
-               mi.id,
-               mi.category_id,
-               mi.code AS key,
-               mi.parent_item_id AS parent_id,
-               mi.sort_order,
-               CASE WHEN mi.status = 'active' THEN 1 ELSE 0 END AS is_active,
-               mi.metadata,
-               mi.created_at,
-               mi.updated_at,
-               mc.code as category_key,
-               tr.ko as ko_name,
-               tr.en, tr.ja, tr.zh_cn, tr.zh_tw, tr.es, tr.fr, tr.de, tr.pt, tr.vi, tr.th, tr.id_lang, tr.ar
-             FROM master_items mi
-             JOIN master_categories mc ON mi.category_id = mc.id
-             LEFT JOIN i18n_translations tr
-               ON tr.key = CASE
-                 WHEN mc.code LIKE 'master.%' THEN (mc.code || '.' || mi.code)
-                 ELSE ('master.' || mc.code || '.' || mi.code)
-               END
-             WHERE 1=1`
-          : `SELECT
-               mi.*,
-               mc.key as category_key,
-               tr.ko as ko_name,
-               tr.en, tr.ja, tr.zh_cn, tr.zh_tw, tr.es, tr.fr, tr.de, tr.pt, tr.vi, tr.th, tr.id_lang, tr.ar
-             FROM master_items mi
-             JOIN master_categories mc ON mi.category_id = mc.id
-             LEFT JOIN i18n_translations tr
-               ON tr.key = CASE
-                 WHEN mc.key LIKE 'master.%' THEN (mc.key || '.' || mi.key)
-                 ELSE ('master.' || mc.key || '.' || mi.key)
-               END
-             WHERE 1=1`;
+        let query = `SELECT
+             mi.id,
+             mi.category_id,
+             mi.code AS key,
+             mi.parent_item_id AS parent_id,
+             mi.sort_order,
+             CASE WHEN mi.status = 'active' THEN 1 ELSE 0 END AS is_active,
+             mi.metadata,
+             mi.created_at,
+             mi.updated_at,
+             mc.code as category_key,
+             tr.ko as ko_name,
+             tr.en, tr.ja, tr.zh_cn, tr.zh_tw, tr.es, tr.fr, tr.de, tr.pt, tr.vi, tr.th, tr.id_lang, tr.ar
+           FROM master_items mi
+           JOIN master_categories mc ON mi.category_id = mc.id
+           LEFT JOIN i18n_translations tr
+             ON tr.key = CASE
+               WHEN mc.code LIKE 'master.%' THEN (mc.code || '.' || mi.code)
+               ELSE ('master.' || mc.code || '.' || mi.code)
+             END
+           WHERE 1=1`;
         const params: (string | number)[] = [];
         if (categoryKey) {
-          if (normalized) {
-            query += " AND (mc.code = ? OR ('master.' || mc.code) = ? OR REPLACE(mc.code, 'master.', '') = ?)";
-            params.push(categoryKey, categoryKey, categoryKey);
-          } else {
-            query += ' AND mc.key = ?';
-            params.push(categoryKey);
-          }
+          query += " AND (mc.code = ? OR ('master.' || mc.code) = ? OR REPLACE(mc.code, 'master.', '') = ?)";
+          params.push(categoryKey, categoryKey, categoryKey);
         }
-        query += normalized ? ' ORDER BY mi.sort_order, mi.code' : ' ORDER BY mi.sort_order, mi.key';
+        query += ' ORDER BY mi.sort_order, mi.code';
         const rows = await env.DB.prepare(query).bind(...params).all();
         return ok(rows.results);
       }
       if (request.method === 'GET' && id) {
-        const row = await (normalized
-          ? env.DB.prepare(
-            `SELECT
-               mi.id,
-               mi.category_id,
-               mi.code AS key,
-               mi.parent_item_id AS parent_id,
-               mi.sort_order,
-               CASE WHEN mi.status = 'active' THEN 1 ELSE 0 END AS is_active,
-               mi.metadata,
-               mi.created_at,
-               mi.updated_at,
-               mc.code as category_key,
-               tr.ko as ko_name,
-               tr.en, tr.ja, tr.zh_cn, tr.zh_tw, tr.es, tr.fr, tr.de, tr.pt, tr.vi, tr.th, tr.id_lang, tr.ar
-             FROM master_items mi
-             JOIN master_categories mc ON mi.category_id = mc.id
-             LEFT JOIN i18n_translations tr
-               ON tr.key = CASE
-                 WHEN mc.code LIKE 'master.%' THEN (mc.code || '.' || mi.code)
-                 ELSE ('master.' || mc.code || '.' || mi.code)
-               END
-             WHERE mi.id = ?`
-          ).bind(id).first()
-          : env.DB.prepare(
-            `SELECT
-               mi.*,
-               mc.key as category_key,
-               tr.ko as ko_name,
-               tr.en, tr.ja, tr.zh_cn, tr.zh_tw, tr.es, tr.fr, tr.de, tr.pt, tr.vi, tr.th, tr.id_lang, tr.ar
-             FROM master_items mi
-             JOIN master_categories mc ON mi.category_id = mc.id
-             LEFT JOIN i18n_translations tr
-               ON tr.key = CASE
-                 WHEN mc.key LIKE 'master.%' THEN (mc.key || '.' || mi.key)
-                 ELSE ('master.' || mc.key || '.' || mi.key)
-               END
-             WHERE mi.id = ?`
-          ).bind(id).first());
+        const row = await env.DB.prepare(
+          `SELECT
+             mi.id,
+             mi.category_id,
+             mi.code AS key,
+             mi.parent_item_id AS parent_id,
+             mi.sort_order,
+             CASE WHEN mi.status = 'active' THEN 1 ELSE 0 END AS is_active,
+             mi.metadata,
+             mi.created_at,
+             mi.updated_at,
+             mc.code as category_key,
+             tr.ko as ko_name,
+             tr.en, tr.ja, tr.zh_cn, tr.zh_tw, tr.es, tr.fr, tr.de, tr.pt, tr.vi, tr.th, tr.id_lang, tr.ar
+           FROM master_items mi
+           JOIN master_categories mc ON mi.category_id = mc.id
+           LEFT JOIN i18n_translations tr
+             ON tr.key = CASE
+               WHEN mc.code LIKE 'master.%' THEN (mc.code || '.' || mi.code)
+               ELSE ('master.' || mc.code || '.' || mi.code)
+             END
+           WHERE mi.id = ?`
+        ).bind(id).first();
         if (!row) return err('Not found', 404);
         return ok(row);
       }
@@ -733,9 +542,7 @@ export async function handleMaster(request: Request, env: Env, url: URL): Promis
         const missing = missingTranslationLangs(translations);
         if (missing.length > 0) return err(`번역값 누락: ${missing.join(', ')}`, 400, 'missing_translations');
 
-        const category = normalized
-          ? await env.DB.prepare('SELECT code AS key FROM master_categories WHERE id = ?').bind(body.category_id).first<{ key: string }>()
-          : await env.DB.prepare('SELECT key FROM master_categories WHERE id = ?').bind(body.category_id).first<{ key: string }>();
+        const category = await env.DB.prepare('SELECT code AS key FROM master_categories WHERE id = ?').bind(body.category_id).first<{ key: string }>();
         if (!category?.key) return err('category not found', 404);
         const categoryKey = normalizeMasterKey(category.key);
         const hierarchyValidation = await validateParentHierarchy(env, categoryKey, body.parent_id ?? null);
@@ -752,20 +559,14 @@ export async function handleMaster(request: Request, env: Env, url: URL): Promis
         const rowId = newId();
         const hasDeviceTypeCol = await hasColumn(env, 'master_items', 'device_type_id');
         const deviceTypeId = (hasDeviceTypeCol && body.device_type_id) ? body.device_type_id : null;
-        if (normalized) {
-          if (hasDeviceTypeCol && deviceTypeId) {
-            await env.DB.prepare(
-              "INSERT INTO master_items (id,category_id,code,parent_item_id,sort_order,status,metadata,device_type_id,created_at,updated_at) VALUES (?,?,?,?,?,'active',?,?,?,?)"
-            ).bind(rowId, body.category_id, autoKey, body.parent_id ?? null, body.sort_order ?? 0, JSON.stringify(body.metadata ?? {}), deviceTypeId, now(), now()).run();
-          } else {
-            await env.DB.prepare(
-              "INSERT INTO master_items (id,category_id,code,parent_item_id,sort_order,status,metadata,created_at,updated_at) VALUES (?,?,?,?,?,'active',?,?,?)"
-            ).bind(rowId, body.category_id, autoKey, body.parent_id ?? null, body.sort_order ?? 0, JSON.stringify(body.metadata ?? {}), now(), now()).run();
-          }
+        if (hasDeviceTypeCol && deviceTypeId) {
+          await env.DB.prepare(
+            "INSERT INTO master_items (id,category_id,code,parent_item_id,sort_order,status,metadata,device_type_id,created_at,updated_at) VALUES (?,?,?,?,?,'active',?,?,?,?)"
+          ).bind(rowId, body.category_id, autoKey, body.parent_id ?? null, body.sort_order ?? 0, JSON.stringify(body.metadata ?? {}), deviceTypeId, now(), now()).run();
         } else {
           await env.DB.prepare(
-            'INSERT INTO master_items (id,category_id,key,parent_id,sort_order,is_active,metadata,created_at,updated_at) VALUES (?,?,?,?,?,?,?,?,?)'
-          ).bind(rowId, body.category_id, autoKey, body.parent_id ?? null, body.sort_order ?? 0, 1, JSON.stringify(body.metadata ?? {}), now(), now()).run();
+            "INSERT INTO master_items (id,category_id,code,parent_item_id,sort_order,status,metadata,created_at,updated_at) VALUES (?,?,?,?,?,'active',?,?,?)"
+          ).bind(rowId, body.category_id, autoKey, body.parent_id ?? null, body.sort_order ?? 0, JSON.stringify(body.metadata ?? {}), now(), now()).run();
         }
         return created({ id: rowId, category_id: body.category_id, key: autoKey, parent_id: body.parent_id ?? null, sort_order: body.sort_order ?? 0, is_active: 1, metadata: body.metadata ?? {}, device_type_id: deviceTypeId });
       }
@@ -773,19 +574,12 @@ export async function handleMaster(request: Request, env: Env, url: URL): Promis
         let body: { sort_order?: number; is_active?: boolean; metadata?: Record<string, unknown>; parent_id?: string | null; translations?: Record<string, string> };
         try { body = await request.json() as typeof body; } catch { return err('Invalid JSON'); }
         if (body.parent_id !== undefined) {
-          const itemCategory = await (normalized
-            ? env.DB.prepare(
-              `SELECT mc.code AS category_key
-               FROM master_items mi
-               JOIN master_categories mc ON mc.id = mi.category_id
-               WHERE mi.id = ?`
-            ).bind(id).first<{ category_key: string }>()
-            : env.DB.prepare(
-              `SELECT mc.key AS category_key
-               FROM master_items mi
-               JOIN master_categories mc ON mc.id = mi.category_id
-               WHERE mi.id = ?`
-            ).bind(id).first<{ category_key: string }>());
+          const itemCategory = await env.DB.prepare(
+            `SELECT mc.code AS category_key
+             FROM master_items mi
+             JOIN master_categories mc ON mc.id = mi.category_id
+             WHERE mi.id = ?`
+          ).bind(id).first<{ category_key: string }>();
           if (!itemCategory?.category_key) return err('Not found', 404);
           const categoryKey = normalizeMasterKey(itemCategory.category_key);
           const hierarchyValidation = await validateParentHierarchy(env, categoryKey, body.parent_id ?? null);
@@ -795,17 +589,12 @@ export async function handleMaster(request: Request, env: Env, url: URL): Promis
         const vals: (string | number | null)[] = [now()];
         if (body.sort_order !== undefined) { sets.push('sort_order = ?'); vals.push(body.sort_order); }
         if (body.is_active !== undefined) {
-          if (normalized) {
-            sets.push('status = ?');
-            vals.push(body.is_active ? 'active' : 'inactive');
-          } else {
-            sets.push('is_active = ?');
-            vals.push(body.is_active ? 1 : 0);
-          }
+          sets.push('status = ?');
+          vals.push(body.is_active ? 'active' : 'inactive');
         }
         if (body.metadata !== undefined) { sets.push('metadata = ?'); vals.push(JSON.stringify(body.metadata)); }
         if (body.parent_id !== undefined) {
-          sets.push(normalized ? 'parent_item_id = ?' : 'parent_id = ?');
+          sets.push('parent_item_id = ?');
           vals.push(body.parent_id);
         }
         // device_type_id (optional, only if column exists)
@@ -824,19 +613,12 @@ export async function handleMaster(request: Request, env: Env, url: URL): Promis
           const translations = normalizeTranslations(body.translations);
           const missing = missingTranslationLangs(translations);
           if (missing.length > 0) return err(`번역값 누락: ${missing.join(', ')}`, 400, 'missing_translations');
-          const item = await (normalized
-            ? env.DB.prepare(
-              `SELECT mi.code as item_key, mc.code as category_key
-               FROM master_items mi
-               JOIN master_categories mc ON mc.id = mi.category_id
-               WHERE mi.id = ?`
-            ).bind(id).first<{ item_key: string; category_key: string }>()
-            : env.DB.prepare(
-              `SELECT mi.key as item_key, mc.key as category_key
-               FROM master_items mi
-               JOIN master_categories mc ON mc.id = mi.category_id
-               WHERE mi.id = ?`
-            ).bind(id).first<{ item_key: string; category_key: string }>());
+          const item = await env.DB.prepare(
+            `SELECT mi.code as item_key, mc.code as category_key
+             FROM master_items mi
+             JOIN master_categories mc ON mc.id = mi.category_id
+             WHERE mi.id = ?`
+          ).bind(id).first<{ item_key: string; category_key: string }>();
           if (item) {
             const i18nKey = itemI18nKey(item.category_key, item.item_key);
             const invalidReason = hasInvalidTranslationValue(translations, i18nKey);
@@ -845,45 +627,29 @@ export async function handleMaster(request: Request, env: Env, url: URL): Promis
           }
         }
 
-        return ok(await (normalized
-          ? env.DB.prepare(
-            `SELECT
-               mi.id,
-               mi.category_id,
-               mi.code AS key,
-               mi.parent_item_id AS parent_id,
-               mi.sort_order,
-               CASE WHEN mi.status = 'active' THEN 1 ELSE 0 END AS is_active,
-               mi.metadata,
-               mi.created_at,
-               mi.updated_at,
-               mc.code as category_key,
-               tr.ko as ko_name,
-               tr.en, tr.ja, tr.zh_cn, tr.zh_tw, tr.es, tr.fr, tr.de, tr.pt, tr.vi, tr.th, tr.id_lang, tr.ar
-             FROM master_items mi
-             JOIN master_categories mc ON mi.category_id = mc.id
-             LEFT JOIN i18n_translations tr
-               ON tr.key = CASE
-                 WHEN mc.code LIKE 'master.%' THEN (mc.code || '.' || mi.code)
-                 ELSE ('master.' || mc.code || '.' || mi.code)
-               END
-             WHERE mi.id = ?`
-          ).bind(id).first()
-          : env.DB.prepare(
-            `SELECT
-               mi.*,
-               mc.key as category_key,
-               tr.ko as ko_name,
-               tr.en, tr.ja, tr.zh_cn, tr.zh_tw, tr.es, tr.fr, tr.de, tr.pt, tr.vi, tr.th, tr.id_lang, tr.ar
-             FROM master_items mi
-             JOIN master_categories mc ON mi.category_id = mc.id
-             LEFT JOIN i18n_translations tr
-               ON tr.key = CASE
-                 WHEN mc.key LIKE 'master.%' THEN (mc.key || '.' || mi.key)
-                 ELSE ('master.' || mc.key || '.' || mi.key)
-               END
-             WHERE mi.id = ?`
-          ).bind(id).first()));
+        return ok(await env.DB.prepare(
+          `SELECT
+             mi.id,
+             mi.category_id,
+             mi.code AS key,
+             mi.parent_item_id AS parent_id,
+             mi.sort_order,
+             CASE WHEN mi.status = 'active' THEN 1 ELSE 0 END AS is_active,
+             mi.metadata,
+             mi.created_at,
+             mi.updated_at,
+             mc.code as category_key,
+             tr.ko as ko_name,
+             tr.en, tr.ja, tr.zh_cn, tr.zh_tw, tr.es, tr.fr, tr.de, tr.pt, tr.vi, tr.th, tr.id_lang, tr.ar
+           FROM master_items mi
+           JOIN master_categories mc ON mi.category_id = mc.id
+           LEFT JOIN i18n_translations tr
+             ON tr.key = CASE
+               WHEN mc.code LIKE 'master.%' THEN (mc.code || '.' || mi.code)
+               ELSE ('master.' || mc.code || '.' || mi.code)
+             END
+           WHERE mi.id = ?`
+        ).bind(id).first());
       }
       if (request.method === 'DELETE' && id) {
         // 실제 삭제 시도. 외래 키 제약 조건 등으로 실패할 수 있음.
@@ -893,11 +659,7 @@ export async function handleMaster(request: Request, env: Env, url: URL): Promis
           return ok({ id, deleted: true });
         } catch (e: unknown) {
           // 제약 조건 오류 발생 시 비활성화로 대체
-          if (normalized) {
-            await env.DB.prepare("UPDATE master_items SET status = 'inactive', updated_at = ? WHERE id = ?").bind(now(), id).run();
-          } else {
-            await env.DB.prepare('UPDATE master_items SET is_active = 0, updated_at = ? WHERE id = ?').bind(now(), id).run();
-          }
+          await env.DB.prepare("UPDATE master_items SET status = 'inactive', updated_at = ? WHERE id = ?").bind(now(), id).run();
           return ok({ id, deleted: false, message: 'Deactivated (used in other data)' });
         }
       }

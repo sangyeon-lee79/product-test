@@ -49,3 +49,13 @@ export function newId(): string {
 export function now(): string {
   return new Date().toISOString();
 }
+
+// 랜덤 토큰 생성 (키 자동생성 용도)
+export function randomToken(length = 8): string {
+  const chars = 'abcdefghijklmnopqrstuvwxyz0123456789';
+  const bytes = new Uint8Array(length);
+  crypto.getRandomValues(bytes);
+  let out = '';
+  for (let i = 0; i < length; i++) out += chars[bytes[i] % chars.length];
+  return out;
+}
