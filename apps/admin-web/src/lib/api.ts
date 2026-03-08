@@ -474,9 +474,12 @@ export const api = {
         request<{ id: string; deleted: boolean }>(`/api/v1/admin/devices/manufacturers/${id}`, { method: 'DELETE' }),
     },
     brands: {
-      list: (manufacturerId?: string) => {
-        const q = manufacturerId ? `?manufacturer_id=${encodeURIComponent(manufacturerId)}` : '';
-        return request<DeviceBrand[]>(`/api/v1/admin/devices/brands${q}`);
+      list: (manufacturerId?: string, typeItemId?: string) => {
+        const q = new URLSearchParams();
+        if (manufacturerId) q.set('manufacturer_id', manufacturerId);
+        if (typeItemId) q.set('type_item_id', typeItemId);
+        const suffix = q.toString() ? `?${q.toString()}` : '';
+        return request<DeviceBrand[]>(`/api/v1/admin/devices/brands${suffix}`);
       },
       create: (data: { key?: string; manufacturer_id?: string; manufacturer_ids?: string[]; parent_type_ids?: string[]; sort_order?: number; name_ko: string; name_en?: string; translations?: Record<string, string> }) =>
         request<DeviceBrand>('/api/v1/admin/devices/brands', { method: 'POST', body: JSON.stringify(data) }),
@@ -520,9 +523,12 @@ export const api = {
         const suffix = q.toString() ? `?${q.toString()}` : '';
         return request<DeviceManufacturer[]>(`/api/v1/devices/manufacturers${suffix}`);
       },
-      brands: (manufacturerId?: string) => {
-        const q = manufacturerId ? `?manufacturer_id=${encodeURIComponent(manufacturerId)}` : '';
-        return request<DeviceBrand[]>(`/api/v1/devices/brands${q}`);
+      brands: (manufacturerId?: string, deviceTypeId?: string) => {
+        const q = new URLSearchParams();
+        if (manufacturerId) q.set('manufacturer_id', manufacturerId);
+        if (deviceTypeId) q.set('device_type_id', deviceTypeId);
+        const suffix = q.toString() ? `?${q.toString()}` : '';
+        return request<DeviceBrand[]>(`/api/v1/devices/brands${suffix}`);
       },
       models: (filters?: { device_type_id?: string; manufacturer_id?: string; brand_id?: string }, lang?: string) => {
         const q = new URLSearchParams();
@@ -559,9 +565,12 @@ export const api = {
         request<{ id: string; deleted: boolean }>(`/api/v1/admin/feed-catalog/manufacturers/${id}`, { method: 'DELETE' }),
     },
     brands: {
-      list: (manufacturerId?: string) => {
-        const q = manufacturerId ? `?manufacturer_id=${encodeURIComponent(manufacturerId)}` : '';
-        return request<FeedBrand[]>(`/api/v1/admin/feed-catalog/brands${q}`);
+      list: (manufacturerId?: string, typeItemId?: string) => {
+        const q = new URLSearchParams();
+        if (manufacturerId) q.set('manufacturer_id', manufacturerId);
+        if (typeItemId) q.set('type_item_id', typeItemId);
+        const suffix = q.toString() ? `?${q.toString()}` : '';
+        return request<FeedBrand[]>(`/api/v1/admin/feed-catalog/brands${suffix}`);
       },
       create: (data: { key?: string; manufacturer_id?: string; manufacturer_ids?: string[]; parent_type_ids?: string[]; sort_order?: number; name_ko: string; name_en?: string; translations?: Record<string, string> }) =>
         request<FeedBrand>('/api/v1/admin/feed-catalog/brands', { method: 'POST', body: JSON.stringify(data) }),
@@ -598,9 +607,12 @@ export const api = {
         const suffix = q.toString() ? `?${q.toString()}` : '';
         return request<FeedManufacturer[]>(`/api/v1/feed-catalog/manufacturers${suffix}`);
       },
-      brands: (manufacturerId?: string) => {
-        const q = manufacturerId ? `?manufacturer_id=${encodeURIComponent(manufacturerId)}` : '';
-        return request<FeedBrand[]>(`/api/v1/feed-catalog/brands${q}`);
+      brands: (manufacturerId?: string, feedTypeId?: string) => {
+        const q = new URLSearchParams();
+        if (manufacturerId) q.set('manufacturer_id', manufacturerId);
+        if (feedTypeId) q.set('feed_type_id', feedTypeId);
+        const suffix = q.toString() ? `?${q.toString()}` : '';
+        return request<FeedBrand[]>(`/api/v1/feed-catalog/brands${suffix}`);
       },
       models: (filters?: { feed_type_id?: string; manufacturer_id?: string; brand_id?: string }, lang?: string) => {
         const q = new URLSearchParams();
@@ -908,6 +920,7 @@ export interface DeviceType {
 export interface DeviceManufacturer {
   id: string; key: string; name_key?: string | null; name_ko: string; name_en: string; display_label?: string | null;
   parent_type_ids?: string | null;
+  model_count?: number;
   country: string | null; status: string; sort_order: number;
   created_at: string; updated_at: string;
 }
@@ -915,6 +928,7 @@ export interface DeviceManufacturer {
 export interface DeviceBrand {
   id: string; key?: string | null; manufacturer_id: string; name_key?: string | null; name_ko: string; name_en: string; display_label?: string | null;
   parent_type_ids?: string | null;
+  model_count?: number;
   status: string; mfr_name_ko?: string | null;
   mfr_display_label?: string | null;
   parent_mfr_ids?: string | null;
@@ -963,6 +977,7 @@ export interface FeedType {
 export interface FeedManufacturer {
   id: string; key: string; name_key?: string | null; name_ko: string; name_en: string; display_label?: string | null;
   parent_type_ids?: string | null;
+  model_count?: number;
   country: string | null; status: string; sort_order: number;
   created_at: string; updated_at: string;
 }
@@ -970,6 +985,7 @@ export interface FeedManufacturer {
 export interface FeedBrand {
   id: string; key?: string | null; manufacturer_id: string; name_key?: string | null; name_ko: string; name_en: string; display_label?: string | null;
   parent_type_ids?: string | null;
+  model_count?: number;
   status: string; mfr_name_ko?: string | null;
   mfr_display_label?: string | null;
   parent_mfr_ids?: string | null;

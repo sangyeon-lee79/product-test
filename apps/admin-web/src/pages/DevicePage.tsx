@@ -57,8 +57,17 @@ export default function DevicePage() {
   const mfrLabel = (item?: DeviceManufacturer | null): string => {
     if (!item) return '-';
     const display = (item.display_label || '').trim();
-    if (display) return display;
-    return item.name_en || item.name_ko || item.key || '-';
+    const base = display || item.name_en || item.name_ko || item.key || '-';
+    const count = typeof item.model_count === 'number' ? item.model_count : null;
+    return count === null ? base : `${base} [ ${count} ]`;
+  };
+
+  const brandLabel = (item?: DeviceBrand | null): string => {
+    if (!item) return '-';
+    const display = (item.display_label || '').trim();
+    const base = display || item.name_en || item.name_ko || item.key || '-';
+    const count = typeof item.model_count === 'number' ? item.model_count : null;
+    return count === null ? base : `${base} [ ${count} ]`;
   };
 
   const loadTypes = useCallback(async () => {
@@ -72,15 +81,17 @@ export default function DevicePage() {
 
   const loadManufacturers = useCallback(async (typeId?: string) => {
     try {
-      setManufacturers(await api.devices.manufacturers.list(lang, typeId));
+      const rows = await api.devices.manufacturers.list(lang, typeId);
+      setManufacturers(sortManufacturersByModelCountDesc(rows));
     } catch (e) {
       setError(String(e));
     }
   }, [lang]);
 
-  const loadBrands = useCallback(async (mfrId?: string) => {
+  const loadBrands = useCallback(async (mfrId?: string, typeId?: string) => {
     try {
-      setBrands(await api.devices.brands.list(mfrId));
+      const rows = await api.devices.brands.list(mfrId, typeId);
+      setBrands(sortBrandsByModelCountDesc(rows));
     } catch (e) {
       setError(String(e));
     }
@@ -115,10 +126,10 @@ export default function DevicePage() {
   }, [selectedType?.id, loadManufacturers]);
 
   useEffect(() => {
-    void loadBrands(selectedMfr?.id);
+    void loadBrands(selectedMfr?.id, selectedType?.id);
     setSelectedBrand(null);
     setSelectedModel(null);
-  }, [selectedMfr?.id, loadBrands]);
+  }, [selectedMfr?.id, selectedType?.id, loadBrands]);
 
   useEffect(() => {
     const filters: { device_type_id?: string; manufacturer_id?: string; brand_id?: string } = {};
@@ -275,7 +286,7 @@ export default function DevicePage() {
         if (row) setModelTrans(i18nRowToTranslations(row));
       }).catch(() => {});
     }
-    if (item.manufacturer_id) void loadBrands(item.manufacturer_id);
+    if (item.manufacturer_id) void loadBrands(item.manufacturer_id, selectedType?.id);
     else if (manufacturers.length === 0) void loadManufacturers();
   }
 
@@ -360,7 +371,7 @@ export default function DevicePage() {
         } else if (id) {
           await api.devices.brands.update(id, payload);
         }
-        await loadBrands(brandParentMfrIds[0] || selectedMfr?.id);
+        await loadBrands(brandParentMfrIds[0] || selectedMfr?.id, selectedType?.id);
       }
 
       if (target === 'model') {
@@ -434,7 +445,7 @@ export default function DevicePage() {
       }
       if (target === 'brand') {
         await api.devices.brands.delete(id);
-        await loadBrands(selectedMfr?.id);
+        await loadBrands(selectedMfr?.id, selectedType?.id);
       }
       if (target === 'model') {
         await api.devices.models.delete(id);
@@ -527,7 +538,7 @@ export default function DevicePage() {
                 {selectedMfr && brands.map((item) => (
                   <button key={item.id} className={`master-row-btn ${selectedBrand?.id === item.id ? 'active' : ''}`} onClick={() => { setSelectedBrand(item); setSelectedModel(null); }}>
                     <div>
-                      <div className="master-row-title">{item.display_label || item.name_en || item.name_ko}</div>
+                      <div className="master-row-title">{brandLabel(item)}</div>
                       <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>{item.name_ko}</div>
                     </div>
                     <div style={{ display: 'flex', flexDirection: 'column', gap: 4, alignItems: 'flex-end' }}>
@@ -769,7 +780,7 @@ export default function DevicePage() {
                         const mfrId = e.target.value;
                         setModelParentMfrId(mfrId);
                         setModelParentBrandIds([]);
-                        if (mfrId) void loadBrands(mfrId);
+                        if (mfrId) void loadBrands(mfrId, selectedType?.id);
                       }}
                     >
                       <option value="">{t('admin.device.select_manufacturer')}</option>
@@ -786,7 +797,7 @@ export default function DevicePage() {
                             checked={modelParentBrandIds.includes(row.id)}
                             onChange={(e) => setModelParentBrandIds((prev) => e.target.checked ? [...new Set([...prev, row.id])] : prev.filter((id) => id !== row.id))}
                           />
-                          <span>{row.display_label || row.name_en || row.name_ko}</span>
+                          <span>{brandLabel(row)}</span>
                         </label>
                       ))}
                     </div>
@@ -869,6 +880,24 @@ export default function DevicePage() {
   );
 }
   const sortTypesByModelCountDesc = (rows: DeviceType[]): DeviceType[] => {
+    return [...rows].sort((a, b) => {
+      const ac = typeof a.model_count === 'number' ? a.model_count : 0;
+      const bc = typeof b.model_count === 'number' ? b.model_count : 0;
+      if (bc !== ac) return bc - ac;
+      return (a.sort_order ?? 0) - (b.sort_order ?? 0);
+    });
+  };
+
+  const sortManufacturersByModelCountDesc = (rows: DeviceManufacturer[]): DeviceManufacturer[] => {
+    return [...rows].sort((a, b) => {
+      const ac = typeof a.model_count === 'number' ? a.model_count : 0;
+      const bc = typeof b.model_count === 'number' ? b.model_count : 0;
+      if (bc !== ac) return bc - ac;
+      return (a.sort_order ?? 0) - (b.sort_order ?? 0);
+    });
+  };
+
+  const sortBrandsByModelCountDesc = (rows: DeviceBrand[]): DeviceBrand[] => {
     return [...rows].sort((a, b) => {
       const ac = typeof a.model_count === 'number' ? a.model_count : 0;
       const bc = typeof b.model_count === 'number' ? b.model_count : 0;

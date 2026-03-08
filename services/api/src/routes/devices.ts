@@ -214,6 +214,25 @@ export async function handleDevices(request: Request, env: Env, url: URL): Promi
       const typeItemId = (url.searchParams.get('device_type_id') || '').trim();
       const binds: string[] = [];
       let where = `WHERE mfr.status = 'active'`;
+      let modelCountExpr = `(
+        SELECT COUNT(*)
+        FROM device_models dm
+        WHERE dm.manufacturer_id = mfr.id
+          AND dm.status = 'active'
+      )`;
+      if (typeItemId) {
+        modelCountExpr = `(
+          SELECT COUNT(*)
+          FROM device_models dm
+          WHERE dm.manufacturer_id = mfr.id
+            AND dm.status = 'active'
+            AND (
+              dm.device_type_item_id = ?
+              OR (dm.device_type_item_id IS NULL AND dm.device_type_id = ?)
+            )
+        )`;
+        binds.push(typeItemId, typeItemId);
+      }
       if (typeItemId) {
         where += ` AND (
           EXISTS (
@@ -238,6 +257,7 @@ export async function handleDevices(request: Request, env: Env, url: URL): Promi
       const rows = await env.DB.prepare(
        `SELECT
            mfr.*,
+           ${modelCountExpr} AS model_count,
            (SELECT GROUP_CONCAT(type_item_id) FROM device_manufacturer_type_map mtm WHERE mtm.manufacturer_id = mfr.id) AS parent_type_ids,
            COALESCE(NULLIF(TRIM(tr.${langCol}), ''), NULLIF(TRIM(tr.en), ''), NULLIF(TRIM(tr.ko), ''), mfr.name_en, mfr.name_ko, mfr.key) AS display_label
          FROM device_manufacturers mfr
@@ -251,13 +271,34 @@ export async function handleDevices(request: Request, env: Env, url: URL): Promi
     // GET /api/v1/devices/brands?manufacturer_id=
     if (path === '/api/v1/devices/brands' && method === 'GET') {
       const manufacturerId = url.searchParams.get('manufacturer_id');
+      const typeItemId = (url.searchParams.get('device_type_id') || '').trim();
+      const binds: string[] = [];
+      let modelCountExpr = `(
+        SELECT COUNT(*)
+        FROM device_models dm
+        WHERE dm.brand_id = b.id
+          AND dm.status = 'active'
+      )`;
+      if (typeItemId) {
+        modelCountExpr = `(
+          SELECT COUNT(*)
+          FROM device_models dm
+          WHERE dm.brand_id = b.id
+            AND dm.status = 'active'
+            AND (
+              dm.device_type_item_id = ?
+              OR (dm.device_type_item_id IS NULL AND dm.device_type_id = ?)
+            )
+        )`;
+        binds.push(typeItemId, typeItemId);
+      }
       let q = `SELECT
                  b.*,
+                 ${modelCountExpr} AS model_count,
                  COALESCE(NULLIF(TRIM(tr.${langCol}), ''), NULLIF(TRIM(tr.en), ''), NULLIF(TRIM(tr.ko), ''), b.name_en, b.name_ko) AS display_label
                FROM device_brands b
                LEFT JOIN i18n_translations tr ON tr.key = b.name_key
                WHERE b.status = 'active'`;
-      const binds: string[] = [];
       if (manufacturerId) {
         q += ` AND (
           b.manufacturer_id = ?
@@ -574,6 +615,25 @@ export async function handleDevices(request: Request, env: Env, url: URL): Promi
     const typeItemId = url.searchParams.get('type_item_id');
     const hasTypeMap = await hasTable(env, 'device_manufacturer_type_map');
     const binds: string[] = [];
+    let modelCountExpr = `(
+      SELECT COUNT(*)
+      FROM device_models dm
+      WHERE dm.manufacturer_id = mfr.id
+        AND dm.status = 'active'
+    )`;
+    if (typeItemId) {
+      modelCountExpr = `(
+        SELECT COUNT(*)
+        FROM device_models dm
+        WHERE dm.manufacturer_id = mfr.id
+          AND dm.status = 'active'
+          AND (
+            dm.device_type_item_id = ?
+            OR (dm.device_type_item_id IS NULL AND dm.device_type_id = ?)
+          )
+      )`;
+      binds.push(typeItemId, typeItemId);
+    }
     let where = `WHERE 1=1`;
     if (typeItemId && hasTypeMap) {
       where += ` AND EXISTS (SELECT 1 FROM device_manufacturer_type_map mtm WHERE mtm.manufacturer_id = mfr.id AND mtm.type_item_id = ?)`;
@@ -585,6 +645,7 @@ export async function handleDevices(request: Request, env: Env, url: URL): Promi
     const rows = await env.DB.prepare(
       `SELECT
          mfr.*,
+         ${modelCountExpr} AS model_count,
          ${parentTypeIdsExpr} AS parent_type_ids,
          COALESCE(NULLIF(TRIM(tr.${langCol}), ''), NULLIF(TRIM(tr.en), ''), NULLIF(TRIM(tr.ko), ''), mfr.name_en, mfr.name_ko, mfr.key) AS display_label
        FROM device_manufacturers mfr
@@ -697,12 +758,34 @@ export async function handleDevices(request: Request, env: Env, url: URL): Promi
   // ── Brands ────────────────────────────────────────────────────────────────
   if (path === '/api/v1/admin/devices/brands' && method === 'GET') {
     const manufacturerId = url.searchParams.get('manufacturer_id');
+    const typeItemId = (url.searchParams.get('type_item_id') || '').trim();
     const hasBrandMfrMap = await hasTable(env, 'device_brand_manufacturer_map');
     const parentMfrIdsExpr = hasBrandMfrMap
       ? `(SELECT GROUP_CONCAT(manufacturer_id) FROM device_brand_manufacturer_map bmm WHERE bmm.brand_id = b.id)`
       : `NULL`;
+    const binds: string[] = [];
+    let modelCountExpr = `(
+      SELECT COUNT(*)
+      FROM device_models dm
+      WHERE dm.brand_id = b.id
+        AND dm.status = 'active'
+    )`;
+    if (typeItemId) {
+      modelCountExpr = `(
+        SELECT COUNT(*)
+        FROM device_models dm
+        WHERE dm.brand_id = b.id
+          AND dm.status = 'active'
+          AND (
+            dm.device_type_item_id = ?
+            OR (dm.device_type_item_id IS NULL AND dm.device_type_id = ?)
+          )
+      )`;
+      binds.push(typeItemId, typeItemId);
+    }
     let q = `SELECT
                b.*,
+               ${modelCountExpr} AS model_count,
                m.name_ko as mfr_name_ko,
                COALESCE(NULLIF(TRIM(trb.${langCol}), ''), NULLIF(TRIM(trb.en), ''), NULLIF(TRIM(trb.ko), ''), b.name_en, b.name_ko) AS display_label,
                COALESCE(NULLIF(TRIM(trm.${langCol}), ''), NULLIF(TRIM(trm.en), ''), NULLIF(TRIM(trm.ko), ''), m.name_en, m.name_ko, m.key) AS mfr_display_label,
@@ -711,7 +794,6 @@ export async function handleDevices(request: Request, env: Env, url: URL): Promi
              JOIN device_manufacturers m ON m.id = b.manufacturer_id
              LEFT JOIN i18n_translations trb ON trb.key = b.name_key
              LEFT JOIN i18n_translations trm ON trm.key = m.name_key`;
-    const binds: string[] = [];
     if (manufacturerId) {
       q += ` WHERE (
         b.manufacturer_id = ?

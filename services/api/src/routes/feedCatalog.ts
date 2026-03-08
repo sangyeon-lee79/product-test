@@ -179,6 +179,22 @@ export async function handleFeedCatalog(request: Request, env: Env, url: URL): P
       const typeItemId = (url.searchParams.get('feed_type_id') || '').trim();
       const binds: string[] = [];
       let where = `WHERE mfr.status = 'active'`;
+      let modelCountExpr = `(
+        SELECT COUNT(*)
+        FROM feed_models fm
+        WHERE fm.manufacturer_id = mfr.id
+          AND fm.status = 'active'
+      )`;
+      if (typeItemId) {
+        modelCountExpr = `(
+          SELECT COUNT(*)
+          FROM feed_models fm
+          WHERE fm.manufacturer_id = mfr.id
+            AND fm.status = 'active'
+            AND fm.feed_type_item_id = ?
+        )`;
+        binds.push(typeItemId);
+      }
       if (typeItemId) {
         where += ` AND (
           EXISTS (
@@ -199,6 +215,7 @@ export async function handleFeedCatalog(request: Request, env: Env, url: URL): P
       }
       const rows = await env.DB.prepare(
         `SELECT mfr.*,
+                ${modelCountExpr} AS model_count,
                 COALESCE(NULLIF(TRIM(tr.${langCol}), ''), NULLIF(TRIM(tr.en), ''), NULLIF(TRIM(tr.ko), ''), mfr.name_en, mfr.name_ko) AS display_label
          FROM feed_manufacturers mfr
          LEFT JOIN i18n_translations tr ON tr.key = mfr.name_key
@@ -210,8 +227,26 @@ export async function handleFeedCatalog(request: Request, env: Env, url: URL): P
 
     if (path === '/api/v1/feed-catalog/brands' && method === 'GET') {
       const manufacturerId = url.searchParams.get('manufacturer_id');
+      const typeItemId = (url.searchParams.get('feed_type_id') || '').trim();
       const binds: string[] = [];
+      let modelCountExpr = `(
+        SELECT COUNT(*)
+        FROM feed_models fm
+        WHERE fm.brand_id = b.id
+          AND fm.status = 'active'
+      )`;
+      if (typeItemId) {
+        modelCountExpr = `(
+          SELECT COUNT(*)
+          FROM feed_models fm
+          WHERE fm.brand_id = b.id
+            AND fm.status = 'active'
+            AND fm.feed_type_item_id = ?
+        )`;
+        binds.push(typeItemId);
+      }
       let q = `SELECT b.*,
+                      ${modelCountExpr} AS model_count,
                       m.name_ko AS mfr_name_ko,
                       COALESCE(NULLIF(TRIM(tr_mfr.${langCol}), ''), NULLIF(TRIM(tr_mfr.en), ''), NULLIF(TRIM(tr_mfr.ko), ''), m.name_en, m.name_ko) AS mfr_display_label,
                       COALESCE(NULLIF(TRIM(tr_brand.${langCol}), ''), NULLIF(TRIM(tr_brand.en), ''), NULLIF(TRIM(tr_brand.ko), ''), b.name_en, b.name_ko) AS display_label
@@ -370,6 +405,22 @@ export async function handleFeedCatalog(request: Request, env: Env, url: URL): P
       ? `(SELECT GROUP_CONCAT(type_item_id) FROM feed_manufacturer_type_map mtm WHERE mtm.manufacturer_id = mfr.id)`
       : `NULL`;
     const binds: string[] = [];
+    let modelCountExpr = `(
+      SELECT COUNT(*)
+      FROM feed_models fm
+      WHERE fm.manufacturer_id = mfr.id
+        AND fm.status = 'active'
+    )`;
+    if (typeItemId) {
+      modelCountExpr = `(
+        SELECT COUNT(*)
+        FROM feed_models fm
+        WHERE fm.manufacturer_id = mfr.id
+          AND fm.status = 'active'
+          AND fm.feed_type_item_id = ?
+      )`;
+      binds.push(typeItemId);
+    }
     let where = `WHERE 1=1`;
     if (typeItemId && hasFeedManufacturerTypeMap) {
       where += ` AND EXISTS (SELECT 1 FROM feed_manufacturer_type_map mtm WHERE mtm.manufacturer_id = mfr.id AND mtm.type_item_id = ?)`;
@@ -377,6 +428,7 @@ export async function handleFeedCatalog(request: Request, env: Env, url: URL): P
     }
     const rows = await env.DB.prepare(
       `SELECT mfr.*,
+              ${modelCountExpr} AS model_count,
               ${parentTypeIdsExpr} AS parent_type_ids,
               COALESCE(NULLIF(TRIM(tr.${langCol}), ''), NULLIF(TRIM(tr.en), ''), NULLIF(TRIM(tr.ko), ''), mfr.name_en, mfr.name_ko) AS display_label
        FROM feed_manufacturers mfr
@@ -461,12 +513,30 @@ export async function handleFeedCatalog(request: Request, env: Env, url: URL): P
 
   if (path === '/api/v1/admin/feed-catalog/brands' && method === 'GET') {
     const manufacturerId = url.searchParams.get('manufacturer_id');
+    const typeItemId = (url.searchParams.get('type_item_id') || '').trim();
     const hasBrandMfrMap = await hasTable(env, 'feed_brand_manufacturer_map');
     const parentMfrIdsExpr = hasBrandMfrMap
       ? `(SELECT GROUP_CONCAT(manufacturer_id) FROM feed_brand_manufacturer_map bmm WHERE bmm.brand_id = b.id)`
       : `NULL`;
     const binds: string[] = [];
+    let modelCountExpr = `(
+      SELECT COUNT(*)
+      FROM feed_models fm
+      WHERE fm.brand_id = b.id
+        AND fm.status = 'active'
+    )`;
+    if (typeItemId) {
+      modelCountExpr = `(
+        SELECT COUNT(*)
+        FROM feed_models fm
+        WHERE fm.brand_id = b.id
+          AND fm.status = 'active'
+          AND fm.feed_type_item_id = ?
+      )`;
+      binds.push(typeItemId);
+    }
     let q = `SELECT b.*,
+                    ${modelCountExpr} AS model_count,
                     m.name_ko AS mfr_name_ko,
                     COALESCE(NULLIF(TRIM(tr_mfr.${langCol}), ''), NULLIF(TRIM(tr_mfr.en), ''), NULLIF(TRIM(tr_mfr.ko), ''), m.name_en, m.name_ko) AS mfr_display_label,
                     COALESCE(NULLIF(TRIM(tr_brand.${langCol}), ''), NULLIF(TRIM(tr_brand.en), ''), NULLIF(TRIM(tr_brand.ko), ''), b.name_en, b.name_ko) AS display_label,
