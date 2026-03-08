@@ -9,11 +9,7 @@ import { ok, created, err, newId, now, randomToken } from '../types';
 import { requireAuth, requireRole } from '../middleware/auth';
 import type { JwtPayload } from '../types';
 import { SUPPORTED_LANGS as LANGS, KEY_LITERAL_PATTERN } from '@petfolio/shared';
-
-async function hasColumn(env: Env, table: string, column: string): Promise<boolean> {
-  const rows = await env.DB.prepare(`PRAGMA table_info(${table})`).all<{ name: string }>();
-  return rows.results.some((r) => r.name === column);
-}
+import { hasColumn } from '../helpers/sqlHelpers';
 
 
 function normalizeMasterKey(raw: string): string {

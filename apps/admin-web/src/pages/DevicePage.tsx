@@ -1,14 +1,11 @@
 import { useEffect, useState, useCallback } from 'react';
-import { api, type DeviceType, type DeviceManufacturer, type DeviceBrand, type DeviceModel, type MeasurementUnit, type I18nRow } from '../lib/api';
-import { useI18n, useT, SUPPORTED_LANGS, LANG_LABELS } from '../lib/i18n';
+import { api, type DeviceType, type DeviceManufacturer, type DeviceBrand, type DeviceModel, type MeasurementUnit } from '../lib/api';
+import { useI18n, useT, LANG_LABELS, SUPPORTED_LANGS } from '../lib/i18n';
+import { emptyTrans, itemLabel, sortByModelCountDesc, i18nRowToTranslations, autoTranslate, findMissingTranslationLangs } from '../lib/catalogUtils';
+import { TranslationFields } from '../components/TranslationFields';
 
 type Tab = 'devices' | 'units';
 type ModalTarget = 'manufacturer' | 'brand' | 'model' | 'unit';
-const emptyTrans = () => Object.fromEntries(SUPPORTED_LANGS.map((l) => [l, ''])) as Record<string, string>;
-
-function findMissingTranslationLangs(translations: Record<string, string>): string[] {
-  return SUPPORTED_LANGS.filter((lang) => !(translations[lang] || '').trim());
-}
 
 export default function DevicePage() {
   const t = useT();
@@ -46,34 +43,10 @@ export default function DevicePage() {
   const [modelParentMfrId, setModelParentMfrId] = useState<string>('');
   const [modelParentBrandIds, setModelParentBrandIds] = useState<string[]>([]);
 
-  const typeLabel = (item?: DeviceType | null): string => {
-    if (!item) return '-';
-    const display = (item.display_label || '').trim();
-    const base = display || item.name_en || item.name_ko || item.key || '-';
-    const count = typeof item.model_count === 'number' ? item.model_count : null;
-    return count === null ? base : `${base} [ ${count} ]`;
-  };
-
-  const mfrLabel = (item?: DeviceManufacturer | null): string => {
-    if (!item) return '-';
-    const display = (item.display_label || '').trim();
-    const base = display || item.name_en || item.name_ko || item.key || '-';
-    const count = typeof item.model_count === 'number' ? item.model_count : null;
-    return count === null ? base : `${base} [ ${count} ]`;
-  };
-
-  const brandLabel = (item?: DeviceBrand | null): string => {
-    if (!item) return '-';
-    const display = (item.display_label || '').trim();
-    const base = display || item.name_en || item.name_ko || item.key || '-';
-    const count = typeof item.model_count === 'number' ? item.model_count : null;
-    return count === null ? base : `${base} [ ${count} ]`;
-  };
-
   const loadTypes = useCallback(async () => {
     try {
       const rows = await api.devices.types.list(lang);
-      setTypes(sortTypesByModelCountDesc(rows));
+      setTypes(sortByModelCountDesc(rows));
     } catch (e) {
       setError(String(e));
     }
@@ -82,7 +55,7 @@ export default function DevicePage() {
   const loadManufacturers = useCallback(async (typeId?: string) => {
     try {
       const rows = await api.devices.manufacturers.list(lang, typeId);
-      setManufacturers(sortManufacturersByModelCountDesc(rows));
+      setManufacturers(sortByModelCountDesc(rows));
     } catch (e) {
       setError(String(e));
     }
@@ -91,7 +64,7 @@ export default function DevicePage() {
   const loadBrands = useCallback(async (mfrId?: string, typeId?: string) => {
     try {
       const rows = await api.devices.brands.list(mfrId, typeId);
-      setBrands(sortBrandsByModelCountDesc(rows));
+      setBrands(sortByModelCountDesc(rows));
     } catch (e) {
       setError(String(e));
     }
@@ -145,68 +118,6 @@ export default function DevicePage() {
     setTimeout(() => setSuccess(''), 3000);
   }
 
-  function manufacturerToTranslations(item: DeviceManufacturer): Record<string, string> {
-    return {
-      ...emptyTrans(),
-      ko: item.name_ko || '',
-      en: item.name_en || '',
-    };
-  }
-
-  function brandToTranslations(item: DeviceBrand): Record<string, string> {
-    return {
-      ...emptyTrans(),
-      ko: item.name_ko || '',
-      en: item.name_en || '',
-    };
-  }
-
-  function modelToTranslations(item: DeviceModel): Record<string, string> {
-    return {
-      ...emptyTrans(),
-      ko: item.model_name || '',
-      en: item.model_name || '',
-    };
-  }
-
-  function i18nRowToTranslations(row: I18nRow): Record<string, string> {
-    return {
-      ko: row.ko ?? '',
-      en: row.en ?? '',
-      ja: row.ja ?? '',
-      zh_cn: row.zh_cn ?? '',
-      zh_tw: row.zh_tw ?? '',
-      es: row.es ?? '',
-      fr: row.fr ?? '',
-      de: row.de ?? '',
-      pt: row.pt ?? '',
-      vi: row.vi ?? '',
-      th: row.th ?? '',
-      id_lang: row.id_lang ?? '',
-      ar: row.ar ?? '',
-    };
-  }
-
-  async function autoTranslate(koText: string, current: Record<string, string>, setTrans: (t: Record<string, string>) => void) {
-    if (!koText) return;
-    setTranslating(true);
-    try {
-      const result = await api.i18n.translate(koText, current);
-      const merged: Record<string, string> = { ...current, ko: koText };
-      for (const langCode of SUPPORTED_LANGS) {
-        if (langCode === 'ko') continue;
-        if ((current[langCode] || '').trim()) continue;
-        const translated = result.translations[langCode];
-        if (translated) merged[langCode] = translated;
-      }
-      setTrans(merged);
-    } catch (e) {
-      setError(e instanceof Error ? e.message : String(e));
-    } finally {
-      setTranslating(false);
-    }
-  }
-
   function openCreateMfr() {
     setMfrForm({ key: '', country: '', sort_order: '0' });
     setMfrTrans(emptyTrans());
@@ -215,13 +126,12 @@ export default function DevicePage() {
   }
 
   function openEditMfr(item: DeviceManufacturer) {
-    const fallback = manufacturerToTranslations(item);
     setMfrForm({
       key: item.key || '',
       country: item.country || '',
       sort_order: String(item.sort_order || 0),
     });
-    setMfrTrans(fallback);
+    setMfrTrans({ ...emptyTrans(), ko: item.name_ko || '', en: item.name_en || '' });
     setMfrParentTypeIds((item.parent_type_ids || '').split(',').map((v) => v.trim()).filter(Boolean));
     setModal({ target: 'manufacturer', mode: 'edit', id: item.id });
     if (item.name_key) {
@@ -243,7 +153,7 @@ export default function DevicePage() {
 
   function openEditBrand(item: DeviceBrand) {
     setBrandForm({ key: item.key || '', sort_order: String(item.sort_order || 0) });
-    setBrandTrans(brandToTranslations(item));
+    setBrandTrans({ ...emptyTrans(), ko: item.name_ko || '', en: item.name_en || '' });
     setBrandParentTypeIds((item.parent_type_ids || '').split(',').map((v) => v.trim()).filter(Boolean));
     const parentIds = (item.parent_mfr_ids || '').split(',').map((v) => v.trim()).filter(Boolean);
     setBrandParentMfrIds(parentIds.length > 0 ? parentIds : selectedMfr ? [selectedMfr.id] : []);
@@ -274,7 +184,7 @@ export default function DevicePage() {
       model_code: item.model_code ?? '',
       description: item.description ?? '',
     });
-    setModelTrans(modelToTranslations(item));
+    setModelTrans({ ...emptyTrans(), ko: item.model_name || '', en: item.model_name || '' });
     setModelParentTypeIds((item.parent_type_ids || '').split(',').map((v) => v.trim()).filter(Boolean));
     setModelParentMfrId(item.manufacturer_id || selectedMfr?.id || '');
     const parentIds = (item.parent_brand_ids || '').split(',').map((v) => v.trim()).filter(Boolean);
@@ -504,7 +414,7 @@ export default function DevicePage() {
                     onClick={() => { setSelectedType(item); setSelectedMfr(null); setSelectedBrand(null); setSelectedModel(null); }}
                   >
                     <div>
-                      <div className="master-row-title">{typeLabel(item)}</div>
+                      <div className="master-row-title">{itemLabel(item)}</div>
                       <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>{item.key}</div>
                     </div>
                     <StatusBadge status={item.status} />
@@ -521,7 +431,7 @@ export default function DevicePage() {
                     onClick={() => { setSelectedMfr(item); setSelectedBrand(null); setSelectedModel(null); }}
                   >
                     <div>
-                      <div className="master-row-title">{mfrLabel(item)}</div>
+                      <div className="master-row-title">{itemLabel(item)}</div>
                       <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>{item.country ?? ''}</div>
                     </div>
                     <div style={{ display: 'flex', flexDirection: 'column', gap: 4, alignItems: 'flex-end' }}>
@@ -538,7 +448,7 @@ export default function DevicePage() {
                 {selectedMfr && brands.map((item) => (
                   <button key={item.id} className={`master-row-btn ${selectedBrand?.id === item.id ? 'active' : ''}`} onClick={() => { setSelectedBrand(item); setSelectedModel(null); }}>
                     <div>
-                      <div className="master-row-title">{brandLabel(item)}</div>
+                      <div className="master-row-title">{itemLabel(item)}</div>
                       <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>{item.name_ko}</div>
                     </div>
                     <div style={{ display: 'flex', flexDirection: 'column', gap: 4, alignItems: 'flex-end' }}>
@@ -651,7 +561,7 @@ export default function DevicePage() {
                             checked={mfrParentTypeIds.includes(row.id)}
                             onChange={(e) => setMfrParentTypeIds((prev) => e.target.checked ? [...new Set([...prev, row.id])] : prev.filter((id) => id !== row.id))}
                           />
-                          <span>{typeLabel(row)}</span>
+                          <span>{itemLabel(row)}</span>
                         </label>
                       ))}
                     </div>
@@ -672,22 +582,7 @@ export default function DevicePage() {
                     <label className="form-label">{t('admin.device.country')}</label>
                     <input className="form-input" value={mfrForm.country} onChange={(e) => setMfrForm((f) => ({ ...f, country: e.target.value }))} placeholder="US" />
                   </div>
-                  <div style={{ borderTop: '1px solid var(--border)', paddingTop: 12, marginTop: 4 }}>
-                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
-                      <div style={{ fontSize: 13, fontWeight: 600 }}>{t('admin.master.btn_trans_auto')}</div>
-                      <button className="btn btn-secondary btn-sm" onClick={() => void autoTranslate(mfrTrans.ko, mfrTrans, setMfrTrans)} disabled={translating || !mfrTrans.ko}>
-                        {translating ? t('admin.master.loading_trans') : t('admin.master.btn_trans_auto')}
-                      </button>
-                    </div>
-                    {SUPPORTED_LANGS.map((langCode) => (
-                      <div key={langCode} className="form-group" style={{ marginBottom: 6, display: 'flex', alignItems: 'center', gap: 8 }}>
-                        <label style={{ fontSize: 12, width: 110, flexShrink: 0, color: langCode === 'ko' ? 'var(--text)' : 'var(--text-muted)' }}>
-                          {LANG_LABELS[langCode]}{langCode === 'ko' ? ' *' : ''}
-                        </label>
-                        <input className="form-input" style={{ fontSize: 13 }} value={mfrTrans[langCode] ?? ''} onChange={(e) => setMfrTrans((f) => ({ ...f, [langCode]: e.target.value }))} />
-                      </div>
-                    ))}
-                  </div>
+                  <TranslationFields translations={mfrTrans} onChange={setMfrTrans} translating={translating} onAutoTranslate={() => void autoTranslate(mfrTrans.ko, mfrTrans, setMfrTrans, setTranslating, setError)} t={t} />
                 </>
               )}
 
@@ -703,7 +598,7 @@ export default function DevicePage() {
                             checked={brandParentTypeIds.includes(row.id)}
                             onChange={(e) => setBrandParentTypeIds((prev) => e.target.checked ? [...new Set([...prev, row.id])] : prev.filter((id) => id !== row.id))}
                           />
-                          <span>{typeLabel(row)}</span>
+                          <span>{itemLabel(row)}</span>
                         </label>
                       ))}
                     </div>
@@ -718,7 +613,7 @@ export default function DevicePage() {
                             checked={brandParentMfrIds.includes(row.id)}
                             onChange={(e) => setBrandParentMfrIds((prev) => e.target.checked ? [...new Set([...prev, row.id])] : prev.filter((id) => id !== row.id))}
                           />
-                          <span>{mfrLabel(row)}</span>
+                          <span>{itemLabel(row)}</span>
                         </label>
                       ))}
                     </div>
@@ -735,22 +630,7 @@ export default function DevicePage() {
                     <label className="form-label">{t('admin.master.field_sort')}</label>
                     <input className="form-input" type="number" value={brandForm.sort_order} onChange={(e) => setBrandForm((f) => ({ ...f, sort_order: e.target.value }))} />
                   </div>
-                  <div style={{ borderTop: '1px solid var(--border)', paddingTop: 12, marginTop: 4 }}>
-                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
-                      <div style={{ fontSize: 13, fontWeight: 600 }}>{t('admin.master.btn_trans_auto')}</div>
-                      <button className="btn btn-secondary btn-sm" onClick={() => void autoTranslate(brandTrans.ko, brandTrans, setBrandTrans)} disabled={translating || !brandTrans.ko}>
-                        {translating ? t('admin.master.loading_trans') : t('admin.master.btn_trans_auto')}
-                      </button>
-                    </div>
-                    {SUPPORTED_LANGS.map((langCode) => (
-                      <div key={langCode} className="form-group" style={{ marginBottom: 6, display: 'flex', alignItems: 'center', gap: 8 }}>
-                        <label style={{ fontSize: 12, width: 110, flexShrink: 0, color: langCode === 'ko' ? 'var(--text)' : 'var(--text-muted)' }}>
-                          {LANG_LABELS[langCode]}{langCode === 'ko' ? ' *' : ''}
-                        </label>
-                        <input className="form-input" style={{ fontSize: 13 }} value={brandTrans[langCode] ?? ''} onChange={(e) => setBrandTrans((f) => ({ ...f, [langCode]: e.target.value }))} />
-                      </div>
-                    ))}
-                  </div>
+                  <TranslationFields translations={brandTrans} onChange={setBrandTrans} translating={translating} onAutoTranslate={() => void autoTranslate(brandTrans.ko, brandTrans, setBrandTrans, setTranslating, setError)} t={t} />
                 </>
               )}
 
@@ -766,7 +646,7 @@ export default function DevicePage() {
                             checked={modelParentTypeIds.includes(row.id)}
                             onChange={(e) => setModelParentTypeIds((prev) => e.target.checked ? [...new Set([...prev, row.id])] : prev.filter((id) => id !== row.id))}
                           />
-                          <span>{typeLabel(row)}</span>
+                          <span>{itemLabel(row)}</span>
                         </label>
                       ))}
                     </div>
@@ -784,7 +664,7 @@ export default function DevicePage() {
                       }}
                     >
                       <option value="">{t('admin.device.select_manufacturer')}</option>
-                      {manufacturers.map((row) => <option key={row.id} value={row.id}>{mfrLabel(row)}</option>)}
+                      {manufacturers.map((row) => <option key={row.id} value={row.id}>{itemLabel(row)}</option>)}
                     </select>
                   </div>
                   <div className="form-group">
@@ -797,7 +677,7 @@ export default function DevicePage() {
                             checked={modelParentBrandIds.includes(row.id)}
                             onChange={(e) => setModelParentBrandIds((prev) => e.target.checked ? [...new Set([...prev, row.id])] : prev.filter((id) => id !== row.id))}
                           />
-                          <span>{brandLabel(row)}</span>
+                          <span>{itemLabel(row)}</span>
                         </label>
                       ))}
                     </div>
@@ -822,22 +702,7 @@ export default function DevicePage() {
                     <label className="form-label">{t('admin.device.description')}</label>
                     <input className="form-input" value={modelForm.description} onChange={(e) => setModelForm((f) => ({ ...f, description: e.target.value }))} />
                   </div>
-                  <div style={{ borderTop: '1px solid var(--border)', paddingTop: 12, marginTop: 4 }}>
-                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
-                      <div style={{ fontSize: 13, fontWeight: 600 }}>{t('admin.master.btn_trans_auto')}</div>
-                      <button className="btn btn-secondary btn-sm" onClick={() => void autoTranslate(modelTrans.ko, modelTrans, setModelTrans)} disabled={translating || !modelTrans.ko}>
-                        {translating ? t('admin.master.loading_trans') : t('admin.master.btn_trans_auto')}
-                      </button>
-                    </div>
-                    {SUPPORTED_LANGS.map((langCode) => (
-                      <div key={langCode} className="form-group" style={{ marginBottom: 6, display: 'flex', alignItems: 'center', gap: 8 }}>
-                        <label style={{ fontSize: 12, width: 110, flexShrink: 0, color: langCode === 'ko' ? 'var(--text)' : 'var(--text-muted)' }}>
-                          {LANG_LABELS[langCode]}{langCode === 'ko' ? ' *' : ''}
-                        </label>
-                        <input className="form-input" style={{ fontSize: 13 }} value={modelTrans[langCode] ?? ''} onChange={(e) => setModelTrans((f) => ({ ...f, [langCode]: e.target.value }))} />
-                      </div>
-                    ))}
-                  </div>
+                  <TranslationFields translations={modelTrans} onChange={setModelTrans} translating={translating} onAutoTranslate={() => void autoTranslate(modelTrans.ko, modelTrans, setModelTrans, setTranslating, setError)} t={t} />
                 </>
               )}
 
@@ -879,29 +744,3 @@ export default function DevicePage() {
     </>
   );
 }
-  const sortTypesByModelCountDesc = (rows: DeviceType[]): DeviceType[] => {
-    return [...rows].sort((a, b) => {
-      const ac = typeof a.model_count === 'number' ? a.model_count : 0;
-      const bc = typeof b.model_count === 'number' ? b.model_count : 0;
-      if (bc !== ac) return bc - ac;
-      return (a.sort_order ?? 0) - (b.sort_order ?? 0);
-    });
-  };
-
-  const sortManufacturersByModelCountDesc = (rows: DeviceManufacturer[]): DeviceManufacturer[] => {
-    return [...rows].sort((a, b) => {
-      const ac = typeof a.model_count === 'number' ? a.model_count : 0;
-      const bc = typeof b.model_count === 'number' ? b.model_count : 0;
-      if (bc !== ac) return bc - ac;
-      return (a.sort_order ?? 0) - (b.sort_order ?? 0);
-    });
-  };
-
-  const sortBrandsByModelCountDesc = (rows: DeviceBrand[]): DeviceBrand[] => {
-    return [...rows].sort((a, b) => {
-      const ac = typeof a.model_count === 'number' ? a.model_count : 0;
-      const bc = typeof b.model_count === 'number' ? b.model_count : 0;
-      if (bc !== ac) return bc - ac;
-      return (a.sort_order ?? 0) - (b.sort_order ?? 0);
-    });
-  };

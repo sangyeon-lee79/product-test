@@ -4,6 +4,7 @@
  */
 import { createContext, useContext, useEffect, useState, type ReactNode } from 'react';
 import { getApiBase } from './apiBase';
+import { initApiTranslator } from './api';
 import { 
   SUPPORTED_LANGS, 
   LANG_LABELS, 
@@ -64,6 +65,7 @@ export function I18nProvider({ children }: { children: ReactNode }) {
           if (res.success) Object.assign(merged, res.data);
         });
         setTrans(merged);
+        initApiTranslator((key, fb) => getTranslation(merged, key, lang, MISSING_TRANSLATION_MAP, fb));
         setIsLoaded(true);
       })
       .catch(() => {

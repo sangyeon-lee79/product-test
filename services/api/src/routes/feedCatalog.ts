@@ -2,85 +2,7 @@ import type { Env, JwtPayload } from '../types';
 import { ok, created, err, newId, now, randomToken } from '../types';
 import { requireAuth, requireRole } from '../middleware/auth';
 import { SUPPORTED_LANGS as LANGS } from '@petfolio/shared';
-
-
-function resolveLang(url: URL): typeof LANGS[number] {
-  const raw = (url.searchParams.get('lang') || 'ko').toLowerCase() as typeof LANGS[number];
-  return LANGS.includes(raw) ? raw : 'ko';
-}
-
-async function hasColumn(env: Env, table: string, column: string): Promise<boolean> {
-  const rows = await env.DB.prepare(`PRAGMA table_info(${table})`).all<{ name: string }>();
-  return rows.results.some((r) => r.name === column);
-}
-
-async function hasTable(env: Env, table: string): Promise<boolean> {
-  const row = await env.DB.prepare(
-    "SELECT name FROM sqlite_master WHERE type = 'table' AND name = ? LIMIT 1"
-  ).bind(table).first<{ name?: string }>();
-  return Boolean(row?.name);
-}
-
-async function syncParentMap(
-  env: Env,
-  table: string,
-  childCol: string,
-  childId: string,
-  parentCol: string,
-  parentIds: string[],
-) {
-  await env.DB.prepare(`DELETE FROM ${table} WHERE ${childCol} = ?`).bind(childId).run();
-  for (const parentId of Array.from(new Set(parentIds.filter(Boolean)))) {
-    await env.DB.prepare(
-      `INSERT OR IGNORE INTO ${table} (id, ${childCol}, ${parentCol}, created_at) VALUES (?, ?, ?, ?)`
-    ).bind(newId(), childId, parentId, now()).run();
-  }
-}
-
-function normalizedTranslations(input: Record<string, string> | undefined, ko: string, en: string): Record<string, string> {
-  const fallback = en || ko;
-  const out: Record<string, string> = {};
-  for (const lang of LANGS) {
-    const v = (input?.[lang] || '').trim();
-    if (v) out[lang] = v;
-    else if (lang === 'ko') out[lang] = ko;
-    else if (lang === 'en') out[lang] = en;
-    else out[lang] = fallback;
-  }
-  return out;
-}
-
-async function upsertI18n(env: Env, i18nKey: string, translations: Record<string, string>) {
-  const existing = await env.DB.prepare('SELECT id FROM i18n_translations WHERE key = ?').bind(i18nKey).first<{ id: string }>();
-  const values = LANGS.map((lang) => (translations[lang] || '').trim() || null);
-  if (existing) {
-    await env.DB.prepare(
-      `UPDATE i18n_translations
-       SET ko = COALESCE(?, ko),
-           en = COALESCE(?, en),
-           ja = COALESCE(?, ja),
-           zh_cn = COALESCE(?, zh_cn),
-           zh_tw = COALESCE(?, zh_tw),
-           es = COALESCE(?, es),
-           fr = COALESCE(?, fr),
-           de = COALESCE(?, de),
-           pt = COALESCE(?, pt),
-           vi = COALESCE(?, vi),
-           th = COALESCE(?, th),
-           id_lang = COALESCE(?, id_lang),
-           ar = COALESCE(?, ar),
-           updated_at = ?
-       WHERE id = ?`
-    ).bind(...values, now(), existing.id).run();
-    return;
-  }
-
-  await env.DB.prepare(
-    `INSERT INTO i18n_translations
-      (id, key, page, ko, en, ja, zh_cn, zh_tw, es, fr, de, pt, vi, th, id_lang, ar, is_active, created_at, updated_at)
-     VALUES (?, ?, 'feed', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1, ?, ?)`
-  ).bind(newId(), i18nKey, ...values, now(), now()).run();
-}
+import { resolveLang, hasColumn, hasTable, syncParentMap, normalizedTranslations, upsertI18n } from '../helpers/sqlHelpers';
 
 export async function handleFeedCatalog(request: Request, env: Env, url: URL): Promise<Response> {
   const path = url.pathname;
@@ -369,7 +291,7 @@ export async function handleFeedCatalog(request: Request, env: Env, url: URL): P
       `INSERT INTO feed_manufacturers (id, key, name_key, name_ko, name_en, country, status, sort_order, created_at, updated_at)
        VALUES (?, ?, ?, ?, ?, ?, 'active', ?, ?, ?)`
     ).bind(id, key, nameKey, ko, en, body.country ?? null, body.sort_order ?? 0, now(), now()).run();
-    await upsertI18n(env, nameKey, normalizedTranslations(body.translations, ko, en));
+    await upsertI18n(env, nameKey, normalizedTranslations(body.translations, ko, en), 'feed');
     if (hasFeedManufacturerTypeMap) {
       await syncParentMap(env, 'feed_manufacturer_type_map', 'manufacturer_id', id, 'type_item_id', body.parent_type_ids ?? []);
     }
@@ -406,7 +328,7 @@ export async function handleFeedCatalog(request: Request, env: Env, url: URL): P
       const ko = (body.translations?.ko || body.name_ko || existing.name_ko || '').trim();
       const en = (body.translations?.en || body.name_en || ko || existing.name_en || '').trim();
       if (existing.name_key && (ko || en)) {
-        await upsertI18n(env, existing.name_key, normalizedTranslations(body.translations, ko, en));
+        await upsertI18n(env, existing.name_key, normalizedTranslations(body.translations, ko, en), 'feed');
       }
       if (body.parent_type_ids && hasFeedManufacturerTypeMap) {
         await syncParentMap(env, 'feed_manufacturer_type_map', 'manufacturer_id', mfrId, 'type_item_id', body.parent_type_ids);
@@ -493,7 +415,7 @@ export async function handleFeedCatalog(request: Request, env: Env, url: URL): P
       `INSERT INTO feed_brands (id, manufacturer_id, name_key, name_ko, name_en, status, created_at, updated_at)
        VALUES (?, ?, ?, ?, ?, 'active', ?, ?)`
     ).bind(id, manufacturerIds[0], nameKey, ko, en, now(), now()).run();
-    await upsertI18n(env, nameKey, normalizedTranslations(body.translations, ko, en));
+    await upsertI18n(env, nameKey, normalizedTranslations(body.translations, ko, en), 'feed');
     if (await hasTable(env, 'feed_brand_manufacturer_map')) {
       await syncParentMap(env, 'feed_brand_manufacturer_map', 'brand_id', id, 'manufacturer_id', manufacturerIds);
     }
@@ -520,7 +442,7 @@ export async function handleFeedCatalog(request: Request, env: Env, url: URL): P
       const ko = (body.translations?.ko || body.name_ko || existing.name_ko || '').trim();
       const en = (body.translations?.en || body.name_en || ko || existing.name_en || '').trim();
       if (existing.name_key && (ko || en)) {
-        await upsertI18n(env, existing.name_key, normalizedTranslations(body.translations, ko, en));
+        await upsertI18n(env, existing.name_key, normalizedTranslations(body.translations, ko, en), 'feed');
       }
       if (manufacturerIds.length > 0 && await hasTable(env, 'feed_brand_manufacturer_map')) {
         await syncParentMap(env, 'feed_brand_manufacturer_map', 'brand_id', brandId, 'manufacturer_id', manufacturerIds);
@@ -645,7 +567,7 @@ export async function handleFeedCatalog(request: Request, env: Env, url: URL): P
       now(),
       now()
     ).run();
-    await upsertI18n(env, nameKey, normalizedTranslations(body.translations, ko, en));
+    await upsertI18n(env, nameKey, normalizedTranslations(body.translations, ko, en), 'feed');
     const brandIds = Array.from(new Set([...(body.brand_ids ?? []), ...(body.brand_id ? [body.brand_id] : [])].filter(Boolean)));
     if (brandIds.length > 0 && await hasTable(env, 'feed_model_brand_map')) {
       await syncParentMap(env, 'feed_model_brand_map', 'model_id', id, 'brand_id', brandIds);
@@ -678,7 +600,7 @@ export async function handleFeedCatalog(request: Request, env: Env, url: URL): P
       vals.push(now(), modelId);
       await env.DB.prepare(`UPDATE feed_models SET ${sets.join(', ')} WHERE id = ?`).bind(...vals).run();
       if (existing.name_key && (ko || en || body.translations)) {
-        await upsertI18n(env, existing.name_key, normalizedTranslations(body.translations, ko || existing.model_name || '', en || ko || existing.model_name || ''));
+        await upsertI18n(env, existing.name_key, normalizedTranslations(body.translations, ko || existing.model_name || '', en || ko || existing.model_name || ''), 'feed');
       }
       if (brandIds.length > 0 && await hasTable(env, 'feed_model_brand_map')) {
         await syncParentMap(env, 'feed_model_brand_map', 'model_id', modelId, 'brand_id', brandIds);
