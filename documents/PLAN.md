@@ -28,7 +28,7 @@ Your pet's life portfolio
 
 ---
 
-## 0.2 통합 개발 반영 내역 (2026-03-07, 최신)
+## 0.2 통합 개발 반영 내역 (2026-03-07)
 
 아래는 최근 연속 개발에서 실제 코드/DB에 반영된 항목 요약이다.
 
@@ -108,7 +108,45 @@ Your pet's life portfolio
 
 ---
 
-## 0.3 전면 동기화 기준 (문서=코드=DB=UI)
+## 0.3 UI 디자인 시스템 + 화면 리디자인 (2026-03-08, 최신)
+
+### A) 디자인 시스템 (index.css)
+- [x] CSS 변수 기반 디자인 토큰: Warm Amber 팔레트 (`--primary: #d97706`, `--primary-light: #fef3c7`)
+- [x] Pretendard + DM Serif Display 폰트 조합 (Google Fonts)
+- [x] `html[data-theme="dark"]` + `localStorage('petfolio-theme')` 다크모드
+- [x] `ig-*` CSS 클래스: Instagram-style 레이아웃 (사이드바/피드/우측패널)
+- [x] `gm-*` CSS 클래스: GuardianMainPage 전용 컴포넌트 시스템
+- [x] `explore-*` CSS 클래스: 탐색 페이지 3열 그리드 + 검색바
+
+### B) PublicHome (/) — SNS Public 피드
+- [x] `/` 라우트: Instagram 3열 레이아웃 (사이드바 240px / 피드 / 우측패널 320px)
+- [x] Story bar (원형 아바타 + 이름 스크롤)
+- [x] 피드 카드: 미디어/캡션/좋아요/댓글 + 작성자 아바타
+- [x] 우측패널: 로그인/회원가입 CTA + 추천 태그
+- [x] 미로그인 → 피드 열람 가능 (읽기 전용 공개)
+- [x] 모바일 하단 탭바 (`ig-bottom-tabbar`)
+
+### C) ExplorePage (/explore) — 탐색 페이지
+- [x] `/explore` 신규 라우트 추가 (App.tsx)
+- [x] 검색바: 캡션/펫 이름/태그 실시간 필터
+- [x] 3열 1:1 정방형 그리드 (`explore-grid`)
+- [x] 타일 hover 오버레이: 좋아요/댓글 수
+- [x] 타일 클릭 → 상세 모달 (`DetailModal`)
+- [x] 사이드바 탐색 + 하단 탭바 (PublicHome 공유 `ig-*` 클래스)
+
+### D) GuardianMainPage (/guardian) — 전면 리디자인
+- [x] GuardianMainPage 전면 리디자인 (Instagram 프로필 스타일 대시보드)
+- [x] 컴팩트 펫 헤더: 80px 그라디언트 아바타, 인라인 통계(Posts/Media/Friends), 상태 칩
+- [x] Sticky 탭 바: Timeline / Health / Services / Gallery / Profile (아이콘+라벨)
+- [x] 2단 레이아웃: 메인 `flex:1` + 사이드바 `300px` (`gm-layout`)
+- [x] 타임라인 탭: 컴팩트 작성 바 클릭 → 모달 (`composeModalOpen state`)
+- [x] 갤러리 탭: 3열 1:1 그리드 + 라이트박스 (`lightboxIndex/lightboxItems state`)
+- [x] 프로필 탭: 2열 인포 그리드 + 건강 태그 (`gm-info-grid`, `gm-health-tags`)
+- [x] 통합 사이드바: 내 펫 선택 / 빠른 액션 / 건강 스냅샷 / 예약 / 커넥션 섹션
+
+---
+
+## 0.4 전면 동기화 기준 (문서=코드=DB=UI)
 
 ### A) Master Data 표준 구조
 - 최종 탐색 구조: `Category -> L1 -> L2 -> L3 -> L4 -> L5`
@@ -536,6 +574,16 @@ DB 테이블/마이그레이션
 [x] 펫 등록/수정 폼 (동일 API)
 [x] 펫 등록/수정 직접 입력 확장: 이름/마이크로칩/생일/몸무게/메모
 [x] Health 탭 몸무게 섹션: 기간필터(1m/3m/6m/1y/all), 추이 그래프, 요약값, 기록 추가/삭제
+[x] GuardianMainPage 전면 리디자인 — Instagram 프로필 스타일 대시보드 (2026-03-08)
+[x] 컴팩트 펫 헤더: 80px 그라디언트 아바타, 인라인 통계(Posts/Media/Friends), 상태 칩
+[x] Sticky 탭 바: Timeline / Health / Services / Gallery / Profile (아이콘+라벨)
+[x] 2단 레이아웃: `gm-layout` (메인 flex:1 + 사이드바 300px), 960px 이하 단열 전환
+[x] 타임라인 탭: 컴팩트 작성 바 클릭 → 모달 (composeModalOpen)
+[x] 갤러리 탭: 3열 1:1 그리드 + 라이트박스 prev/next (lightboxIndex/lightboxItems)
+[x] 프로필 탭: 2열 인포 그리드 + 건강 태그 (gm-info-grid, gm-health-tags)
+[x] 통합 사이드바: 내 펫 선택/빠른 액션/건강 스냅샷/예약/커넥션 섹션 (gm-sidebar)
+[x] PublicHome (/): SNS Instagram-style 공개 피드 + story bar + 우측 CTA 패널
+[x] ExplorePage (/explore): 3열 탐색 그리드 + 검색 + 상세 모달
 
 ## S6-5. 테스트 데이터 & 검증
 [ ] 테스트 Guardian 프로필 입력 (handle: @bangul_mom)
@@ -852,9 +900,11 @@ DB 테이블/마이그레이션
 [ ] S11: 광고(건강 화면 미노출) + 통계 대시보드
 [ ] S12: OAuth 전환 + 하드코딩 제로 + E2E 통과
 
-진행 메모 (2026-03-07):
+진행 메모 (2026-03-08):
 - S10은 DB/핵심 API(booking status, completion-request, approve, feed like/comment)가 선행 구현되어 "부분완료" 상태.
-- S6는 기본 완료 상태이며, `birthday/current_weight/weight logs/health chart` 확장까지 반영됨.
+- S6는 기본 완료 상태이며, `birthday/current_weight/weight logs/health chart` 확장 + GuardianMainPage 전면 리디자인(Instagram 프로필 스타일)까지 반영됨.
+- PublicHome(/), ExplorePage(/explore) 신규 구현 완료 (SNS public 피드 + 탐색 그리드).
+- 다음 단계: S7 질병 기록 + 타임라인 (logs/log_values/log_media DB + API + Mobile UI).
 
 ---
 

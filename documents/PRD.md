@@ -1,13 +1,13 @@
 # Pet Lifecycle SNS Platform — PRD.md
 # 제품 요구사항 정의서 (Product Requirements Document)
-# Status: MVP In Progress (2026-03-07 동기화)
+# Status: MVP In Progress (2026-03-08 동기화)
 
 Petfolio
 Your pet's life portfolio
 
 ---
 
-## 0. 개발 현황 동기화 (2026-03-07)
+## 0. 개발 현황 동기화 (2026-03-08)
 
 ### 0.1 현재 반영 완료 (PLAN.md 기준)
 - Pet Album 통합 저장소: `pet_album_media` + `/api/v1/pet-album` CRUD
@@ -18,18 +18,30 @@ Your pet's life portfolio
 - 몸무게 API: `GET/POST/PUT/DELETE /api/v1/pets/:id/weight-logs` + `range`
 - Guardian Web Health 탭: 몸무게 기간 필터/요약/추이 그래프/기록 추가
 
-### 0.2 진행 중/잔여
+### 0.2 현재 반영 완료 — UI 리디자인 (2026-03-08)
+- **디자인 시스템**: Warm Amber 팔레트(`--primary: #d97706`), Pretendard + DM Serif Display, CSS 변수 기반 다크모드
+- **PublicHome (/)**: Instagram-style 3열 레이아웃 (사이드바/피드/우측 CTA), story bar, 공개 피드 열람
+- **ExplorePage (/explore)**: 신규 라우트, 3열 탐색 그리드, 실시간 검색, 상세 모달
+- **GuardianMainPage (/guardian)**: Instagram 프로필 스타일 전면 리디자인
+  - 컴팩트 펫 헤더: 80px 아바타, 인라인 통계(Posts/Media/Friends), 상태 칩
+  - Sticky 탭 바: Timeline / Health / Services / Gallery / Profile
+  - 2단 레이아웃: 메인(flex:1) + 사이드바(300px), 모바일 단열 전환
+  - 타임라인: 컴팩트 작성 바 → 모달, 갤러리: 3열 라이트박스, 프로필: 2열 인포 그리드
+
+### 0.3 진행 중/잔여
 - 모바일/웹 공통 피드 리스트 + 좋아요/댓글 UX 일관화 및 실기기 QA
+- S7 질병 기록 + 타임라인 (logs/log_values/log_media DB + API + Mobile/Web UI)
 
 ---
 
 ## 1. 제품 개요
 
 ### 1.1 제품명
-Pet Life (방울아 놀자)
+Petfolio — Your pet's life portfolio
 
 ### 1.2 제품 정의
-반려동물의 전 생애 기록(질병 중심)을 신뢰 가능한 타임라인으로 축적하고, Provider 서비스 완료 → 1-click 피드 공유 바이럴 루프를 갖춘 SNS형 PHR 플랫폼
+반려동물의 전 생애를 SNS 피드 + 포트폴리오/아카이브로 기록하는 플랫폼.
+공개 피드(PublicHome) + 탐색(Explore) + Guardian 대시보드(질병 중심 타임라인) + Provider 서비스 완료 → 1-click 피드 공유 바이럴 루프를 통합한 SNS형 PHR 플랫폼
 
 ### 1.3 플랫폼 공식 용어
 - **Guardian** = 보호자 계정(User)
