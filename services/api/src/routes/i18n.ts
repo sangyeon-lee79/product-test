@@ -9,32 +9,16 @@ import type { Env } from '../types';
 import { ok, created, err, newId, now } from '../types';
 import { requireAuth, requireRole } from '../middleware/auth';
 import type { JwtPayload } from '../types';
+import { 
+  SUPPORTED_LANGS as LANGS, 
+  GOOGLE_LANG_MAP, 
+  KEY_LITERAL_PATTERN,
+  type Lang 
+} from '@petfolio/shared';
 
-const LANGS = ['ko','en','ja','zh_cn','zh_tw','es','fr','de','pt','vi','th','id_lang','ar'] as const;
-type Lang = typeof LANGS[number];
 type TargetLang = Exclude<Lang, 'ko'>;
 
 const TARGET_LANGS = LANGS.filter((l): l is TargetLang => l !== 'ko');
-const GOOGLE_LANG_MAP: Record<TargetLang, string> = {
-  en: 'en',
-  ja: 'ja',
-  zh_cn: 'zh-CN',
-  zh_tw: 'zh-TW',
-  es: 'es',
-  fr: 'fr',
-  de: 'de',
-  pt: 'pt',
-  vi: 'vi',
-  th: 'th',
-  id_lang: 'id',
-  ar: 'ar',
-};
-
-const DEFAULT_RPM_LIMIT = 60;
-const DEFAULT_DAILY_CHAR_LIMIT = 200000;
-const GOOGLE_TOKEN_AUDIENCE = 'https://oauth2.googleapis.com/token';
-const GOOGLE_TRANSLATE_SCOPE = 'https://www.googleapis.com/auth/cloud-translation';
-const KEY_LITERAL_PATTERN = /^(master|admin)\.[a-z0-9_.-]+$/i;
 
 type TranslationMap = Record<TargetLang, string>;
 
