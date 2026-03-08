@@ -352,6 +352,9 @@ export default function GuardianMainPage() {
   });
   const [feedTab, setFeedTab] = useState<FeedTab>('all');
   const [petTab, setPetTab] = useState<PetProfileTab>('gallery');
+  const [composeModalOpen, setComposeModalOpen] = useState(false);
+  const [lightboxIndex, setLightboxIndex] = useState(-1);
+  const [lightboxItems, setLightboxItems] = useState<string[]>([]);
   const [feedCompose, setFeedCompose] = useState<FeedCompose>(DEFAULT_FEED_COMPOSE);
   const [feedImageFile, setFeedImageFile] = useState<File | null>(null);
   const [feedImagePreviewUrl, setFeedImagePreviewUrl] = useState('');
@@ -504,10 +507,6 @@ export default function GuardianMainPage() {
     [bookings],
   );
 
-  const latestHealthLabel = useMemo(
-    () => labelOf(optHealthLevel, selectedPet?.health_condition_level_id, t('common.none', '-')),
-    [optHealthLevel, selectedPet?.health_condition_level_id],
-  );
 
   const petSummaryDetails = useMemo(() => {
     if (!selectedPet) return null;
@@ -1564,429 +1563,461 @@ export default function GuardianMainPage() {
   }
 
   return (
-    <div className="guardian-page">
-      <section className="guardian-top">
-        <div className="guardian-hero card">
-          <div className="card-body">
-            <p className="hero-eyebrow">{t('platform.name', 'Petfolio')}</p>
-            <h2>{t('platform.name', 'Petfolio')}</h2>
-            <p className="text-muted">{t('platform.tagline', "Your pet's life portfolio")}</p>
-            <div className="hero-actions mt-3">
-              <button className="btn btn-primary" onClick={openCreatePet}>+ {t('common.add_pet', 'Add Pet')}</button>
-              <Link className="btn btn-secondary" to="/">{t('guardian.main.public_feed', 'Public Feed')}</Link>
-            </div>
+    <div className="gm-page">
+      {/* ── Compact pet header ── */}
+      <div className="gm-pet-header">
+        <div className="gm-pet-avatar">
+          {selectedPet ? selectedPet.name[0].toUpperCase() : '🐾'}
+        </div>
+        <div className="gm-pet-info">
+          <h2>{selectedPet?.name || t('guardian.empty.no_pets_title', 'No pet selected')}</h2>
+          {selectedPet && (
+            <p>
+              {labelOf(optPetType, selectedPet.pet_type_id, '')}
+              {labelOf(optBreed, selectedPet.breed_id, '') ? ` · ${labelOf(optBreed, selectedPet.breed_id, '')}` : ''}
+              {labelOf(optGender, selectedPet.gender_id, '') ? ` · ${labelOf(optGender, selectedPet.gender_id, '')}` : ''}
+            </p>
+          )}
+        </div>
+        {selectedPet && (
+          <div className="gm-pet-stats">
+            <div className="gm-pet-stat"><strong>{feeds.length}</strong><span>{t('guardian.stats.posts', 'Posts')}</span></div>
+            <div className="gm-pet-stat"><strong>{albumMedia.length}</strong><span>{t('guardian.stats.media', 'Media')}</span></div>
+            <div className="gm-pet-stat"><strong>{friendCount}</strong><span>{t('guardian.stats.friends', 'Friends')}</span></div>
           </div>
+        )}
+        {selectedPet && petSummaryDetails && (
+          <div className="gm-pet-chips">
+            {petSummaryDetails.diet.text && <span className="gm-pet-chip" title={petSummaryDetails.diet.tooltip}>{petSummaryDetails.diet.text}</span>}
+            {petSummaryDetails.disease.text && <span className="gm-pet-chip" title={petSummaryDetails.disease.tooltip}>{petSummaryDetails.disease.text}</span>}
+            {petSummaryDetails.vaccination.text && <span className="gm-pet-chip" title={petSummaryDetails.vaccination.tooltip}>{petSummaryDetails.vaccination.text}</span>}
+          </div>
+        )}
+        <div className="gm-header-actions">
+          <button className="btn btn-primary btn-sm" onClick={openCreatePet}>+ {t('common.add_pet', 'Add Pet')}</button>
+          <Link className="btn btn-secondary btn-sm" to="/">{t('guardian.main.public_feed', 'Feed')}</Link>
         </div>
+      </div>
 
-        <div className="guardian-summary-grid">
-          <article className="card"><div className="card-body"><p className="text-sm text-muted">{t('guardian.summary.pets_count', 'Registered Pets')}</p><h3>{pets.length}</h3></div></article>
-          <article className="card"><div className="card-body"><p className="text-sm text-muted">{t('guardian.summary.latest_health', 'Latest Health Status')}</p><h3>{latestHealthLabel}</h3></div></article>
-          <article className="card"><div className="card-body"><p className="text-sm text-muted">{t('guardian.summary.latest_booking_status', 'Latest Booking Status')}</p><h3>{latestBooking?.status || t('common.none', '-')}</h3></div></article>
-          <article className="card"><div className="card-body"><p className="text-sm text-muted">{t('guardian.summary.pending_completion_approvals', 'Pending Completion Approvals')}</p><h3>{pendingApprovalsCount}</h3></div></article>
-        </div>
-      </section>
+      {/* ── Sticky tab bar ── */}
+      <div className="gm-tabs">
+        <button className={`gm-tab${petTab === 'timeline' ? ' active' : ''}`} onClick={() => setPetTab('timeline')}>
+          <span className="gm-tab-icon">📋</span>{t('guardian.tab.timeline', 'Timeline')}
+        </button>
+        <button className={`gm-tab${petTab === 'health' ? ' active' : ''}`} onClick={() => setPetTab('health')}>
+          <span className="gm-tab-icon">❤️</span>{t('guardian.tab.health', 'Health')}
+        </button>
+        <button className={`gm-tab${petTab === 'services' ? ' active' : ''}`} onClick={() => setPetTab('services')}>
+          <span className="gm-tab-icon">🛎️</span>{t('guardian.tab.services', 'Services')}
+        </button>
+        <button className={`gm-tab${petTab === 'gallery' ? ' active' : ''}`} onClick={() => setPetTab('gallery')}>
+          <span className="gm-tab-icon">🖼️</span>{t('guardian.tab.gallery', 'Gallery')}
+        </button>
+        <button className={`gm-tab${petTab === 'profile' ? ' active' : ''}`} onClick={() => setPetTab('profile')}>
+          <span className="gm-tab-icon">👤</span>{t('guardian.tab.profile', 'Profile')}
+        </button>
+      </div>
 
-      {error && <div className="alert alert-error">{error}</div>}
+      {error && <div className="alert alert-error" style={{ margin: '12px 24px 0' }}>{error}</div>}
 
       {loading ? (
         <div className="loading-center"><span className="spinner" /></div>
       ) : (
-        <section className="guardian-layout">
-          <main className="guardian-main-feed">
-            {pets.length === 0 && (
-              <div className="card">
-                <div className="card-body">
-                  <h3>{t('guardian.empty.no_pets_title', 'Register your first pet')}</h3>
-                  <p className="text-muted">{t('guardian.empty.no_pets_desc', 'Without a pet profile, feed/health/booking links are limited.')}</p>
-                  <button className="btn btn-primary mt-2" onClick={openCreatePet}>{t('guardian.empty.no_pets_cta', 'Register your first pet')}</button>
-                </div>
-              </div>
-            )}
-
-            <div className="feed-toolbar card">
-              <div className="feed-tabs pet-profile-tabs">
-                <button className={`feed-tab ${petTab === 'timeline' ? 'active' : ''}`} onClick={() => setPetTab('timeline')}>Timeline</button>
-                <button className={`feed-tab ${petTab === 'health' ? 'active' : ''}`} onClick={() => setPetTab('health')}>Health</button>
-                <button className={`feed-tab ${petTab === 'services' ? 'active' : ''}`} onClick={() => setPetTab('services')}>Services</button>
-                <button className={`feed-tab ${petTab === 'gallery' ? 'active' : ''}`} onClick={() => setPetTab('gallery')}>Gallery</button>
-                <button className={`feed-tab ${petTab === 'profile' ? 'active' : ''}`} onClick={() => setPetTab('profile')}>Profile</button>
-              </div>
-            </div>
-
-            {petTab === 'gallery' && (
-              <PetGalleryPanel
-                selectedPet={selectedPet}
-                mediaItems={albumMedia}
-                bookings={bookings}
-                breedLabel={labelOf(optBreed, selectedPet?.breed_id, t('common.none', '-'))}
-                genderLabel={labelOf(optGender, selectedPet?.gender_id, t('common.none', '-'))}
-                lifeStageLabel={labelOf(optLifeStage, selectedPet?.life_stage_id, t('common.none', '-'))}
-                isGuardian={isGuardian}
-                setError={setError}
-                onRefresh={() => loadAll(feedTab)}
-              />
-            )}
-
-            {petTab === 'timeline' && (
-              <>
-                <div className="card">
-                  <div className="card-header"><div className="card-title">{t('guardian.feed.create_title', 'Create Feed Post')}</div></div>
-                  <div className="card-body">
-                    <div className="feed-compose-layout">
-                      <div className="feed-compose-media">
-                        <label className="form-label">{t('guardian.feed.photo_upload', '사진 업로드')}</label>
-                        <div
-                          className="gallery-upload-dropzone"
-                          onDragOver={(e) => e.preventDefault()}
-                          onDrop={(e) => {
-                            e.preventDefault();
-                            const file = e.dataTransfer.files?.[0] || null;
-                            handleFeedImageSelected(file);
-                          }}
-                        >
-                          <input
-                            ref={fileInputRef}
-                            type="file"
-                            className="gallery-upload-file-input"
-                            accept="image/jpeg,image/jpg,image/png,image/webp"
-                            capture="environment"
-                            onChange={(e) => handleFeedImageSelected(e.target.files?.[0] || null)}
-                          />
-                          <p>{t('guardian.feed.photo_hint', '드래그 앤 드롭 또는 파일 선택')}</p>
-                          <button type="button" className="btn btn-secondary btn-sm" onClick={() => fileInputRef.current?.click()}>
-                            {t('guardian.feed.photo_select', '사진 선택')}
-                          </button>
-                        </div>
-                        {feedImagePreviewUrl && (
-                          <div className="feed-compose-preview">
-                            <img src={feedImagePreviewUrl} alt={t('guardian.feed.photo_preview', '업로드 미리보기')} />
-                            <button type="button" className="btn btn-secondary btn-sm" onClick={resetFeedImage}>
-                              {t('guardian.feed.photo_reselect', '다시 선택')}
-                            </button>
-                          </div>
-                        )}
-                        {feedUploadError && <div className="alert alert-error mt-2">{feedUploadError}</div>}
-                        {isPostingFeed && feedUploadProgress > 0 && (
-                          <div className="gallery-upload-progress mt-2">
-                            <div className="gallery-upload-progress-bar" style={{ width: `${feedUploadProgress}%` }} />
-                            <span>{t('guardian.feed.uploading', '업로드 중')} {feedUploadProgress}%</span>
-                          </div>
-                        )}
-                      </div>
-
-                      <div className="feed-compose-fields">
-                        <div className="form-row col2">
-                          <div className="form-group">
-                            <label className="form-label">{t('guardian.feed.feed_type', 'Feed Type')}</label>
-                            <select className="form-select" value={feedCompose.feed_type} onChange={(e) => setFeedCompose((p) => ({ ...p, feed_type: e.target.value as FeedCompose['feed_type'] }))}>
-                              <option value="guardian_post">{t('guardian.feed.type.guardian_post', 'Guardian Post')}</option>
-                              <option value="health_update">{t('guardian.feed.type.health_update', 'Health Update')}</option>
-                              <option value="pet_milestone">{t('guardian.feed.type.pet_milestone', 'Pet Milestone')}</option>
-                              <option value="supplier_story">{t('guardian.feed.type.supplier_story', 'Supplier Story')}</option>
-                            </select>
-                          </div>
-                          <div className="form-group">
-                            <label className="form-label">{t('guardian.feed.visibility', 'Visibility')}</label>
-                            <select className="form-select" value={feedCompose.visibility_scope} onChange={(e) => setFeedCompose((p) => ({ ...p, visibility_scope: e.target.value as FeedCompose['visibility_scope'] }))}>
-                              <option value="public">{t('guardian.feed.visibility.public', 'Public')}</option>
-                              <option value="friends_only">{t('guardian.feed.visibility.friends_only', 'Friends Only')}</option>
-                              <option value="private">{t('guardian.feed.visibility.private', 'Private')}</option>
-                              <option value="connected_only">{t('guardian.feed.visibility.connected_only', 'Connected Only')}</option>
-                              <option value="booking_related_only">{t('guardian.feed.visibility.booking_related_only', 'Booking Related Only')}</option>
-                            </select>
-                          </div>
-                        </div>
-                        <div className="form-group">
-                          <label className="form-label">{t('guardian.feed.linked_pet', 'Linked Pet')}</label>
-                          <select className="form-select" value={feedCompose.pet_id} onChange={(e) => setFeedCompose((p) => ({ ...p, pet_id: e.target.value }))}>
-                            <option value="">{t('common.none', 'None')}</option>
-                            {pets.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
-                          </select>
-                        </div>
-                        <div className="form-group">
-                          <label className="form-label">{t('guardian.feed.caption', 'Caption')}</label>
-                          <textarea className="form-textarea" value={feedCompose.caption} onChange={(e) => setFeedCompose((p) => ({ ...p, caption: e.target.value }))} />
-                        </div>
-                        <div className="form-group">
-                          <label className="form-label">{t('guardian.feed.tags', 'Tags (comma separated)')}</label>
-                          <input className="form-input" value={feedCompose.tagsText} onChange={(e) => setFeedCompose((p) => ({ ...p, tagsText: e.target.value }))} />
-                        </div>
-                        <button className="btn btn-primary" disabled={isPostingFeed} onClick={createFeedPost}>
-                          {isPostingFeed ? t('guardian.feed.posting', '게시 중...') : t('guardian.feed.post', 'Post')}
-                        </button>
-                      </div>
-                    </div>
+        <div className="gm-content">
+          <div className="gm-layout">
+            <main className="gm-main">
+              {pets.length === 0 && (
+                <div className="gm-section">
+                  <div className="gm-section-body gm-empty">
+                    <div className="gm-empty-icon">🐾</div>
+                    <div className="gm-empty-title">{t('guardian.empty.no_pets_title', 'Register your first pet')}</div>
+                    <p style={{ fontSize: 14, color: 'var(--text-muted)', marginBottom: 12 }}>{t('guardian.empty.no_pets_desc', 'Without a pet profile, feed/health/booking links are limited.')}</p>
+                    <button className="btn btn-primary" onClick={openCreatePet}>{t('guardian.empty.no_pets_cta', 'Register your first pet')}</button>
                   </div>
                 </div>
+              )}
 
-                <div className="feed-toolbar card">
-                  <div className="feed-tabs">
-                    <button className={`feed-tab ${feedTab === 'all' ? 'active' : ''}`} onClick={() => { setFeedTab('all'); loadAll('all'); }}>{t('guardian.feed.filter.all', 'All')}</button>
-                    <button className={`feed-tab ${feedTab === 'friends' ? 'active' : ''}`} onClick={() => { setFeedTab('friends'); loadAll('friends'); }}>{t('guardian.feed.filter.friends', 'Friends Feed')}</button>
-                  </div>
-                </div>
-
-                <div className="sns-feed-list">
-                  {feeds.map((f) => (
-                    <article key={f.id} className="sns-card">
-                      <div className="sns-card-header">
-                        <div className="sns-author-row">
-                          <div className="sns-avatar">{(f.author_email || '?')[0].toUpperCase()}</div>
-                          <div className="sns-author-info">
-                            <p className="sns-meta">{feedTypeLabel(t, f.feed_type)}</p>
-                            <span className="sns-author-name">{f.author_email || t('common.none', '-')}</span>
-                            <p className="text-sm text-muted">{formatDate(f.created_at, t('common.none', '-'))}</p>
-                          </div>
-                        </div>
-                        <div className="sns-card-right">
-                          <div className="sns-badges">
-                            <span className="badge badge-green">{visibilityLabel(t, f.visibility_scope)}</span>
-                          </div>
-                          {currentUserId && f.author_user_id === currentUserId && (
-                            <button className="btn btn-danger btn-sm" onClick={() => removeFeedPost(f.id)}>
-                              {t('common.delete', 'Delete')}
-                            </button>
-                          )}
-                        </div>
-                      </div>
-                      {f.pet_name && <span className="sns-pet-chip">{f.pet_name}</span>}
-                      {f.caption && <p className="sns-caption">{f.caption}</p>}
-                      {Array.isArray(f.media_urls) && f.media_urls[0] && (
-                        <div className="sns-feed-image-wrap">
-                          <img className="sns-feed-image" src={f.media_urls[0]} alt={f.caption || 'feed'} loading="lazy" />
-                        </div>
-                      )}
-                      <div className="sns-actions">
-                        <button className="sns-action-btn" onClick={() => api.feeds.like(f.id).then(() => loadAll(feedTab)).catch((e) => setError(uiErrorMessage(e, t('guardian.alert.like_failed', '좋아요 처리에 실패했습니다.'))))}>
-                          ♥ {f.like_count || 0}
-                        </button>
-                        <button className="sns-action-btn" onClick={() => api.feeds.comments.list(f.id).then(() => null).catch((e) => setError(uiErrorMessage(e, t('guardian.alert.comment_failed', '댓글을 불러오지 못했습니다.'))))}>
-                          ○ {f.comment_count || 0}
-                        </button>
-                      </div>
-                    </article>
-                  ))}
-                  {feeds.length === 0 && <div className="card"><div className="card-body">{t('guardian.feed.no_feeds', 'No feeds to display.')}</div></div>}
-                </div>
-              </>
-            )}
-
-            {petTab === 'health' && (
-              <div className="card">
-                <div className="card-header">
-                  <div className="card-title">Health History</div>
-                  <div className="td-actions">
-                    <button className="btn btn-primary btn-sm" onClick={() => setWeightModalOpen(true)}>몸무게 추가</button>
-                    <button className="btn btn-secondary btn-sm" onClick={openCreateHealthMeasurementModal}>질병 수치 추가</button>
-                  </div>
-                </div>
-                <div className="card-body">
-                  <div className="guardian-summary-grid weight-summary-grid">
-                    <article className="card"><div className="card-body"><p className="text-sm text-muted">현재 몸무게</p><h3>{weightSummary?.latest_weight ?? selectedPet?.current_weight ?? '-'} {selectedPet?.weight_unit_id ? '' : 'kg'}</h3></div></article>
-                    <article className="card"><div className="card-body"><p className="text-sm text-muted">최근 측정일</p><h3>{formatDate(weightSummary?.latest_measured_at, '-')}</h3></div></article>
-                    <article className="card"><div className="card-body"><p className="text-sm text-muted">최고/최저</p><h3>{weightSummary?.max_weight ?? '-'} / {weightSummary?.min_weight ?? '-'}</h3></div></article>
-                    <article className="card"><div className="card-body"><p className="text-sm text-muted">직전 대비 변화량</p><h3>{weightSummary?.delta_from_prev ?? '-'} {weightSummary?.delta_from_prev != null ? 'kg' : ''}</h3></div></article>
-                  </div>
-
-                  <div className="guardian-summary-grid weight-summary-grid mt-2">
-                    <article className="card"><div className="card-body"><p className="text-sm text-muted">최근 질병 수치</p><h3>{measurementSummary?.latest_value ?? '-'}</h3></div></article>
-                    <article className="card"><div className="card-body"><p className="text-sm text-muted">최근 수치 기록일</p><h3>{formatDate(measurementSummary?.latest_measured_at, '-')}</h3></div></article>
-                    <article className="card"><div className="card-body"><p className="text-sm text-muted">최근 판단 상태</p><h3>{measurementSummary?.latest_judgement_label || measurementSummary?.latest_judgement_level || '-'}</h3></div></article>
-                    <article className="card"><div className="card-body"><p className="text-sm text-muted">수치 로그 개수</p><h3>{measurementLogs.length}</h3></div></article>
-                  </div>
-
-                  <div className="feed-tabs mt-2">
-                    {(['7d', '15d', '1m', '3m', '6m', '1y', 'all'] as const).map((range) => (
-                      <button
-                        key={range}
-                        className={`feed-tab ${weightRange === range ? 'active' : ''}`}
-                        onClick={() => setWeightRange(range)}
-                      >
-                        {range === 'all' ? '전체' : range}
-                      </button>
-                    ))}
-                  </div>
-
-                  <div className="form-row col2 mt-2">
-                    {renderSelect(
-                      '질병 수치 항목',
-                      selectedMeasurementItemId,
-                      optMeasurement.filter((m) => measurementLogs.some((log) => log.measurement_item_id === m.id)),
-                      (v) => setSelectedMeasurementItemId(v),
-                    )}
-                  </div>
-
-                  {renderCombinedHealthChart(
-                    weightLogs,
-                    measurementLogs.filter((log) => !selectedMeasurementItemId || log.measurement_item_id === selectedMeasurementItemId),
-                  )}
-
-                  <div className="mt-3">
-                    <h4>Weight Log List</h4>
-                    <div className="guardian-pet-list">
-                      {weightLogs.map((log) => (
-                        <div key={log.id} className="guardian-pet-item">
-                          <p className="text-sm">{new Date(log.measured_at).toLocaleDateString()} · {log.weight_value} {selectedPet?.weight_unit_id ? '' : 'kg'}</p>
-                          <div className="td-actions">
-                            <button className="btn btn-danger btn-sm" onClick={() => removeWeightLog(log.id)}>삭제</button>
-                          </div>
+              {/* ── Gallery ── */}
+              {petTab === 'gallery' && (
+                <>
+                  {albumMedia.length > 0 ? (
+                    <div className="gm-gallery-grid">
+                      {albumMedia.map((item, idx) => (
+                        <div key={item.id} className="gm-gallery-tile" onClick={() => { setLightboxItems(albumMedia.map((m) => m.media_url)); setLightboxIndex(idx); }}>
+                          <img src={item.media_url} alt={item.caption || 'media'} loading="lazy" />
+                          <div className="gm-gallery-tile-overlay"><span>🖼️</span></div>
                         </div>
                       ))}
-                      {weightLogs.length === 0 && <p className="text-muted">몸무게 기록이 없습니다.</p>}
+                    </div>
+                  ) : (
+                    <div className="gm-empty" style={{ padding: 40 }}>
+                      <div className="gm-empty-icon">🖼️</div>
+                      <div className="gm-empty-title">{t('guardian.gallery.empty', '미디어가 없습니다')}</div>
+                    </div>
+                  )}
+                  <PetGalleryPanel
+                    selectedPet={selectedPet}
+                    mediaItems={albumMedia}
+                    bookings={bookings}
+                    breedLabel={labelOf(optBreed, selectedPet?.breed_id, t('common.none', '-'))}
+                    genderLabel={labelOf(optGender, selectedPet?.gender_id, t('common.none', '-'))}
+                    lifeStageLabel={labelOf(optLifeStage, selectedPet?.life_stage_id, t('common.none', '-'))}
+                    isGuardian={isGuardian}
+                    setError={setError}
+                    onRefresh={() => loadAll(feedTab)}
+                  />
+                </>
+              )}
+
+              {/* ── Timeline ── */}
+              {petTab === 'timeline' && (
+                <>
+                  <div className="gm-compose-bar" onClick={() => setComposeModalOpen(true)}>
+                    <div className="gm-compose-avatar">{selectedPet ? selectedPet.name[0].toUpperCase() : '?'}</div>
+                    <div className="gm-compose-placeholder">{t('guardian.feed.compose_placeholder', '무슨 일이 있었나요?')}</div>
+                    <span style={{ fontSize: 18, color: 'var(--text-muted)' }}>📷</span>
+                  </div>
+                  <div className="gm-section">
+                    <div className="gm-feed-tabs">
+                      <button className={`gm-feed-tab${feedTab === 'all' ? ' active' : ''}`} onClick={() => { setFeedTab('all'); loadAll('all'); }}>{t('guardian.feed.filter.all', 'All')}</button>
+                      <button className={`gm-feed-tab${feedTab === 'friends' ? ' active' : ''}`} onClick={() => { setFeedTab('friends'); loadAll('friends'); }}>{t('guardian.feed.filter.friends', 'Friends Feed')}</button>
+                    </div>
+                    <div style={{ padding: '12px' }}>
+                      <div className="sns-feed-list">
+                        {feeds.map((f) => (
+                          <article key={f.id} className="sns-card">
+                            <div className="sns-card-header">
+                              <div className="sns-author-row">
+                                <div className="sns-avatar">{(f.author_email || '?')[0].toUpperCase()}</div>
+                                <div className="sns-author-info">
+                                  <p className="sns-meta">{feedTypeLabel(t, f.feed_type)}</p>
+                                  <span className="sns-author-name">{f.author_email || t('common.none', '-')}</span>
+                                  <p className="text-sm text-muted">{formatDate(f.created_at, t('common.none', '-'))}</p>
+                                </div>
+                              </div>
+                              <div className="sns-card-right">
+                                <div className="sns-badges"><span className="badge badge-green">{visibilityLabel(t, f.visibility_scope)}</span></div>
+                                {currentUserId && f.author_user_id === currentUserId && (
+                                  <button className="btn btn-danger btn-sm" onClick={() => removeFeedPost(f.id)}>{t('common.delete', 'Delete')}</button>
+                                )}
+                              </div>
+                            </div>
+                            {f.pet_name && <span className="sns-pet-chip">{f.pet_name}</span>}
+                            {f.caption && <p className="sns-caption">{f.caption}</p>}
+                            {Array.isArray(f.media_urls) && f.media_urls[0] && (
+                              <div className="sns-feed-image-wrap">
+                                <img className="sns-feed-image" src={f.media_urls[0]} alt={f.caption || 'feed'} loading="lazy" />
+                              </div>
+                            )}
+                            <div className="sns-actions">
+                              <button className="sns-action-btn" onClick={() => api.feeds.like(f.id).then(() => loadAll(feedTab)).catch((e) => setError(uiErrorMessage(e, t('guardian.alert.like_failed', '좋아요 처리에 실패했습니다.'))))}>♥ {f.like_count || 0}</button>
+                              <button className="sns-action-btn" onClick={() => api.feeds.comments.list(f.id).then(() => null).catch((e) => setError(uiErrorMessage(e, t('guardian.alert.comment_failed', '댓글을 불러오지 못했습니다.'))))}>○ {f.comment_count || 0}</button>
+                            </div>
+                          </article>
+                        ))}
+                        {feeds.length === 0 && (
+                          <div className="gm-empty" style={{ padding: '24px 0' }}>
+                            <div className="gm-empty-icon">📭</div>
+                            <p>{t('guardian.feed.no_feeds', 'No feeds to display.')}</p>
+                          </div>
+                        )}
+                      </div>
                     </div>
                   </div>
+                </>
+              )}
 
-                  <div className="mt-3">
-                    <h4>질병 수치 로그</h4>
-                    <div className="guardian-pet-list">
-                      {measurementLogs
-                        .filter((log) => !selectedMeasurementItemId || log.measurement_item_id === selectedMeasurementItemId)
-                        .map((log) => (
+              {/* ── Health ── */}
+              {petTab === 'health' && (
+                <>
+                  <div className="gm-health-stats">
+                    <div className="gm-health-stat">
+                      <div className="gm-health-stat-label">{t('guardian.health.current_weight', '현재 몸무게')}</div>
+                      <div className="gm-health-stat-value">{weightSummary?.latest_weight ?? selectedPet?.current_weight ?? '-'}</div>
+                    </div>
+                    <div className="gm-health-stat">
+                      <div className="gm-health-stat-label">{t('guardian.health.last_measured', '최근 측정일')}</div>
+                      <div className="gm-health-stat-value" style={{ fontSize: 14 }}>{formatDate(weightSummary?.latest_measured_at, '-')}</div>
+                    </div>
+                    <div className="gm-health-stat">
+                      <div className="gm-health-stat-label">{t('guardian.health.latest_measurement', '최근 질병 수치')}</div>
+                      <div className="gm-health-stat-value">{measurementSummary?.latest_value ?? '-'}</div>
+                    </div>
+                    <div className="gm-health-stat">
+                      <div className="gm-health-stat-label">{t('guardian.health.judgement', '최근 판단 상태')}</div>
+                      <div className="gm-health-stat-value" style={{ fontSize: 14 }}>{measurementSummary?.latest_judgement_label || measurementSummary?.latest_judgement_level || '-'}</div>
+                    </div>
+                  </div>
+                  <div className="gm-section">
+                    <div className="gm-section-header">
+                      <span className="gm-section-title">{t('guardian.health.chart_title', '건강 추이')}</span>
+                      <div style={{ display: 'flex', gap: 8 }}>
+                        <button className="btn btn-primary btn-sm" onClick={() => setWeightModalOpen(true)}>{t('guardian.health.add_weight', '몸무게 추가')}</button>
+                        <button className="btn btn-secondary btn-sm" onClick={openCreateHealthMeasurementModal}>{t('guardian.health.add_measurement', '수치 추가')}</button>
+                      </div>
+                    </div>
+                    <div className="gm-section-body">
+                      <div className="gm-period-chips" style={{ marginBottom: 12 }}>
+                        {(['7d', '15d', '1m', '3m', '6m', '1y', 'all'] as const).map((range) => (
+                          <button key={range} className={`gm-period-chip${weightRange === range ? ' active' : ''}`} onClick={() => setWeightRange(range)}>
+                            {range === 'all' ? t('common.all', '전체') : range}
+                          </button>
+                        ))}
+                      </div>
+                      <div style={{ marginBottom: 12 }}>
+                        {renderSelect(t('guardian.health.measurement_item', '질병 수치 항목'), selectedMeasurementItemId, optMeasurement.filter((m) => measurementLogs.some((log) => log.measurement_item_id === m.id)), (v) => setSelectedMeasurementItemId(v))}
+                      </div>
+                      {renderCombinedHealthChart(weightLogs, measurementLogs.filter((log) => !selectedMeasurementItemId || log.measurement_item_id === selectedMeasurementItemId))}
+                    </div>
+                  </div>
+                  <div className="gm-section">
+                    <div className="gm-section-header"><span className="gm-section-title">{t('guardian.health.weight_log', '몸무게 기록')}</span></div>
+                    <div className="gm-section-body">
+                      <div className="guardian-pet-list">
+                        {weightLogs.map((log) => (
                           <div key={log.id} className="guardian-pet-item">
-                            <p className="text-sm">
-                              {new Date(log.measured_at).toLocaleString()} · {log.value}
-                              {log.judgement_label ? ` · ${log.judgement_label}` : ''}
-                            </p>
+                            <p className="text-sm">{new Date(log.measured_at).toLocaleDateString()} · {log.weight_value} kg</p>
+                            <div className="td-actions"><button className="btn btn-danger btn-sm" onClick={() => removeWeightLog(log.id)}>{t('common.delete', '삭제')}</button></div>
+                          </div>
+                        ))}
+                        {weightLogs.length === 0 && <p className="text-muted" style={{ fontSize: 13 }}>{t('guardian.health.no_weight_logs', '몸무게 기록이 없습니다.')}</p>}
+                      </div>
+                    </div>
+                  </div>
+                  <div className="gm-section">
+                    <div className="gm-section-header"><span className="gm-section-title">{t('guardian.health.measurement_log', '질병 수치 로그')}</span></div>
+                    <div className="gm-section-body">
+                      <div className="guardian-pet-list">
+                        {measurementLogs.filter((log) => !selectedMeasurementItemId || log.measurement_item_id === selectedMeasurementItemId).map((log) => (
+                          <div key={log.id} className="guardian-pet-item">
+                            <p className="text-sm">{new Date(log.measured_at).toLocaleString()} · {log.value}{log.judgement_label ? ` · ${log.judgement_label}` : ''}</p>
                             <div className="td-actions">
-                              <button className="btn btn-secondary btn-sm" onClick={() => openEditHealthMeasurementLog(log)}>수정</button>
-                              <button className="btn btn-danger btn-sm" onClick={() => removeHealthMeasurementLog(log.id)}>삭제</button>
+                              <button className="btn btn-secondary btn-sm" onClick={() => openEditHealthMeasurementLog(log)}>{t('common.edit', '수정')}</button>
+                              <button className="btn btn-danger btn-sm" onClick={() => removeHealthMeasurementLog(log.id)}>{t('common.delete', '삭제')}</button>
                             </div>
                           </div>
                         ))}
-                      {measurementLogs.length === 0 && <p className="text-muted">질병 수치 기록이 없습니다.</p>}
+                        {measurementLogs.length === 0 && <p className="text-muted" style={{ fontSize: 13 }}>{t('guardian.health.no_measurement_logs', '질병 수치 기록이 없습니다.')}</p>}
+                      </div>
                     </div>
                   </div>
+                  {healthFeeds.length > 0 && (
+                    <div className="gm-section">
+                      <div className="gm-section-header"><span className="gm-section-title">{t('guardian.health.updates', 'Health Updates')}</span></div>
+                      <div className="gm-section-body">
+                        {healthFeeds.map((f) => (
+                          <article key={f.id} className="sns-card">
+                            <p className="sns-meta">{feedTypeLabel(t, f.feed_type)}</p>
+                            <p className="text-sm text-muted">{formatDate(f.created_at, t('common.none', '-'))}</p>
+                            <p>{f.caption || t('common.none', '-')}</p>
+                          </article>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </>
+              )}
 
-                  <div className="mt-3">
-                    <h4>Health Updates</h4>
-                    {healthFeeds.map((f) => (
-                      <article key={f.id} className="sns-card">
-                        <p className="sns-meta">{feedTypeLabel(t, f.feed_type)}</p>
-                        <p className="text-sm text-muted">{formatDate(f.created_at, t('common.none', '-'))}</p>
-                        <p>{f.caption || t('common.none', '-')}</p>
-                      </article>
-                    ))}
-                    {healthFeeds.length === 0 && <p className="text-muted">건강기록 피드가 없습니다.</p>}
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {petTab === 'services' && (
-              <div className="card">
-                <div className="card-header"><div className="card-title">Services & Booking Completion</div></div>
-                <div className="card-body">
-                  {bookings
-                    .filter((b) => !selectedPet || !b.pet_id || b.pet_id === selectedPet.id)
-                    .map((b) => (
+              {/* ── Services ── */}
+              {petTab === 'services' && (
+                <div className="gm-section">
+                  <div className="gm-section-header"><span className="gm-section-title">{t('guardian.tab.services', 'Services & Bookings')}</span></div>
+                  <div className="gm-section-body">
+                    {bookings.filter((b) => !selectedPet || !b.pet_id || b.pet_id === selectedPet.id).map((b) => (
                       <div key={b.id} className="guardian-pet-item">
                         <p className="text-sm">#{b.id.slice(0, 8)} · {b.status}</p>
                         <p className="text-sm text-muted">{formatDate(b.updated_at, t('common.none', '-'))}</p>
                       </div>
                     ))}
-                  {serviceFeeds.length > 0 && <p className="mt-2 text-sm">완료 피드 {serviceFeeds.length}건</p>}
-                </div>
-              </div>
-            )}
-
-            {petTab === 'profile' && selectedPet && (
-              <div className="card">
-                <div className="card-header"><div className="card-title">Pet Profile</div></div>
-                <div className="card-body">
-                  <p><strong>{selectedPet.name}</strong></p>
-                  <p className="text-sm">{t('master.pet_type', 'Pet Type')}: {labelOf(optPetType, selectedPet.pet_type_id, t('common.none', '-'))}</p>
-                  <p className="text-sm">{t('master.pet_breed', 'Breed')}: {labelOf(optBreed, selectedPet.breed_id, t('common.none', '-'))}</p>
-                  <p className="text-sm">{t('master.pet_gender', 'Gender')}: {labelOf(optGender, selectedPet.gender_id, t('common.none', '-'))}</p>
-                  <p className="text-sm">{t('master.life_stage', 'Life Stage')}: {labelOf(optLifeStage, selectedPet.life_stage_id, t('common.none', '-'))}</p>
-                  <p className="text-sm">Birthday: {selectedPet.birthday || selectedPet.birth_date || t('common.none', '-')}</p>
-                  <p className="text-sm">Current Weight: {selectedPet.current_weight ?? selectedPet.weight_kg ?? t('common.none', '-')}</p>
-                  <button className="btn btn-secondary mt-2" onClick={() => openEditPet(selectedPet.id)}>{t('common.edit', 'Edit')}</button>
-                </div>
-              </div>
-            )}
-          </main>
-
-          <aside className="guardian-side">
-            <div className="card">
-              <div className="card-header"><div className="card-title">{t('guardian.mypets.title', 'My Pets')}</div></div>
-              <div className="card-body">
-                <div className="td-actions mb-4">
-                  <button className="btn btn-primary btn-sm" onClick={openCreatePet}>+ {t('common.add_pet', 'Add Pet')}</button>
-                </div>
-                <div className="guardian-pet-list">
-                  {pets.map((p) => (
-                    <div key={p.id} className={`guardian-pet-item ${selectedPet?.id === p.id ? 'active' : ''}`}>
-                      <button className="btn btn-secondary btn-sm" onClick={() => setSelectedPetId(p.id)}>{p.name}</button>
-                      <div className="td-actions">
-                        <button className="btn btn-secondary btn-sm" onClick={() => openEditPet(p.id)}>{t('common.edit', 'Edit')}</button>
-                        <button className="btn btn-danger btn-sm" onClick={() => removePet(p.id)}>{t('common.delete', 'Delete')}</button>
+                    {bookings.filter((b) => !selectedPet || !b.pet_id || b.pet_id === selectedPet.id).length === 0 && (
+                      <div className="gm-empty" style={{ padding: '20px 0' }}>
+                        <div className="gm-empty-icon">📅</div>
+                        <p>{t('guardian.services.no_bookings', '예약 내역이 없습니다.')}</p>
                       </div>
+                    )}
+                    {serviceFeeds.length > 0 && <p className="mt-2 text-sm">{t('guardian.services.completed_feeds', '완료 피드')} {serviceFeeds.length}{t('common.count_suffix', '건')}</p>}
+                  </div>
+                </div>
+              )}
+
+              {/* ── Profile ── */}
+              {petTab === 'profile' && selectedPet && (
+                <div className="gm-section">
+                  <div className="gm-section-header">
+                    <span className="gm-section-title">{t('guardian.tab.profile', 'Pet Profile')}</span>
+                    <button className="btn btn-secondary btn-sm" onClick={() => openEditPet(selectedPet.id)}>{t('common.edit', 'Edit')}</button>
+                  </div>
+                  <div className="gm-section-body">
+                    <div className="gm-info-grid" style={{ marginBottom: 16 }}>
+                      <div className="gm-info-item"><div className="gm-info-label">{t('guardian.form.name', 'Name')}</div><div className="gm-info-value">{selectedPet.name}</div></div>
+                      <div className="gm-info-item"><div className="gm-info-label">{t('master.pet_type', 'Pet Type')}</div><div className="gm-info-value">{labelOf(optPetType, selectedPet.pet_type_id, t('common.none', '-'))}</div></div>
+                      <div className="gm-info-item"><div className="gm-info-label">{t('master.pet_breed', 'Breed')}</div><div className="gm-info-value">{labelOf(optBreed, selectedPet.breed_id, t('common.none', '-'))}</div></div>
+                      <div className="gm-info-item"><div className="gm-info-label">{t('master.pet_gender', 'Gender')}</div><div className="gm-info-value">{labelOf(optGender, selectedPet.gender_id, t('common.none', '-'))}</div></div>
+                      <div className="gm-info-item"><div className="gm-info-label">{t('master.life_stage', 'Life Stage')}</div><div className="gm-info-value">{labelOf(optLifeStage, selectedPet.life_stage_id, t('common.none', '-'))}</div></div>
+                      <div className="gm-info-item"><div className="gm-info-label">{t('guardian.form.birthday', 'Birthday')}</div><div className="gm-info-value">{selectedPet.birthday || selectedPet.birth_date || t('common.none', '-')}</div></div>
+                      <div className="gm-info-item"><div className="gm-info-label">{t('guardian.form.current_weight', 'Weight')}</div><div className="gm-info-value">{selectedPet.current_weight ?? selectedPet.weight_kg ?? t('common.none', '-')}</div></div>
+                      <div className="gm-info-item"><div className="gm-info-label">{t('master.health_condition_level', 'Health Level')}</div><div className="gm-info-value">{labelOf(optHealthLevel, selectedPet.health_condition_level_id, t('common.none', '-'))}</div></div>
+                    </div>
+                    <div className="gm-health-tags">
+                      {petSummaryDetails?.diet.text && <span className="gm-health-tag" title={petSummaryDetails.diet.tooltip}>{t('master.diet_type', 'Diet')}: {petSummaryDetails.diet.text}</span>}
+                      {petSummaryDetails?.disease.text && <span className="gm-health-tag" title={petSummaryDetails.disease.tooltip}>{t('master.disease_type', 'Disease')}: {petSummaryDetails.disease.text}</span>}
+                      {petSummaryDetails?.vaccination.text && <span className="gm-health-tag" title={petSummaryDetails.vaccination.tooltip}>{t('master.vaccination_type', 'Vaccination')}: {petSummaryDetails.vaccination.text}</span>}
+                      {petSummaryDetails?.temperament.text && <span className="gm-health-tag" title={petSummaryDetails.temperament.tooltip}>{t('master.temperament_type', 'Temperament')}: {petSummaryDetails.temperament.text}</span>}
+                      {petSummaryDetails?.color.text && <span className="gm-health-tag" title={petSummaryDetails.color.tooltip}>{t('master.pet_color', 'Color')}: {petSummaryDetails.color.text}</span>}
+                      {petSummaryDetails?.grooming.text && <span className="gm-health-tag" title={petSummaryDetails.grooming.tooltip}>{t('master.grooming_cycle', 'Grooming')}: {petSummaryDetails.grooming.text}</span>}
+                    </div>
+                  </div>
+                </div>
+              )}
+            </main>
+
+            {/* ── Sidebar ── */}
+            <aside className="gm-sidebar">
+              <div className="gm-sidebar-section">
+                <div className="gm-sidebar-header">{t('guardian.mypets.title', 'My Pets')}</div>
+                <div className="gm-sidebar-body">
+                  <button className="gm-quick-btn primary" style={{ width: '100%', marginBottom: 8 }} onClick={openCreatePet}>+ {t('common.add_pet', 'Add Pet')}</button>
+                  {pets.map((p) => (
+                    <div key={p.id} className="gm-pet-select-row">
+                      <button className={`gm-pet-select-btn${selectedPet?.id === p.id ? ' active' : ''}`} onClick={() => setSelectedPetId(p.id)}>{p.name}</button>
+                      <button className="btn btn-secondary btn-sm" onClick={() => openEditPet(p.id)}>{t('common.edit', 'Edit')}</button>
+                      <button className="btn btn-danger btn-sm" onClick={() => removePet(p.id)}>{t('common.delete', '삭제')}</button>
                     </div>
                   ))}
                 </div>
-                {selectedPet && (
-                  <div className="guardian-pet-detail mt-3">
-                    <p><strong>{t('guardian.mypets.basic_info', 'Basic Info')}</strong></p>
-                    <p className="text-sm">
-                      {labelOf(optPetType, selectedPet.pet_type_id, t('common.none', '-'))}
-                      {' · '}
-                      {labelOf(optBreed, selectedPet.breed_id, t('common.none', '-'))}
-                      {' · '}
-                      {labelOf(optGender, selectedPet.gender_id, t('common.none', '-'))}
-                    </p>
-                    <p className="text-sm">
-                      {t('master.health_condition_level', 'Health Condition Level')}: {labelOf(optHealthLevel, selectedPet.health_condition_level_id, t('common.none', '-'))}
-                      {' · '}
-                      {t('master.life_stage', 'Life Stage')}: {labelOf(optLifeStage, selectedPet.life_stage_id, t('common.none', '-'))}
-                    </p>
-                    <p className="text-sm">
-                      {t('guardian.form.birthday', 'Birthday')}: {selectedPet.birthday || selectedPet.birth_date || t('common.none', '-')}
-                      {' · '}
-                      {t('guardian.form.current_weight', 'Current Weight')}: {selectedPet.current_weight ?? selectedPet.weight_kg ?? t('common.none', '-')}
-                    </p>
-                    <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginTop: 6 }}>
-                      <span className="badge badge-gray" title={petSummaryDetails?.diet.tooltip || ''}>
-                        {t('master.diet_type', 'Diet')}: {petSummaryDetails?.diet.text || t('common.none', '-')}
-                      </span>
-                      <span className="badge badge-gray" title={petSummaryDetails?.disease.tooltip || ''}>
-                        {t('master.disease_type', 'Disease')}: {petSummaryDetails?.disease.text || t('common.none', '-')}
-                      </span>
-                      <span className="badge badge-gray" title={petSummaryDetails?.vaccination.tooltip || ''}>
-                        {t('master.vaccination_type', 'Vaccination')}: {petSummaryDetails?.vaccination.text || t('common.none', '-')}
-                      </span>
-                      <span className="badge badge-gray" title={petSummaryDetails?.temperament.tooltip || ''}>
-                        {t('master.temperament_type', 'Temperament')}: {petSummaryDetails?.temperament.text || t('common.none', '-')}
-                      </span>
-                      <span className="badge badge-gray" title={petSummaryDetails?.color.tooltip || ''}>
-                        {t('master.pet_color', 'Color')}: {petSummaryDetails?.color.text || t('common.none', '-')}
-                      </span>
-                      <span className="badge badge-gray" title={petSummaryDetails?.grooming.tooltip || ''}>
-                        {t('master.grooming_cycle', 'Grooming')}: {petSummaryDetails?.grooming.text || t('common.none', '-')}
-                      </span>
+              </div>
+              <div className="gm-sidebar-section">
+                <div className="gm-sidebar-header">{t('guardian.sidebar.quick_actions', 'Quick Actions')}</div>
+                <div className="gm-sidebar-body">
+                  <div className="gm-quick-actions">
+                    <button className="gm-quick-btn" onClick={() => setComposeModalOpen(true)}>✏️ {t('guardian.sidebar.post', 'Post')}</button>
+                    <button className="gm-quick-btn" onClick={() => setWeightModalOpen(true)}>⚖️ {t('guardian.health.add_weight', 'Weight')}</button>
+                    <button className="gm-quick-btn" onClick={openCreateHealthMeasurementModal}>📊 {t('guardian.health.add_measurement', 'Measure')}</button>
+                    <button className="gm-quick-btn" onClick={() => setPetTab('gallery')}>🖼️ {t('guardian.tab.gallery', 'Gallery')}</button>
+                  </div>
+                </div>
+              </div>
+              {selectedPet && (
+                <div className="gm-sidebar-section">
+                  <div className="gm-sidebar-header">{t('guardian.sidebar.health_snapshot', 'Health Snapshot')}</div>
+                  <div className="gm-sidebar-body">
+                    <p className="text-sm">{t('guardian.health.current_weight', '현재 몸무게')}: <strong>{weightSummary?.latest_weight ?? selectedPet.current_weight ?? '-'}</strong></p>
+                    <p className="text-sm">{t('guardian.health.delta', '직전 대비')}: <strong>{weightSummary?.delta_from_prev ?? '-'}{weightSummary?.delta_from_prev != null ? ' kg' : ''}</strong></p>
+                    <p className="text-sm">{t('guardian.health.latest_measurement', '최근 수치')}: <strong>{measurementSummary?.latest_value ?? '-'}</strong></p>
+                    <p className="text-sm" style={{ marginTop: 6 }}>{t('guardian.health.log_count', '수치 기록 수')}: <strong>{measurementLogs.length}</strong></p>
+                  </div>
+                </div>
+              )}
+              <div className="gm-sidebar-section">
+                <div className="gm-sidebar-header">{t('guardian.summary.health_booking', 'Bookings')}</div>
+                <div className="gm-sidebar-body">
+                  <p className="text-sm">{t('guardian.summary.latest_booking', 'Latest')}: <strong>{latestBooking?.status || t('common.none', '-')}</strong></p>
+                  <p className="text-sm">{t('guardian.summary.pending_completion_approvals', 'Pending')}: <strong>{pendingApprovalsCount}</strong></p>
+                </div>
+              </div>
+              <div className="gm-sidebar-section">
+                <div className="gm-sidebar-header">{t('guardian.connections.title', 'Connections')}</div>
+                <div className="gm-sidebar-body">
+                  <p className="text-sm">{t('guardian.connections.connected_suppliers', 'Connected')}: <strong>{friendCount}</strong></p>
+                  <p className="text-sm">{t('guardian.connections.pending_friend_requests', 'Pending')}: <strong>{pendingRequests.length}</strong></p>
+                </div>
+              </div>
+            </aside>
+          </div>
+        </div>
+      )}
+
+      {/* ── Compose Modal ── */}
+      {composeModalOpen && (
+        <div className="modal-overlay" onClick={() => setComposeModalOpen(false)}>
+          <div className="modal" style={{ maxWidth: 560 }} onClick={(e) => e.stopPropagation()}>
+            <div className="modal-header">
+              <h3 className="modal-title">{t('guardian.feed.create_title', 'Create Feed Post')}</h3>
+              <button className="modal-close" onClick={() => setComposeModalOpen(false)}>&times;</button>
+            </div>
+            <div className="modal-body">
+              <div className="feed-compose-layout">
+                <div className="feed-compose-media">
+                  <label className="form-label">{t('guardian.feed.photo_upload', '사진 업로드')}</label>
+                  <div className="gallery-upload-dropzone" onDragOver={(e) => e.preventDefault()} onDrop={(e) => { e.preventDefault(); handleFeedImageSelected(e.dataTransfer.files?.[0] || null); }}>
+                    <input ref={fileInputRef} type="file" className="gallery-upload-file-input" accept="image/jpeg,image/jpg,image/png,image/webp" capture="environment" onChange={(e) => handleFeedImageSelected(e.target.files?.[0] || null)} />
+                    <p>{t('guardian.feed.photo_hint', '드래그 앤 드롭 또는 파일 선택')}</p>
+                    <button type="button" className="btn btn-secondary btn-sm" onClick={() => fileInputRef.current?.click()}>{t('guardian.feed.photo_select', '사진 선택')}</button>
+                  </div>
+                  {feedImagePreviewUrl && (
+                    <div className="feed-compose-preview">
+                      <img src={feedImagePreviewUrl} alt={t('guardian.feed.photo_preview', '업로드 미리보기')} />
+                      <button type="button" className="btn btn-secondary btn-sm" onClick={resetFeedImage}>{t('guardian.feed.photo_reselect', '다시 선택')}</button>
+                    </div>
+                  )}
+                  {feedUploadError && <div className="alert alert-error mt-2">{feedUploadError}</div>}
+                  {isPostingFeed && feedUploadProgress > 0 && (
+                    <div className="gallery-upload-progress mt-2">
+                      <div className="gallery-upload-progress-bar" style={{ width: `${feedUploadProgress}%` }} />
+                      <span>{t('guardian.feed.uploading', '업로드 중')} {feedUploadProgress}%</span>
+                    </div>
+                  )}
+                </div>
+                <div className="feed-compose-fields">
+                  <div className="form-row col2">
+                    <div className="form-group">
+                      <label className="form-label">{t('guardian.feed.feed_type', 'Feed Type')}</label>
+                      <select className="form-select" value={feedCompose.feed_type} onChange={(e) => setFeedCompose((p) => ({ ...p, feed_type: e.target.value as FeedCompose['feed_type'] }))}>
+                        <option value="guardian_post">{t('guardian.feed.type.guardian_post', 'Guardian Post')}</option>
+                        <option value="health_update">{t('guardian.feed.type.health_update', 'Health Update')}</option>
+                        <option value="pet_milestone">{t('guardian.feed.type.pet_milestone', 'Pet Milestone')}</option>
+                        <option value="supplier_story">{t('guardian.feed.type.supplier_story', 'Supplier Story')}</option>
+                      </select>
+                    </div>
+                    <div className="form-group">
+                      <label className="form-label">{t('guardian.feed.visibility', 'Visibility')}</label>
+                      <select className="form-select" value={feedCompose.visibility_scope} onChange={(e) => setFeedCompose((p) => ({ ...p, visibility_scope: e.target.value as FeedCompose['visibility_scope'] }))}>
+                        <option value="public">{t('guardian.feed.visibility.public', 'Public')}</option>
+                        <option value="friends_only">{t('guardian.feed.visibility.friends_only', 'Friends Only')}</option>
+                        <option value="private">{t('guardian.feed.visibility.private', 'Private')}</option>
+                        <option value="connected_only">{t('guardian.feed.visibility.connected_only', 'Connected Only')}</option>
+                        <option value="booking_related_only">{t('guardian.feed.visibility.booking_related_only', 'Booking Related Only')}</option>
+                      </select>
                     </div>
                   </div>
-                )}
+                  <div className="form-group">
+                    <label className="form-label">{t('guardian.feed.linked_pet', 'Linked Pet')}</label>
+                    <select className="form-select" value={feedCompose.pet_id} onChange={(e) => setFeedCompose((p) => ({ ...p, pet_id: e.target.value }))}>
+                      <option value="">{t('common.none', 'None')}</option>
+                      {pets.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
+                    </select>
+                  </div>
+                  <div className="form-group">
+                    <label className="form-label">{t('guardian.feed.caption', 'Caption')}</label>
+                    <textarea className="form-textarea" value={feedCompose.caption} onChange={(e) => setFeedCompose((p) => ({ ...p, caption: e.target.value }))} />
+                  </div>
+                  <div className="form-group">
+                    <label className="form-label">{t('guardian.feed.tags', 'Tags (comma separated)')}</label>
+                    <input className="form-input" value={feedCompose.tagsText} onChange={(e) => setFeedCompose((p) => ({ ...p, tagsText: e.target.value }))} />
+                  </div>
+                </div>
               </div>
             </div>
+            <div className="modal-footer">
+              <button className="btn btn-secondary" onClick={() => setComposeModalOpen(false)}>{t('common.cancel', 'Cancel')}</button>
+              <button className="btn btn-primary" disabled={isPostingFeed} onClick={createFeedPost}>{isPostingFeed ? t('guardian.feed.posting', '게시 중...') : t('guardian.feed.post', 'Post')}</button>
+            </div>
+          </div>
+        </div>
+      )}
 
-            <div className="card">
-              <div className="card-header"><div className="card-title">{t('guardian.summary.health_booking', 'Health / Booking Summary')}</div></div>
-              <div className="card-body">
-                <p className="text-sm">{t('guardian.summary.latest_booking', 'Latest Booking')}: <strong>{latestBooking?.status || t('common.none', '-')}</strong></p>
-                <p className="text-sm">{t('guardian.summary.latest_booking_time', 'Latest Booking Time')}: {formatDate(latestBooking?.updated_at, t('common.none', '-'))}</p>
-                <p className="text-sm">{t('guardian.summary.pending_completion_approvals', 'Pending Completion Approvals')}: <strong>{pendingApprovalsCount}</strong></p>
-              </div>
-            </div>
-
-            <div className="card">
-              <div className="card-header"><div className="card-title">{t('guardian.connections.title', 'Connections')}</div></div>
-              <div className="card-body">
-                <p className="text-sm">{t('guardian.connections.connected_suppliers', 'Connected Suppliers/Friends')}: <strong>{friendCount}</strong></p>
-                <p className="text-sm">{t('guardian.connections.pending_friend_requests', 'Pending Friend Requests')}: <strong>{pendingRequests.length}</strong></p>
-              </div>
-            </div>
-          </aside>
-        </section>
+      {/* ── Lightbox ── */}
+      {lightboxIndex >= 0 && lightboxItems.length > 0 && (
+        <div className="gm-lightbox" onClick={() => setLightboxIndex(-1)}>
+          {lightboxIndex > 0 && (
+            <button className="gm-lightbox-nav prev" onClick={(e) => { e.stopPropagation(); setLightboxIndex((i) => i - 1); }}>‹</button>
+          )}
+          <img className="gm-lightbox-img" src={lightboxItems[lightboxIndex]} alt="media" onClick={(e) => e.stopPropagation()} />
+          {lightboxIndex < lightboxItems.length - 1 && (
+            <button className="gm-lightbox-nav next" onClick={(e) => { e.stopPropagation(); setLightboxIndex((i) => i + 1); }}>›</button>
+          )}
+          <button className="gm-lightbox-close" onClick={() => setLightboxIndex(-1)}>✕</button>
+        </div>
       )}
 
       {petModalOpen && (
