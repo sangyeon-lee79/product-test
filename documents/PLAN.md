@@ -135,6 +135,26 @@ Your pet's life portfolio
 검증:
 - [x] SQL migration 파일 추가/검토 완료
 
+## 0.12 사료관리자(Feed Catalog) 추가 (2026-03-08)
+
+적용 범위:
+- `services/api/src/db/migrations/0052_feed_catalog_management.sql`
+- `services/api/src/db/migrations/0053_admin_feed_mgmt_i18n.sql`
+- `services/api/src/routes/feedCatalog.ts`
+- `apps/admin-web/src/pages/FeedPage.tsx`
+- `apps/admin-web/src/lib/api.ts`
+- `apps/admin-web/src/App.tsx`
+- `apps/admin-web/src/components/Layout.tsx`
+
+- [x] 장치관리와 동일한 구조(유형→제조사→브랜드→모델)로 사료관리자 화면 추가
+- [x] 사료유형은 Master L3 `diet_feed_type`를 참조하고 저장은 `feed_type_item_id`(stable id) 사용
+- [x] 제조사/브랜드/모델명은 `name_key + i18n_translations` 기반 locale 렌더링
+- [x] Public/Admin API 모두 locale-aware label(`display_label`) 반환
+
+검증:
+- [x] `npm --prefix services/api run build`
+- [x] `npm --prefix apps/admin-web run build`
+
 ---
 
 ## 0.2 통합 개발 반영 내역 (2026-03-07)

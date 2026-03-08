@@ -131,6 +131,12 @@ async function dispatch(request: Request, env: Env, url: URL): Promise<Response>
     return handleDevices(request, env, url);
   }
 
+  // Feed Catalog Management (public)
+  if (path.startsWith('/api/v1/feed-catalog')) {
+    const { handleFeedCatalog } = await import('./routes/feedCatalog');
+    return handleFeedCatalog(request, env, url);
+  }
+
   // ─── Admin 전용 (/api/v1/admin/*) ─────────────────────────────────
   if (path.startsWith('/api/v1/admin')) {
     return dispatchAdmin(request, env, url, path);
@@ -143,6 +149,10 @@ async function dispatchAdmin(request: Request, env: Env, url: URL, path: string)
   if (path.startsWith('/api/v1/admin/devices')) {
     const { handleDevices } = await import('./routes/devices');
     return handleDevices(request, env, url);
+  }
+  if (path.startsWith('/api/v1/admin/feed-catalog')) {
+    const { handleFeedCatalog } = await import('./routes/feedCatalog');
+    return handleFeedCatalog(request, env, url);
   }
   if (path.startsWith('/api/v1/admin/master')) {
     const { handleMaster } = await import('./routes/master');

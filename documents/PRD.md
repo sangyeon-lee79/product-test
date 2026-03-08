@@ -110,6 +110,16 @@ Your pet's life portfolio
   - 저장은 stable id/key, 표시는 locale 번역값(i18n) 사용
   - 기존 L3가 있는 L2는 변경하지 않고 유지 (idempotent)
 
+### 0.11 사료관리자 UI/데이터 구조 추가 (2026-03-08)
+- Admin에 사료관리자 화면 추가:
+  - 유형(L3 `diet_feed_type`) → 제조사 → 브랜드 → 모델
+- 연결 규칙:
+  - 사료유형은 자유텍스트 금지, Master L3 참조만 허용
+  - 모델 저장 시 `feed_type_item_id`(stable id) 저장
+- 다국어 규칙:
+  - 제조사/브랜드/모델은 i18n key 기반 저장
+  - 화면 출력은 locale 번역값 사용, 저장은 번역문자열이 아닌 참조 id/key 유지
+
 ---
 
 ## 1. 제품 개요

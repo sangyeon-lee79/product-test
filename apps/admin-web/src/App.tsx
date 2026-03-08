@@ -10,6 +10,7 @@ import I18nPage from './pages/I18nPage';
 import MasterPage from './pages/MasterPage';
 import CountriesPage from './pages/CountriesPage';
 import DevicePage from './pages/DevicePage';
+import FeedPage from './pages/FeedPage';
 import GuardianMainPage from './pages/GuardianMainPage';
 import SupplierDashboardPage from './pages/SupplierDashboardPage';
 import ExplorePage from './pages/ExplorePage';
@@ -64,6 +65,7 @@ export default function App() {
                 <Route path="master" element={<MasterPage />} />
                 <Route path="countries" element={<CountriesPage />} />
                 <Route path="devices" element={<DevicePage />} />
+                <Route path="feeds" element={<FeedPage />} />
                 <Route path="*" element={<Navigate to="/admin" replace />} />
               </Route>
             </Route>

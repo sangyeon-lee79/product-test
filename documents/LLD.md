@@ -150,6 +150,39 @@ API:
 - 기존 데이터 보존(이미 L3가 있는 L2는 미변경)
 - 반복 실행 안전(idempotent)
 
+### 0.8 Feed Catalog(사료관리자) 구현 상세 (2026-03-08)
+
+DB:
+- `0052_feed_catalog_management.sql`
+  - `feed_manufacturers`
+  - `feed_brands` (`manufacturer_id` FK)
+  - `feed_models` (`feed_type_item_id` -> `master_items.id`, `manufacturer_id`, `brand_id`)
+- `0053_admin_feed_mgmt_i18n.sql`
+  - `admin.nav.feeds`, `admin.feed.*` UI key 추가
+
+API:
+- `services/api/src/routes/feedCatalog.ts`
+  - Public:
+    - `GET /api/v1/feed-catalog/types` (`diet_feed_type` L3 조회)
+    - `GET /api/v1/feed-catalog/manufacturers`
+    - `GET /api/v1/feed-catalog/brands`
+    - `GET /api/v1/feed-catalog/models`
+  - Admin:
+    - `GET /api/v1/admin/feed-catalog/types|manufacturers|brands|models`
+    - `POST/PUT/DELETE /api/v1/admin/feed-catalog/manufacturers/:id?`
+    - `POST/PUT/DELETE /api/v1/admin/feed-catalog/brands/:id?`
+    - `POST/PUT/DELETE /api/v1/admin/feed-catalog/models/:id?`
+  - 제조사/브랜드/모델명은 `name_key` + `i18n_translations` upsert 패턴 사용
+
+Frontend:
+- `apps/admin-web/src/pages/FeedPage.tsx`
+  - 장치관리 UI 패턴 재사용 (4컬럼 explorer)
+  - 모델 저장 시 `feed_type_id` -> API의 `feed_type_item_id`로 저장
+- `apps/admin-web/src/lib/api.ts`
+  - `api.feedCatalog.*` 추가
+- `apps/admin-web/src/App.tsx`, `components/Layout.tsx`
+  - `/admin/feeds` 라우트/사이드바 메뉴 추가
+
 ---
 
 ## 1. 기술 스택

@@ -533,6 +533,80 @@ export const api = {
       units: () => request<MeasurementUnit[]>('/api/v1/devices/units'),
     },
   },
+  feedCatalog: {
+    types: {
+      list: (lang?: string) => {
+        const q = lang ? `?lang=${encodeURIComponent(lang)}` : '';
+        return request<FeedType[]>(`/api/v1/admin/feed-catalog/types${q}`);
+      },
+    },
+    manufacturers: {
+      list: (lang?: string) => {
+        const q = lang ? `?lang=${encodeURIComponent(lang)}` : '';
+        return request<FeedManufacturer[]>(`/api/v1/admin/feed-catalog/manufacturers${q}`);
+      },
+      create: (data: { country?: string; sort_order?: number; name_ko: string; name_en: string; translations?: Record<string, string> }) =>
+        request<FeedManufacturer>('/api/v1/admin/feed-catalog/manufacturers', { method: 'POST', body: JSON.stringify(data) }),
+      update: (id: string, data: Partial<{ name_ko: string; name_en: string; country: string; sort_order: number; status: string; translations: Record<string, string> }>) =>
+        request<FeedManufacturer>(`/api/v1/admin/feed-catalog/manufacturers/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
+      delete: (id: string) =>
+        request<{ id: string; deleted: boolean }>(`/api/v1/admin/feed-catalog/manufacturers/${id}`, { method: 'DELETE' }),
+    },
+    brands: {
+      list: (manufacturerId?: string) => {
+        const q = manufacturerId ? `?manufacturer_id=${encodeURIComponent(manufacturerId)}` : '';
+        return request<FeedBrand[]>(`/api/v1/admin/feed-catalog/brands${q}`);
+      },
+      create: (data: { manufacturer_id: string; name_ko: string; name_en: string; translations?: Record<string, string> }) =>
+        request<FeedBrand>('/api/v1/admin/feed-catalog/brands', { method: 'POST', body: JSON.stringify(data) }),
+      update: (id: string, data: Partial<{ name_ko: string; name_en: string; status: string; translations: Record<string, string> }>) =>
+        request<FeedBrand>(`/api/v1/admin/feed-catalog/brands/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
+      delete: (id: string) =>
+        request<{ id: string; deleted: boolean }>(`/api/v1/admin/feed-catalog/brands/${id}`, { method: 'DELETE' }),
+    },
+    models: {
+      list: (filters?: { feed_type_id?: string; manufacturer_id?: string; brand_id?: string }) => {
+        const q = new URLSearchParams();
+        if (filters?.feed_type_id) q.set('feed_type_id', filters.feed_type_id);
+        if (filters?.manufacturer_id) q.set('manufacturer_id', filters.manufacturer_id);
+        if (filters?.brand_id) q.set('brand_id', filters.brand_id);
+        const suffix = q.toString() ? `?${q.toString()}` : '';
+        return request<FeedModel[]>(`/api/v1/admin/feed-catalog/models${suffix}`);
+      },
+      create: (data: { feed_type_id: string; manufacturer_id: string; brand_id?: string; model_name?: string; model_code?: string; description?: string; name_ko?: string; name_en?: string; translations?: Record<string, string> }) =>
+        request<FeedModel>('/api/v1/admin/feed-catalog/models', { method: 'POST', body: JSON.stringify(data) }),
+      update: (id: string, data: Partial<{ model_name: string; model_code: string; description: string; status: string; feed_type_id: string; manufacturer_id: string; brand_id: string | null; name_ko: string; name_en: string; translations: Record<string, string> }>) =>
+        request<FeedModel>(`/api/v1/admin/feed-catalog/models/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
+      delete: (id: string) =>
+        request<{ id: string; deleted: boolean }>(`/api/v1/admin/feed-catalog/models/${id}`, { method: 'DELETE' }),
+    },
+    public: {
+      types: (lang?: string) => {
+        const q = lang ? `?lang=${encodeURIComponent(lang)}` : '';
+        return request<FeedType[]>(`/api/v1/feed-catalog/types${q}`);
+      },
+      manufacturers: (feedTypeId?: string, lang?: string) => {
+        const q = new URLSearchParams();
+        if (feedTypeId) q.set('feed_type_id', feedTypeId);
+        if (lang) q.set('lang', lang);
+        const suffix = q.toString() ? `?${q.toString()}` : '';
+        return request<FeedManufacturer[]>(`/api/v1/feed-catalog/manufacturers${suffix}`);
+      },
+      brands: (manufacturerId?: string) => {
+        const q = manufacturerId ? `?manufacturer_id=${encodeURIComponent(manufacturerId)}` : '';
+        return request<FeedBrand[]>(`/api/v1/feed-catalog/brands${q}`);
+      },
+      models: (filters?: { feed_type_id?: string; manufacturer_id?: string; brand_id?: string }, lang?: string) => {
+        const q = new URLSearchParams();
+        if (filters?.feed_type_id) q.set('feed_type_id', filters.feed_type_id);
+        if (filters?.manufacturer_id) q.set('manufacturer_id', filters.manufacturer_id);
+        if (filters?.brand_id) q.set('brand_id', filters.brand_id);
+        if (lang) q.set('lang', lang);
+        const suffix = q.toString() ? `?${q.toString()}` : '';
+        return request<FeedModel[]>(`/api/v1/feed-catalog/models${suffix}`);
+      },
+    },
+  },
 };
 
 // Types
@@ -864,4 +938,35 @@ export interface GuardianDevice {
   mfr_name_ko?: string | null; mfr_name_en?: string | null;
   brand_name_ko?: string | null; brand_name_en?: string | null;
   created_at: string; updated_at: string;
+}
+
+export interface FeedType {
+  id: string; key: string; name_ko?: string | null; name_en?: string | null; display_label?: string | null;
+  status: string; sort_order: number; created_at: string; updated_at: string;
+}
+
+export interface FeedManufacturer {
+  id: string; key: string; name_key?: string | null; name_ko: string; name_en: string; display_label?: string | null;
+  country: string | null; status: string; sort_order: number;
+  created_at: string; updated_at: string;
+}
+
+export interface FeedBrand {
+  id: string; manufacturer_id: string; name_key?: string | null; name_ko: string; name_en: string; display_label?: string | null;
+  status: string; mfr_name_ko?: string | null;
+  mfr_display_label?: string | null;
+  created_at: string; updated_at: string;
+}
+
+export interface FeedModel {
+  id: string; feed_type_item_id: string; manufacturer_id: string; brand_id: string | null; name_key?: string | null;
+  model_name: string; model_code: string | null; description: string | null;
+  status: string; created_at: string; updated_at: string;
+  type_name_ko?: string | null; type_name_en?: string | null;
+  type_display_label?: string | null;
+  mfr_name_ko?: string | null; mfr_name_en?: string | null;
+  mfr_display_label?: string | null;
+  brand_name_ko?: string | null; brand_name_en?: string | null;
+  brand_display_label?: string | null;
+  model_display_label?: string | null;
 }
