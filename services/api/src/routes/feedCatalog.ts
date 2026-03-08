@@ -110,9 +110,6 @@ export async function handleFeedCatalog(request: Request, env: Env, url: URL): P
   const path = url.pathname;
   const method = request.method;
   const isAdmin = path.startsWith('/api/v1/admin/');
-  const hasFeedManufacturerTypeMap = await hasTable(env, 'feed_manufacturer_type_map');
-  const hasFeedBrandManufacturerMap = await hasTable(env, 'feed_brand_manufacturer_map');
-  const hasFeedModelBrandMap = await hasTable(env, 'feed_model_brand_map');
 
   if (!isAdmin) {
     const lang = resolveLang(url);
@@ -169,33 +166,22 @@ export async function handleFeedCatalog(request: Request, env: Env, url: URL): P
       const binds: string[] = [];
       let where = `WHERE mfr.status = 'active'`;
       if (typeItemId) {
-        if (hasFeedManufacturerTypeMap) {
-          where += ` AND (
-            EXISTS (
-              SELECT 1
-              FROM feed_manufacturer_type_map mtm
-              WHERE mtm.manufacturer_id = mfr.id
-                AND mtm.type_item_id = ?
-            )
-            OR EXISTS (
-              SELECT 1
-              FROM feed_models fm
-              WHERE fm.manufacturer_id = mfr.id
-                AND fm.feed_type_item_id = ?
-                AND fm.status = 'active'
-            )
-          )`;
-          binds.push(typeItemId, typeItemId);
-        } else {
-          where += ` AND EXISTS (
+        where += ` AND (
+          EXISTS (
+            SELECT 1
+            FROM feed_manufacturer_type_map mtm
+            WHERE mtm.manufacturer_id = mfr.id
+              AND mtm.type_item_id = ?
+          )
+          OR EXISTS (
             SELECT 1
             FROM feed_models fm
             WHERE fm.manufacturer_id = mfr.id
               AND fm.feed_type_item_id = ?
               AND fm.status = 'active'
-          )`;
-          binds.push(typeItemId);
-        }
+          )
+        )`;
+        binds.push(typeItemId, typeItemId);
       }
       const rows = await env.DB.prepare(
         `SELECT mfr.*,
@@ -221,21 +207,16 @@ export async function handleFeedCatalog(request: Request, env: Env, url: URL): P
                LEFT JOIN i18n_translations tr_brand ON tr_brand.key = b.name_key
                WHERE b.status = 'active'`;
       if (manufacturerId) {
-        if (hasFeedBrandManufacturerMap) {
-          q += ` AND (
-            b.manufacturer_id = ?
-            OR EXISTS (
-              SELECT 1
-              FROM feed_brand_manufacturer_map bmm
-              WHERE bmm.brand_id = b.id
-                AND bmm.manufacturer_id = ?
-            )
-          )`;
-          binds.push(manufacturerId, manufacturerId);
-        } else {
-          q += ` AND b.manufacturer_id = ?`;
-          binds.push(manufacturerId);
-        }
+        q += ` AND (
+          b.manufacturer_id = ?
+          OR EXISTS (
+            SELECT 1
+            FROM feed_brand_manufacturer_map bmm
+            WHERE bmm.brand_id = b.id
+              AND bmm.manufacturer_id = ?
+          )
+        )`;
+        binds.push(manufacturerId, manufacturerId);
       }
       q += ' ORDER BY b.name_en';
       const rows = await env.DB.prepare(q).bind(...binds).all();
@@ -251,21 +232,16 @@ export async function handleFeedCatalog(request: Request, env: Env, url: URL): P
       if (typeId) { where += ' AND m.feed_type_item_id = ?'; binds.push(typeId); }
       if (mfrId) { where += ' AND m.manufacturer_id = ?'; binds.push(mfrId); }
       if (brandId) {
-        if (hasFeedModelBrandMap) {
-          where += ` AND (
-            m.brand_id = ?
-            OR EXISTS (
-              SELECT 1
-              FROM feed_model_brand_map mbm
-              WHERE mbm.model_id = m.id
-                AND mbm.brand_id = ?
-            )
-          )`;
-          binds.push(brandId, brandId);
-        } else {
-          where += ` AND m.brand_id = ?`;
-          binds.push(brandId);
-        }
+        where += ` AND (
+          m.brand_id = ?
+          OR EXISTS (
+            SELECT 1
+            FROM feed_model_brand_map mbm
+            WHERE mbm.model_id = m.id
+              AND mbm.brand_id = ?
+          )
+        )`;
+        binds.push(brandId, brandId);
       }
       const rows = await env.DB.prepare(
         `SELECT m.*,
@@ -353,48 +329,14 @@ export async function handleFeedCatalog(request: Request, env: Env, url: URL): P
   }
 
   if (path === '/api/v1/admin/feed-catalog/manufacturers' && method === 'GET') {
-    const feedTypeId = (url.searchParams.get('feed_type_id') || '').trim();
-    const binds: string[] = [];
-    const parentTypeIdsExpr = hasFeedManufacturerTypeMap
-      ? `(SELECT GROUP_CONCAT(type_item_id) FROM feed_manufacturer_type_map mtm WHERE mtm.manufacturer_id = mfr.id)`
-      : `NULL`;
-    let where = '';
-    if (feedTypeId) {
-      if (hasFeedManufacturerTypeMap) {
-        where = `WHERE (
-          EXISTS (
-            SELECT 1
-            FROM feed_manufacturer_type_map mtm
-            WHERE mtm.manufacturer_id = mfr.id
-              AND mtm.type_item_id = ?
-          )
-          OR EXISTS (
-            SELECT 1
-            FROM feed_models fm
-            WHERE fm.manufacturer_id = mfr.id
-              AND fm.feed_type_item_id = ?
-          )
-        )`;
-        binds.push(feedTypeId, feedTypeId);
-      } else {
-        where = `WHERE EXISTS (
-          SELECT 1
-          FROM feed_models fm
-          WHERE fm.manufacturer_id = mfr.id
-            AND fm.feed_type_item_id = ?
-        )`;
-        binds.push(feedTypeId);
-      }
-    }
     const rows = await env.DB.prepare(
       `SELECT mfr.*,
-              ${parentTypeIdsExpr} AS parent_type_ids,
+              (SELECT GROUP_CONCAT(type_item_id) FROM feed_manufacturer_type_map mtm WHERE mtm.manufacturer_id = mfr.id) AS parent_type_ids,
               COALESCE(NULLIF(TRIM(tr.${langCol}), ''), NULLIF(TRIM(tr.en), ''), NULLIF(TRIM(tr.ko), ''), mfr.name_en, mfr.name_ko) AS display_label
        FROM feed_manufacturers mfr
        LEFT JOIN i18n_translations tr ON tr.key = mfr.name_key
-       ${where}
        ORDER BY mfr.sort_order, mfr.name_en`
-    ).bind(...binds).all();
+    ).all();
     return ok(rows.results);
   }
 
@@ -411,15 +353,12 @@ export async function handleFeedCatalog(request: Request, env: Env, url: URL): P
        VALUES (?, ?, ?, ?, ?, ?, 'active', ?, ?, ?)`
     ).bind(id, key, nameKey, ko, en, body.country ?? null, body.sort_order ?? 0, now(), now()).run();
     await upsertI18n(env, nameKey, normalizedTranslations(body.translations, ko, en));
-    if (hasFeedManufacturerTypeMap) {
+    if (await hasTable(env, 'feed_manufacturer_type_map')) {
       await syncParentMap(env, 'feed_manufacturer_type_map', 'manufacturer_id', id, 'type_item_id', body.parent_type_ids ?? []);
     }
-    const parentTypeIdsExpr = hasFeedManufacturerTypeMap
-      ? `(SELECT GROUP_CONCAT(type_item_id) FROM feed_manufacturer_type_map mtm WHERE mtm.manufacturer_id = mfr.id)`
-      : `NULL`;
     return created(await env.DB.prepare(
       `SELECT mfr.*,
-              ${parentTypeIdsExpr} AS parent_type_ids,
+              (SELECT GROUP_CONCAT(type_item_id) FROM feed_manufacturer_type_map mtm WHERE mtm.manufacturer_id = mfr.id) AS parent_type_ids,
               COALESCE(NULLIF(TRIM(tr.${langCol}), ''), NULLIF(TRIM(tr.en), ''), NULLIF(TRIM(tr.ko), ''), mfr.name_en, mfr.name_ko) AS display_label
        FROM feed_manufacturers mfr
        LEFT JOIN i18n_translations tr ON tr.key = mfr.name_key
@@ -449,15 +388,12 @@ export async function handleFeedCatalog(request: Request, env: Env, url: URL): P
       if (existing.name_key && (ko || en)) {
         await upsertI18n(env, existing.name_key, normalizedTranslations(body.translations, ko, en));
       }
-      if (body.parent_type_ids && hasFeedManufacturerTypeMap) {
+      if (body.parent_type_ids && await hasTable(env, 'feed_manufacturer_type_map')) {
         await syncParentMap(env, 'feed_manufacturer_type_map', 'manufacturer_id', mfrId, 'type_item_id', body.parent_type_ids);
       }
-      const parentTypeIdsExpr = hasFeedManufacturerTypeMap
-        ? `(SELECT GROUP_CONCAT(type_item_id) FROM feed_manufacturer_type_map mtm WHERE mtm.manufacturer_id = mfr.id)`
-        : `NULL`;
       return ok(await env.DB.prepare(
         `SELECT mfr.*,
-                ${parentTypeIdsExpr} AS parent_type_ids,
+                (SELECT GROUP_CONCAT(type_item_id) FROM feed_manufacturer_type_map mtm WHERE mtm.manufacturer_id = mfr.id) AS parent_type_ids,
                 COALESCE(NULLIF(TRIM(tr.${langCol}), ''), NULLIF(TRIM(tr.en), ''), NULLIF(TRIM(tr.ko), ''), mfr.name_en, mfr.name_ko) AS display_label
          FROM feed_manufacturers mfr
          LEFT JOIN i18n_translations tr ON tr.key = mfr.name_key
@@ -473,11 +409,7 @@ export async function handleFeedCatalog(request: Request, env: Env, url: URL): P
   if (path === '/api/v1/admin/feed-catalog/brands' && method === 'GET') {
     const manufacturerId = url.searchParams.get('manufacturer_id');
     const binds: string[] = [];
-    const parentManufacturerIdsExpr = hasFeedBrandManufacturerMap
-      ? `(SELECT GROUP_CONCAT(manufacturer_id) FROM feed_brand_manufacturer_map bmm WHERE bmm.brand_id = b.id)`
-      : `NULL`;
     let q = `SELECT b.*,
-                    ${parentManufacturerIdsExpr} AS parent_manufacturer_ids,
                     m.name_ko AS mfr_name_ko,
                     COALESCE(NULLIF(TRIM(tr_mfr.${langCol}), ''), NULLIF(TRIM(tr_mfr.en), ''), NULLIF(TRIM(tr_mfr.ko), ''), m.name_en, m.name_ko) AS mfr_display_label,
                     COALESCE(NULLIF(TRIM(tr_brand.${langCol}), ''), NULLIF(TRIM(tr_brand.en), ''), NULLIF(TRIM(tr_brand.ko), ''), b.name_en, b.name_ko) AS display_label
@@ -486,21 +418,16 @@ export async function handleFeedCatalog(request: Request, env: Env, url: URL): P
              LEFT JOIN i18n_translations tr_mfr ON tr_mfr.key = m.name_key
              LEFT JOIN i18n_translations tr_brand ON tr_brand.key = b.name_key`;
     if (manufacturerId) {
-      if (hasFeedBrandManufacturerMap) {
-        q += ` WHERE (
-          b.manufacturer_id = ?
-          OR EXISTS (
-            SELECT 1
-            FROM feed_brand_manufacturer_map bmm
-            WHERE bmm.brand_id = b.id
-              AND bmm.manufacturer_id = ?
-          )
-        )`;
-        binds.push(manufacturerId, manufacturerId);
-      } else {
-        q += ` WHERE b.manufacturer_id = ?`;
-        binds.push(manufacturerId);
-      }
+      q += ` WHERE (
+        b.manufacturer_id = ?
+        OR EXISTS (
+          SELECT 1
+          FROM feed_brand_manufacturer_map bmm
+          WHERE bmm.brand_id = b.id
+            AND bmm.manufacturer_id = ?
+        )
+      )`;
+      binds.push(manufacturerId, manufacturerId);
     }
     q += ' ORDER BY b.name_en';
     const rows = await env.DB.prepare(q).bind(...binds).all();
@@ -521,18 +448,10 @@ export async function handleFeedCatalog(request: Request, env: Env, url: URL): P
        VALUES (?, ?, ?, ?, ?, 'active', ?, ?)`
     ).bind(id, manufacturerIds[0], nameKey, ko, en, now(), now()).run();
     await upsertI18n(env, nameKey, normalizedTranslations(body.translations, ko, en));
-    if (hasFeedBrandManufacturerMap) {
+    if (await hasTable(env, 'feed_brand_manufacturer_map')) {
       await syncParentMap(env, 'feed_brand_manufacturer_map', 'brand_id', id, 'manufacturer_id', manufacturerIds);
     }
-    const parentManufacturerIdsExpr = hasFeedBrandManufacturerMap
-      ? `(SELECT GROUP_CONCAT(manufacturer_id) FROM feed_brand_manufacturer_map bmm WHERE bmm.brand_id = b.id)`
-      : `NULL`;
-    return created(await env.DB.prepare(
-      `SELECT b.*,
-              ${parentManufacturerIdsExpr} AS parent_manufacturer_ids
-       FROM feed_brands b
-       WHERE b.id = ?`
-    ).bind(id).first());
+    return created(await env.DB.prepare(`SELECT * FROM feed_brands WHERE id = ?`).bind(id).first());
   }
 
   const brandIdMatch = path.match(/^\/api\/v1\/admin\/feed-catalog\/brands\/([^/]+)$/);
@@ -557,18 +476,10 @@ export async function handleFeedCatalog(request: Request, env: Env, url: URL): P
       if (existing.name_key && (ko || en)) {
         await upsertI18n(env, existing.name_key, normalizedTranslations(body.translations, ko, en));
       }
-      if (manufacturerIds.length > 0 && hasFeedBrandManufacturerMap) {
+      if (manufacturerIds.length > 0 && await hasTable(env, 'feed_brand_manufacturer_map')) {
         await syncParentMap(env, 'feed_brand_manufacturer_map', 'brand_id', brandId, 'manufacturer_id', manufacturerIds);
       }
-      const parentManufacturerIdsExpr = hasFeedBrandManufacturerMap
-        ? `(SELECT GROUP_CONCAT(manufacturer_id) FROM feed_brand_manufacturer_map bmm WHERE bmm.brand_id = b.id)`
-        : `NULL`;
-      return ok(await env.DB.prepare(
-        `SELECT b.*,
-                ${parentManufacturerIdsExpr} AS parent_manufacturer_ids
-         FROM feed_brands b
-         WHERE b.id = ?`
-      ).bind(brandId).first());
+      return ok(await env.DB.prepare(`SELECT * FROM feed_brands WHERE id = ?`).bind(brandId).first());
     }
     if (method === 'DELETE') {
       await env.DB.prepare(`UPDATE feed_brands SET status = 'inactive', updated_at = ? WHERE id = ?`).bind(now(), brandId).run();
@@ -585,28 +496,19 @@ export async function handleFeedCatalog(request: Request, env: Env, url: URL): P
     if (typeId) { where += ' AND m.feed_type_item_id = ?'; binds.push(typeId); }
     if (mfrId) { where += ' AND m.manufacturer_id = ?'; binds.push(mfrId); }
     if (brandId) {
-      if (hasFeedModelBrandMap) {
-        where += ` AND (
-          m.brand_id = ?
-          OR EXISTS (
-            SELECT 1
-            FROM feed_model_brand_map mbm
-            WHERE mbm.model_id = m.id
-              AND mbm.brand_id = ?
-          )
-        )`;
-        binds.push(brandId, brandId);
-      } else {
-        where += ` AND m.brand_id = ?`;
-        binds.push(brandId);
-      }
+      where += ` AND (
+        m.brand_id = ?
+        OR EXISTS (
+          SELECT 1
+          FROM feed_model_brand_map mbm
+          WHERE mbm.model_id = m.id
+            AND mbm.brand_id = ?
+        )
+      )`;
+      binds.push(brandId, brandId);
     }
-    const parentBrandIdsExpr = hasFeedModelBrandMap
-      ? `(SELECT GROUP_CONCAT(brand_id) FROM feed_model_brand_map mbm WHERE mbm.model_id = m.id)`
-      : `NULL`;
     const rows = await env.DB.prepare(
       `SELECT m.*,
-              ${parentBrandIdsExpr} AS parent_brand_ids,
               mi.code AS type_key,
               tr_type.ko AS type_name_ko,
               tr_type.en AS type_name_en,
@@ -662,18 +564,10 @@ export async function handleFeedCatalog(request: Request, env: Env, url: URL): P
     ).run();
     await upsertI18n(env, nameKey, normalizedTranslations(body.translations, ko, en));
     const brandIds = Array.from(new Set([...(body.brand_ids ?? []), ...(body.brand_id ? [body.brand_id] : [])].filter(Boolean)));
-    if (brandIds.length > 0 && hasFeedModelBrandMap) {
+    if (brandIds.length > 0 && await hasTable(env, 'feed_model_brand_map')) {
       await syncParentMap(env, 'feed_model_brand_map', 'model_id', id, 'brand_id', brandIds);
     }
-    const parentBrandIdsExpr = hasFeedModelBrandMap
-      ? `(SELECT GROUP_CONCAT(brand_id) FROM feed_model_brand_map mbm WHERE mbm.model_id = m.id)`
-      : `NULL`;
-    return created(await env.DB.prepare(
-      `SELECT m.*,
-              ${parentBrandIdsExpr} AS parent_brand_ids
-       FROM feed_models m
-       WHERE m.id = ?`
-    ).bind(id).first());
+    return created(await env.DB.prepare(`SELECT * FROM feed_models WHERE id = ?`).bind(id).first());
   }
 
   const modelIdMatch = path.match(/^\/api\/v1\/admin\/feed-catalog\/models\/([^/]+)$/);
@@ -703,18 +597,10 @@ export async function handleFeedCatalog(request: Request, env: Env, url: URL): P
       if (existing.name_key && (ko || en || body.translations)) {
         await upsertI18n(env, existing.name_key, normalizedTranslations(body.translations, ko || existing.model_name || '', en || ko || existing.model_name || ''));
       }
-      if (brandIds.length > 0 && hasFeedModelBrandMap) {
+      if (brandIds.length > 0 && await hasTable(env, 'feed_model_brand_map')) {
         await syncParentMap(env, 'feed_model_brand_map', 'model_id', modelId, 'brand_id', brandIds);
       }
-      const parentBrandIdsExpr = hasFeedModelBrandMap
-        ? `(SELECT GROUP_CONCAT(brand_id) FROM feed_model_brand_map mbm WHERE mbm.model_id = m.id)`
-        : `NULL`;
-      return ok(await env.DB.prepare(
-        `SELECT m.*,
-                ${parentBrandIdsExpr} AS parent_brand_ids
-         FROM feed_models m
-         WHERE m.id = ?`
-      ).bind(modelId).first());
+      return ok(await env.DB.prepare(`SELECT * FROM feed_models WHERE id = ?`).bind(modelId).first());
     }
     if (method === 'DELETE') {
       await env.DB.prepare(`UPDATE feed_models SET status = 'inactive', updated_at = ? WHERE id = ?`).bind(now(), modelId).run();

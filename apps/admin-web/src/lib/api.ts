@@ -541,12 +541,9 @@ export const api = {
       },
     },
     manufacturers: {
-      list: (params?: { lang?: string; feed_type_id?: string }) => {
-        const q = new URLSearchParams();
-        if (params?.lang) q.set('lang', params.lang);
-        if (params?.feed_type_id) q.set('feed_type_id', params.feed_type_id);
-        const suffix = q.toString() ? `?${q.toString()}` : '';
-        return request<FeedManufacturer[]>(`/api/v1/admin/feed-catalog/manufacturers${suffix}`);
+      list: (lang?: string) => {
+        const q = lang ? `?lang=${encodeURIComponent(lang)}` : '';
+        return request<FeedManufacturer[]>(`/api/v1/admin/feed-catalog/manufacturers${q}`);
       },
       create: (data: { country?: string; sort_order?: number; name_ko: string; name_en?: string; parent_type_ids?: string[]; translations?: Record<string, string> }) =>
         request<FeedManufacturer>('/api/v1/admin/feed-catalog/manufacturers', { method: 'POST', body: JSON.stringify(data) }),
@@ -556,12 +553,9 @@ export const api = {
         request<{ id: string; deleted: boolean }>(`/api/v1/admin/feed-catalog/manufacturers/${id}`, { method: 'DELETE' }),
     },
     brands: {
-      list: (manufacturerId?: string, lang?: string) => {
-        const q = new URLSearchParams();
-        if (manufacturerId) q.set('manufacturer_id', manufacturerId);
-        if (lang) q.set('lang', lang);
-        const suffix = q.toString() ? `?${q.toString()}` : '';
-        return request<FeedBrand[]>(`/api/v1/admin/feed-catalog/brands${suffix}`);
+      list: (manufacturerId?: string) => {
+        const q = manufacturerId ? `?manufacturer_id=${encodeURIComponent(manufacturerId)}` : '';
+        return request<FeedBrand[]>(`/api/v1/admin/feed-catalog/brands${q}`);
       },
       create: (data: { manufacturer_id?: string; manufacturer_ids?: string[]; name_ko: string; name_en?: string; translations?: Record<string, string> }) =>
         request<FeedBrand>('/api/v1/admin/feed-catalog/brands', { method: 'POST', body: JSON.stringify(data) }),
@@ -571,12 +565,11 @@ export const api = {
         request<{ id: string; deleted: boolean }>(`/api/v1/admin/feed-catalog/brands/${id}`, { method: 'DELETE' }),
     },
     models: {
-      list: (filters?: { feed_type_id?: string; manufacturer_id?: string; brand_id?: string }, lang?: string) => {
+      list: (filters?: { feed_type_id?: string; manufacturer_id?: string; brand_id?: string }) => {
         const q = new URLSearchParams();
         if (filters?.feed_type_id) q.set('feed_type_id', filters.feed_type_id);
         if (filters?.manufacturer_id) q.set('manufacturer_id', filters.manufacturer_id);
         if (filters?.brand_id) q.set('brand_id', filters.brand_id);
-        if (lang) q.set('lang', lang);
         const suffix = q.toString() ? `?${q.toString()}` : '';
         return request<FeedModel[]>(`/api/v1/admin/feed-catalog/models${suffix}`);
       },
@@ -962,7 +955,6 @@ export interface FeedManufacturer {
 
 export interface FeedBrand {
   id: string; manufacturer_id: string; name_key?: string | null; name_ko: string; name_en: string; display_label?: string | null;
-  parent_manufacturer_ids?: string | null;
   status: string; mfr_name_ko?: string | null;
   mfr_display_label?: string | null;
   created_at: string; updated_at: string;
@@ -970,7 +962,6 @@ export interface FeedBrand {
 
 export interface FeedModel {
   id: string; feed_type_item_id: string; manufacturer_id: string; brand_id: string | null; name_key?: string | null;
-  parent_brand_ids?: string | null;
   model_name: string; model_code: string | null; description: string | null;
   status: string; created_at: string; updated_at: string;
   type_name_ko?: string | null; type_name_en?: string | null;
