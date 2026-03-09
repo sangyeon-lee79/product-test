@@ -308,154 +308,157 @@ export async function handleDevices(request: Request, env: Env, url: URL): Promi
   // ─── Guardian: /api/v1/pets/:petId/guardian-devices ──────────────────────
 
   if (path.startsWith('/api/v1/pets/')) {
-    const authResult = await requireAuth(request, env);
-    if (authResult instanceof Response) return authResult;
-    const user = authResult as JwtPayload;
+    try {
+      const authResult = await requireAuth(request, env);
+      if (authResult instanceof Response) return authResult;
+      const user = authResult as JwtPayload;
 
-    const petMatch = path.match(/^\/api\/v1\/pets\/([^/]+)\/guardian-devices(?:\/([^/]+))?$/);
-    if (!petMatch) return err('Not Found', 404, 'not_found');
-    const petId = petMatch[1];
-    const deviceId = petMatch[2];
+      const petMatch = path.match(/^\/api\/v1\/pets\/([^/]+)\/guardian-devices(?:\/([^/]+))?$/);
+      if (!petMatch) return err('Not Found', 404, 'not_found');
+      const petId = petMatch[1];
+      const deviceId = petMatch[2];
 
-    // Verify pet belongs to guardian
-    const pet = await env.DB.prepare(
-      `SELECT id FROM pets WHERE id = ? AND guardian_id = ? AND status != 'deleted'`
-    ).bind(petId, user.sub).first<{ id: string }>();
-    if (!pet) return err('Pet not found', 404, 'not_found');
+      // Verify pet belongs to guardian
+      const pet = await env.DB.prepare(
+        `SELECT id FROM pets WHERE id = ? AND guardian_id = ? AND status != 'deleted'`
+      ).bind(petId, user.sub).first<{ id: string }>();
+      if (!pet) return err('Pet not found', 404, 'not_found');
 
-    // Check if guardian_devices table exists (migration 0044+)
-    if (!(await hasTable(env, 'guardian_devices'))) {
-      if (method === 'GET') return ok({ devices: [] });
-      return err('guardian_devices not available yet', 400, 'not_supported');
-    }
+      // Check if guardian_devices table exists (migration 0044+)
+      if (!(await hasTable(env, 'guardian_devices'))) {
+        if (method === 'GET') return ok({ devices: [] });
+        return err('guardian_devices not available yet', 400, 'not_supported');
+      }
 
-    // GET list
-    if (!deviceId && method === 'GET') {
-      const lang = resolveLang(url);
-      const langCol = lang;
+      const hasDefaultCol = await hasColumn(env, 'guardian_devices', 'is_default');
+      const hasDiseaseCol = await hasColumn(env, 'guardian_devices', 'disease_item_id');
       const hasDeviceModels = await hasTable(env, 'device_models');
 
-      // If device_models table doesn't exist, return simple query
-      if (!hasDeviceModels) {
-        try {
+      // GET list
+      if (!deviceId && method === 'GET') {
+        const orderBy = hasDefaultCol ? 'gd.is_default DESC, gd.created_at DESC' : 'gd.created_at DESC';
+
+        if (!hasDeviceModels) {
           const rows = await env.DB.prepare(
-            `SELECT * FROM guardian_devices WHERE pet_id = ? AND status != 'deleted' ORDER BY created_at DESC`
+            `SELECT * FROM guardian_devices gd WHERE gd.pet_id = ? AND gd.status != 'deleted' ORDER BY ${orderBy}`
+          ).bind(petId).all();
+          return ok({ devices: rows.results });
+        }
+
+        try {
+          const lang = resolveLang(url);
+          const langCol = lang;
+          const normalized = await hasColumn(env, 'master_items', 'code');
+          const codeCol = normalized ? 'code' : 'key';
+          const rows = await env.DB.prepare(
+            `SELECT gd.*, dm.model_name, dm.model_code,
+                    mi.${codeCol} as type_key,
+                    tr_type.ko as type_name_ko, tr_type.en as type_name_en,
+                    COALESCE(NULLIF(TRIM(tr_type.${langCol}), ''), NULLIF(TRIM(tr_type.en), ''), NULLIF(TRIM(tr_type.ko), ''), mi.${codeCol}) AS type_display_label,
+                    mfr.name_ko as mfr_name_ko, mfr.name_en as mfr_name_en,
+                    COALESCE(NULLIF(TRIM(tr_mfr.${langCol}), ''), NULLIF(TRIM(tr_mfr.en), ''), NULLIF(TRIM(tr_mfr.ko), ''), mfr.name_en, mfr.name_ko, mfr.key) AS mfr_display_label,
+                    b.name_ko as brand_name_ko, b.name_en as brand_name_en,
+                    COALESCE(NULLIF(TRIM(tr_brand.${langCol}), ''), NULLIF(TRIM(tr_brand.en), ''), NULLIF(TRIM(tr_brand.ko), ''), b.name_en, b.name_ko) AS brand_display_label,
+                    COALESCE(NULLIF(TRIM(tr_model.${langCol}), ''), NULLIF(TRIM(tr_model.en), ''), NULLIF(TRIM(tr_model.ko), ''), dm.model_name) AS model_display_label
+             FROM guardian_devices gd
+             LEFT JOIN device_models dm ON dm.id = gd.device_model_id
+             LEFT JOIN master_items mi ON mi.id = dm.device_type_item_id
+             LEFT JOIN master_categories mc ON mc.id = mi.category_id
+             LEFT JOIN i18n_translations tr_type
+               ON tr_type.key = CASE
+                 WHEN mc.${codeCol} LIKE 'master.%' THEN (mc.${codeCol} || '.' || mi.${codeCol})
+                 ELSE ('master.' || mc.${codeCol} || '.' || mi.${codeCol})
+               END
+             LEFT JOIN device_manufacturers mfr ON mfr.id = dm.manufacturer_id
+             LEFT JOIN i18n_translations tr_mfr ON tr_mfr.key = mfr.name_key
+             LEFT JOIN device_brands b ON b.id = dm.brand_id
+             LEFT JOIN i18n_translations tr_brand ON tr_brand.key = b.name_key
+             LEFT JOIN i18n_translations tr_model ON tr_model.key = dm.name_key
+             WHERE gd.pet_id = ? AND gd.status != 'deleted'
+             ORDER BY ${orderBy}`
           ).bind(petId).all();
           return ok({ devices: rows.results });
         } catch {
-          return ok({ devices: [] });
-        }
-      }
-
-      try {
-        const normalized = await hasColumn(env, 'master_items', 'code');
-        const codeCol = normalized ? 'code' : 'key';
-        const rows = await env.DB.prepare(
-          `SELECT gd.*, dm.model_name, dm.model_code,
-                  mi.${codeCol} as type_key,
-                  tr_type.ko as type_name_ko, tr_type.en as type_name_en,
-                  COALESCE(NULLIF(TRIM(tr_type.${langCol}), ''), NULLIF(TRIM(tr_type.en), ''), NULLIF(TRIM(tr_type.ko), ''), mi.${codeCol}) AS type_display_label,
-                  mfr.name_ko as mfr_name_ko, mfr.name_en as mfr_name_en,
-                  COALESCE(NULLIF(TRIM(tr_mfr.${langCol}), ''), NULLIF(TRIM(tr_mfr.en), ''), NULLIF(TRIM(tr_mfr.ko), ''), mfr.name_en, mfr.name_ko, mfr.key) AS mfr_display_label,
-                  b.name_ko as brand_name_ko, b.name_en as brand_name_en,
-                  COALESCE(NULLIF(TRIM(tr_brand.${langCol}), ''), NULLIF(TRIM(tr_brand.en), ''), NULLIF(TRIM(tr_brand.ko), ''), b.name_en, b.name_ko) AS brand_display_label,
-                  COALESCE(NULLIF(TRIM(tr_model.${langCol}), ''), NULLIF(TRIM(tr_model.en), ''), NULLIF(TRIM(tr_model.ko), ''), dm.model_name) AS model_display_label
-           FROM guardian_devices gd
-           LEFT JOIN device_models dm ON dm.id = gd.device_model_id
-           LEFT JOIN master_items mi ON mi.id = dm.device_type_item_id
-           LEFT JOIN master_categories mc ON mc.id = mi.category_id
-           LEFT JOIN i18n_translations tr_type
-             ON tr_type.key = CASE
-               WHEN mc.${codeCol} LIKE 'master.%' THEN (mc.${codeCol} || '.' || mi.${codeCol})
-               ELSE ('master.' || mc.${codeCol} || '.' || mi.${codeCol})
-             END
-           LEFT JOIN device_manufacturers mfr ON mfr.id = dm.manufacturer_id
-           LEFT JOIN i18n_translations tr_mfr ON tr_mfr.key = mfr.name_key
-           LEFT JOIN device_brands b ON b.id = dm.brand_id
-           LEFT JOIN i18n_translations tr_brand ON tr_brand.key = b.name_key
-           LEFT JOIN i18n_translations tr_model ON tr_model.key = dm.name_key
-           WHERE gd.pet_id = ? AND gd.status != 'deleted'
-           ORDER BY gd.is_default DESC, gd.created_at DESC`
-        ).bind(petId).all();
-        return ok({ devices: rows.results });
-      } catch {
-        // Fallback: simple query without JOINs
-        try {
+          // Fallback: simple query without JOINs
           const rows = await env.DB.prepare(
-            `SELECT * FROM guardian_devices WHERE pet_id = ? AND status != 'deleted' ORDER BY created_at DESC`
+            `SELECT * FROM guardian_devices gd WHERE gd.pet_id = ? AND gd.status != 'deleted' ORDER BY ${orderBy}`
           ).bind(petId).all();
           return ok({ devices: rows.results });
-        } catch {
-          return ok({ devices: [] });
         }
       }
-    }
 
-    // POST create
-    if (!deviceId && method === 'POST') {
-      const body = await request.json<{ device_model_id: string; nickname?: string; serial_number?: string; start_date?: string; notes?: string; disease_item_id?: string; is_default?: boolean }>();
-      if (!body.device_model_id) return err('device_model_id required', 400, 'missing_field');
+      // POST create
+      if (!deviceId && method === 'POST') {
+        const body = await request.json<{ device_model_id: string; nickname?: string; serial_number?: string; start_date?: string; notes?: string; disease_item_id?: string; is_default?: boolean }>();
+        if (!body.device_model_id) return err('device_model_id required', 400, 'missing_field');
 
-      if (await hasTable(env, 'device_models')) {
-        const model = await env.DB.prepare(`SELECT id FROM device_models WHERE id = ? AND status = 'active'`).bind(body.device_model_id).first<{ id: string }>();
-        if (!model) return err('Device model not found', 404, 'not_found');
-      }
+        if (hasDeviceModels) {
+          const model = await env.DB.prepare(`SELECT id FROM device_models WHERE id = ? AND status = 'active'`).bind(body.device_model_id).first<{ id: string }>();
+          if (!model) return err('Device model not found', 404, 'not_found');
+        }
 
-      const hasNewCols = await hasColumn(env, 'guardian_devices', 'disease_item_id');
-      const isDefault = body.is_default ? 1 : 0;
-      if (hasNewCols && isDefault) {
+        const isDefault = body.is_default ? 1 : 0;
+        if (hasDefaultCol && isDefault) {
+          await env.DB.prepare(
+            `UPDATE guardian_devices SET is_default = 0, updated_at = ? WHERE pet_id = ? AND is_default = 1`
+          ).bind(now(), petId).run();
+        }
+
+        const id = newId();
+        const cols = ['id', 'pet_id', 'device_model_id', 'nickname', 'serial_number', 'start_date', 'notes', 'status', 'created_at', 'updated_at'];
+        const binds: (string | number | null)[] = [id, petId, body.device_model_id, body.nickname ?? null, body.serial_number ?? null, body.start_date ?? null, body.notes ?? null, 'active', now(), now()];
+        if (hasDiseaseCol) {
+          cols.splice(3, 0, 'disease_item_id');
+          binds.splice(3, 0, body.disease_item_id ?? null);
+        }
+        if (hasDefaultCol) {
+          cols.splice(hasDiseaseCol ? 4 : 3, 0, 'is_default');
+          binds.splice(hasDiseaseCol ? 4 : 3, 0, isDefault);
+        }
         await env.DB.prepare(
-          `UPDATE guardian_devices SET is_default = 0, updated_at = ? WHERE pet_id = ? AND is_default = 1`
-        ).bind(now(), petId).run();
+          `INSERT INTO guardian_devices (${cols.join(', ')}) VALUES (${cols.map(() => '?').join(', ')})`
+        ).bind(...binds).run();
+
+        return created({ id });
       }
 
-      const id = newId();
-      const cols = ['id', 'pet_id', 'device_model_id', 'nickname', 'serial_number', 'start_date', 'notes', 'status', 'created_at', 'updated_at'];
-      const binds: (string | number | null)[] = [id, petId, body.device_model_id, body.nickname ?? null, body.serial_number ?? null, body.start_date ?? null, body.notes ?? null, 'active', now(), now()];
-      if (hasNewCols) {
-        cols.splice(3, 0, 'disease_item_id', 'is_default');
-        binds.splice(3, 0, body.disease_item_id ?? null, isDefault);
+      // PUT update
+      if (deviceId && method === 'PUT') {
+        const body = await request.json<{ nickname?: string; serial_number?: string; notes?: string; start_date?: string; disease_item_id?: string; is_default?: boolean }>();
+
+        if (hasDefaultCol && body.is_default) {
+          await env.DB.prepare(
+            `UPDATE guardian_devices SET is_default = 0, updated_at = ? WHERE pet_id = ? AND is_default = 1 AND id != ?`
+          ).bind(now(), petId, deviceId).run();
+        }
+
+        const sets: string[] = ['updated_at = ?'];
+        const vals: (string | null | number)[] = [now()];
+        if ('nickname' in body) { sets.push('nickname = ?'); vals.push(body.nickname ?? null); }
+        if ('serial_number' in body) { sets.push('serial_number = ?'); vals.push(body.serial_number ?? null); }
+        if ('notes' in body) { sets.push('notes = ?'); vals.push(body.notes ?? null); }
+        if ('start_date' in body) { sets.push('start_date = ?'); vals.push(body.start_date ?? null); }
+        if (hasDiseaseCol && 'disease_item_id' in body) { sets.push('disease_item_id = ?'); vals.push(body.disease_item_id ?? null); }
+        if (hasDefaultCol && 'is_default' in body) { sets.push('is_default = ?'); vals.push(body.is_default ? 1 : 0); }
+        vals.push(deviceId, petId);
+        await env.DB.prepare(`UPDATE guardian_devices SET ${sets.join(', ')} WHERE id = ? AND pet_id = ?`).bind(...vals).run();
+        return ok({ id: deviceId, updated: true });
       }
-      await env.DB.prepare(
-        `INSERT INTO guardian_devices (${cols.join(', ')}) VALUES (${cols.map(() => '?').join(', ')})`
-      ).bind(...binds).run();
 
-      return created({ id });
-    }
-
-    // PUT update
-    if (deviceId && method === 'PUT') {
-      const body = await request.json<{ nickname?: string; serial_number?: string; notes?: string; start_date?: string; disease_item_id?: string; is_default?: boolean }>();
-      const hasNewCols = await hasColumn(env, 'guardian_devices', 'disease_item_id');
-
-      if (hasNewCols && body.is_default) {
+      // DELETE (soft)
+      if (deviceId && method === 'DELETE') {
         await env.DB.prepare(
-          `UPDATE guardian_devices SET is_default = 0, updated_at = ? WHERE pet_id = ? AND is_default = 1 AND id != ?`
-        ).bind(now(), petId, deviceId).run();
+          `UPDATE guardian_devices SET status = 'deleted', updated_at = ? WHERE id = ? AND pet_id = ?`
+        ).bind(now(), deviceId, petId).run();
+        return ok({ id: deviceId, deleted: true });
       }
 
-      const sets: string[] = ['updated_at = ?'];
-      const vals: (string | null | number)[] = [now()];
-      if ('nickname' in body) { sets.push('nickname = ?'); vals.push(body.nickname ?? null); }
-      if ('serial_number' in body) { sets.push('serial_number = ?'); vals.push(body.serial_number ?? null); }
-      if ('notes' in body) { sets.push('notes = ?'); vals.push(body.notes ?? null); }
-      if ('start_date' in body) { sets.push('start_date = ?'); vals.push(body.start_date ?? null); }
-      if (hasNewCols && 'disease_item_id' in body) { sets.push('disease_item_id = ?'); vals.push(body.disease_item_id ?? null); }
-      if (hasNewCols && 'is_default' in body) { sets.push('is_default = ?'); vals.push(body.is_default ? 1 : 0); }
-      vals.push(deviceId, petId);
-      await env.DB.prepare(`UPDATE guardian_devices SET ${sets.join(', ')} WHERE id = ? AND pet_id = ?`).bind(...vals).run();
-      return ok({ id: deviceId, updated: true });
+      return err('Method Not Allowed', 405, 'method_not_allowed');
+    } catch (e) {
+      // Top-level catch to prevent 500 — return error detail for debugging
+      const msg = e instanceof Error ? e.message : String(e);
+      return err(`guardian-devices error: ${msg}`, 500, 'internal_error');
     }
-
-    // DELETE (soft)
-    if (deviceId && method === 'DELETE') {
-      await env.DB.prepare(
-        `UPDATE guardian_devices SET status = 'deleted', updated_at = ? WHERE id = ? AND pet_id = ?`
-      ).bind(now(), deviceId, petId).run();
-      return ok({ id: deviceId, deleted: true });
-    }
-
-    return err('Method Not Allowed', 405, 'method_not_allowed');
   }
 
   // ─── Admin endpoints ─────────────────────────────────────────────────────
