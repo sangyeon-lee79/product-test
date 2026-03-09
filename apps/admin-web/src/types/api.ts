@@ -384,6 +384,66 @@ export interface FeedModel {
   model_display_label?: string | null;
 }
 
+// ─── Pet Feeds ────────────────────────────────────────────────────────────────
+
+export interface PetFeed {
+  id: string;
+  pet_id: string;
+  feed_model_id: string;
+  disease_item_id?: string | null;
+  nickname?: string | null;
+  daily_amount_g?: number | null;
+  daily_amount_unit?: string | null;
+  feeding_frequency?: number | null;
+  start_date?: string | null;
+  end_date?: string | null;
+  notes?: string | null;
+  is_primary: number;
+  status: string;
+  model_name?: string | null;
+  model_code?: string | null;
+  type_key?: string | null;
+  type_display_label?: string | null;
+  mfr_name_ko?: string | null;
+  mfr_name_en?: string | null;
+  mfr_display_label?: string | null;
+  brand_name_ko?: string | null;
+  brand_name_en?: string | null;
+  brand_display_label?: string | null;
+  model_display_label?: string | null;
+  calories_per_100g?: number | null;
+  protein_pct?: number | null;
+  fat_pct?: number | null;
+  fiber_pct?: number | null;
+  moisture_pct?: number | null;
+  carbohydrate_pct?: number | null;
+  serving_size_g?: number | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface FeedNutrition {
+  id: string;
+  feed_model_id: string;
+  calories_per_100g?: number | null;
+  protein_pct?: number | null;
+  fat_pct?: number | null;
+  fiber_pct?: number | null;
+  moisture_pct?: number | null;
+  ash_pct?: number | null;
+  calcium_pct?: number | null;
+  phosphorus_pct?: number | null;
+  omega3_pct?: number | null;
+  omega6_pct?: number | null;
+  carbohydrate_pct?: number | null;
+  serving_size_g?: number | null;
+  ingredients_text?: string | null;
+  notes?: string | null;
+  status: string;
+  created_at: string;
+  updated_at: string;
+}
+
 // ─── S7: Health Logs ──────────────────────────────────────────────────────────
 
 export interface LogValue {

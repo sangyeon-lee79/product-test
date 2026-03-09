@@ -320,7 +320,7 @@ export async function handleDevices(request: Request, env: Env, url: URL): Promi
 
       // Verify pet belongs to guardian
       const pet = await env.DB.prepare(
-        `SELECT id FROM pets WHERE id = ? AND guardian_id = ? AND status != 'deleted'`
+        `SELECT id FROM pets WHERE id = ? AND guardian_user_id = ? AND status != 'deleted'`
       ).bind(petId, user.sub).first<{ id: string }>();
       if (!pet) return err('Pet not found', 404, 'not_found');
 

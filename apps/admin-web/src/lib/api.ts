@@ -11,6 +11,7 @@ export type {
   FriendRequest, FriendConnection,
   DeviceType, DeviceManufacturer, DeviceBrand, DeviceModel, MeasurementUnit, GuardianDevice,
   FeedType, FeedManufacturer, FeedBrand, FeedModel,
+  PetFeed, FeedNutrition,
   PetLog, GlucoseAlert,
 } from '../types/api';
 import type {
@@ -23,6 +24,7 @@ import type {
   FriendRequest, FriendConnection,
   DeviceType, DeviceManufacturer, DeviceBrand, DeviceModel, MeasurementUnit, GuardianDevice,
   FeedType, FeedManufacturer, FeedBrand, FeedModel,
+  PetFeed, FeedNutrition,
   PetLog, GlucoseAlert,
 } from '../types/api';
 
@@ -390,6 +392,22 @@ export const api = {
         method: 'DELETE',
       }),
     },
+    petFeeds: {
+      list: (petId: string) =>
+        request<{ feeds: PetFeed[] }>(`/api/v1/pets/${petId}/pet-feeds`),
+      create: (petId: string, data: {
+        feed_model_id: string; disease_item_id?: string; nickname?: string;
+        daily_amount_g?: number; daily_amount_unit?: string; feeding_frequency?: number;
+        start_date?: string; end_date?: string; notes?: string; is_primary?: boolean;
+      }) => request<{ id: string }>(`/api/v1/pets/${petId}/pet-feeds`, { method: 'POST', body: JSON.stringify(data) }),
+      update: (petId: string, feedId: string, data: Partial<{
+        nickname: string; disease_item_id: string; daily_amount_g: number;
+        daily_amount_unit: string; feeding_frequency: number; start_date: string;
+        end_date: string; notes: string; is_primary: boolean;
+      }>) => request<{ id: string; updated: boolean }>(`/api/v1/pets/${petId}/pet-feeds/${feedId}`, { method: 'PUT', body: JSON.stringify(data) }),
+      remove: (petId: string, feedId: string) =>
+        request<{ id: string; deleted: boolean }>(`/api/v1/pets/${petId}/pet-feeds/${feedId}`, { method: 'DELETE' }),
+    },
     guardianDevices: {
       list: (petId: string) =>
         request<{ devices: GuardianDevice[] }>(`/api/v1/pets/${petId}/guardian-devices`),
@@ -577,6 +595,12 @@ export const api = {
       delete: (id: string) =>
         request<{ id: string; deleted: boolean }>(`/api/v1/admin/feed-catalog/models/${id}`, { method: 'DELETE' }),
     },
+    nutrition: {
+      get: (modelId: string) =>
+        request<FeedNutrition | null>(`/api/v1/admin/feed-catalog/models/${modelId}/nutrition`),
+      upsert: (modelId: string, data: Partial<Omit<FeedNutrition, 'id' | 'feed_model_id' | 'status' | 'created_at' | 'updated_at'>>) =>
+        request<FeedNutrition>(`/api/v1/admin/feed-catalog/models/${modelId}/nutrition`, { method: 'PUT', body: JSON.stringify(data) }),
+    },
     public: {
       types: (lang?: string) => {
         const q = lang ? `?lang=${encodeURIComponent(lang)}` : '';
@@ -588,6 +612,8 @@ export const api = {
         request<FeedBrand[]>(`/api/v1/feed-catalog/brands${buildQuery({ manufacturer_id: manufacturerId, feed_type_id: feedTypeId })}`),
       models: (filters?: { feed_type_id?: string; manufacturer_id?: string; brand_id?: string }, lang?: string) =>
         request<FeedModel[]>(`/api/v1/feed-catalog/models${buildQuery({ feed_type_id: filters?.feed_type_id, manufacturer_id: filters?.manufacturer_id, brand_id: filters?.brand_id, lang })}`),
+      nutrition: (modelId: string) =>
+        request<FeedNutrition | null>(`/api/v1/feed-catalog/models/${modelId}/nutrition`),
     },
   },
 };

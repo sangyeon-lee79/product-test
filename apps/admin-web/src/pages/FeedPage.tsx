@@ -1,5 +1,5 @@
 import { useEffect, useState, useCallback } from 'react';
-import { api, type FeedType, type FeedManufacturer, type FeedBrand, type FeedModel } from '../lib/api';
+import { api, type FeedType, type FeedManufacturer, type FeedBrand, type FeedModel, type FeedNutrition } from '../lib/api';
 import { useI18n, useT, SUPPORTED_LANGS, LANG_LABELS } from '../lib/i18n';
 import { emptyTrans, itemLabel, sortByModelCountDesc, i18nRowToTranslations, autoTranslate, findMissingTranslationLangs } from '../lib/catalogUtils';
 import { TranslationFields } from '../components/TranslationFields';
@@ -39,6 +39,11 @@ export default function FeedPage() {
   const [modelParentTypeIds, setModelParentTypeIds] = useState<string[]>([]);
   const [modelParentMfrId, setModelParentMfrId] = useState<string>('');
   const [modelParentBrandIds, setModelParentBrandIds] = useState<string[]>([]);
+
+  // Nutrition state
+  const [, setNutrition] = useState<FeedNutrition | null>(null);
+  const [nutritionForm, setNutritionForm] = useState<Record<string, string>>({});
+  const [nutritionSaving, setNutritionSaving] = useState(false);
 
   const loadTypes = useCallback(async () => {
     try {
@@ -119,6 +124,47 @@ export default function FeedPage() {
     void loadModels(filters);
     setSelectedModel(null);
   }, [selectedType, selectedMfr, selectedBrand, loadModels]);
+
+  // Load nutrition when model selected
+  useEffect(() => {
+    if (!selectedModel?.id) { setNutrition(null); setNutritionForm({}); return; }
+    const run = async () => {
+      try {
+        const data = await api.feedCatalog.nutrition.get(selectedModel.id);
+        setNutrition(data);
+        if (data) {
+          const f: Record<string, string> = {};
+          const keys = ['calories_per_100g', 'protein_pct', 'fat_pct', 'fiber_pct', 'moisture_pct', 'ash_pct', 'calcium_pct', 'phosphorus_pct', 'omega3_pct', 'omega6_pct', 'carbohydrate_pct', 'serving_size_g'] as const;
+          for (const k of keys) f[k] = data[k] != null ? String(data[k]) : '';
+          f.ingredients_text = data.ingredients_text || '';
+          f.notes = data.notes || '';
+          setNutritionForm(f);
+        } else {
+          setNutritionForm({});
+        }
+      } catch { setNutrition(null); setNutritionForm({}); }
+    };
+    void run();
+  }, [selectedModel?.id]);
+
+  async function handleSaveNutrition() {
+    if (!selectedModel?.id) return;
+    setNutritionSaving(true);
+    try {
+      const payload: Record<string, number | string | null> = {};
+      const numKeys = ['calories_per_100g', 'protein_pct', 'fat_pct', 'fiber_pct', 'moisture_pct', 'ash_pct', 'calcium_pct', 'phosphorus_pct', 'omega3_pct', 'omega6_pct', 'carbohydrate_pct', 'serving_size_g'];
+      for (const k of numKeys) payload[k] = nutritionForm[k] ? Number(nutritionForm[k]) : null;
+      payload.ingredients_text = nutritionForm.ingredients_text || null;
+      payload.notes = nutritionForm.notes || null;
+      const data = await api.feedCatalog.nutrition.upsert(selectedModel.id, payload as Partial<FeedNutrition>);
+      setNutrition(data);
+      flash(t('nutrition.save_success', 'Nutrition info saved'));
+    } catch (e) {
+      setError(String(e));
+    } finally {
+      setNutritionSaving(false);
+    }
+  }
 
   function flash(msg: string) {
     setSuccess(msg);
@@ -443,6 +489,59 @@ export default function FeedPage() {
               ...(selectedModel.description ? [{ label: t('admin.feed.description'), value: selectedModel.description } satisfies ModelDetailField] : []),
             ]}
           />
+        )}
+
+        {selectedModel && (
+          <div style={{ border: '1px solid var(--border)', borderRadius: 12, padding: '16px 20px', marginTop: 12 }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+              <h4 style={{ margin: 0, fontSize: 15 }}>{t('nutrition.title', 'Nutrition Info')}</h4>
+              <button
+                className="btn btn-primary btn-sm"
+                disabled={nutritionSaving}
+                onClick={() => void handleSaveNutrition()}
+              >
+                {t('common.save', 'Save')}
+              </button>
+            </div>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 8 }}>
+              {([
+                ['calories_per_100g', t('nutrition.calories', 'Calories/100g')],
+                ['protein_pct', t('nutrition.protein', 'Protein (%)')],
+                ['fat_pct', t('nutrition.fat', 'Fat (%)')],
+                ['fiber_pct', t('nutrition.fiber', 'Fiber (%)')],
+                ['moisture_pct', t('nutrition.moisture', 'Moisture (%)')],
+                ['ash_pct', t('nutrition.ash', 'Ash (%)')],
+                ['calcium_pct', t('nutrition.calcium', 'Calcium (%)')],
+                ['phosphorus_pct', t('nutrition.phosphorus', 'Phosphorus (%)')],
+                ['omega3_pct', t('nutrition.omega3', 'Omega-3 (%)')],
+                ['omega6_pct', t('nutrition.omega6', 'Omega-6 (%)')],
+                ['carbohydrate_pct', t('nutrition.carbohydrate', 'Carbohydrate (%)')],
+                ['serving_size_g', t('nutrition.serving_size', 'Serving Size (g)')],
+              ] as const).map(([key, label]) => (
+                <div key={key} className="form-group" style={{ marginBottom: 0 }}>
+                  <label className="form-label" style={{ fontSize: 11 }}>{label}</label>
+                  <input
+                    className="form-input"
+                    type="number"
+                    step="0.01"
+                    style={{ fontSize: 13 }}
+                    value={nutritionForm[key] || ''}
+                    onChange={(e) => setNutritionForm((p) => ({ ...p, [key]: e.target.value }))}
+                  />
+                </div>
+              ))}
+            </div>
+            <div className="form-group" style={{ marginTop: 8, marginBottom: 0 }}>
+              <label className="form-label" style={{ fontSize: 11 }}>{t('nutrition.ingredients', 'Ingredients')}</label>
+              <textarea
+                className="form-input"
+                rows={2}
+                style={{ fontSize: 13 }}
+                value={nutritionForm.ingredients_text || ''}
+                onChange={(e) => setNutritionForm((p) => ({ ...p, ingredients_text: e.target.value }))}
+              />
+            </div>
+          </div>
         )}
       </div>
 

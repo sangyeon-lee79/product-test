@@ -120,6 +120,12 @@ export async function handlePets(request: Request, env: Env, url: URL): Promise<
     if (request.method === 'DELETE') return deleteHealthMeasurementLog(env, payload, petId, logId);
   }
 
+  // /pets/:id/pet-feeds (delegated to petFeeds route)
+  if (sub.includes('/pet-feeds')) {
+    const { handlePetFeeds } = await import('../petFeeds');
+    return handlePetFeeds(request, env, url);
+  }
+
   // /pets/:id/guardian-devices (delegated to devices route)
   if (sub.includes('/guardian-devices')) {
     const { handleDevices } = await import('../devices');

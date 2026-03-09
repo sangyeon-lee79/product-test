@@ -8,6 +8,7 @@ import {
   type GlucoseAlert,
   type GuardianDevice,
   type HealthMeasurementSummary,
+  type PetFeed,
   type MasterItem,
   type Pet,
   type PetAlbumMedia,
@@ -33,6 +34,7 @@ import ComposeModal from './guardian/ComposeModal';
 import WeightModal from './guardian/WeightModal';
 import MeasurementModal from './guardian/MeasurementModal';
 import DeviceManageModal from './guardian/DeviceManageModal';
+import FeedManageModal from './guardian/FeedManageModal';
 import PetWizardModal from './guardian/PetWizardModal';
 import {
   type FeedTab,
@@ -79,6 +81,8 @@ export default function GuardianMainPage() {
   const [editingMeasurementLog, setEditingMeasurementLog] = useState<PetHealthMeasurementLog | null>(null);
   const [deviceManageModalOpen, setDeviceManageModalOpen] = useState(false);
   const [guardianDevices, setGuardianDevices] = useState<GuardianDevice[]>([]);
+  const [feedManageModalOpen, setFeedManageModalOpen] = useState(false);
+  const [petFeeds, setPetFeeds] = useState<PetFeed[]>([]);
   const [selectedMeasurementItemId, setSelectedMeasurementItemId] = useState('');
   const [feedTab, setFeedTab] = useState<FeedTab>('all');
   const [petTab, setPetTab] = useState<PetProfileTab>('gallery');
@@ -360,10 +364,11 @@ export default function GuardianMainPage() {
     void loadPetLogs(selectedPet.id);
   }, [selectedPet?.id, weightRange]);
 
-  // Guardian devices — pet 변경 시에만 로드 (weightRange 무관)
+  // Guardian devices + pet feeds — pet 변경 시에만 로드 (weightRange 무관)
   useEffect(() => {
-    if (!selectedPet?.id) { setGuardianDevices([]); return; }
+    if (!selectedPet?.id) { setGuardianDevices([]); setPetFeeds([]); return; }
     void loadGuardianDevices(selectedPet.id);
+    void loadPetFeeds(selectedPet.id);
   }, [selectedPet?.id]);
 
   useEffect(() => {
@@ -409,6 +414,15 @@ export default function GuardianMainPage() {
       setGuardianDevices(res.devices || []);
     } catch {
       setGuardianDevices([]);
+    }
+  }
+
+  async function loadPetFeeds(petId: string) {
+    try {
+      const res = await api.pets.petFeeds.list(petId);
+      setPetFeeds(res.feeds || []);
+    } catch {
+      setPetFeeds([]);
     }
   }
 
@@ -536,26 +550,29 @@ export default function GuardianMainPage() {
   }
 
   function renderCombinedHealthChart(weightRows: PetWeightLog[], mRows: PetHealthMeasurementLog[]) {
-    if (!weightRows.length && !mRows.length) {
+    if (!weightRows.length && !mRows.length && !petFeeds.length) {
       return <div className="weight-chart-empty text-sm text-muted">{t('guardian.health.chart_empty', 'No health records to display.')}</div>;
     }
     const width = 720;
-    const height = 260;
+    const hasFeedBands = petFeeds.filter((f) => f.start_date).length > 0;
+    const feedBandHeight = hasFeedBands ? 40 : 0;
+    const height = 260 + feedBandHeight;
     const pad = 34;
     const rightPad = 46;
     const usableW = width - pad - rightPad;
-    const usableH = height - pad * 2;
+    const chartBottom = height - pad - feedBandHeight;
+    const usableH = chartBottom - pad;
 
     const allTimes = [
       ...weightRows.map((row) => new Date(row.measured_at).getTime()),
       ...mRows.map((row) => new Date(row.measured_at).getTime()),
     ].filter((v) => Number.isFinite(v));
-    if (!allTimes.length) return <div className="weight-chart-empty text-sm text-muted">{t('guardian.health.chart_empty', 'No health records to display.')}</div>;
-    const minT = Math.min(...allTimes);
-    const maxT = Math.max(...allTimes);
+    if (!allTimes.length && !hasFeedBands) return <div className="weight-chart-empty text-sm text-muted">{t('guardian.health.chart_empty', 'No health records to display.')}</div>;
+    const minT = allTimes.length ? Math.min(...allTimes) : Date.now() - 86400000 * 30;
+    const maxT = allTimes.length ? Math.max(...allTimes) : Date.now();
     const tSpan = Math.max(1, maxT - minT);
 
-    const normalizeX = (timeMs: number) => pad + ((timeMs - minT) / tSpan) * usableW;
+    const normalizeX = (timeMs: number) => pad + Math.max(0, Math.min(usableW, ((timeMs - minT) / tSpan) * usableW));
     const weightValues = weightRows.map((row) => Number(row.weight_value));
     const measurementValues = mRows.map((row) => Number(row.value));
     const minW = weightValues.length ? Math.min(...weightValues) : 0;
@@ -577,17 +594,69 @@ export default function GuardianMainPage() {
       .map((row, idx) => `${idx === 0 ? 'M' : 'L'} ${normalizeX(new Date(row.measured_at).getTime())} ${normalizeYM(Number(row.value))}`)
       .join(' ');
 
+    // Feed timeline bands
+    const feedColors = ['#43a047', '#7b1fa2', '#e65100', '#0277bd', '#c62828', '#558b2f'];
+    const feedBands = petFeeds
+      .filter((f) => f.start_date)
+      .map((f, i) => {
+        const startMs = new Date(f.start_date!).getTime();
+        const endMs = f.end_date ? new Date(f.end_date).getTime() : maxT;
+        return { feed: f, startMs, endMs, color: feedColors[i % feedColors.length] };
+      });
+
+    const feedBandY = chartBottom + 8;
+
     return (
       <div className="weight-chart">
         <svg viewBox={`0 0 ${width} ${height}`} role="img" aria-label="Combined health trend chart">
           <rect x="0" y="0" width={width} height={height} rx="12" fill="#f7fbff" />
-          <line x1={pad} y1={pad} x2={pad} y2={height - pad} stroke="#b8c8de" />
-          <line x1={width - rightPad} y1={pad} x2={width - rightPad} y2={height - pad} stroke="#d6deec" />
-          <line x1={pad} y1={height - pad} x2={width - rightPad} y2={height - pad} stroke="#b8c8de" />
+          <line x1={pad} y1={pad} x2={pad} y2={chartBottom} stroke="#b8c8de" />
+          <line x1={width - rightPad} y1={pad} x2={width - rightPad} y2={chartBottom} stroke="#d6deec" />
+          <line x1={pad} y1={chartBottom} x2={width - rightPad} y2={chartBottom} stroke="#b8c8de" />
+
+          {/* Feed change vertical markers */}
+          {feedBands.map(({ feed, startMs, color }) => {
+            const x = normalizeX(startMs);
+            return (
+              <line key={`fvm-${feed.id}`} x1={x} y1={pad} x2={x} y2={chartBottom}
+                stroke={color} strokeWidth="1" strokeDasharray="4 3" opacity="0.5" />
+            );
+          })}
+
           {weightPath && <path d={weightPath} fill="none" stroke="#1a73e8" strokeWidth="3" />}
           {measurementPath && <path d={measurementPath} fill="none" stroke="#ef6c00" strokeWidth="3" />}
-          <text x={pad} y={16} fontSize="11" fill="#1a73e8">{`W ${maxW.toFixed(2)} / ${minW.toFixed(2)}`}</text>
-          <text x={width - rightPad + 4} y={16} fontSize="11" fill="#ef6c00">{`M ${maxM.toFixed(2)} / ${minM.toFixed(2)}`}</text>
+
+          {/* Feed timeline bands */}
+          {feedBands.map(({ feed, startMs, endMs, color }) => {
+            const x1 = normalizeX(Math.max(startMs, minT));
+            const x2 = normalizeX(Math.min(endMs, maxT));
+            const w = Math.max(4, x2 - x1);
+            const label = feed.nickname || feed.model_display_label || feed.model_name || '';
+            return (
+              <g key={`fb-${feed.id}`}>
+                <rect x={x1} y={feedBandY} width={w} height={14} rx="3" fill={color} opacity="0.25" />
+                <rect x={x1} y={feedBandY} width={3} height={14} rx="1" fill={color} opacity="0.7" />
+                {w > 40 && (
+                  <text x={x1 + 6} y={feedBandY + 10.5} fontSize="9" fill={color} fontWeight="500">
+                    {label.length > 20 ? label.slice(0, 18) + '…' : label}
+                  </text>
+                )}
+              </g>
+            );
+          })}
+
+          {/* Legend */}
+          <text x={pad} y={16} fontSize="11" fill="#1a73e8">
+            {`${t('guardian.health.chart_weight_legend', 'Weight')} ${maxW.toFixed(2)} / ${minW.toFixed(2)}`}
+          </text>
+          <text x={width - rightPad + 4} y={16} fontSize="11" fill="#ef6c00">
+            {`${t('guardian.health.chart_measure_legend', 'M')} ${maxM.toFixed(2)} / ${minM.toFixed(2)}`}
+          </text>
+          {hasFeedBands && (
+            <text x={pad} y={feedBandY + 28} fontSize="10" fill="#43a047">
+              {t('guardian.health.chart_feed_legend', 'Feed')}
+            </text>
+          )}
         </svg>
       </div>
     );
@@ -790,6 +859,7 @@ export default function GuardianMainPage() {
                     <div className="gm-section-header">
                       <span className="gm-section-title">{t('guardian.health.chart_title', '건강 추이')}</span>
                       <div style={{ display: 'flex', gap: 8 }}>
+                        <button className="btn btn-sm" style={{ fontSize: 12 }} onClick={() => setFeedManageModalOpen(true)}>{t('guardian.feed.manage_title', '사료 관리')}</button>
                         <button className="btn btn-sm" style={{ fontSize: 12 }} onClick={() => setDeviceManageModalOpen(true)}>{t('guardian.device.manage_title', '장비 관리')}</button>
                         <button className="btn btn-primary btn-sm" onClick={() => setWeightModalOpen(true)}>{t('guardian.health.add_weight', '몸무게 추가')}</button>
                         <button className="btn btn-secondary btn-sm" onClick={openCreateHealthMeasurementModal}>{t('guardian.health.add_measurement', '수치 추가')}</button>
@@ -1134,6 +1204,16 @@ export default function GuardianMainPage() {
         setError={setError}
         onClose={() => setDeviceManageModalOpen(false)}
         onChanged={(devices) => setGuardianDevices(devices)}
+      />
+      <FeedManageModal
+        open={feedManageModalOpen}
+        selectedPet={selectedPet}
+        optDisease={optDisease}
+        lang={lang}
+        t={t}
+        setError={setError}
+        onClose={() => setFeedManageModalOpen(false)}
+        onChanged={(feeds) => setPetFeeds(feeds)}
       />
       <PetWizardModal
         open={petModalOpen}

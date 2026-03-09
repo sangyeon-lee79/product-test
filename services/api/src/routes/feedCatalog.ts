@@ -10,6 +10,17 @@ export async function handleFeedCatalog(request: Request, env: Env, url: URL): P
   const isAdmin = path.startsWith('/api/v1/admin/');
   const hasFeedManufacturerTypeMap = await hasTable(env, 'feed_manufacturer_type_map');
 
+  // Public: nutrition info for a feed model
+  const publicNutritionMatch = !isAdmin && path.match(/^\/api\/v1\/feed-catalog\/models\/([^/]+)\/nutrition$/);
+  if (publicNutritionMatch && method === 'GET') {
+    const modelId = publicNutritionMatch[1];
+    if (!(await hasTable(env, 'feed_nutrition'))) return ok(null);
+    const row = await env.DB.prepare(
+      `SELECT * FROM feed_nutrition WHERE feed_model_id = ? AND status = 'active' LIMIT 1`
+    ).bind(modelId).first();
+    return ok(row ?? null);
+  }
+
   if (!isAdmin) {
     const lang = resolveLang(url);
     const langCol = lang;
@@ -610,6 +621,72 @@ export async function handleFeedCatalog(request: Request, env: Env, url: URL): P
     if (method === 'DELETE') {
       await env.DB.prepare(`UPDATE feed_models SET status = 'inactive', updated_at = ? WHERE id = ?`).bind(now(), modelId).run();
       return ok({ id: modelId, deleted: true });
+    }
+  }
+
+  // Admin: nutrition upsert for a feed model
+  const adminNutritionMatch = path.match(/^\/api\/v1\/admin\/feed-catalog\/models\/([^/]+)\/nutrition$/);
+  if (adminNutritionMatch) {
+    const modelId = adminNutritionMatch[1];
+    if (!(await hasTable(env, 'feed_nutrition'))) return err('feed_nutrition table not available', 400, 'not_supported');
+
+    if (method === 'GET') {
+      const row = await env.DB.prepare(
+        `SELECT * FROM feed_nutrition WHERE feed_model_id = ? AND status = 'active' LIMIT 1`
+      ).bind(modelId).first();
+      return ok(row ?? null);
+    }
+
+    if (method === 'PUT') {
+      const body = await request.json<{
+        calories_per_100g?: number | null; protein_pct?: number | null; fat_pct?: number | null;
+        fiber_pct?: number | null; moisture_pct?: number | null; ash_pct?: number | null;
+        calcium_pct?: number | null; phosphorus_pct?: number | null; omega3_pct?: number | null;
+        omega6_pct?: number | null; carbohydrate_pct?: number | null; serving_size_g?: number | null;
+        ingredients_text?: string | null; notes?: string | null;
+      }>();
+
+      const existing = await env.DB.prepare(
+        `SELECT id FROM feed_nutrition WHERE feed_model_id = ? LIMIT 1`
+      ).bind(modelId).first<{ id: string }>();
+
+      if (existing) {
+        const sets: string[] = ['updated_at = ?'];
+        const vals: (string | number | null)[] = [now()];
+        const fields: Array<[string, unknown]> = [
+          ['calories_per_100g', body.calories_per_100g], ['protein_pct', body.protein_pct],
+          ['fat_pct', body.fat_pct], ['fiber_pct', body.fiber_pct],
+          ['moisture_pct', body.moisture_pct], ['ash_pct', body.ash_pct],
+          ['calcium_pct', body.calcium_pct], ['phosphorus_pct', body.phosphorus_pct],
+          ['omega3_pct', body.omega3_pct], ['omega6_pct', body.omega6_pct],
+          ['carbohydrate_pct', body.carbohydrate_pct], ['serving_size_g', body.serving_size_g],
+          ['ingredients_text', body.ingredients_text], ['notes', body.notes],
+        ];
+        for (const [col, val] of fields) {
+          if (val !== undefined) { sets.push(`${col} = ?`); vals.push(val as string | number | null ?? null); }
+        }
+        sets.push('status = ?'); vals.push('active');
+        vals.push(existing.id);
+        await env.DB.prepare(`UPDATE feed_nutrition SET ${sets.join(', ')} WHERE id = ?`).bind(...vals).run();
+        const updated = await env.DB.prepare(`SELECT * FROM feed_nutrition WHERE id = ?`).bind(existing.id).first();
+        return ok(updated);
+      } else {
+        const id = newId();
+        await env.DB.prepare(
+          `INSERT INTO feed_nutrition (id, feed_model_id, calories_per_100g, protein_pct, fat_pct, fiber_pct, moisture_pct, ash_pct, calcium_pct, phosphorus_pct, omega3_pct, omega6_pct, carbohydrate_pct, serving_size_g, ingredients_text, notes, status, created_at, updated_at)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'active', ?, ?)`
+        ).bind(
+          id, modelId,
+          body.calories_per_100g ?? null, body.protein_pct ?? null, body.fat_pct ?? null,
+          body.fiber_pct ?? null, body.moisture_pct ?? null, body.ash_pct ?? null,
+          body.calcium_pct ?? null, body.phosphorus_pct ?? null, body.omega3_pct ?? null,
+          body.omega6_pct ?? null, body.carbohydrate_pct ?? null, body.serving_size_g ?? null,
+          body.ingredients_text ?? null, body.notes ?? null,
+          now(), now(),
+        ).run();
+        const inserted = await env.DB.prepare(`SELECT * FROM feed_nutrition WHERE id = ?`).bind(id).first();
+        return created(inserted);
+      }
     }
   }
 
