@@ -358,8 +358,13 @@ export default function GuardianMainPage() {
     loadWeightLogs(selectedPet.id, weightRange);
     loadMeasurementLogs(selectedPet.id, weightRange);
     void loadPetLogs(selectedPet.id);
-    void loadGuardianDevices(selectedPet.id);
   }, [selectedPet?.id, weightRange]);
+
+  // Guardian devices — pet 변경 시에만 로드 (weightRange 무관)
+  useEffect(() => {
+    if (!selectedPet?.id) { setGuardianDevices([]); return; }
+    void loadGuardianDevices(selectedPet.id);
+  }, [selectedPet?.id]);
 
   useEffect(() => {
     if (!measurementLogs.length) {
