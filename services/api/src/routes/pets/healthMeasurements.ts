@@ -1,0 +1,391 @@
+// Glucose logs + generic health measurement logs
+// GET/POST/PUT/DELETE /api/v1/pets/:id/glucose-logs
+// GET/POST/PUT/DELETE /api/v1/pets/:id/health-measurements
+import type { Env, JwtPayload } from '../../types';
+import { ok, created, err, newId, now } from '../../types';
+import {
+  assertPetOwner, hasTable, normalizeMeasuredAt, parseOptionalNumber,
+  rangeStartByKey, resolveMasterItemId,
+} from './helpers';
+
+async function resolveGlucoseJudgement(
+  env: Env,
+  petId: string,
+  diseaseItemId: string,
+  value: number,
+  unitItemId: string,
+  contextItemId: string | null,
+): Promise<{ level: string | null; label: string | null }> {
+  if (!(await hasTable(env, 'disease_judgement_rules'))) return { level: null, label: null };
+  const measurementItemId = await resolveMasterItemId(env, 'disease_measurement_type', 'glucose_value');
+  if (!measurementItemId) return { level: null, label: null };
+  const pet = await env.DB.prepare(`SELECT pet_type_id FROM pets WHERE id = ?`).bind(petId).first<{ pet_type_id: string | null }>();
+  const rows = await env.DB.prepare(
+    `SELECT judgement_level, judgement_label
+     FROM disease_judgement_rules
+     WHERE disease_item_id = ?
+       AND measurement_item_id = ?
+       AND unit_item_id = ?
+       AND status = 'active'
+       AND (? IS NULL OR context_item_id = ? OR context_item_id IS NULL)
+       AND (species_item_id IS NULL OR species_item_id = ?)
+       AND (min_value IS NULL OR ? >= min_value)
+       AND (max_value IS NULL OR ? <= max_value)
+     ORDER BY
+       CASE WHEN context_item_id = ? THEN 0 WHEN context_item_id IS NULL THEN 1 ELSE 2 END,
+       CASE WHEN species_item_id = ? THEN 0 WHEN species_item_id IS NULL THEN 1 ELSE 2 END,
+       sort_order ASC
+     LIMIT 1`
+  ).bind(
+    diseaseItemId,
+    measurementItemId,
+    unitItemId,
+    contextItemId,
+    contextItemId,
+    pet?.pet_type_id ?? null,
+    value,
+    value,
+    contextItemId,
+    pet?.pet_type_id ?? null,
+  ).first<{ judgement_level: string; judgement_label: string | null }>();
+  return { level: rows?.judgement_level ?? null, label: rows?.judgement_label ?? null };
+}
+
+async function resolveMeasurementJudgement(
+  env: Env,
+  petId: string,
+  diseaseItemId: string,
+  measurementItemId: string,
+  value: number,
+  unitItemId: string | null,
+  contextItemId: string | null,
+): Promise<{ level: string | null; label: string | null }> {
+  if (!(await hasTable(env, 'disease_judgement_rules')) || !unitItemId) return { level: null, label: null };
+  const pet = await env.DB.prepare(`SELECT pet_type_id FROM pets WHERE id = ?`).bind(petId).first<{ pet_type_id: string | null }>();
+  const row = await env.DB.prepare(
+    `SELECT judgement_level, judgement_label
+     FROM disease_judgement_rules
+     WHERE disease_item_id = ?
+       AND measurement_item_id = ?
+       AND unit_item_id = ?
+       AND status = 'active'
+       AND (? IS NULL OR context_item_id = ? OR context_item_id IS NULL)
+       AND (species_item_id IS NULL OR species_item_id = ?)
+       AND (min_value IS NULL OR ? >= min_value)
+       AND (max_value IS NULL OR ? <= max_value)
+     ORDER BY
+       CASE WHEN context_item_id = ? THEN 0 WHEN context_item_id IS NULL THEN 1 ELSE 2 END,
+       CASE WHEN species_item_id = ? THEN 0 WHEN species_item_id IS NULL THEN 1 ELSE 2 END,
+       sort_order ASC
+     LIMIT 1`
+  ).bind(
+    diseaseItemId,
+    measurementItemId,
+    unitItemId,
+    contextItemId,
+    contextItemId,
+    pet?.pet_type_id ?? null,
+    value,
+    value,
+    contextItemId,
+    pet?.pet_type_id ?? null,
+  ).first<{ judgement_level: string; judgement_label: string | null }>();
+  return { level: row?.judgement_level ?? null, label: row?.judgement_label ?? null };
+}
+
+// ─── Glucose Logs ─────────────────────────────────────────────────────────────
+
+export async function listGlucoseLogs(env: Env, payload: JwtPayload, petId: string, url: URL): Promise<Response> {
+  const pet = await assertPetOwner(env, payload, petId);
+  if (!pet) return err('Pet not found', 404, 'not_found');
+  if (!(await hasTable(env, 'pet_glucose_logs'))) return ok({ logs: [], summary: null, range: 'all' });
+  const range = (url.searchParams.get('range') || 'all').trim();
+  const start = rangeStartByKey(range === '1w' ? '1m' : range);
+  const where = ['pet_id = ?'];
+  const vals: Array<string | number> = [petId];
+  if (start) { where.push('datetime(measured_at) >= datetime(?)'); vals.push(start); }
+  const rows = await env.DB.prepare(
+    `SELECT * FROM pet_glucose_logs
+     WHERE ${where.join(' AND ')}
+     ORDER BY datetime(measured_at) DESC, datetime(created_at) DESC`
+  ).bind(...vals).all<Record<string, unknown>>();
+  const latest = rows.results[0] || null;
+  return ok({
+    logs: rows.results,
+    range,
+    summary: latest ? {
+      latest_value: latest.glucose_value ?? null,
+      latest_measured_at: latest.measured_at ?? null,
+      latest_judgement_level: latest.judgement_level ?? null,
+      latest_judgement_label: latest.judgement_label ?? null,
+    } : null,
+  });
+}
+
+export async function createGlucoseLog(request: Request, env: Env, payload: JwtPayload, petId: string): Promise<Response> {
+  const pet = await assertPetOwner(env, payload, petId);
+  if (!pet) return err('Pet not found', 404, 'not_found');
+  if (!(await hasTable(env, 'pet_glucose_logs'))) return err('not supported', 400);
+  let body: {
+    disease_item_id?: string;
+    device_item_id?: string | null;
+    glucose_value?: number;
+    glucose_unit_item_id?: string;
+    measured_at?: string;
+    measured_context_item_id?: string | null;
+    notes?: string | null;
+  };
+  try { body = await request.json() as typeof body; } catch { return err('Invalid JSON body'); }
+  const defaultDiseaseId = await resolveMasterItemId(env, 'disease_type', 'diabetes');
+  const diseaseItemId = (body.disease_item_id || '').trim() || defaultDiseaseId || '';
+  if (!diseaseItemId) return err('disease_item_id required');
+  const value = parseOptionalNumber(body.glucose_value);
+  if (value === null) return err('glucose_value required');
+  const defaultUnitId = await resolveMasterItemId(env, 'weight_unit', 'mg_dl');
+  const unitId = (body.glucose_unit_item_id || '').trim() || defaultUnitId || '';
+  if (!unitId) return err('glucose_unit_item_id required');
+  const contextId = body.measured_context_item_id ? String(body.measured_context_item_id).trim() : null;
+  const judgement = await resolveGlucoseJudgement(env, petId, diseaseItemId, value, unitId, contextId);
+  const id = newId();
+  await env.DB.prepare(
+    `INSERT INTO pet_glucose_logs (
+      id, pet_id, disease_item_id, device_item_id, glucose_value, glucose_unit_item_id,
+      measured_at, measured_context_item_id, notes, recorded_by_user_id,
+      judgement_level, judgement_label, created_at, updated_at
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+  ).bind(
+    id,
+    petId,
+    diseaseItemId,
+    body.device_item_id ?? null,
+    value,
+    unitId,
+    normalizeMeasuredAt(body.measured_at),
+    contextId,
+    body.notes ?? null,
+    payload.sub,
+    judgement.level,
+    judgement.label,
+    now(),
+    now(),
+  ).run();
+  return created({ id, judgement });
+}
+
+export async function updateGlucoseLog(request: Request, env: Env, payload: JwtPayload, petId: string, logId: string): Promise<Response> {
+  const pet = await assertPetOwner(env, payload, petId);
+  if (!pet) return err('Pet not found', 404, 'not_found');
+  if (!(await hasTable(env, 'pet_glucose_logs'))) return err('not supported', 400);
+  const existing = await env.DB.prepare(`SELECT * FROM pet_glucose_logs WHERE id = ? AND pet_id = ?`).bind(logId, petId).first<Record<string, unknown>>();
+  if (!existing) return err('Glucose log not found', 404, 'not_found');
+  let body: Record<string, unknown>;
+  try { body = await request.json() as Record<string, unknown>; } catch { return err('Invalid JSON body'); }
+  const value = Object.prototype.hasOwnProperty.call(body, 'glucose_value')
+    ? parseOptionalNumber(body.glucose_value)
+    : parseOptionalNumber(existing.glucose_value);
+  if (value === null) return err('invalid glucose_value');
+  const defaultDiseaseId = await resolveMasterItemId(env, 'disease_type', 'diabetes');
+  const defaultUnitId = await resolveMasterItemId(env, 'weight_unit', 'mg_dl');
+  const diseaseItemId = String(body.disease_item_id ?? existing.disease_item_id ?? defaultDiseaseId ?? '');
+  const unitId = String(body.glucose_unit_item_id ?? existing.glucose_unit_item_id ?? defaultUnitId ?? '');
+  if (!diseaseItemId) return err('disease_item_id required');
+  if (!unitId) return err('glucose_unit_item_id required');
+  const contextId = (body.measured_context_item_id ?? existing.measured_context_item_id ?? null) as string | null;
+  const judgement = await resolveGlucoseJudgement(env, petId, diseaseItemId, value, unitId, contextId);
+  await env.DB.prepare(
+    `UPDATE pet_glucose_logs
+     SET disease_item_id = ?, device_item_id = ?, glucose_value = ?, glucose_unit_item_id = ?,
+         measured_at = ?, measured_context_item_id = ?, notes = ?,
+         judgement_level = ?, judgement_label = ?, updated_at = ?
+     WHERE id = ? AND pet_id = ?`
+  ).bind(
+    diseaseItemId,
+    body.device_item_id ?? existing.device_item_id ?? null,
+    value,
+    unitId,
+    normalizeMeasuredAt(body.measured_at ?? existing.measured_at),
+    contextId,
+    body.notes ?? existing.notes ?? null,
+    judgement.level,
+    judgement.label,
+    now(),
+    logId,
+    petId,
+  ).run();
+  return ok({ updated: true, id: logId, judgement });
+}
+
+export async function deleteGlucoseLog(env: Env, payload: JwtPayload, petId: string, logId: string): Promise<Response> {
+  const pet = await assertPetOwner(env, payload, petId);
+  if (!pet) return err('Pet not found', 404, 'not_found');
+  await env.DB.prepare(`DELETE FROM pet_glucose_logs WHERE id = ? AND pet_id = ?`).bind(logId, petId).run();
+  return ok({ deleted: true, id: logId });
+}
+
+// ─── Generic Health Measurement Logs ─────────────────────────────────────────
+
+export async function listHealthMeasurementLogs(env: Env, payload: JwtPayload, petId: string, url: URL): Promise<Response> {
+  const pet = await assertPetOwner(env, payload, petId);
+  if (!pet) return err('Pet not found', 404, 'not_found');
+  if (!(await hasTable(env, 'pet_health_measurement_logs'))) return ok({ logs: [], range: 'all', summary: null });
+
+  const range = (url.searchParams.get('range') || '1m').trim();
+  const start = rangeStartByKey(range);
+  const where = ['pet_id = ?'];
+  const vals: Array<string | number> = [petId];
+  if (start) {
+    where.push('datetime(measured_at) >= datetime(?)');
+    vals.push(start);
+  }
+  const rows = await env.DB.prepare(
+    `SELECT *
+     FROM pet_health_measurement_logs
+     WHERE ${where.join(' AND ')}
+     ORDER BY datetime(measured_at) DESC, datetime(created_at) DESC, id DESC`
+  ).bind(...vals).all<Record<string, unknown>>();
+
+  const latest = rows.results[0] || null;
+  return ok({
+    logs: rows.results,
+    range,
+    summary: latest ? {
+      latest_value: latest.value ?? null,
+      latest_measured_at: latest.measured_at ?? null,
+      latest_judgement_level: latest.judgement_level ?? null,
+      latest_judgement_label: latest.judgement_label ?? null,
+      latest_measurement_item_id: latest.measurement_item_id ?? null,
+    } : null,
+  });
+}
+
+export async function createHealthMeasurementLog(request: Request, env: Env, payload: JwtPayload, petId: string): Promise<Response> {
+  const pet = await assertPetOwner(env, payload, petId);
+  if (!pet) return err('Pet not found', 404, 'not_found');
+  if (!(await hasTable(env, 'pet_health_measurement_logs'))) return err('not supported', 400);
+
+  let body: {
+    disease_item_id?: string;
+    device_type_item_id?: string | null;
+    device_model_id?: string | null;
+    measurement_item_id?: string;
+    measurement_context_id?: string | null;
+    value?: number;
+    unit_item_id?: string | null;
+    measured_at?: string;
+    memo?: string | null;
+  };
+  try { body = await request.json() as typeof body; } catch { return err('Invalid JSON body'); }
+
+  const diseaseItemId = (body.disease_item_id || '').trim();
+  const measurementItemId = (body.measurement_item_id || '').trim();
+  const value = parseOptionalNumber(body.value);
+  if (!diseaseItemId) return err('disease_item_id required');
+  if (!measurementItemId) return err('measurement_item_id required');
+  if (value === null) return err('value required');
+
+  const contextId = body.measurement_context_id ? String(body.measurement_context_id).trim() : null;
+  const unitItemId = body.unit_item_id ? String(body.unit_item_id).trim() : null;
+  const deviceTypeItemId = body.device_type_item_id ? String(body.device_type_item_id).trim() : null;
+  const judgement = await resolveMeasurementJudgement(env, petId, diseaseItemId, measurementItemId, value, unitItemId, contextId);
+
+  if (deviceTypeItemId && (await hasTable(env, 'pet_disease_devices'))) {
+    const existingDevice = await env.DB.prepare(
+      `SELECT id
+       FROM pet_disease_devices
+       WHERE pet_id = ? AND disease_item_id = ? AND device_item_id = ?
+       LIMIT 1`
+    ).bind(petId, diseaseItemId, deviceTypeItemId).first<{ id: string }>();
+    if (!existingDevice) {
+      await env.DB.prepare(
+        `INSERT INTO pet_disease_devices (
+          id, pet_id, disease_item_id, device_item_id, is_active, created_at, updated_at
+        ) VALUES (?, ?, ?, ?, 1, ?, ?)`
+      ).bind(newId(), petId, diseaseItemId, deviceTypeItemId, now(), now()).run();
+    }
+  }
+
+  const id = newId();
+  await env.DB.prepare(
+    `INSERT INTO pet_health_measurement_logs (
+      id, pet_id, disease_item_id, device_type_item_id, device_model_id,
+      measurement_item_id, measurement_context_id, value, unit_item_id,
+      measured_at, memo, recorded_by_user_id, judgement_level, judgement_label, created_at, updated_at
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+  ).bind(
+    id,
+    petId,
+    diseaseItemId,
+    deviceTypeItemId,
+    body.device_model_id ?? null,
+    measurementItemId,
+    contextId,
+    value,
+    unitItemId,
+    normalizeMeasuredAt(body.measured_at),
+    body.memo ?? null,
+    payload.sub,
+    judgement.level,
+    judgement.label,
+    now(),
+    now(),
+  ).run();
+  return created({ id, judgement });
+}
+
+export async function updateHealthMeasurementLog(request: Request, env: Env, payload: JwtPayload, petId: string, logId: string): Promise<Response> {
+  const pet = await assertPetOwner(env, payload, petId);
+  if (!pet) return err('Pet not found', 404, 'not_found');
+  if (!(await hasTable(env, 'pet_health_measurement_logs'))) return err('not supported', 400);
+  const existing = await env.DB.prepare(
+    `SELECT * FROM pet_health_measurement_logs WHERE id = ? AND pet_id = ?`
+  ).bind(logId, petId).first<Record<string, unknown>>();
+  if (!existing) return err('Health measurement log not found', 404, 'not_found');
+
+  let body: Record<string, unknown>;
+  try { body = await request.json() as Record<string, unknown>; } catch { return err('Invalid JSON body'); }
+
+  const diseaseItemId = String(body.disease_item_id ?? existing.disease_item_id ?? '');
+  const measurementItemId = String(body.measurement_item_id ?? existing.measurement_item_id ?? '');
+  const value = Object.prototype.hasOwnProperty.call(body, 'value')
+    ? parseOptionalNumber(body.value)
+    : parseOptionalNumber(existing.value);
+  if (!diseaseItemId) return err('disease_item_id required');
+  if (!measurementItemId) return err('measurement_item_id required');
+  if (value === null) return err('invalid value');
+
+  const contextId = String(body.measurement_context_id ?? existing.measurement_context_id ?? '').trim() || null;
+  const unitItemId = String(body.unit_item_id ?? existing.unit_item_id ?? '').trim() || null;
+  const judgement = await resolveMeasurementJudgement(env, petId, diseaseItemId, measurementItemId, value, unitItemId, contextId);
+
+  await env.DB.prepare(
+    `UPDATE pet_health_measurement_logs
+     SET disease_item_id = ?, device_type_item_id = ?, device_model_id = ?,
+         measurement_item_id = ?, measurement_context_id = ?, value = ?, unit_item_id = ?,
+         measured_at = ?, memo = ?, judgement_level = ?, judgement_label = ?, updated_at = ?
+     WHERE id = ? AND pet_id = ?`
+  ).bind(
+    diseaseItemId,
+    body.device_type_item_id ?? existing.device_type_item_id ?? null,
+    body.device_model_id ?? existing.device_model_id ?? null,
+    measurementItemId,
+    contextId,
+    value,
+    unitItemId,
+    normalizeMeasuredAt(body.measured_at ?? existing.measured_at),
+    body.memo ?? existing.memo ?? null,
+    judgement.level,
+    judgement.label,
+    now(),
+    logId,
+    petId,
+  ).run();
+  return ok({ updated: true, id: logId, judgement });
+}
+
+export async function deleteHealthMeasurementLog(env: Env, payload: JwtPayload, petId: string, logId: string): Promise<Response> {
+  const pet = await assertPetOwner(env, payload, petId);
+  if (!pet) return err('Pet not found', 404, 'not_found');
+  if (!(await hasTable(env, 'pet_health_measurement_logs'))) return err('not supported', 400);
+  await env.DB.prepare(`DELETE FROM pet_health_measurement_logs WHERE id = ? AND pet_id = ?`).bind(logId, petId).run();
+  return ok({ deleted: true, id: logId });
+}

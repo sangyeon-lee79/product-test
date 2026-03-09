@@ -1,10 +1,10 @@
-// LLD §6.3 Rate Limit 미들웨어 (IP 기반)
-// Cloudflare Workers는 KV를 이용한 분산 rate limit이 이상적이나
-// S5 Auth 이후 KV 바인딩 추가 예정. 현재는 요청 IP 체크만.
+// LLD §6.3 Rate Limit 미들웨어 (IP 기반 + KV 분산)
+// Fixed-window: 100 req / 60s per IP. Key: rl:{ip}:{window}, TTL: 65s.
+import type { Env } from '../types';
 
 export interface RateLimitOptions {
-  limit?: number;   // 요청 횟수 한도 (미래 확장용)
-  window?: number;  // 시간 윈도우 초 (미래 확장용)
+  limit?: number;   // 요청 횟수 한도 (default: 100)
+  window?: number;  // 시간 윈도우 초 (default: 60)
 }
 
 export function getRealIp(request: Request): string {
@@ -15,8 +15,24 @@ export function getRealIp(request: Request): string {
   );
 }
 
-// 추후 KV 바인딩 연결 시 실제 rate limit 구현 예정
-export function checkRateLimit(_request: Request, _opts?: RateLimitOptions): boolean {
-  // TODO: S5 이후 KV 기반 구현
-  return true; // 현재는 통과
+export async function checkRateLimit(request: Request, env?: Env, opts?: RateLimitOptions): Promise<boolean> {
+  if (!env?.RATE_LIMIT_KV) return true; // KV 없으면 통과 (로컬 개발)
+
+  const limit = opts?.limit ?? 100;
+  const window = opts?.window ?? 60;
+  const ip = getRealIp(request);
+  const windowKey = Math.floor(Date.now() / (window * 1000));
+  const key = `rl:${ip}:${windowKey}`;
+
+  try {
+    const raw = await env.RATE_LIMIT_KV.get(key);
+    const count = raw ? parseInt(raw, 10) : 0;
+    if (count >= limit) return false;
+
+    // increment — TTL = window + 5s buffer
+    await env.RATE_LIMIT_KV.put(key, String(count + 1), { expirationTtl: window + 5 });
+    return true;
+  } catch {
+    return true; // KV 오류 시 통과 (서비스 중단 방지)
+  }
 }

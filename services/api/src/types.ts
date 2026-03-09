@@ -13,6 +13,7 @@ export interface Env {
   PLATFORM_TAGLINE?: string;
   DB: D1Database;         // Cloudflare D1 (로컬 개발) / 배포 시 Hyperdrive 전환
   R2: R2Bucket;           // Cloudflare R2 미디어 스토리지 (LLD §8)
+  RATE_LIMIT_KV?: KVNamespace; // Cloudflare KV — IP 기반 rate limiting
 }
 
 // LLD §6.1 JWT Payload

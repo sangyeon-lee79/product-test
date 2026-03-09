@@ -16,7 +16,7 @@ export default {
     if (corsResult) return corsResult;
 
     // 2. Rate Limit
-    if (!checkRateLimit(request)) {
+    if (!await checkRateLimit(request, env)) {
       return addCors(err('Too Many Requests', 429, 'rate_limit'), request, env);
     }
 
