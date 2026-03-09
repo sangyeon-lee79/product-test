@@ -9,27 +9,39 @@ import { handleHealth } from './routes/health';
 
 export default {
   async fetch(request: Request, env: Env): Promise<Response> {
-    const url = new URL(request.url);
-
-    // 1. CORS preflight
-    const corsResult = handleCors(request, env);
-    if (corsResult) return corsResult;
-
-    // 2. Rate Limit
-    if (!await checkRateLimit(request, env)) {
-      return addCors(err('Too Many Requests', 429, 'rate_limit'), request, env);
-    }
-
-    // 3. Route dispatch
-    let response: Response;
     try {
-      response = await dispatch(request, env, url);
-    } catch {
-      response = err('Internal Server Error', 500, 'internal_error');
-    }
+      const url = new URL(request.url);
 
-    // 4. CORS 헤더 부착
-    return addCors(response, request, env);
+      // 1. CORS preflight
+      const corsResult = handleCors(request, env);
+      if (corsResult) return corsResult;
+
+      // 2. Rate Limit
+      if (!await checkRateLimit(request, env)) {
+        return addCors(err('Too Many Requests', 429, 'rate_limit'), request, env);
+      }
+
+      // 3. Route dispatch
+      let response: Response;
+      try {
+        response = await dispatch(request, env, url);
+      } catch {
+        response = err('Internal Server Error', 500, 'internal_error');
+      }
+
+      // 4. CORS 헤더 부착
+      return addCors(response, request, env);
+    } catch {
+      // Top-level safety: always return CORS headers even on catastrophic failure
+      const headers: Record<string, string> = {
+        'Content-Type': 'application/json',
+        'Access-Control-Allow-Origin': request.headers.get('Origin') || '*',
+        'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
+        'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+        'Vary': 'Origin',
+      };
+      return new Response(JSON.stringify({ success: false, error: 'Internal Server Error' }), { status: 500, headers });
+    }
   },
 } satisfies ExportedHandler<Env>;
 

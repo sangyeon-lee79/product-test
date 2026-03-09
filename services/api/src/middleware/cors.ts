@@ -38,8 +38,12 @@ function isAllowedOrigin(origin: string, pattern: string): boolean {
 
 export function corsHeaders(request: Request, env: Env): Record<string, string> {
   const origin = request.headers.get('Origin') ?? '';
-  const allowed = env.ALLOWED_ORIGINS.split(',').map((o) => o.trim()).filter(Boolean);
-  const isAllowed = allowed.some((pattern) => isAllowedOrigin(origin, pattern));
+  let isAllowed = false;
+  try {
+    const raw = env.ALLOWED_ORIGINS || '';
+    const allowed = raw.split(',').map((o) => o.trim()).filter(Boolean);
+    isAllowed = allowed.some((pattern) => isAllowedOrigin(origin, pattern));
+  } catch { /* env.ALLOWED_ORIGINS missing or malformed — deny */ }
 
   return {
     'Access-Control-Allow-Origin': isAllowed ? origin : '',
