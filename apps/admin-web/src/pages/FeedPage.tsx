@@ -3,6 +3,7 @@ import { api, type FeedType, type FeedManufacturer, type FeedBrand, type FeedMod
 import { useI18n, useT, SUPPORTED_LANGS, LANG_LABELS } from '../lib/i18n';
 import { emptyTrans, itemLabel, sortByModelCountDesc, i18nRowToTranslations, autoTranslate, findMissingTranslationLangs } from '../lib/catalogUtils';
 import { TranslationFields } from '../components/TranslationFields';
+import { CatalogCol, CatalogStatusBadge, CatalogModelDetail, type ModelDetailField } from '../components/CatalogGrid';
 
 type ModalTarget = 'manufacturer' | 'brand' | 'model';
 
@@ -345,21 +346,8 @@ export default function FeedPage() {
     }
   }
 
-  function StatusBadge({ status }: { status: string }) {
-    return <span className={`badge ${status === 'active' ? 'badge-green' : 'badge-gray'}`}>{status === 'active' ? t('admin.master.active') : t('admin.master.inactive')}</span>;
-  }
-
-  function Col({ title, onAdd, children }: { title: string; onAdd?: () => void; children: React.ReactNode }) {
-    return (
-      <div className="card">
-        <div className="card-header">
-          <div className="card-title">{title}</div>
-          {onAdd && <button className="btn btn-primary btn-sm" onClick={onAdd}>+ {t('admin.master.btn_add')}</button>}
-        </div>
-        <div className="master-column-list">{children}</div>
-      </div>
-    );
-  }
+  const addLabel = t('admin.master.btn_add');
+  function SBadge({ status }: { status: string }) { return <CatalogStatusBadge status={status} t={t} />; }
 
   return (
     <>
@@ -372,7 +360,7 @@ export default function FeedPage() {
         <div className="alert" style={{ marginBottom: 12 }}>{t('admin.feed.guide')}</div>
 
         <div className="master-explorer-grid" style={{ gridTemplateColumns: 'repeat(4, minmax(0, 1fr))' }}>
-          <Col title={t('admin.feed.types')}>
+          <CatalogCol title={t('admin.feed.types')}>
             {types.length === 0 && <div className="master-empty">{t('admin.feed.empty')}</div>}
             {types.map((item) => (
               <button
@@ -384,12 +372,12 @@ export default function FeedPage() {
                   <div className="master-row-title">{itemLabel(item)}</div>
                   <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>{item.key}</div>
                 </div>
-                <StatusBadge status={item.status} />
+                <SBadge status={item.status} />
               </button>
             ))}
-          </Col>
+          </CatalogCol>
 
-          <Col title={t('admin.feed.manufacturers')} onAdd={openCreateMfr}>
+          <CatalogCol title={t('admin.feed.manufacturers')} onAdd={openCreateMfr} addLabel={addLabel}>
             {manufacturers.length === 0 && <div className="master-empty">{t('admin.feed.empty')}</div>}
             {manufacturers.map((item) => (
               <button key={item.id} className={`master-row-btn ${selectedMfr?.id === item.id ? 'active' : ''}`} onClick={() => { setSelectedMfr(item); setSelectedBrand(null); setSelectedModel(null); }}>
@@ -398,14 +386,14 @@ export default function FeedPage() {
                   <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>{item.country ?? ''}</div>
                 </div>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 4, alignItems: 'flex-end' }}>
-                  <StatusBadge status={item.status} />
+                  <SBadge status={item.status} />
                   <button className="btn btn-secondary btn-sm" style={{ fontSize: 10, padding: '1px 6px' }} onClick={(e) => { e.stopPropagation(); openEditMfr(item); }}>{t('admin.master.btn_edit')}</button>
                 </div>
               </button>
             ))}
-          </Col>
+          </CatalogCol>
 
-          <Col title={t('admin.feed.brands')} onAdd={openCreateBrand}>
+          <CatalogCol title={t('admin.feed.brands')} onAdd={openCreateBrand} addLabel={addLabel}>
             {!selectedMfr && <div className="master-empty">{t('admin.feed.select_manufacturer')}</div>}
             {selectedMfr && brands.length === 0 && <div className="master-empty">{t('admin.feed.empty')}</div>}
             {selectedMfr && brands.map((item) => (
@@ -415,14 +403,14 @@ export default function FeedPage() {
                   <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>{item.name_ko}</div>
                 </div>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 4, alignItems: 'flex-end' }}>
-                  <StatusBadge status={item.status} />
+                  <SBadge status={item.status} />
                   <button className="btn btn-secondary btn-sm" style={{ fontSize: 10, padding: '1px 6px' }} onClick={(e) => { e.stopPropagation(); openEditBrand(item); }}>{t('admin.master.btn_edit')}</button>
                 </div>
               </button>
             ))}
-          </Col>
+          </CatalogCol>
 
-          <Col title={t('admin.feed.models')} onAdd={openCreateModel}>
+          <CatalogCol title={t('admin.feed.models')} onAdd={openCreateModel} addLabel={addLabel}>
             {!selectedType && <div className="master-empty">{t('admin.feed.select_type')}</div>}
             {selectedType && models.length === 0 && <div className="master-empty">{t('admin.feed.empty')}</div>}
             {selectedType && models.map((item) => (
@@ -432,31 +420,29 @@ export default function FeedPage() {
                   <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>{item.model_code ?? ''} {item.mfr_display_label ?? item.mfr_name_en ?? ''}</div>
                 </div>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 4, alignItems: 'flex-end' }}>
-                  <StatusBadge status={item.status} />
+                  <SBadge status={item.status} />
                   <button className="btn btn-secondary btn-sm" style={{ fontSize: 10, padding: '1px 6px' }} onClick={(e) => { e.stopPropagation(); openEditModel(item); }}>{t('admin.master.btn_edit')}</button>
                 </div>
               </button>
             ))}
-          </Col>
+          </CatalogCol>
         </div>
 
         {selectedModel && (
-          <div className="card" style={{ marginTop: 12 }}>
-            <div className="card-header">
-              <div className="card-title">{selectedModel.model_display_label || selectedModel.model_name}</div>
-              <div style={{ display: 'flex', gap: 8 }}>
-                <button className="btn btn-secondary btn-sm" onClick={() => openEditModel(selectedModel)}>{t('admin.master.btn_edit')}</button>
-                <button className="btn btn-danger btn-sm" onClick={() => void handleDelete('model', selectedModel.id)}>{t('admin.master.btn_delete')}</button>
-              </div>
-            </div>
-            <div style={{ padding: '8px 12px', fontSize: 13, color: 'var(--text-muted)' }}>
-              <div>{t('admin.feed.type')}: {selectedModel.type_display_label || selectedModel.type_name_en || selectedModel.type_name_ko || '—'}</div>
-              <div>{t('admin.feed.manufacturer')}: {selectedModel.mfr_display_label || selectedModel.mfr_name_en || selectedModel.mfr_name_ko || '—'}</div>
-              <div>{t('admin.feed.brand')}: {selectedModel.brand_display_label || selectedModel.brand_name_en || selectedModel.brand_name_ko || '—'}</div>
-              {selectedModel.model_code && <div>{t('admin.feed.model_code')}: {selectedModel.model_code}</div>}
-              {selectedModel.description && <div>{t('admin.feed.description')}: {selectedModel.description}</div>}
-            </div>
-          </div>
+          <CatalogModelDetail
+            title={selectedModel.model_display_label || selectedModel.model_name}
+            onEdit={() => openEditModel(selectedModel)}
+            onDelete={() => void handleDelete('model', selectedModel.id)}
+            editLabel={t('admin.master.btn_edit')}
+            deleteLabel={t('admin.master.btn_delete')}
+            fields={[
+              { label: t('admin.feed.type'), value: selectedModel.type_display_label || selectedModel.type_name_en || selectedModel.type_name_ko || '—' },
+              { label: t('admin.feed.manufacturer'), value: selectedModel.mfr_display_label || selectedModel.mfr_name_en || selectedModel.mfr_name_ko || '—' },
+              { label: t('admin.feed.brand'), value: selectedModel.brand_display_label || selectedModel.brand_name_en || selectedModel.brand_name_ko || '—' },
+              ...(selectedModel.model_code ? [{ label: t('admin.feed.model_code'), value: selectedModel.model_code } satisfies ModelDetailField] : []),
+              ...(selectedModel.description ? [{ label: t('admin.feed.description'), value: selectedModel.description } satisfies ModelDetailField] : []),
+            ]}
+          />
         )}
       </div>
 

@@ -3,6 +3,7 @@ import { api, type DeviceType, type DeviceManufacturer, type DeviceBrand, type D
 import { useI18n, useT, LANG_LABELS, SUPPORTED_LANGS } from '../lib/i18n';
 import { emptyTrans, itemLabel, sortByModelCountDesc, i18nRowToTranslations, autoTranslate, findMissingTranslationLangs } from '../lib/catalogUtils';
 import { TranslationFields } from '../components/TranslationFields';
+import { CatalogCol, CatalogStatusBadge, CatalogModelDetail, type ModelDetailField } from '../components/CatalogGrid';
 
 type Tab = 'devices' | 'units';
 type ModalTarget = 'manufacturer' | 'brand' | 'model' | 'unit';
@@ -371,21 +372,8 @@ export default function DevicePage() {
     }
   }
 
-  function StatusBadge({ status }: { status: string }) {
-    return <span className={`badge ${status === 'active' ? 'badge-green' : 'badge-gray'}`}>{status === 'active' ? t('admin.master.active') : t('admin.master.inactive')}</span>;
-  }
-
-  function Col({ title, onAdd, children }: { title: string; onAdd?: () => void; children: React.ReactNode }) {
-    return (
-      <div className="card">
-        <div className="card-header">
-          <div className="card-title">{title}</div>
-          {onAdd && <button className="btn btn-primary btn-sm" onClick={onAdd}>+ {t('admin.master.btn_add')}</button>}
-        </div>
-        <div className="master-column-list">{children}</div>
-      </div>
-    );
-  }
+  const addLabel = t('admin.master.btn_add');
+  function SBadge({ status }: { status: string }) { return <CatalogStatusBadge status={status} t={t} />; }
 
   return (
     <>
@@ -405,7 +393,7 @@ export default function DevicePage() {
           <>
             <div className="alert" style={{ marginBottom: 12 }}>{t('admin.device.guide')}</div>
             <div className="master-explorer-grid" style={{ gridTemplateColumns: 'repeat(4, minmax(0, 1fr))' }}>
-              <Col title={t('admin.device.types')}>
+              <CatalogCol title={t('admin.device.types')}>
                 {types.length === 0 && <div className="master-empty">{t('admin.device.empty')}</div>}
                 {types.map((item) => (
                   <button
@@ -417,12 +405,12 @@ export default function DevicePage() {
                       <div className="master-row-title">{itemLabel(item)}</div>
                       <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>{item.key}</div>
                     </div>
-                    <StatusBadge status={item.status} />
+                    <SBadge status={item.status} />
                   </button>
                 ))}
-              </Col>
+              </CatalogCol>
 
-              <Col title={t('admin.device.manufacturers')} onAdd={openCreateMfr}>
+              <CatalogCol title={t('admin.device.manufacturers')} onAdd={openCreateMfr} addLabel={addLabel}>
                 {manufacturers.length === 0 && <div className="master-empty">{t('admin.device.empty')}</div>}
                 {manufacturers.map((item) => (
                   <button
@@ -435,14 +423,14 @@ export default function DevicePage() {
                       <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>{item.country ?? ''}</div>
                     </div>
                     <div style={{ display: 'flex', flexDirection: 'column', gap: 4, alignItems: 'flex-end' }}>
-                      <StatusBadge status={item.status} />
+                      <SBadge status={item.status} />
                       <button className="btn btn-secondary btn-sm" style={{ fontSize: 10, padding: '1px 6px' }} onClick={(e) => { e.stopPropagation(); openEditMfr(item); }}>{t('admin.master.btn_edit')}</button>
                     </div>
                   </button>
                 ))}
-              </Col>
+              </CatalogCol>
 
-              <Col title={t('admin.device.brands')} onAdd={openCreateBrand}>
+              <CatalogCol title={t('admin.device.brands')} onAdd={openCreateBrand} addLabel={addLabel}>
                 {!selectedMfr && <div className="master-empty">{t('admin.device.select_manufacturer')}</div>}
                 {selectedMfr && brands.length === 0 && <div className="master-empty">{t('admin.device.empty')}</div>}
                 {selectedMfr && brands.map((item) => (
@@ -452,14 +440,14 @@ export default function DevicePage() {
                       <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>{item.name_ko}</div>
                     </div>
                     <div style={{ display: 'flex', flexDirection: 'column', gap: 4, alignItems: 'flex-end' }}>
-                      <StatusBadge status={item.status} />
+                      <SBadge status={item.status} />
                       <button className="btn btn-secondary btn-sm" style={{ fontSize: 10, padding: '1px 6px' }} onClick={(e) => { e.stopPropagation(); openEditBrand(item); }}>{t('admin.master.btn_edit')}</button>
                     </div>
                   </button>
                 ))}
-              </Col>
+              </CatalogCol>
 
-              <Col title={t('admin.device.models')} onAdd={openCreateModel}>
+              <CatalogCol title={t('admin.device.models')} onAdd={openCreateModel} addLabel={addLabel}>
                 {!selectedType && <div className="master-empty">{t('admin.device.select_type')}</div>}
                 {selectedType && models.length === 0 && <div className="master-empty">{t('admin.device.empty')}</div>}
                 {selectedType && models.map((item) => (
@@ -469,31 +457,29 @@ export default function DevicePage() {
                       <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>{item.model_code ?? ''} {item.mfr_display_label ?? item.mfr_name_en ?? ''}</div>
                     </div>
                     <div style={{ display: 'flex', flexDirection: 'column', gap: 4, alignItems: 'flex-end' }}>
-                      <StatusBadge status={item.status} />
+                      <SBadge status={item.status} />
                       <button className="btn btn-secondary btn-sm" style={{ fontSize: 10, padding: '1px 6px' }} onClick={(e) => { e.stopPropagation(); openEditModel(item); }}>{t('admin.master.btn_edit')}</button>
                     </div>
                   </button>
                 ))}
-              </Col>
+              </CatalogCol>
             </div>
 
             {selectedModel && (
-              <div className="card" style={{ marginTop: 12 }}>
-                <div className="card-header">
-                  <div className="card-title">{selectedModel.model_display_label || selectedModel.model_name}</div>
-                  <div style={{ display: 'flex', gap: 8 }}>
-                    <button className="btn btn-secondary btn-sm" onClick={() => openEditModel(selectedModel)}>{t('admin.master.btn_edit')}</button>
-                    <button className="btn btn-danger btn-sm" onClick={() => void handleDelete('model', selectedModel.id)}>{t('admin.master.btn_delete')}</button>
-                  </div>
-                </div>
-                <div style={{ padding: '8px 12px', fontSize: 13, color: 'var(--text-muted)' }}>
-                  <div>{t('admin.device.device_type')}: {selectedModel.type_display_label || selectedModel.type_name_en || selectedModel.type_name_ko || '—'}</div>
-                  <div>{t('admin.device.manufacturer')}: {selectedModel.mfr_display_label || selectedModel.mfr_name_en || selectedModel.mfr_name_ko || '—'}</div>
-                  <div>{t('admin.device.brand')}: {selectedModel.brand_display_label || selectedModel.brand_name_en || selectedModel.brand_name_ko || '—'}</div>
-                  {selectedModel.model_code && <div>{t('admin.device.model_code')}: {selectedModel.model_code}</div>}
-                  {selectedModel.description && <div>{t('admin.device.description')}: {selectedModel.description}</div>}
-                </div>
-              </div>
+              <CatalogModelDetail
+                title={selectedModel.model_display_label || selectedModel.model_name}
+                onEdit={() => openEditModel(selectedModel)}
+                onDelete={() => void handleDelete('model', selectedModel.id)}
+                editLabel={t('admin.master.btn_edit')}
+                deleteLabel={t('admin.master.btn_delete')}
+                fields={[
+                  { label: t('admin.device.device_type'), value: selectedModel.type_display_label || selectedModel.type_name_en || selectedModel.type_name_ko || '—' },
+                  { label: t('admin.device.manufacturer'), value: selectedModel.mfr_display_label || selectedModel.mfr_name_en || selectedModel.mfr_name_ko || '—' },
+                  { label: t('admin.device.brand'), value: selectedModel.brand_display_label || selectedModel.brand_name_en || selectedModel.brand_name_ko || '—' },
+                  ...(selectedModel.model_code ? [{ label: t('admin.device.model_code'), value: selectedModel.model_code } satisfies ModelDetailField] : []),
+                  ...(selectedModel.description ? [{ label: t('admin.device.description'), value: selectedModel.description } satisfies ModelDetailField] : []),
+                ]}
+              />
             )}
           </>
         )}
@@ -522,7 +508,7 @@ export default function DevicePage() {
                     <td>{u.name}</td>
                     <td>{u.symbol ?? '—'}</td>
                     <td>{u.sort_order}</td>
-                    <td><StatusBadge status={u.status} /></td>
+                    <td><CatalogStatusBadge status={u.status} t={t} /></td>
                     <td><button className="btn btn-secondary btn-sm" onClick={() => openEditUnit(u)}>{t('admin.master.btn_edit')}</button></td>
                   </tr>
                 ))}
