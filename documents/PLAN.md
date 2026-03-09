@@ -774,26 +774,29 @@ DB 테이블/마이그레이션
 > PRD §3.2 GRD-04, GRD-06 | LLD §4.3 logs, log_values, log_media, §5.4, §9 위험 경고
 
 ## S7-1. DB
-[ ] logs 테이블 (pet_id, author_id, logtype_id, event_date, event_time, title, notes, metadata JSONB, is_synced, sync_version)
-[ ] log_values 테이블 (log_id, metric_id, unit_id, numeric_value, text_value, sort_order)
-[ ] log_media 테이블 (log_id, media_url, media_type, thumbnail_url, sort_order)
+[x] logs 테이블 (pet_id, author_id, logtype_id, event_date, event_time, title, notes, metadata JSONB, is_synced, sync_version)
+    → 0046_logs_core.sql
+[x] log_values 테이블 (log_id, metric_id, unit_id, numeric_value, text_value, sort_order)
+    → 0046_logs_core.sql
+[x] log_media 테이블 (log_id, media_url, media_type, thumbnail_url, sort_order)
+    → 0046_logs_core.sql
 
 ## S7-2. API
-[ ] POST /api/v1/pets/:petId/logs — 기록 생성
+[x] POST /api/v1/pets/:petId/logs — 기록 생성
     - logtype_id, event_date/time, values[], media[], metadata
     - 생성 시 위험 경고 로직 실행 (LLD §9)
     - 응답에 alert 객체 포함 (type, severity, message_key, value, threshold, unit)
-[ ] GET /api/v1/pets/:petId/logs — 타임라인 조회
-    - ?logtype=&date_from=&date_to=&page=&limit=&sort=desc
-[ ] GET /api/v1/pets/:petId/logs/:id — 기록 상세
-[ ] PUT /api/v1/pets/:petId/logs/:id — 기록 수정
-[ ] DELETE /api/v1/pets/:petId/logs/:id — 기록 삭제
+[x] GET /api/v1/pets/:petId/logs — 타임라인 조회
+    - ?logtype_id=&date_from=&date_to=&limit=&offset=
+[x] PUT /api/v1/pets/:petId/logs/:id — 기록 수정
+[x] DELETE /api/v1/pets/:petId/logs/:id — 기록 삭제 (soft)
+[x] POST /api/v1/pets/:petId/logs/sync — 오프라인 동기화
 
 ### 위험 경고 규칙 (LLD §9)
-[ ] 혈당 < 60 mg/dL → critical (긴급 저혈당)
-[ ] 혈당 < 80 mg/dL → warning (저혈당 주의)
-[ ] 혈당 > 300 mg/dL → warning (고혈당 주의)
-[ ] 직전 기록 대비 -50 mg/dL 이상 급락 → warning (급락 경고)
+[x] 혈당 < 60 mg/dL → critical (긴급 저혈당)
+[x] 혈당 < 80 mg/dL → warning (저혈당 주의)
+[x] 혈당 > 300 mg/dL → warning (고혈당 주의)
+[x] 직전 기록 대비 -50 mg/dL 이상 급락 → warning (급락 경고)
 
 ## S7-3. Mobile UI — 7종 LogType 입력
 [ ] LogType 선택 화면 (질병→연결된 LogType 자동 표시, S3 트리 기반)
@@ -817,9 +820,12 @@ DB 테이블/마이그레이션
     - 기록 상세 보기
 
 ## S7-4. Guardian Web UI
-[ ] 질병 기록 입력 (동일 7종 LogType 템플릿)
-[ ] 검사결과 업로드/조회 (R2)
-[ ] 타임라인/리스트 보기
+[x] 건강 기록 입력 (로그유형 드롭다운 + 날짜/시간/제목/메모 입력 모달)
+    - Health 탭 Timeline 섹션 + "기록 추가" 버튼
+    - 로그유형 master 기반 동적 드롭다운
+    - 혈당 alert 배너 (critical/warning severity별 표시)
+[ ] 검사결과 업로드/조회 (R2) — S8 이후
+[x] 타임라인/리스트 보기 (로그 목록, 유형/날짜/메모 카드 형태)
 
 ## S7-5. 테스트 데이터 & 검증
 [ ] 방울이 혈당 기록 3건 입력 (정상: 150, 주의: 75, 긴급: 55)

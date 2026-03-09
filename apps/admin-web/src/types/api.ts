@@ -380,3 +380,56 @@ export interface FeedModel {
   brand_display_label?: string | null;
   model_display_label?: string | null;
 }
+
+// ─── S7: Health Logs ──────────────────────────────────────────────────────────
+
+export interface LogValue {
+  id: string;
+  log_id: string;
+  metric_id: string;
+  metric_code?: string | null;
+  unit_id: string;
+  unit_code?: string | null;
+  numeric_value?: number | null;
+  text_value?: string | null;
+  sort_order: number;
+}
+
+export interface LogMedia {
+  id: string;
+  log_id: string;
+  media_url: string;
+  media_type: string;
+  thumbnail_url?: string | null;
+  sort_order: number;
+}
+
+export interface GlucoseAlert {
+  type: string;
+  severity: 'critical' | 'warning';
+  message_key: string;
+  value: number;
+  threshold: number;
+  unit: string;
+}
+
+export interface PetLog {
+  id: string;
+  pet_id: string;
+  author_id: string;
+  logtype_id: string;
+  logtype_code?: string | null;
+  event_date: string;
+  event_time?: string | null;
+  title?: string | null;
+  notes?: string | null;
+  metadata: Record<string, unknown>;
+  is_synced: number;
+  sync_version: number;
+  status: string;
+  values: LogValue[];
+  media: LogMedia[];
+  alert?: GlucoseAlert | null;
+  created_at: string;
+  updated_at: string;
+}

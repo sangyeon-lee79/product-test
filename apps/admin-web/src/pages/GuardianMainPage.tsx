@@ -5,10 +5,12 @@ import {
   type Booking,
   type FeedPost,
   type FriendRequest,
+  type GlucoseAlert,
   type HealthMeasurementSummary,
   type Pet,
   type PetAlbumMedia,
   type PetHealthMeasurementLog,
+  type PetLog,
   type PetWeightLog,
   type WeightSummary,
 } from '../lib/api';
@@ -66,6 +68,18 @@ export default function GuardianMainPage() {
   const [feedTab, setFeedTab] = useState<FeedTab>('all');
   const [petTab, setPetTab] = useState<PetProfileTab>('gallery');
   const [composeModalOpen, setComposeModalOpen] = useState(false);
+
+  // ── S7 Health Logs ────────────────────────────────────────────────────────
+  const [petLogs, setPetLogs] = useState<PetLog[]>([]);
+  const [logAlert, setLogAlert] = useState<GlucoseAlert | null>(null);
+  const [logModalOpen, setLogModalOpen] = useState(false);
+  const [optLogType, setOptLogType] = useState<{ id: string; code: string; label: string }[]>([]);
+  const [logFormLogtypeId, setLogFormLogtypeId] = useState('');
+  const [logFormDate, setLogFormDate] = useState('');
+  const [logFormTime, setLogFormTime] = useState('');
+  const [logFormTitle, setLogFormTitle] = useState('');
+  const [logFormNotes, setLogFormNotes] = useState('');
+  const [logFormSaving, setLogFormSaving] = useState(false);
   const [lightboxIndex, setLightboxIndex] = useState(-1);
   const [lightboxItems, setLightboxItems] = useState<string[]>([]);
 
@@ -221,6 +235,7 @@ export default function GuardianMainPage() {
         temperamentRows,
         coatLengthRows,
         groomingRows,
+        logTypeRows,
       ] = await Promise.all([
         safe(api.pets.list(), { pets: [] }, 'pets.list'),
         safe(api.bookings.list(), { bookings: [] }, 'bookings.list'),
@@ -247,6 +262,7 @@ export default function GuardianMainPage() {
         loadCategoryItems(CATEGORY_KEYS.temperament_type, lang),
         loadCategoryItems(CATEGORY_KEYS.coat_length, lang),
         loadCategoryItems(CATEGORY_KEYS.grooming_cycle, lang),
+        loadCategoryItems(['log_type'], lang),
       ]);
 
       setPets(petsRes.pets || []);
@@ -276,6 +292,11 @@ export default function GuardianMainPage() {
       setOptTemperament(toOption(temperamentRows, lang, t, CATEGORY_KEYS.temperament_type[0]));
       setOptCoatLength(toOption(coatLengthRows, lang, t, CATEGORY_KEYS.coat_length[0]));
       setOptGrooming(toOption(groomingRows, lang, t, CATEGORY_KEYS.grooming_cycle[0]));
+      setOptLogType(logTypeRows.map((item) => ({
+        id: item.id,
+        code: item.key ?? '',
+        label: item.display_label ?? item[lang as keyof typeof item] as string ?? item.ko ?? item.key ?? '',
+      })));
 
       if (!silent && failedApis.length > 0) {
         setError(t('guardian.alert.partial_load_failed', 'Some data could not be loaded. Please try again shortly.'));
@@ -306,10 +327,12 @@ export default function GuardianMainPage() {
       setWeightSummary(null);
       setMeasurementLogs([]);
       setMeasurementSummary(null);
+      setPetLogs([]);
       return;
     }
     loadWeightLogs(selectedPet.id, weightRange);
     loadMeasurementLogs(selectedPet.id, weightRange);
+    void loadPetLogs(selectedPet.id);
   }, [selectedPet?.id, weightRange]);
 
   useEffect(() => {
@@ -346,6 +369,53 @@ export default function GuardianMainPage() {
       setError(uiErrorMessage(e, t('guardian.health.measurement_log_load_failed', 'Failed to load health measurement logs.')));
       setMeasurementLogs([]);
       setMeasurementSummary(null);
+    }
+  }
+
+  async function loadPetLogs(petId: string) {
+    try {
+      const res = await api.pets.logs.list(petId, { limit: 50 });
+      setPetLogs(res.logs || []);
+    } catch {
+      setPetLogs([]);
+    }
+  }
+
+  async function createPetLog() {
+    if (!selectedPet?.id) return;
+    if (!logFormLogtypeId || !logFormDate) return;
+    setLogFormSaving(true);
+    try {
+      const result = await api.pets.logs.create(selectedPet.id, {
+        logtype_id: logFormLogtypeId,
+        event_date: logFormDate,
+        event_time: logFormTime || null,
+        title: logFormTitle || null,
+        notes: logFormNotes || null,
+      });
+      setLogAlert(result.alert ?? null);
+      setLogModalOpen(false);
+      setLogFormLogtypeId('');
+      setLogFormDate('');
+      setLogFormTime('');
+      setLogFormTitle('');
+      setLogFormNotes('');
+      await loadPetLogs(selectedPet.id);
+    } catch (e) {
+      setError(uiErrorMessage(e, t('guardian.log.save_failed', '기록 저장에 실패했습니다.')));
+    } finally {
+      setLogFormSaving(false);
+    }
+  }
+
+  async function removePetLog(logId: string) {
+    if (!selectedPet?.id) return;
+    if (!confirm(t('guardian.log.delete_confirm', '이 기록을 삭제하시겠습니까?'))) return;
+    try {
+      await api.pets.logs.remove(selectedPet.id, logId);
+      await loadPetLogs(selectedPet.id);
+    } catch (e) {
+      setError(uiErrorMessage(e, t('guardian.log.delete_failed', '기록 삭제에 실패했습니다.')));
     }
   }
 
@@ -642,6 +712,13 @@ export default function GuardianMainPage() {
               {/* ── Health ── */}
               {petTab === 'health' && (
                 <>
+                  {/* glucose alert banner */}
+                  {logAlert && (
+                    <div className={`gm-alert-banner gm-alert-${logAlert.severity}`} style={{ padding: '10px 14px', margin: '8px 0', borderRadius: 8, background: logAlert.severity === 'critical' ? 'var(--danger-light, #fee2e2)' : 'var(--warning-light, #fef9c3)', color: logAlert.severity === 'critical' ? '#b91c1c' : '#92400e', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <span>⚠️ {t(logAlert.message_key, logAlert.type)} — {logAlert.value} {logAlert.unit}</span>
+                      <button style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 16 }} onClick={() => setLogAlert(null)}>✕</button>
+                    </div>
+                  )}
                   <div className="gm-health-stats">
                     <div className="gm-health-stat">
                       <div className="gm-health-stat-label">{t('guardian.health.current_weight', '현재 몸무게')}</div>
@@ -721,6 +798,83 @@ export default function GuardianMainPage() {
                       </div>
                     </div>
                   </div>
+                  {/* ── Health Log Timeline (S7) ── */}
+                  <div className="gm-section">
+                    <div className="gm-section-header">
+                      <span className="gm-section-title">{t('guardian.log.timeline', 'Timeline')}</span>
+                      {isGuardian && <button className="btn btn-primary btn-sm" onClick={() => setLogModalOpen(true)}>+ {t('guardian.log.add', '기록 추가')}</button>}
+                    </div>
+                    <div className="gm-section-body">
+                      {petLogs.length === 0 && <p className="text-muted" style={{ fontSize: 13 }}>{t('guardian.log.no_records', '기록이 없습니다.')}</p>}
+                      <div className="guardian-pet-list">
+                        {petLogs.map((log) => {
+                          const ltLabel = optLogType.find((o) => o.id === log.logtype_id)?.label ?? log.logtype_code ?? log.logtype_id;
+                          return (
+                            <div key={log.id} className="guardian-pet-item" style={{ flexDirection: 'column', alignItems: 'flex-start', gap: 4 }}>
+                              <div style={{ display: 'flex', justifyContent: 'space-between', width: '100%' }}>
+                                <span className="badge badge-gray" style={{ fontSize: 11 }}>{ltLabel}</span>
+                                <span className="text-muted" style={{ fontSize: 12 }}>{log.event_date}{log.event_time ? ` ${log.event_time}` : ''}</span>
+                              </div>
+                              {log.title && <p style={{ fontSize: 13, fontWeight: 600, margin: 0 }}>{log.title}</p>}
+                              {log.notes && <p style={{ fontSize: 12, color: 'var(--text-muted)', margin: 0 }}>{log.notes}</p>}
+                              {log.values.length > 0 && (
+                                <p style={{ fontSize: 12, margin: 0 }}>
+                                  {log.values.map((v) => `${v.numeric_value ?? v.text_value ?? ''} ${v.unit_code ?? ''}`.trim()).join(' / ')}
+                                </p>
+                              )}
+                              <div className="td-actions">
+                                <button className="btn btn-danger btn-sm" onClick={() => removePetLog(log.id)}>{t('common.delete', '삭제')}</button>
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* ── Log Create Modal ── */}
+                  {logModalOpen && (
+                    <div className="modal-overlay" onClick={() => setLogModalOpen(false)}>
+                      <div className="modal" onClick={(e) => e.stopPropagation()} style={{ maxWidth: 480 }}>
+                        <div className="modal-header">
+                          <h3 className="modal-title">{t('guardian.log.add', '기록 추가')}</h3>
+                          <button className="modal-close" onClick={() => setLogModalOpen(false)}>✕</button>
+                        </div>
+                        <div className="modal-body">
+                          <div className="form-group">
+                            <label className="form-label">{t('guardian.log.logtype', '기록 유형')} *</label>
+                            <select className="form-select" value={logFormLogtypeId} onChange={(e) => setLogFormLogtypeId(e.target.value)}>
+                              <option value="">{t('common.select', 'Select')}</option>
+                              {optLogType.map((o) => <option key={o.id} value={o.id}>{o.label}</option>)}
+                            </select>
+                          </div>
+                          <div className="form-group">
+                            <label className="form-label">{t('guardian.log.event_date', '날짜')} *</label>
+                            <input className="form-input" type="date" value={logFormDate} onChange={(e) => setLogFormDate(e.target.value)} />
+                          </div>
+                          <div className="form-group">
+                            <label className="form-label">{t('guardian.log.event_time', '시간')}</label>
+                            <input className="form-input" type="time" value={logFormTime} onChange={(e) => setLogFormTime(e.target.value)} />
+                          </div>
+                          <div className="form-group">
+                            <label className="form-label">{t('guardian.log.title_field', '제목')}</label>
+                            <input className="form-input" type="text" value={logFormTitle} onChange={(e) => setLogFormTitle(e.target.value)} placeholder={t('guardian.log.title_field', '제목')} />
+                          </div>
+                          <div className="form-group">
+                            <label className="form-label">{t('guardian.log.notes', '메모')}</label>
+                            <textarea className="form-input" rows={3} value={logFormNotes} onChange={(e) => setLogFormNotes(e.target.value)} placeholder={t('guardian.log.notes', '메모')} />
+                          </div>
+                        </div>
+                        <div className="modal-footer">
+                          <button className="btn btn-secondary" onClick={() => setLogModalOpen(false)}>{t('guardian.log.cancel', '취소')}</button>
+                          <button className="btn btn-primary" disabled={!logFormLogtypeId || !logFormDate || logFormSaving} onClick={() => void createPetLog()}>
+                            {logFormSaving ? t('common.saving', '저장 중...') : t('guardian.log.save', '저장')}
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
                   {healthFeeds.length > 0 && (
                     <div className="gm-section">
                       <div className="gm-section-header"><span className="gm-section-title">{t('guardian.health.updates', 'Health Updates')}</span></div>

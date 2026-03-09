@@ -11,6 +11,7 @@ export type {
   FriendRequest, FriendConnection,
   DeviceType, DeviceManufacturer, DeviceBrand, DeviceModel, MeasurementUnit, GuardianDevice,
   FeedType, FeedManufacturer, FeedBrand, FeedModel,
+  PetLog, GlucoseAlert,
 } from '../types/api';
 import type {
   I18nRow, MasterCategory, MasterItem, Country, Currency,
@@ -22,6 +23,7 @@ import type {
   FriendRequest, FriendConnection,
   DeviceType, DeviceManufacturer, DeviceBrand, DeviceModel, MeasurementUnit,
   FeedType, FeedManufacturer, FeedBrand, FeedModel,
+  PetLog, GlucoseAlert,
 } from '../types/api';
 
 const API_BASE = getApiBase();
@@ -386,6 +388,28 @@ export const api = {
       remove: (petId: string, logId: string) => request<{ deleted: boolean; id: string }>(`/api/v1/pets/${petId}/health-measurements/${logId}`, {
         method: 'DELETE',
       }),
+    },
+    logs: {
+      list: (petId: string, params?: { logtype_id?: string; date_from?: string; date_to?: string; limit?: number; offset?: number }) =>
+        request<{ logs: PetLog[]; total: number }>(`/api/v1/pets/${petId}/logs${buildQuery({ logtype_id: params?.logtype_id, date_from: params?.date_from, date_to: params?.date_to, limit: params?.limit, offset: params?.offset })}`),
+      create: (petId: string, data: {
+        logtype_id: string;
+        event_date: string;
+        event_time?: string | null;
+        title?: string | null;
+        notes?: string | null;
+        metadata?: Record<string, unknown>;
+        values?: Array<{ metric_id: string; unit_id: string; numeric_value?: number | null; text_value?: string | null }>;
+        media?: Array<{ media_url: string; media_type?: string; thumbnail_url?: string | null }>;
+      }) => request<PetLog & { alert?: GlucoseAlert | null }>(`/api/v1/pets/${petId}/logs`, { method: 'POST', body: JSON.stringify(data) }),
+      update: (petId: string, logId: string, data: Partial<{
+        event_date: string;
+        event_time: string | null;
+        title: string | null;
+        notes: string | null;
+        metadata: Record<string, unknown>;
+      }>) => request<{ updated: boolean; id: string }>(`/api/v1/pets/${petId}/logs/${logId}`, { method: 'PUT', body: JSON.stringify(data) }),
+      remove: (petId: string, logId: string) => request<{ deleted: boolean; id: string }>(`/api/v1/pets/${petId}/logs/${logId}`, { method: 'DELETE' }),
     },
     checkMicrochip: (microchipNo: string, excludePetId?: string) =>
       request<{ available: boolean; reason?: string; pet_id?: string }>(`/api/v1/pets/check-microchip${buildQuery({ microchip_no: microchipNo, exclude_pet_id: excludePetId })}`),

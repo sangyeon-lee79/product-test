@@ -1,8 +1,9 @@
 import { useEffect, useMemo, useState, useCallback } from 'react';
 import { api, type MasterCategory, type MasterItem, type DeviceType } from '../lib/api';
 import { useT, useI18n, SUPPORTED_LANGS, LANG_LABELS } from '../lib/i18n';
+import { autoTranslate, emptyTrans, findMissingTranslationLangs } from '../lib/catalogUtils';
+import { TranslationFields } from '../components/TranslationFields';
 
-const emptyTrans = () => Object.fromEntries(SUPPORTED_LANGS.map((l) => [l, ''])) as Record<string, string>;
 const MAX_LEVEL = 5;
 
 function normalizeCategoryKey(key: string): string {
@@ -13,10 +14,6 @@ function sortByOrderAndLabel(a: MasterItem, b: MasterItem) {
   const bySort = (a.sort_order ?? 0) - (b.sort_order ?? 0);
   if (bySort !== 0) return bySort;
   return (a.ko_name || a.ko || a.key).localeCompare(b.ko_name || b.ko || b.key, 'ko');
-}
-
-function findMissingTranslationLangs(translations: Record<string, string>): string[] {
-  return SUPPORTED_LANGS.filter((lang) => !(translations[lang] || '').trim());
 }
 
 export default function MasterPage() {
@@ -295,26 +292,6 @@ export default function MasterPage() {
       id_lang: item.id_lang ?? '',
       ar: item.ar ?? '',
     };
-  }
-
-  async function autoTranslate(koText: string, setTrans: (t: Record<string, string>) => void, current: Record<string, string>) {
-    if (!koText) return;
-    setTranslating(true);
-    try {
-      const result = await api.i18n.translate(koText, current);
-      const merged: Record<string, string> = { ...current, ko: koText };
-      for (const lang of SUPPORTED_LANGS) {
-        if (lang === 'ko') continue;
-        if ((current[lang] || '').trim()) continue;
-        const translated = result.translations[lang];
-        if (translated) merged[lang] = translated;
-      }
-      setTrans(merged);
-    } catch (e) {
-      setError(e instanceof Error ? e.message : 'Error');
-    } finally {
-      setTranslating(false);
-    }
   }
 
   async function handleCatSave() {
@@ -631,20 +608,7 @@ export default function MasterPage() {
                 <label className="form-label">{t('admin.master.field_sort')}</label>
                 <input className="form-input" type="number" value={catForm.sort_order} onChange={(e) => setCatForm((f) => ({ ...f, sort_order: e.target.value }))} />
               </div>
-              <div style={{ borderTop: '1px solid var(--border)', paddingTop: 12, marginTop: 4 }}>
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
-                  <div style={{ fontSize: 13, fontWeight: 600 }}>{t('admin.master.btn_trans_auto')}</div>
-                  <button className="btn btn-secondary btn-sm" onClick={() => autoTranslate(catTrans.ko, setCatTrans, catTrans)} disabled={translating || !catTrans.ko}>{translating ? t('admin.master.loading_trans') : t('admin.master.btn_trans_auto')}</button>
-                </div>
-                {SUPPORTED_LANGS.map((lang) => (
-                  <div key={lang} className="form-group" style={{ marginBottom: 6, display: 'flex', alignItems: 'center', gap: 8 }}>
-                    <label style={{ fontSize: 12, width: 110, flexShrink: 0, color: lang === 'ko' ? 'var(--text)' : 'var(--text-muted)' }}>
-                      {LANG_LABELS[lang]}{lang === 'ko' ? ' *' : ''}
-                    </label>
-                    <input className="form-input" style={{ fontSize: 13 }} value={catTrans[lang] ?? ''} onChange={(e) => setCatTrans((f) => ({ ...f, [lang]: e.target.value }))} />
-                  </div>
-                ))}
-              </div>
+              <TranslationFields translations={catTrans} onChange={setCatTrans} translating={translating} onAutoTranslate={() => void autoTranslate(catTrans.ko, catTrans, setCatTrans, setTranslating, setError)} t={t} />
             </div>
             <div className="modal-footer">
               <button className="btn btn-secondary" onClick={() => setCatModal(null)}>{t('admin.master.btn_cancel')}</button>
@@ -697,20 +661,7 @@ export default function MasterPage() {
                 <label className="form-label">{t('admin.master.field_sort')}</label>
                 <input className="form-input" type="number" value={itemForm.sort_order} onChange={(e) => setItemForm((f) => ({ ...f, sort_order: e.target.value }))} />
               </div>
-              <div style={{ borderTop: '1px solid var(--border)', paddingTop: 12, marginTop: 4 }}>
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
-                  <div style={{ fontSize: 13, fontWeight: 600 }}>{t('admin.master.btn_trans_auto')}</div>
-                  <button className="btn btn-secondary btn-sm" onClick={() => autoTranslate(itemTrans.ko, setItemTrans, itemTrans)} disabled={translating || !itemTrans.ko}>{translating ? t('admin.master.loading_trans') : t('admin.master.btn_trans_auto')}</button>
-                </div>
-                {SUPPORTED_LANGS.map((lang) => (
-                  <div key={lang} className="form-group" style={{ marginBottom: 6, display: 'flex', alignItems: 'center', gap: 8 }}>
-                    <label style={{ fontSize: 12, width: 110, flexShrink: 0, color: lang === 'ko' ? 'var(--text)' : 'var(--text-muted)' }}>
-                      {LANG_LABELS[lang]}{lang === 'ko' ? ' *' : ''}
-                    </label>
-                    <input className="form-input" style={{ fontSize: 13 }} value={itemTrans[lang] ?? ''} onChange={(e) => setItemTrans((f) => ({ ...f, [lang]: e.target.value }))} />
-                  </div>
-                ))}
-              </div>
+              <TranslationFields translations={itemTrans} onChange={setItemTrans} translating={translating} onAutoTranslate={() => void autoTranslate(itemTrans.ko, itemTrans, setItemTrans, setTranslating, setError)} t={t} />
             </div>
             <div className="modal-footer">
               <button className="btn btn-secondary" onClick={() => setItemModal(null)}>{t('admin.master.btn_cancel')}</button>
