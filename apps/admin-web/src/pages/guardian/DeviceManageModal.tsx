@@ -1,6 +1,6 @@
 // 장비 관리 모달 — 등록된 측정 장비 목록, 추가, 수정, 삭제
 import { useEffect, useMemo, useState } from 'react';
-import { api, type DeviceBrand, type DeviceManufacturer, type DeviceModel, type GuardianDevice, type Pet } from '../../lib/api';
+import { api, type DeviceBrand, type DeviceManufacturer, type DeviceModel, type DeviceType, type GuardianDevice, type Pet } from '../../lib/api';
 import type { Lang } from '../../lib/i18n';
 import { type Option, uiErrorMessage } from './guardianTypes';
 
@@ -8,7 +8,6 @@ interface Props {
   open: boolean;
   selectedPet: Pet | null;
   optDisease: Option[];
-  optDiseaseDevice: Option[];
   lang: Lang;
   t: (key: string, fallback?: string) => string;
   setError: (msg: string) => void;
@@ -27,7 +26,7 @@ const EMPTY_FORM = {
 };
 
 export default function DeviceManageModal({
-  open, selectedPet, optDisease, optDiseaseDevice,
+  open, selectedPet, optDisease,
   lang, t, setError, onClose, onChanged,
 }: Props) {
   const [devices, setDevices] = useState<GuardianDevice[]>([]);
@@ -37,6 +36,7 @@ export default function DeviceManageModal({
   const [form, setForm] = useState(EMPTY_FORM);
 
   // cascade state
+  const [deviceTypes, setDeviceTypes] = useState<DeviceType[]>([]);
   const [manufacturers, setManufacturers] = useState<DeviceManufacturer[]>([]);
   const [brands, setBrands] = useState<DeviceBrand[]>([]);
   const [models, setModels] = useState<DeviceModel[]>([]);
@@ -61,33 +61,46 @@ export default function DeviceManageModal({
     if (open && petId) void loadDevices();
   }, [open, petId]);
 
-  // Load manufacturers when device type changes
+  // Load device types with model_count from device API (not master items)
   useEffect(() => {
     if (!open) return;
+    const run = async () => {
+      try {
+        const types = await api.devices.public.types(lang);
+        setDeviceTypes(types);
+      } catch { setDeviceTypes([]); }
+    };
+    void run();
+  }, [open, lang]);
+
+  // Load manufacturers when device type changes
+  useEffect(() => {
+    if (!open || !showForm) return;
+    if (!form.device_type_item_id) { setManufacturers([]); return; }
     const run = async () => {
       try {
         const rows = await api.devices.public.manufacturers(form.device_type_item_id || undefined);
         setManufacturers(rows);
-      } catch { /* ignore */ }
+      } catch { setManufacturers([]); }
     };
     void run();
-  }, [open, form.device_type_item_id]);
+  }, [open, showForm, form.device_type_item_id]);
 
   // Load brands when manufacturer changes
   useEffect(() => {
-    if (!open || !form.manufacturer_id) { setBrands([]); return; }
+    if (!open || !showForm || !form.manufacturer_id) { setBrands([]); return; }
     const run = async () => {
       try {
         const rows = await api.devices.public.brands(form.manufacturer_id);
         setBrands(rows);
-      } catch { /* ignore */ }
+      } catch { setBrands([]); }
     };
     void run();
-  }, [open, form.manufacturer_id]);
+  }, [open, showForm, form.manufacturer_id]);
 
   // Load models when filter changes
   useEffect(() => {
-    if (!open) return;
+    if (!open || !showForm) return;
     if (!form.device_type_item_id && !form.manufacturer_id && !form.brand_id) { setModels([]); return; }
     const run = async () => {
       try {
@@ -97,10 +110,10 @@ export default function DeviceManageModal({
           brand_id: form.brand_id || undefined,
         });
         setModels(rows);
-      } catch { /* ignore */ }
+      } catch { setModels([]); }
     };
     void run();
-  }, [open, form.device_type_item_id, form.manufacturer_id, form.brand_id]);
+  }, [open, showForm, form.device_type_item_id, form.manufacturer_id, form.brand_id]);
 
   const diseaseOptionsForPet = useMemo(() => {
     if (!selectedPet?.disease_history_ids) return optDisease;
@@ -115,9 +128,16 @@ export default function DeviceManageModal({
     return filtered.length ? filtered : optDisease;
   }, [optDisease, selectedPet?.disease_history_ids]);
 
+  // Device type options: only types with model_count > 0, showing count
   const deviceTypeOptions = useMemo(
-    () => optDiseaseDevice.filter((item) => !form.disease_item_id || item.parentId === form.disease_item_id),
-    [optDiseaseDevice, form.disease_item_id],
+    () => deviceTypes
+      .filter((dt) => (dt.model_count ?? 0) > 0)
+      .map((dt) => ({
+        id: dt.id,
+        key: dt.key,
+        label: `${(dt.display_label || dt.key).trim()} (${dt.model_count})`,
+      })),
+    [deviceTypes],
   );
 
   const mfrOptions = useMemo(
@@ -144,19 +164,13 @@ export default function DeviceManageModal({
     [models],
   );
 
-  function optionLabel(option: Option | undefined, fallback: string): string {
-    if (!option) return fallback;
-    if (option.i18nKey) { const tr = t(option.i18nKey, '').trim(); if (tr) return tr; }
-    return (option.label || '').trim() || fallback;
-  }
-
   function renderSelect(label: string, value: string, options: Array<{ id: string; key: string; label: string }>, onChange: (v: string) => void, required = false) {
     return (
       <div className="form-group">
         <label className="form-label">{label}{required ? ' *' : ''}</label>
         <select className="form-select" value={value} onChange={(e) => onChange(e.target.value)}>
           <option value="">{t('common.select', 'Select')}</option>
-          {options.map((o) => <option key={o.id} value={o.id}>{optionLabel(o as Option, '-')}</option>)}
+          {options.map((o) => <option key={o.id} value={o.id}>{o.label}</option>)}
         </select>
       </div>
     );
@@ -184,7 +198,7 @@ export default function DeviceManageModal({
 
   async function handleSave() {
     if (!petId) return;
-    if (!form.model_id) { setError(t('guardian.health.model_required', 'Please select a device model.')); return; }
+    if (!editingId && !form.model_id) { setError(t('guardian.health.model_required', 'Please select a device model.')); return; }
     try {
       if (editingId) {
         await api.pets.guardianDevices.update(petId, editingId, {

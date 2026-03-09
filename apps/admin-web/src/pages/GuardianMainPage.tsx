@@ -1129,7 +1129,6 @@ export default function GuardianMainPage() {
         open={deviceManageModalOpen}
         selectedPet={selectedPet}
         optDisease={optDisease}
-        optDiseaseDevice={optDiseaseDevice}
         lang={lang}
         t={t}
         setError={setError}
