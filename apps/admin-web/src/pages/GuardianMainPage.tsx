@@ -904,14 +904,39 @@ export default function GuardianMainPage() {
                       </div>
                     </div>
                   </div>
+                  {/* ── Health Toolkit ── */}
+                  <div className="gm-health-toolbar">
+                    <div className="gm-toolbar-group gm-toolbar-record">
+                      <button className="gm-toolbar-tile gm-tile-weight" onClick={() => setWeightModalOpen(true)}>
+                        <span className="gm-tile-icon">⚖️</span>
+                        <span className="gm-tile-label">{t('guardian.health.add_weight', '몸무게')}</span>
+                      </button>
+                      <button className="gm-toolbar-tile gm-tile-measure" onClick={openCreateHealthMeasurementModal}>
+                        <span className="gm-tile-icon">📊</span>
+                        <span className="gm-tile-label">{t('guardian.health.add_measurement', '수치 추가')}</span>
+                      </button>
+                      <button className="gm-toolbar-tile gm-tile-feed" onClick={() => { setEditingFeedingLog(null); setFeedingLogModalOpen(true); }}>
+                        <span className="gm-tile-icon">🍽️</span>
+                        <span className="gm-tile-label">{t('guardian.feeding.add', '급여 기록')}</span>
+                      </button>
+                    </div>
+                    <div className="gm-toolbar-divider" />
+                    <div className="gm-toolbar-group gm-toolbar-manage">
+                      <button className="gm-toolbar-tile gm-tile-devices" onClick={() => setDeviceManageModalOpen(true)}>
+                        <span className="gm-tile-icon">🩺</span>
+                        <span className="gm-tile-label">{t('guardian.device.manage_title', '측정 장비')}</span>
+                      </button>
+                      <button className="gm-toolbar-tile gm-tile-feeds" onClick={() => setFeedManageModalOpen(true)}>
+                        <span className="gm-tile-icon">🥣</span>
+                        <span className="gm-tile-label">{t('guardian.feed.manage_title', '사료 관리')}</span>
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* ── Health Chart ── */}
                   <div className="gm-section">
                     <div className="gm-section-header">
                       <span className="gm-section-title">{t('guardian.health.chart_title', '건강 추이')}</span>
-                      <div style={{ display: 'flex', gap: 8 }}>
-                        <button className="btn btn-primary btn-sm" onClick={() => setWeightModalOpen(true)}>+ {t('guardian.health.add_weight', '몸무게')}</button>
-                        <button className="btn btn-secondary btn-sm" onClick={openCreateHealthMeasurementModal}>+ {t('guardian.health.add_measurement', '수치 추가')}</button>
-                        <button className="btn btn-secondary btn-sm" onClick={() => { setEditingFeedingLog(null); setFeedingLogModalOpen(true); }}>+ {t('guardian.feeding.add', '급여 추가')}</button>
-                      </div>
                     </div>
                     <div className="gm-section-body">
                       <div className="gm-period-chips" style={{ marginBottom: 12 }}>
@@ -933,10 +958,6 @@ export default function GuardianMainPage() {
                         </div>
                       </div>
                       {renderCombinedHealthChart(weightLogs, measurementLogs.filter((log) => !selectedMeasurementItemId || log.measurement_item_id === selectedMeasurementItemId))}
-                      <div className="gm-manage-links">
-                        <button className="gm-manage-link" onClick={() => setFeedManageModalOpen(true)}>{t('guardian.feed.manage_title', '사료 관리')}</button>
-                        <button className="gm-manage-link" onClick={() => setDeviceManageModalOpen(true)}>{t('guardian.device.manage_title', '장비 관리')}</button>
-                      </div>
                     </div>
                   </div>
                   <div className="gm-section">
@@ -1162,18 +1183,6 @@ export default function GuardianMainPage() {
                       <button className="btn btn-danger btn-sm" onClick={() => removePet(p.id)}>{t('common.delete', '삭제')}</button>
                     </div>
                   ))}
-                </div>
-              </div>
-              <div className="gm-sidebar-section">
-                <div className="gm-sidebar-header">{t('guardian.sidebar.quick_actions', 'Quick Actions')}</div>
-                <div className="gm-sidebar-body">
-                  <div className="gm-quick-actions">
-                    <button className="gm-quick-btn" onClick={() => setComposeModalOpen(true)}>✏️ {t('guardian.sidebar.post', 'Post')}</button>
-                    <button className="gm-quick-btn" onClick={() => setWeightModalOpen(true)}>⚖️ {t('guardian.health.add_weight', 'Weight')}</button>
-                    <button className="gm-quick-btn" onClick={openCreateHealthMeasurementModal}>📊 {t('guardian.health.add_measurement', 'Measure')}</button>
-                    <button className="gm-quick-btn" onClick={() => { setEditingFeedingLog(null); setFeedingLogModalOpen(true); }}>🍽️ {t('guardian.feeding.add', 'Feed')}</button>
-                    <button className="gm-quick-btn" onClick={() => setPetTab('gallery')}>🖼️ {t('guardian.tab.gallery', 'Gallery')}</button>
-                  </div>
                 </div>
               </div>
               <div className="gm-sidebar-section">
