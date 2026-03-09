@@ -143,7 +143,7 @@ export default function ComposeModal({ open, pets, selectedPetId, t, setError, o
             <div className="feed-compose-media">
               <label className="form-label">{t('guardian.feed.photo_upload', '사진 업로드')}</label>
               <div className="gallery-upload-dropzone" onDragOver={(e) => e.preventDefault()} onDrop={(e) => { e.preventDefault(); handleFeedImageSelected(e.dataTransfer.files?.[0] || null); }}>
-                <input ref={fileInputRef} type="file" className="gallery-upload-file-input" accept="image/jpeg,image/jpg,image/png,image/webp" capture="environment" onChange={(e) => handleFeedImageSelected(e.target.files?.[0] || null)} />
+                <input ref={fileInputRef} name="compose-photo" type="file" className="gallery-upload-file-input" accept="image/jpeg,image/jpg,image/png,image/webp" capture="environment" onChange={(e) => handleFeedImageSelected(e.target.files?.[0] || null)} />
                 <p>{t('guardian.feed.photo_hint', '드래그 앤 드롭 또는 파일 선택')}</p>
                 <button type="button" className="btn btn-secondary btn-sm" onClick={() => fileInputRef.current?.click()}>{t('guardian.feed.photo_select', '사진 선택')}</button>
               </div>
@@ -164,8 +164,8 @@ export default function ComposeModal({ open, pets, selectedPetId, t, setError, o
             <div className="feed-compose-fields">
               <div className="form-row col2">
                 <div className="form-group">
-                  <label className="form-label">{t('guardian.feed.feed_type', 'Feed Type')}</label>
-                  <select className="form-select" value={feedCompose.feed_type} onChange={(e) => setFeedCompose((p) => ({ ...p, feed_type: e.target.value as FeedCompose['feed_type'] }))}>
+                  <label className="form-label" htmlFor="compose-feed-type">{t('guardian.feed.feed_type', 'Feed Type')}</label>
+                  <select id="compose-feed-type" name="compose-feed-type" className="form-select" value={feedCompose.feed_type} onChange={(e) => setFeedCompose((p) => ({ ...p, feed_type: e.target.value as FeedCompose['feed_type'] }))}>
                     <option value="guardian_post">{t('guardian.feed.type.guardian_post', 'Guardian Post')}</option>
                     <option value="health_update">{t('guardian.feed.type.health_update', 'Health Update')}</option>
                     <option value="pet_milestone">{t('guardian.feed.type.pet_milestone', 'Pet Milestone')}</option>
@@ -173,8 +173,8 @@ export default function ComposeModal({ open, pets, selectedPetId, t, setError, o
                   </select>
                 </div>
                 <div className="form-group">
-                  <label className="form-label">{t('guardian.feed.visibility', 'Visibility')}</label>
-                  <select className="form-select" value={feedCompose.visibility_scope} onChange={(e) => setFeedCompose((p) => ({ ...p, visibility_scope: e.target.value as FeedCompose['visibility_scope'] }))}>
+                  <label className="form-label" htmlFor="compose-visibility">{t('guardian.feed.visibility', 'Visibility')}</label>
+                  <select id="compose-visibility" name="compose-visibility" className="form-select" value={feedCompose.visibility_scope} onChange={(e) => setFeedCompose((p) => ({ ...p, visibility_scope: e.target.value as FeedCompose['visibility_scope'] }))}>
                     <option value="public">{t('guardian.feed.visibility.public', 'Public')}</option>
                     <option value="friends_only">{t('guardian.feed.visibility.friends_only', 'Friends Only')}</option>
                     <option value="private">{t('guardian.feed.visibility.private', 'Private')}</option>
@@ -184,19 +184,19 @@ export default function ComposeModal({ open, pets, selectedPetId, t, setError, o
                 </div>
               </div>
               <div className="form-group">
-                <label className="form-label">{t('guardian.feed.linked_pet', 'Linked Pet')}</label>
-                <select className="form-select" value={feedCompose.pet_id} onChange={(e) => setFeedCompose((p) => ({ ...p, pet_id: e.target.value }))}>
+                <label className="form-label" htmlFor="compose-linked-pet">{t('guardian.feed.linked_pet', 'Linked Pet')}</label>
+                <select id="compose-linked-pet" name="compose-linked-pet" className="form-select" value={feedCompose.pet_id} onChange={(e) => setFeedCompose((p) => ({ ...p, pet_id: e.target.value }))}>
                   <option value="">{t('common.none', 'None')}</option>
                   {pets.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
                 </select>
               </div>
               <div className="form-group">
-                <label className="form-label">{t('guardian.feed.caption', 'Caption')}</label>
-                <textarea className="form-textarea" value={feedCompose.caption} onChange={(e) => setFeedCompose((p) => ({ ...p, caption: e.target.value }))} />
+                <label className="form-label" htmlFor="compose-caption">{t('guardian.feed.caption', 'Caption')}</label>
+                <textarea id="compose-caption" name="compose-caption" className="form-textarea" value={feedCompose.caption} onChange={(e) => setFeedCompose((p) => ({ ...p, caption: e.target.value }))} />
               </div>
               <div className="form-group">
-                <label className="form-label">{t('guardian.feed.tags', 'Tags (comma separated)')}</label>
-                <input className="form-input" value={feedCompose.tagsText} onChange={(e) => setFeedCompose((p) => ({ ...p, tagsText: e.target.value }))} />
+                <label className="form-label" htmlFor="compose-tags">{t('guardian.feed.tags', 'Tags (comma separated)')}</label>
+                <input id="compose-tags" name="compose-tags" className="form-input" value={feedCompose.tagsText} onChange={(e) => setFeedCompose((p) => ({ ...p, tagsText: e.target.value }))} />
               </div>
             </div>
           </div>

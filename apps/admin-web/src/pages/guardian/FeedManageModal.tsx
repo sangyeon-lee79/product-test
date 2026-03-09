@@ -168,11 +168,11 @@ export default function FeedManageModal({
     [models],
   );
 
-  function renderSelect(label: string, value: string, options: Array<{ id: string; key: string; label: string }>, onChange: (v: string) => void, required = false) {
+  function renderSelect(label: string, value: string, options: Array<{ id: string; key: string; label: string }>, onChange: (v: string) => void, required = false, name?: string) {
     return (
       <div className="form-group">
-        <label className="form-label">{label}{required ? ' *' : ''}</label>
-        <select className="form-select" value={value} onChange={(e) => onChange(e.target.value)}>
+        <label className="form-label" htmlFor={name}>{label}{required ? ' *' : ''}</label>
+        <select id={name} name={name} className="form-select" value={value} onChange={(e) => onChange(e.target.value)}>
           <option value="">{t('common.select', 'Select')}</option>
           {options.map((o) => <option key={o.id} value={o.id}>{o.label}</option>)}
         </select>
@@ -355,24 +355,26 @@ export default function FeedManageModal({
               </h4>
               {renderSelect(t('guardian.device.disease', '질병'), form.disease_item_id, diseaseOptionsForPet, (v) => setForm((p) => ({
                 ...p, disease_item_id: v, feed_type_item_id: '', manufacturer_id: '', brand_id: '', model_id: '',
-              })))}
+              })), false, 'feed-disease')}
               {!editingId && (
                 <>
                   {renderSelect(t('admin.feed.type', '사료 유형'), form.feed_type_item_id, feedTypeOptions, (v) => setForm((p) => ({
                     ...p, feed_type_item_id: v, manufacturer_id: '', brand_id: '', model_id: '',
-                  })), true)}
+                  })), true, 'feed-type')}
                   {renderSelect(t('admin.feed.manufacturer', '제조사'), form.manufacturer_id, mfrOptions, (v) => setForm((p) => ({
                     ...p, manufacturer_id: v, brand_id: '', model_id: '',
-                  })))}
+                  })), false, 'feed-manufacturer')}
                   {renderSelect(t('admin.feed.brand', '브랜드'), form.brand_id, brandOptions, (v) => setForm((p) => ({
                     ...p, brand_id: v, model_id: '',
-                  })))}
-                  {renderSelect(t('admin.feed.models', '제품'), form.model_id, modelOptions, (v) => setForm((p) => ({ ...p, model_id: v })), true)}
+                  })), false, 'feed-brand')}
+                  {renderSelect(t('admin.feed.models', '제품'), form.model_id, modelOptions, (v) => setForm((p) => ({ ...p, model_id: v })), true, 'feed-model')}
                 </>
               )}
               <div className="form-group">
-                <label className="form-label">{t('guardian.feed.nickname', '별명')}</label>
+                <label className="form-label" htmlFor="feed-nickname">{t('guardian.feed.nickname', '별명')}</label>
                 <input
+                  id="feed-nickname"
+                  name="feed-nickname"
                   className="form-input"
                   value={form.nickname}
                   placeholder={t('guardian.feed.nickname_placeholder', '예: 방울이 처방식')}
@@ -381,8 +383,10 @@ export default function FeedManageModal({
               </div>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
                 <div className="form-group">
-                  <label className="form-label">{t('guardian.feed.daily_amount', '일일 급여량 (g)')}</label>
+                  <label className="form-label" htmlFor="feed-daily-amount">{t('guardian.feed.daily_amount', '일일 급여량 (g)')}</label>
                   <input
+                    id="feed-daily-amount"
+                    name="feed-daily-amount"
                     className="form-input"
                     type="number"
                     step="0.1"
@@ -391,8 +395,10 @@ export default function FeedManageModal({
                   />
                 </div>
                 <div className="form-group">
-                  <label className="form-label">{t('guardian.feed.feeding_frequency', '급여 횟수/일')}</label>
+                  <label className="form-label" htmlFor="feed-feeding-frequency">{t('guardian.feed.feeding_frequency', '급여 횟수/일')}</label>
                   <input
+                    id="feed-feeding-frequency"
+                    name="feed-feeding-frequency"
                     className="form-input"
                     type="number"
                     min="1"
@@ -404,8 +410,10 @@ export default function FeedManageModal({
               </div>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
                 <div className="form-group">
-                  <label className="form-label">{t('guardian.feed.start_date', '시작일')}</label>
+                  <label className="form-label" htmlFor="feed-start-date">{t('guardian.feed.start_date', '시작일')}</label>
                   <input
+                    id="feed-start-date"
+                    name="feed-start-date"
                     className="form-input"
                     type="date"
                     value={form.start_date}
@@ -413,8 +421,10 @@ export default function FeedManageModal({
                   />
                 </div>
                 <div className="form-group">
-                  <label className="form-label">{t('guardian.feed.end_date', '종료일')}</label>
+                  <label className="form-label" htmlFor="feed-end-date">{t('guardian.feed.end_date', '종료일')}</label>
                   <input
+                    id="feed-end-date"
+                    name="feed-end-date"
                     className="form-input"
                     type="date"
                     value={form.end_date}
@@ -424,6 +434,7 @@ export default function FeedManageModal({
               </div>
               <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 14, marginTop: 8, cursor: 'pointer' }}>
                 <input
+                  name="feed-is-primary"
                   type="checkbox"
                   checked={form.is_primary}
                   onChange={(e) => setForm((p) => ({ ...p, is_primary: e.target.checked }))}

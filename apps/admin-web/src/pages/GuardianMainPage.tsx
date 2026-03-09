@@ -875,8 +875,8 @@ export default function GuardianMainPage() {
                       </div>
                       <div style={{ marginBottom: 12 }}>
                         <div className="form-group">
-                          <label className="form-label">{t('guardian.health.measurement_item', '질병 수치 항목')}</label>
-                          <select className="form-select" value={selectedMeasurementItemId} onChange={(e) => setSelectedMeasurementItemId(e.target.value)}>
+                          <label className="form-label" htmlFor="health-measurement-item">{t('guardian.health.measurement_item', '질병 수치 항목')}</label>
+                          <select id="health-measurement-item" name="health-measurement-item" className="form-select" value={selectedMeasurementItemId} onChange={(e) => setSelectedMeasurementItemId(e.target.value)}>
                             <option value="">{t('common.select', 'Select')}</option>
                             {optMeasurement.filter((m) => measurementLogs.some((log) => log.measurement_item_id === m.id)).map((o) => (
                               <option key={o.id} value={o.id}>{optionLabel(o, t('common.none', '-'))}</option>
@@ -962,8 +962,8 @@ export default function GuardianMainPage() {
                         </div>
                         <div className="modal-body">
                           <div className="form-group">
-                            <label className="form-label">{t('guardian.log.logtype', '기록 유형')} *</label>
-                            <select className="form-select" value={logFormLogtypeId} onChange={(e) => { setLogFormLogtypeId(e.target.value); setLogFormValue(''); setLogFormUnitId(''); }}>
+                            <label className="form-label" htmlFor="log-logtype">{t('guardian.log.logtype', '기록 유형')} *</label>
+                            <select id="log-logtype" name="log-logtype" className="form-select" value={logFormLogtypeId} onChange={(e) => { setLogFormLogtypeId(e.target.value); setLogFormValue(''); setLogFormUnitId(''); }}>
                               <option value="">{t('common.select', 'Select')}</option>
                               {optLogType.map((o) => <option key={o.id} value={o.id}>{o.label}</option>)}
                             </select>
@@ -980,8 +980,8 @@ export default function GuardianMainPage() {
                               <div className="form-group">
                                 <label className="form-label">{metricLabel}</label>
                                 <div style={{ display: 'flex', gap: 8 }}>
-                                  <input className="form-input" type="number" step="any" value={logFormValue} onChange={(e) => setLogFormValue(e.target.value)} placeholder="0" style={{ flex: 1 }} />
-                                  <select className="form-select" value={logFormUnitId} onChange={(e) => setLogFormUnitId(e.target.value)} style={{ width: 100 }}>
+                                  <input id="log-value" name="log-value" className="form-input" type="number" step="any" value={logFormValue} onChange={(e) => setLogFormValue(e.target.value)} placeholder="0" style={{ flex: 1 }} />
+                                  <select id="log-unit" name="log-unit" className="form-select" value={logFormUnitId} onChange={(e) => setLogFormUnitId(e.target.value)} style={{ width: 100 }}>
                                     <option value="">{t('common.unit', '단위')}</option>
                                     {unitItems.map((u) => <option key={u.id} value={u.id}>{u.display_label ?? u.key}</option>)}
                                   </select>
@@ -990,20 +990,20 @@ export default function GuardianMainPage() {
                             );
                           })()}
                           <div className="form-group">
-                            <label className="form-label">{t('guardian.log.event_date', '날짜')} *</label>
-                            <input className="form-input" type="date" value={logFormDate} onChange={(e) => setLogFormDate(e.target.value)} />
+                            <label className="form-label" htmlFor="log-event-date">{t('guardian.log.event_date', '날짜')} *</label>
+                            <input id="log-event-date" name="log-event-date" className="form-input" type="date" value={logFormDate} onChange={(e) => setLogFormDate(e.target.value)} />
                           </div>
                           <div className="form-group">
-                            <label className="form-label">{t('guardian.log.event_time', '시간')}</label>
-                            <input className="form-input" type="time" value={logFormTime} onChange={(e) => setLogFormTime(e.target.value)} />
+                            <label className="form-label" htmlFor="log-event-time">{t('guardian.log.event_time', '시간')}</label>
+                            <input id="log-event-time" name="log-event-time" className="form-input" type="time" value={logFormTime} onChange={(e) => setLogFormTime(e.target.value)} />
                           </div>
                           <div className="form-group">
-                            <label className="form-label">{t('guardian.log.title_field', '제목')}</label>
-                            <input className="form-input" type="text" value={logFormTitle} onChange={(e) => setLogFormTitle(e.target.value)} placeholder={t('guardian.log.title_field', '제목')} />
+                            <label className="form-label" htmlFor="log-title">{t('guardian.log.title_field', '제목')}</label>
+                            <input id="log-title" name="log-title" className="form-input" type="text" value={logFormTitle} onChange={(e) => setLogFormTitle(e.target.value)} placeholder={t('guardian.log.title_field', '제목')} />
                           </div>
                           <div className="form-group">
-                            <label className="form-label">{t('guardian.log.notes', '메모')}</label>
-                            <textarea className="form-input" rows={3} value={logFormNotes} onChange={(e) => setLogFormNotes(e.target.value)} placeholder={t('guardian.log.notes', '메모')} />
+                            <label className="form-label" htmlFor="log-notes">{t('guardian.log.notes', '메모')}</label>
+                            <textarea id="log-notes" name="log-notes" className="form-input" rows={3} value={logFormNotes} onChange={(e) => setLogFormNotes(e.target.value)} placeholder={t('guardian.log.notes', '메모')} />
                           </div>
                         </div>
                         <div className="modal-footer">

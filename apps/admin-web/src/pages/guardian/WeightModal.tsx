@@ -52,8 +52,10 @@ export default function WeightModal({ open, selectedPet, t, setError, onClose, o
         </div>
         <div className="modal-body">
           <div className="form-group">
-            <label className="form-label">{t('guardian.health.weight_modal.weight', 'Weight')}</label>
+            <label className="form-label" htmlFor="weight-value">{t('guardian.health.weight_modal.weight', 'Weight')}</label>
             <input
+              id="weight-value"
+              name="weight-value"
               className="form-input"
               type="number"
               step="0.01"
@@ -62,8 +64,10 @@ export default function WeightModal({ open, selectedPet, t, setError, onClose, o
             />
           </div>
           <div className="form-group">
-            <label className="form-label">{t('guardian.health.weight_modal.measured_at', 'Measured At')}</label>
+            <label className="form-label" htmlFor="weight-measured-at">{t('guardian.health.weight_modal.measured_at', 'Measured At')}</label>
             <input
+              id="weight-measured-at"
+              name="weight-measured-at"
               className="form-input"
               type="datetime-local"
               value={weightForm.measured_at}
@@ -71,8 +75,10 @@ export default function WeightModal({ open, selectedPet, t, setError, onClose, o
             />
           </div>
           <div className="form-group">
-            <label className="form-label">{t('guardian.health.weight_modal.memo', 'Memo')}</label>
+            <label className="form-label" htmlFor="weight-notes">{t('guardian.health.weight_modal.memo', 'Memo')}</label>
             <textarea
+              id="weight-notes"
+              name="weight-notes"
               className="form-textarea"
               value={weightForm.notes}
               onChange={(e) => setWeightForm((prev) => ({ ...prev, notes: e.target.value }))}

@@ -160,11 +160,11 @@ export default function PetWizardModal({ open, mode, editingPetId, options, t, s
     return `${t('master.coat_length', '털길이')} - ${labelOf(options.optCoatLength, petForm.coat_length_id, dash)} - ${labelOf(options.optGrooming, petForm.grooming_cycle_id, dash)}`;
   }, [breedOptionsFiltered, diseaseRows, options, petForm, petWizardStep, t]);
 
-  function renderSelect(label: string, value: string, opts: Option[], onChange: (v: string) => void, required = false) {
+  function renderSelect(label: string, value: string, opts: Option[], onChange: (v: string) => void, required = false, name?: string) {
     return (
       <div className="form-group">
-        <label className="form-label">{label}{required ? ' *' : ''}</label>
-        <select className="form-select" value={value} onChange={(e) => onChange(e.target.value)}>
+        <label className="form-label" htmlFor={name}>{label}{required ? ' *' : ''}</label>
+        <select id={name} name={name} className="form-select" value={value} onChange={(e) => onChange(e.target.value)}>
           <option value="">{t('common.select', 'Select')}</option>
           {opts.map((o) => <option key={o.id} value={o.id}>{optionLabel(o, t('common.none', '-'))}</option>)}
         </select>
@@ -177,6 +177,7 @@ export default function PetWizardModal({ open, mode, editingPetId, options, t, s
     values: string[],
     opts: Option[],
     onChange: (next: string[]) => void,
+    name?: string,
   ) {
     const selected = normalizeMultiStableIds(values, opts);
     const rows = selected.length > 0 ? selected : [''];
@@ -190,6 +191,7 @@ export default function PetWizardModal({ open, mode, editingPetId, options, t, s
             return (
               <div key={`${label}-${index}-${rowValue || 'empty'}`} style={{ display: 'flex', gap: 8 }}>
                 <select
+                  name={name ? `${name}-${index}` : undefined}
                   className="form-select"
                   value={rowValue}
                   onChange={(e) => {
@@ -271,6 +273,7 @@ export default function PetWizardModal({ open, mode, editingPetId, options, t, s
             return (
               <div key={`disease-row-${index}-${row.groupId}-${row.diseaseId}`} style={{ display: 'grid', gap: 8, gridTemplateColumns: '1fr 1fr auto' }}>
                 <select
+                  name={`pet-disease-group-${index}`}
                   className="form-select"
                   value={row.groupId}
                   onChange={(e) => {
@@ -285,6 +288,7 @@ export default function PetWizardModal({ open, mode, editingPetId, options, t, s
                   {options.optDiseaseGroup.map((o) => <option key={o.id} value={o.id}>{optionLabel(o, t('common.none', '-'))}</option>)}
                 </select>
                 <select
+                  name={`pet-disease-${index}`}
                   className="form-select"
                   value={row.diseaseId}
                   onChange={(e) => {
@@ -467,22 +471,22 @@ export default function PetWizardModal({ open, mode, editingPetId, options, t, s
             <>
               <div className="form-row col2">
                 <div className="form-group">
-                  <label className="form-label">{t('guardian.form.name', 'Name')} *</label>
-                  <input className="form-input" value={petForm.name} onChange={(e) => setPetForm((p) => ({ ...p, name: e.target.value }))} />
+                  <label className="form-label" htmlFor="pet-name">{t('guardian.form.name', 'Name')} *</label>
+                  <input id="pet-name" name="pet-name" className="form-input" value={petForm.name} onChange={(e) => setPetForm((p) => ({ ...p, name: e.target.value }))} />
                 </div>
                 <div className="form-group">
-                  <label className="form-label">{t('guardian.form.microchip', 'Microchip Number')}</label>
-                  <input className="form-input" value={petForm.microchip_no} onChange={(e) => setPetForm((p) => ({ ...p, microchip_no: e.target.value }))} />
+                  <label className="form-label" htmlFor="pet-microchip">{t('guardian.form.microchip', 'Microchip Number')}</label>
+                  <input id="pet-microchip" name="pet-microchip" className="form-input" value={petForm.microchip_no} onChange={(e) => setPetForm((p) => ({ ...p, microchip_no: e.target.value }))} />
                 </div>
               </div>
               <div className="form-row col2">
                 <div className="form-group">
-                  <label className="form-label">{t('guardian.form.birthday', 'Birthday')}</label>
-                  <input className="form-input" type="date" value={petForm.birthday} onChange={(e) => setPetForm((p) => ({ ...p, birthday: e.target.value }))} />
+                  <label className="form-label" htmlFor="pet-birthday">{t('guardian.form.birthday', 'Birthday')}</label>
+                  <input id="pet-birthday" name="pet-birthday" className="form-input" type="date" value={petForm.birthday} onChange={(e) => setPetForm((p) => ({ ...p, birthday: e.target.value }))} />
                 </div>
                 <div className="form-group">
-                  <label className="form-label">{t('guardian.form.current_weight', 'Current Weight')}</label>
-                  <input className="form-input" type="number" step="0.01" value={petForm.current_weight} onChange={(e) => setPetForm((p) => ({ ...p, current_weight: e.target.value }))} />
+                  <label className="form-label" htmlFor="pet-weight">{t('guardian.form.current_weight', 'Current Weight')}</label>
+                  <input id="pet-weight" name="pet-weight" className="form-input" type="number" step="0.01" value={petForm.current_weight} onChange={(e) => setPetForm((p) => ({ ...p, current_weight: e.target.value }))} />
                 </div>
               </div>
             </>
@@ -490,19 +494,20 @@ export default function PetWizardModal({ open, mode, editingPetId, options, t, s
 
           {petWizardStep === 2 && (
             <div className="form-row col2">
-              {renderSelect(t('master.pet_type', 'Pet Type'), petForm.pet_type_id, options.optPetType, (v) => setPetForm((p) => ({ ...p, pet_type_id: v, breed_id: '' })), true)}
-              {renderSelect(t('master.pet_breed', 'Breed'), petForm.breed_id, breedOptionsFiltered, (v) => setPetForm((p) => ({ ...p, breed_id: v })))}
+              {renderSelect(t('master.pet_type', 'Pet Type'), petForm.pet_type_id, options.optPetType, (v) => setPetForm((p) => ({ ...p, pet_type_id: v, breed_id: '' })), true, 'pet-type')}
+              {renderSelect(t('master.pet_breed', 'Breed'), petForm.breed_id, breedOptionsFiltered, (v) => setPetForm((p) => ({ ...p, breed_id: v })), false, 'pet-breed')}
             </div>
           )}
 
           {petWizardStep === 3 && (
             <div className="form-row col2">
-              {renderSelect(t('master.pet_gender', 'Gender'), petForm.gender_id, options.optGender, (v) => setPetForm((p) => ({ ...p, gender_id: v })), true)}
+              {renderSelect(t('master.pet_gender', 'Gender'), petForm.gender_id, options.optGender, (v) => setPetForm((p) => ({ ...p, gender_id: v })), true, 'pet-gender')}
               {renderDropdownRows(
                 t('master.pet_color', 'Primary Color'),
                 petForm.color_ids,
                 options.optColor,
                 (next) => setPetForm((p) => ({ ...p, color_ids: normalizeUniqueIds(next) })),
+                'pet-color',
               )}
             </div>
           )}
@@ -514,6 +519,7 @@ export default function PetWizardModal({ open, mode, editingPetId, options, t, s
                 petForm.vaccination_ids,
                 options.optVaccination,
                 (next) => setPetForm((p) => ({ ...p, vaccination_ids: normalizeUniqueIds(next) })),
+                'pet-vaccination',
               )}
             </div>
           )}
@@ -541,16 +547,18 @@ export default function PetWizardModal({ open, mode, editingPetId, options, t, s
                   petForm.temperament_ids,
                   options.optTemperament,
                   (next) => setPetForm((p) => ({ ...p, temperament_ids: normalizeUniqueIds(next) })),
+                  'pet-temperament',
                 )}
-                {renderSelect(t('master.activity_level', 'Activity Level'), petForm.activity_level_id, options.optActivity, (v) => setPetForm((p) => ({ ...p, activity_level_id: v })))}
+                {renderSelect(t('master.activity_level', 'Activity Level'), petForm.activity_level_id, options.optActivity, (v) => setPetForm((p) => ({ ...p, activity_level_id: v })), false, 'pet-activity')}
               </div>
               <div className="form-row col2">
-                {renderSelect(t('master.diet_type', 'Diet Type'), petForm.diet_type_id, options.optDiet, (v) => setPetForm((p) => ({ ...p, diet_type_id: v })))}
+                {renderSelect(t('master.diet_type', 'Diet Type'), petForm.diet_type_id, options.optDiet, (v) => setPetForm((p) => ({ ...p, diet_type_id: v })), false, 'pet-diet')}
                 {renderDropdownRows(
                   t('master.allergy_type', 'Allergy'),
                   petForm.allergy_ids,
                   options.optAllergy,
                   (next) => setPetForm((p) => ({ ...p, allergy_ids: normalizeUniqueIds(next) })),
+                  'pet-allergy',
                 )}
               </div>
               <div className="form-row col1">
@@ -559,6 +567,7 @@ export default function PetWizardModal({ open, mode, editingPetId, options, t, s
                   petForm.symptom_tag_ids,
                   options.optSymptom,
                   (next) => setPetForm((p) => ({ ...p, symptom_tag_ids: normalizeUniqueIds(next) })),
+                  'pet-symptom',
                 )}
               </div>
             </>
@@ -567,13 +576,13 @@ export default function PetWizardModal({ open, mode, editingPetId, options, t, s
           {petWizardStep === 7 && (
             <>
               <div className="form-row col2">
-                {renderSelect(t('master.coat_length', 'Coat Length'), petForm.coat_length_id, options.optCoatLength, (v) => setPetForm((p) => ({ ...p, coat_length_id: v })))}
-                {renderSelect(t('master.grooming_cycle', 'Grooming Cycle'), petForm.grooming_cycle_id, options.optGrooming, (v) => setPetForm((p) => ({ ...p, grooming_cycle_id: v })))}
+                {renderSelect(t('master.coat_length', 'Coat Length'), petForm.coat_length_id, options.optCoatLength, (v) => setPetForm((p) => ({ ...p, coat_length_id: v })), false, 'pet-coat-length')}
+                {renderSelect(t('master.grooming_cycle', 'Grooming Cycle'), petForm.grooming_cycle_id, options.optGrooming, (v) => setPetForm((p) => ({ ...p, grooming_cycle_id: v })), false, 'pet-grooming')}
               </div>
               <div className="form-row col1">
                 <div className="form-group">
-                  <label className="form-label">{t('guardian.form.notes', 'Notes')}</label>
-                  <textarea className="form-textarea" value={petForm.notes} onChange={(e) => setPetForm((p) => ({ ...p, notes: e.target.value }))} />
+                  <label className="form-label" htmlFor="pet-notes">{t('guardian.form.notes', 'Notes')}</label>
+                  <textarea id="pet-notes" name="pet-notes" className="form-textarea" value={petForm.notes} onChange={(e) => setPetForm((p) => ({ ...p, notes: e.target.value }))} />
                 </div>
               </div>
             </>

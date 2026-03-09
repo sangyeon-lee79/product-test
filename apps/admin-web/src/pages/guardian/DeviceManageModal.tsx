@@ -164,11 +164,11 @@ export default function DeviceManageModal({
     [models],
   );
 
-  function renderSelect(label: string, value: string, options: Array<{ id: string; key: string; label: string }>, onChange: (v: string) => void, required = false) {
+  function renderSelect(label: string, value: string, options: Array<{ id: string; key: string; label: string }>, onChange: (v: string) => void, required = false, name?: string) {
     return (
       <div className="form-group">
-        <label className="form-label">{label}{required ? ' *' : ''}</label>
-        <select className="form-select" value={value} onChange={(e) => onChange(e.target.value)}>
+        <label className="form-label" htmlFor={name}>{label}{required ? ' *' : ''}</label>
+        <select id={name} name={name} className="form-select" value={value} onChange={(e) => onChange(e.target.value)}>
           <option value="">{t('common.select', 'Select')}</option>
           {options.map((o) => <option key={o.id} value={o.id}>{o.label}</option>)}
         </select>
@@ -320,24 +320,26 @@ export default function DeviceManageModal({
               </h4>
               {renderSelect(t('guardian.device.disease', '질병'), form.disease_item_id, diseaseOptionsForPet, (v) => setForm((p) => ({
                 ...p, disease_item_id: v, device_type_item_id: '', manufacturer_id: '', brand_id: '', model_id: '',
-              })))}
+              })), false, 'device-disease')}
               {!editingId && (
                 <>
                   {renderSelect(t('guardian.health.measurement.device_type', '장치 유형'), form.device_type_item_id, deviceTypeOptions, (v) => setForm((p) => ({
                     ...p, device_type_item_id: v, manufacturer_id: '', brand_id: '', model_id: '',
-                  })), true)}
+                  })), true, 'device-type')}
                   {renderSelect(t('guardian.health.measurement.manufacturer', '제조사'), form.manufacturer_id, mfrOptions, (v) => setForm((p) => ({
                     ...p, manufacturer_id: v, brand_id: '', model_id: '',
-                  })))}
+                  })), false, 'device-manufacturer')}
                   {renderSelect(t('guardian.health.measurement.brand', '브랜드'), form.brand_id, brandOptions, (v) => setForm((p) => ({
                     ...p, brand_id: v, model_id: '',
-                  })))}
-                  {renderSelect(t('guardian.health.measurement.model', '모델'), form.model_id, modelOptions, (v) => setForm((p) => ({ ...p, model_id: v })), true)}
+                  })), false, 'device-brand')}
+                  {renderSelect(t('guardian.health.measurement.model', '모델'), form.model_id, modelOptions, (v) => setForm((p) => ({ ...p, model_id: v })), true, 'device-model')}
                 </>
               )}
               <div className="form-group">
-                <label className="form-label">{t('guardian.device.nickname', '별명')}</label>
+                <label className="form-label" htmlFor="device-nickname">{t('guardian.device.nickname', '별명')}</label>
                 <input
+                  id="device-nickname"
+                  name="device-nickname"
                   className="form-input"
                   value={form.nickname}
                   placeholder={t('guardian.device.nickname_placeholder', '예: 방울이 리브레')}
@@ -346,6 +348,7 @@ export default function DeviceManageModal({
               </div>
               <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 14, marginTop: 8, cursor: 'pointer' }}>
                 <input
+                  name="device-is-default"
                   type="checkbox"
                   checked={form.is_default}
                   onChange={(e) => setForm((p) => ({ ...p, is_default: e.target.checked }))}

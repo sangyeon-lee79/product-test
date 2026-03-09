@@ -2,33 +2,33 @@
 -- GuardianMainPage 로그 입력 폼에서 사용
 
 -- ─── 카테고리 ────────────────────────────────────────────────────────────────
-INSERT OR IGNORE INTO master_categories (id, key, sort_order, is_active, created_at, updated_at)
+INSERT OR IGNORE INTO master_categories (id, code, sort_order, is_active, created_at, updated_at)
 VALUES
   ('mc-metric', 'metric', 210, 1, datetime('now'), datetime('now')),
   ('mc-unit',   'unit',   211, 1, datetime('now'), datetime('now'));
 
 -- ─── metric 아이템 ──────────────────────────────────────────────────────────
-INSERT OR IGNORE INTO master_items (id, category_id, parent_id, key, sort_order, is_active, metadata, created_at, updated_at)
+INSERT OR IGNORE INTO master_items (id, category_id, parent_id, code, sort_order, is_active, metadata, created_at, updated_at)
 VALUES
-  ('mi-metric-blood-glucose', (SELECT id FROM master_categories WHERE key='metric'), NULL, 'blood_glucose', 1, 1, '{}', datetime('now'), datetime('now')),
-  ('mi-metric-insulin-dose',  (SELECT id FROM master_categories WHERE key='metric'), NULL, 'insulin_dose',  2, 1, '{}', datetime('now'), datetime('now')),
-  ('mi-metric-meal-amount',   (SELECT id FROM master_categories WHERE key='metric'), NULL, 'meal_amount',   3, 1, '{}', datetime('now'), datetime('now')),
-  ('mi-metric-food-weight',   (SELECT id FROM master_categories WHERE key='metric'), NULL, 'food_weight',   4, 1, '{}', datetime('now'), datetime('now')),
-  ('mi-metric-water-intake',  (SELECT id FROM master_categories WHERE key='metric'), NULL, 'water_intake',  5, 1, '{}', datetime('now'), datetime('now')),
-  ('mi-metric-duration',      (SELECT id FROM master_categories WHERE key='metric'), NULL, 'duration',      6, 1, '{}', datetime('now'), datetime('now')),
-  ('mi-metric-body-weight',   (SELECT id FROM master_categories WHERE key='metric'), NULL, 'body_weight',   7, 1, '{}', datetime('now'), datetime('now'));
+  ('mi-metric-blood-glucose', (SELECT id FROM master_categories WHERE code='metric'), NULL, 'blood_glucose', 1, 1, '{}', datetime('now'), datetime('now')),
+  ('mi-metric-insulin-dose',  (SELECT id FROM master_categories WHERE code='metric'), NULL, 'insulin_dose',  2, 1, '{}', datetime('now'), datetime('now')),
+  ('mi-metric-meal-amount',   (SELECT id FROM master_categories WHERE code='metric'), NULL, 'meal_amount',   3, 1, '{}', datetime('now'), datetime('now')),
+  ('mi-metric-food-weight',   (SELECT id FROM master_categories WHERE code='metric'), NULL, 'food_weight',   4, 1, '{}', datetime('now'), datetime('now')),
+  ('mi-metric-water-intake',  (SELECT id FROM master_categories WHERE code='metric'), NULL, 'water_intake',  5, 1, '{}', datetime('now'), datetime('now')),
+  ('mi-metric-duration',      (SELECT id FROM master_categories WHERE code='metric'), NULL, 'duration',      6, 1, '{}', datetime('now'), datetime('now')),
+  ('mi-metric-body-weight',   (SELECT id FROM master_categories WHERE code='metric'), NULL, 'body_weight',   7, 1, '{}', datetime('now'), datetime('now'));
 
 -- ─── unit 아이템 ────────────────────────────────────────────────────────────
-INSERT OR IGNORE INTO master_items (id, category_id, parent_id, key, sort_order, is_active, metadata, created_at, updated_at)
+INSERT OR IGNORE INTO master_items (id, category_id, parent_id, code, sort_order, is_active, metadata, created_at, updated_at)
 VALUES
-  ('mi-unit-mg-dl',  (SELECT id FROM master_categories WHERE key='unit'), NULL, 'mg_dl',  1, 1, '{"symbol":"mg/dL"}', datetime('now'), datetime('now')),
-  ('mi-unit-mmol-l', (SELECT id FROM master_categories WHERE key='unit'), NULL, 'mmol_l', 2, 1, '{"symbol":"mmol/L"}', datetime('now'), datetime('now')),
-  ('mi-unit-iu',     (SELECT id FROM master_categories WHERE key='unit'), NULL, 'iu',     3, 1, '{"symbol":"IU"}', datetime('now'), datetime('now')),
-  ('mi-unit-g',      (SELECT id FROM master_categories WHERE key='unit'), NULL, 'g',      4, 1, '{"symbol":"g"}', datetime('now'), datetime('now')),
-  ('mi-unit-kg',     (SELECT id FROM master_categories WHERE key='unit'), NULL, 'kg',     5, 1, '{"symbol":"kg"}', datetime('now'), datetime('now')),
-  ('mi-unit-ml',     (SELECT id FROM master_categories WHERE key='unit'), NULL, 'ml',     6, 1, '{"symbol":"mL"}', datetime('now'), datetime('now')),
-  ('mi-unit-kcal',   (SELECT id FROM master_categories WHERE key='unit'), NULL, 'kcal',   7, 1, '{"symbol":"kcal"}', datetime('now'), datetime('now')),
-  ('mi-unit-min',    (SELECT id FROM master_categories WHERE key='unit'), NULL, 'min',    8, 1, '{"symbol":"min"}', datetime('now'), datetime('now'));
+  ('mi-unit-mg-dl',  (SELECT id FROM master_categories WHERE code='unit'), NULL, 'mg_dl',  1, 1, '{"symbol":"mg/dL"}', datetime('now'), datetime('now')),
+  ('mi-unit-mmol-l', (SELECT id FROM master_categories WHERE code='unit'), NULL, 'mmol_l', 2, 1, '{"symbol":"mmol/L"}', datetime('now'), datetime('now')),
+  ('mi-unit-iu',     (SELECT id FROM master_categories WHERE code='unit'), NULL, 'iu',     3, 1, '{"symbol":"IU"}', datetime('now'), datetime('now')),
+  ('mi-unit-g',      (SELECT id FROM master_categories WHERE code='unit'), NULL, 'g',      4, 1, '{"symbol":"g"}', datetime('now'), datetime('now')),
+  ('mi-unit-kg',     (SELECT id FROM master_categories WHERE code='unit'), NULL, 'kg',     5, 1, '{"symbol":"kg"}', datetime('now'), datetime('now')),
+  ('mi-unit-ml',     (SELECT id FROM master_categories WHERE code='unit'), NULL, 'ml',     6, 1, '{"symbol":"mL"}', datetime('now'), datetime('now')),
+  ('mi-unit-kcal',   (SELECT id FROM master_categories WHERE code='unit'), NULL, 'kcal',   7, 1, '{"symbol":"kcal"}', datetime('now'), datetime('now')),
+  ('mi-unit-min',    (SELECT id FROM master_categories WHERE code='unit'), NULL, 'min',    8, 1, '{"symbol":"min"}', datetime('now'), datetime('now'));
 
 -- ─── i18n 번역 ──────────────────────────────────────────────────────────────
 INSERT INTO i18n_translations
