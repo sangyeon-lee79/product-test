@@ -34,13 +34,6 @@
 			"bucket_name": "pet-life-media"
 		}
 	],
-	"kv_namespaces": [
-		{
-			"binding": "RATE_LIMIT_KV",
-			"id": "placeholder-kv-id",
-			"preview_id": "placeholder-kv-preview-id"
-		}
-	],
 
 	"env": {
 		"staging": {
