@@ -215,10 +215,23 @@ export default function MeasurementModal({
     [optDiseaseDevice, measurementForm.disease_item_id],
   );
 
-  const healthMeasurementOptions = useMemo(
-    () => optMeasurement.filter((item) => !measurementForm.device_type_item_id || item.parentId === measurementForm.device_type_item_id),
-    [optMeasurement, measurementForm.device_type_item_id],
-  );
+  const healthMeasurementOptions = useMemo(() => {
+    if (!measurementForm.device_type_item_id) return optMeasurement;
+    // Direct parent match (device_type → measurement)
+    const byDeviceType = optMeasurement.filter((item) => item.parentId === measurementForm.device_type_item_id);
+    if (byDeviceType.length > 0) return byDeviceType;
+    // Fallback: find measurements whose parent is any sibling device_type under the same disease
+    if (measurementForm.disease_item_id) {
+      const siblingIds = new Set(
+        optDiseaseDevice
+          .filter((d) => d.parentId === measurementForm.disease_item_id)
+          .map((d) => d.id),
+      );
+      const byDisease = optMeasurement.filter((item) => item.parentId && siblingIds.has(item.parentId));
+      if (byDisease.length > 0) return byDisease;
+    }
+    return optMeasurement;
+  }, [optMeasurement, optDiseaseDevice, measurementForm.device_type_item_id, measurementForm.disease_item_id]);
 
   const healthContextOptions = useMemo(
     () => optMeasurementContext.filter((item) => !measurementForm.measurement_item_id || item.parentId === measurementForm.measurement_item_id),
@@ -260,6 +273,14 @@ export default function MeasurementModal({
       .map((row) => ({ id: row.id, key: row.key || row.id, label: row.symbol ? `${row.name} (${row.symbol})` : row.name })),
     [measurementUnits],
   );
+
+  // Auto-select measurement item when only one option
+  useEffect(() => {
+    if (!open || measurementForm.measurement_item_id) return;
+    if (healthMeasurementOptions.length === 1) {
+      setMeasurementForm((prev) => ({ ...prev, measurement_item_id: healthMeasurementOptions[0].id }));
+    }
+  }, [open, healthMeasurementOptions, measurementForm.measurement_item_id]);
 
   // Auto-set unit from selected measurement item
   useEffect(() => {
