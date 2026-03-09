@@ -11,7 +11,7 @@ export type {
   FriendRequest, FriendConnection,
   DeviceType, DeviceManufacturer, DeviceBrand, DeviceModel, MeasurementUnit, GuardianDevice,
   FeedType, FeedManufacturer, FeedBrand, FeedModel,
-  PetFeed, FeedNutrition,
+  PetFeed, FeedNutrition, FeedingLog,
   PetLog, GlucoseAlert,
 } from '../types/api';
 import type {
@@ -24,7 +24,7 @@ import type {
   FriendRequest, FriendConnection,
   DeviceType, DeviceManufacturer, DeviceBrand, DeviceModel, MeasurementUnit, GuardianDevice,
   FeedType, FeedManufacturer, FeedBrand, FeedModel,
-  PetFeed, FeedNutrition,
+  PetFeed, FeedNutrition, FeedingLog,
   PetLog, GlucoseAlert,
 } from '../types/api';
 
@@ -407,6 +407,20 @@ export const api = {
       }>) => request<{ id: string; updated: boolean }>(`/api/v1/pets/${petId}/pet-feeds/${feedId}`, { method: 'PUT', body: JSON.stringify(data) }),
       remove: (petId: string, feedId: string) =>
         request<{ id: string; deleted: boolean }>(`/api/v1/pets/${petId}/pet-feeds/${feedId}`, { method: 'DELETE' }),
+    },
+    feedingLogs: {
+      list: (petId: string) =>
+        request<{ logs: FeedingLog[] }>(`/api/v1/pets/${petId}/feeding-logs`),
+      create: (petId: string, data: {
+        pet_feed_id?: string; feed_model_id?: string; amount_g?: number;
+        amount_unit?: string; frequency?: number; feeding_time?: string; memo?: string;
+      }) => request<{ id: string }>(`/api/v1/pets/${petId}/feeding-logs`, { method: 'POST', body: JSON.stringify(data) }),
+      update: (petId: string, logId: string, data: Partial<{
+        pet_feed_id: string; feed_model_id: string; amount_g: number;
+        amount_unit: string; frequency: number; feeding_time: string; memo: string;
+      }>) => request<{ id: string; updated: boolean }>(`/api/v1/pets/${petId}/feeding-logs/${logId}`, { method: 'PUT', body: JSON.stringify(data) }),
+      remove: (petId: string, logId: string) =>
+        request<{ id: string; deleted: boolean }>(`/api/v1/pets/${petId}/feeding-logs/${logId}`, { method: 'DELETE' }),
     },
     guardianDevices: {
       list: (petId: string) =>

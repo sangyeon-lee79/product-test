@@ -126,6 +126,12 @@ export async function handlePets(request: Request, env: Env, url: URL): Promise<
     return handlePetFeeds(request, env, url);
   }
 
+  // /pets/:id/feeding-logs (MUST be before /logs to avoid false match)
+  if (sub.includes('/feeding-logs')) {
+    const { handlePetFeedingLogs } = await import('../petFeedingLogs');
+    return handlePetFeedingLogs(request, env, url);
+  }
+
   // /pets/:id/guardian-devices (delegated to devices route)
   if (sub.includes('/guardian-devices')) {
     const { handleDevices } = await import('../devices');

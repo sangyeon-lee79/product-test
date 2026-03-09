@@ -1,13 +1,12 @@
 // 사료 관리 모달 — 등록된 사료 목록, 추가, 수정, 삭제
 import { useEffect, useMemo, useState } from 'react';
-import { api, type FeedBrand, type FeedManufacturer, type FeedModel, type FeedType, type Pet, type PetFeed } from '../../lib/api';
+import { api, type FeedBrand, type FeedManufacturer, type FeedModel, type FeedNutrition, type FeedType, type Pet, type PetFeed } from '../../lib/api';
 import type { Lang } from '../../lib/i18n';
-import { type Option, uiErrorMessage } from './guardianTypes';
+import { uiErrorMessage } from './guardianTypes';
 
 interface Props {
   open: boolean;
   selectedPet: Pet | null;
-  optDisease: Option[];
   lang: Lang;
   t: (key: string, fallback?: string) => string;
   setError: (msg: string) => void;
@@ -20,17 +19,12 @@ const EMPTY_FORM = {
   manufacturer_id: '',
   brand_id: '',
   model_id: '',
-  disease_item_id: '',
   nickname: '',
-  daily_amount_g: '',
-  feeding_frequency: '',
-  start_date: '',
-  end_date: '',
   is_primary: false,
 };
 
 export default function FeedManageModal({
-  open, selectedPet, optDisease,
+  open, selectedPet,
   lang, t, setError, onClose, onChanged,
 }: Props) {
   const [feeds, setFeeds] = useState<PetFeed[]>([]);
@@ -44,6 +38,7 @@ export default function FeedManageModal({
   const [manufacturers, setManufacturers] = useState<FeedManufacturer[]>([]);
   const [brands, setBrands] = useState<FeedBrand[]>([]);
   const [models, setModels] = useState<FeedModel[]>([]);
+  const [nutrition, setNutrition] = useState<FeedNutrition | null>(null);
 
   const petId = selectedPet?.id;
 
@@ -119,18 +114,17 @@ export default function FeedManageModal({
     void run();
   }, [open, showForm, form.feed_type_item_id, form.manufacturer_id, form.brand_id]);
 
-  const diseaseOptionsForPet = useMemo(() => {
-    if (!selectedPet?.disease_history_ids) return optDisease;
-    let ids: string[] = [];
-    try {
-      const raw = selectedPet.disease_history_ids;
-      ids = Array.isArray(raw) ? raw : JSON.parse(raw as string) as string[];
-    } catch { return optDisease; }
-    if (!ids.length) return optDisease;
-    const set = new Set(ids);
-    const filtered = optDisease.filter((o) => set.has(o.id));
-    return filtered.length ? filtered : optDisease;
-  }, [optDisease, selectedPet?.disease_history_ids]);
+  // Load nutrition when model changes
+  useEffect(() => {
+    if (!form.model_id) { setNutrition(null); return; }
+    const run = async () => {
+      try {
+        const data = await api.feedCatalog.public.nutrition(form.model_id);
+        setNutrition(data);
+      } catch { setNutrition(null); }
+    };
+    void run();
+  }, [form.model_id]);
 
   // Feed type options: only types with model_count > 0
   const feedTypeOptions = useMemo(
@@ -193,12 +187,7 @@ export default function FeedManageModal({
       manufacturer_id: '',
       brand_id: '',
       model_id: f.feed_model_id,
-      disease_item_id: f.disease_item_id || '',
       nickname: f.nickname || '',
-      daily_amount_g: f.daily_amount_g != null ? String(f.daily_amount_g) : '',
-      feeding_frequency: f.feeding_frequency != null ? String(f.feeding_frequency) : '',
-      start_date: f.start_date || '',
-      end_date: f.end_date || '',
       is_primary: !!f.is_primary,
     });
     setShowForm(true);
@@ -210,29 +199,20 @@ export default function FeedManageModal({
     try {
       if (editingId) {
         await api.pets.petFeeds.update(petId, editingId, {
-          disease_item_id: form.disease_item_id || undefined,
           nickname: form.nickname,
-          daily_amount_g: form.daily_amount_g ? Number(form.daily_amount_g) : undefined,
-          feeding_frequency: form.feeding_frequency ? Number(form.feeding_frequency) : undefined,
-          start_date: form.start_date || undefined,
-          end_date: form.end_date || undefined,
           is_primary: form.is_primary,
         });
       } else {
         await api.pets.petFeeds.create(petId, {
           feed_model_id: form.model_id,
-          disease_item_id: form.disease_item_id || undefined,
           nickname: form.nickname || undefined,
-          daily_amount_g: form.daily_amount_g ? Number(form.daily_amount_g) : undefined,
-          feeding_frequency: form.feeding_frequency ? Number(form.feeding_frequency) : undefined,
-          start_date: form.start_date || undefined,
-          end_date: form.end_date || undefined,
           is_primary: form.is_primary,
         });
       }
       setShowForm(false);
       setEditingId(null);
       setForm(EMPTY_FORM);
+      setNutrition(null);
       await loadFeeds();
     } catch (e) {
       setError(uiErrorMessage(e, t('common.err.save', 'Failed to save.')));
@@ -276,13 +256,6 @@ export default function FeedManageModal({
     return parts.join(' · ');
   }
 
-  function feedAmountLabel(f: PetFeed): string {
-    const parts: string[] = [];
-    if (f.daily_amount_g != null) parts.push(`${f.daily_amount_g}${f.daily_amount_unit || 'g'}`);
-    if (f.feeding_frequency != null) parts.push(`${f.feeding_frequency}${t('guardian.feed.feeding_frequency', 'x/day')}`);
-    return parts.join(' · ');
-  }
-
   if (!open) return null;
 
   return (
@@ -313,11 +286,6 @@ export default function FeedManageModal({
                     {f.nickname && <span style={{ fontWeight: 400, color: 'var(--text-secondary)', marginLeft: 8 }}>({f.nickname})</span>}
                   </div>
                   <div style={{ fontSize: 13, color: 'var(--text-secondary)', marginTop: 2 }}>{feedSubLabel(f)}</div>
-                  {feedAmountLabel(f) && (
-                    <div style={{ fontSize: 12, color: 'var(--text-secondary)', marginTop: 2 }}>
-                      {feedAmountLabel(f)}
-                    </div>
-                  )}
                   {f.calories_per_100g != null && (
                     <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 2 }}>
                       {f.calories_per_100g} kcal/100g
@@ -353,9 +321,6 @@ export default function FeedManageModal({
               <h4 style={{ margin: '0 0 12px', fontSize: 15 }}>
                 {editingId ? t('guardian.feed.edit', '사료 수정') : t('guardian.feed.add', '사료 추가')}
               </h4>
-              {renderSelect(t('guardian.device.disease', '질병'), form.disease_item_id, diseaseOptionsForPet, (v) => setForm((p) => ({
-                ...p, disease_item_id: v, feed_type_item_id: '', manufacturer_id: '', brand_id: '', model_id: '',
-              })), false, 'feed-disease')}
               {!editingId && (
                 <>
                   {renderSelect(t('admin.feed.type', '사료 유형'), form.feed_type_item_id, feedTypeOptions, (v) => setForm((p) => ({
@@ -381,57 +346,20 @@ export default function FeedManageModal({
                   onChange={(e) => setForm((p) => ({ ...p, nickname: e.target.value }))}
                 />
               </div>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
-                <div className="form-group">
-                  <label className="form-label" htmlFor="feed-daily-amount">{t('guardian.feed.daily_amount', '일일 급여량 (g)')}</label>
-                  <input
-                    id="feed-daily-amount"
-                    name="feed-daily-amount"
-                    className="form-input"
-                    type="number"
-                    step="0.1"
-                    value={form.daily_amount_g}
-                    onChange={(e) => setForm((p) => ({ ...p, daily_amount_g: e.target.value }))}
-                  />
+              {/* Nutrition info (read-only, shown when model selected) */}
+              {nutrition && (
+                <div style={{ margin: '8px 0', padding: '10px 12px', background: 'var(--bg)', borderRadius: 6, border: '1px solid var(--border)' }}>
+                  <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 6 }}>{t('admin.feed.nutrition', 'Nutrition')}</div>
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '4px 12px', fontSize: 12, color: 'var(--text-secondary)' }}>
+                    {nutrition.calories_per_100g != null && <span>{t('admin.feed.calories', 'Calories')}: {nutrition.calories_per_100g} kcal</span>}
+                    {nutrition.protein_pct != null && <span>{t('admin.feed.protein', 'Protein')}: {nutrition.protein_pct}%</span>}
+                    {nutrition.fat_pct != null && <span>{t('admin.feed.fat', 'Fat')}: {nutrition.fat_pct}%</span>}
+                    {nutrition.fiber_pct != null && <span>{t('admin.feed.fiber', 'Fiber')}: {nutrition.fiber_pct}%</span>}
+                    {nutrition.moisture_pct != null && <span>{t('admin.feed.moisture', 'Moisture')}: {nutrition.moisture_pct}%</span>}
+                    {nutrition.carbohydrate_pct != null && <span>{t('admin.feed.carbohydrate', 'Carbs')}: {nutrition.carbohydrate_pct}%</span>}
+                  </div>
                 </div>
-                <div className="form-group">
-                  <label className="form-label" htmlFor="feed-feeding-frequency">{t('guardian.feed.feeding_frequency', '급여 횟수/일')}</label>
-                  <input
-                    id="feed-feeding-frequency"
-                    name="feed-feeding-frequency"
-                    className="form-input"
-                    type="number"
-                    min="1"
-                    max="10"
-                    value={form.feeding_frequency}
-                    onChange={(e) => setForm((p) => ({ ...p, feeding_frequency: e.target.value }))}
-                  />
-                </div>
-              </div>
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
-                <div className="form-group">
-                  <label className="form-label" htmlFor="feed-start-date">{t('guardian.feed.start_date', '시작일')}</label>
-                  <input
-                    id="feed-start-date"
-                    name="feed-start-date"
-                    className="form-input"
-                    type="date"
-                    value={form.start_date}
-                    onChange={(e) => setForm((p) => ({ ...p, start_date: e.target.value }))}
-                  />
-                </div>
-                <div className="form-group">
-                  <label className="form-label" htmlFor="feed-end-date">{t('guardian.feed.end_date', '종료일')}</label>
-                  <input
-                    id="feed-end-date"
-                    name="feed-end-date"
-                    className="form-input"
-                    type="date"
-                    value={form.end_date}
-                    onChange={(e) => setForm((p) => ({ ...p, end_date: e.target.value }))}
-                  />
-                </div>
-              </div>
+              )}
               <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 14, marginTop: 8, cursor: 'pointer' }}>
                 <input
                   name="feed-is-primary"

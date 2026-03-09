@@ -444,6 +444,26 @@ export interface FeedNutrition {
   updated_at: string;
 }
 
+// ─── Pet Feeding Logs ─────────────────────────────────────────────────────────
+
+export interface FeedingLog {
+  id: string;
+  pet_id: string;
+  pet_feed_id?: string | null;
+  feed_model_id?: string | null;
+  amount_g?: number | null;
+  amount_unit?: string | null;
+  frequency?: number | null;
+  feeding_time?: string | null;
+  memo?: string | null;
+  status: string;
+  feed_nickname?: string | null;
+  model_name?: string | null;
+  model_display_label?: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
 // ─── S7: Health Logs ──────────────────────────────────────────────────────────
 
 export interface LogValue {

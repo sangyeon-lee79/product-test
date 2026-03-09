@@ -3,6 +3,7 @@ import { Link, useParams } from 'react-router-dom';
 import {
   api,
   type Booking,
+  type FeedingLog,
   type FeedPost,
   type FriendRequest,
   type GlucoseAlert,
@@ -35,6 +36,7 @@ import WeightModal from './guardian/WeightModal';
 import MeasurementModal from './guardian/MeasurementModal';
 import DeviceManageModal from './guardian/DeviceManageModal';
 import FeedManageModal from './guardian/FeedManageModal';
+import FeedingLogModal from './guardian/FeedingLogModal';
 import PetWizardModal from './guardian/PetWizardModal';
 import {
   type FeedTab,
@@ -83,6 +85,9 @@ export default function GuardianMainPage() {
   const [guardianDevices, setGuardianDevices] = useState<GuardianDevice[]>([]);
   const [feedManageModalOpen, setFeedManageModalOpen] = useState(false);
   const [petFeeds, setPetFeeds] = useState<PetFeed[]>([]);
+  const [feedingLogModalOpen, setFeedingLogModalOpen] = useState(false);
+  const [feedingLogs, setFeedingLogs] = useState<FeedingLog[]>([]);
+  const [editingFeedingLog, setEditingFeedingLog] = useState<FeedingLog | null>(null);
   const [selectedMeasurementItemId, setSelectedMeasurementItemId] = useState('');
   const [feedTab, setFeedTab] = useState<FeedTab>('all');
   const [petTab, setPetTab] = useState<PetProfileTab>('gallery');
@@ -366,9 +371,10 @@ export default function GuardianMainPage() {
 
   // Guardian devices + pet feeds — pet 변경 시에만 로드 (weightRange 무관)
   useEffect(() => {
-    if (!selectedPet?.id) { setGuardianDevices([]); setPetFeeds([]); return; }
+    if (!selectedPet?.id) { setGuardianDevices([]); setPetFeeds([]); setFeedingLogs([]); return; }
     void loadGuardianDevices(selectedPet.id);
     void loadPetFeeds(selectedPet.id);
+    void loadFeedingLogs(selectedPet.id);
   }, [selectedPet?.id]);
 
   useEffect(() => {
@@ -405,6 +411,15 @@ export default function GuardianMainPage() {
       setError(uiErrorMessage(e, t('guardian.health.measurement_log_load_failed', 'Failed to load health measurement logs.')));
       setMeasurementLogs([]);
       setMeasurementSummary(null);
+    }
+  }
+
+  async function loadFeedingLogs(petId: string) {
+    try {
+      const res = await api.pets.feedingLogs.list(petId);
+      setFeedingLogs(res.logs || []);
+    } catch {
+      setFeedingLogs([]);
     }
   }
 
@@ -860,6 +875,7 @@ export default function GuardianMainPage() {
                       <span className="gm-section-title">{t('guardian.health.chart_title', '건강 추이')}</span>
                       <div style={{ display: 'flex', gap: 8 }}>
                         <button className="btn btn-sm" style={{ fontSize: 12 }} onClick={() => setFeedManageModalOpen(true)}>{t('guardian.feed.manage_title', '사료 관리')}</button>
+                        <button className="btn btn-sm" style={{ fontSize: 12 }} onClick={() => { setEditingFeedingLog(null); setFeedingLogModalOpen(true); }}>{t('guardian.feeding.log_title', '급여 기록')}{feedingLogs.length > 0 ? ` (${feedingLogs.length})` : ''}</button>
                         <button className="btn btn-sm" style={{ fontSize: 12 }} onClick={() => setDeviceManageModalOpen(true)}>{t('guardian.device.manage_title', '장비 관리')}</button>
                         <button className="btn btn-primary btn-sm" onClick={() => setWeightModalOpen(true)}>{t('guardian.health.add_weight', '몸무게 추가')}</button>
                         <button className="btn btn-secondary btn-sm" onClick={openCreateHealthMeasurementModal}>{t('guardian.health.add_measurement', '수치 추가')}</button>
@@ -1208,12 +1224,22 @@ export default function GuardianMainPage() {
       <FeedManageModal
         open={feedManageModalOpen}
         selectedPet={selectedPet}
-        optDisease={optDisease}
         lang={lang}
         t={t}
         setError={setError}
         onClose={() => setFeedManageModalOpen(false)}
         onChanged={(feeds) => setPetFeeds(feeds)}
+      />
+      <FeedingLogModal
+        open={feedingLogModalOpen}
+        editingLog={editingFeedingLog}
+        selectedPet={selectedPet}
+        petFeeds={petFeeds}
+        t={t}
+        setError={setError}
+        onClose={() => { setFeedingLogModalOpen(false); setEditingFeedingLog(null); }}
+        onSuccess={() => { if (selectedPet?.id) void loadFeedingLogs(selectedPet.id); }}
+        onOpenFeedManage={() => setFeedManageModalOpen(true)}
       />
       <PetWizardModal
         open={petModalOpen}
