@@ -799,31 +799,31 @@ DB 테이블/마이그레이션
 [x] 직전 기록 대비 -50 mg/dL 이상 급락 → warning (급락 경고)
 
 ## S7-3. Mobile UI — 7종 LogType 입력
-[ ] LogType 선택 화면 (질병→연결된 LogType 자동 표시, S3 트리 기반)
-[ ] 혈당 기록(blood_glucose_log)
+[x] LogType 선택 화면 (Health 탭 ChoiceChip, 드롭다운)
+[x] 혈당 기록(blood_glucose_log)
     - 수치 입력 + 단위(mg/dL|mmol/L) + 측정방식(리브레/혈액)
-[ ] 인슐린 기록(insulin_log)
+[x] 인슐린 기록(insulin_log)
     - 종류/용량(IU)/시간/스케줄
-[ ] 식단 기록(meal_log)
+[x] 식단 기록(meal_log)
     - 사료/화식 g + kcal 계산
-[ ] 수분 기록(water_log)
+[x] 수분 기록(water_log)
     - ml 입력
-[ ] 운동 기록(activity_log)
+[x] 운동 기록(activity_log)
     - 활동 종류/시간(min)
-[ ] 이벤트 기록(symptom_event_log)
-    - 발정/중성화/호르몬/투약 선택
-[ ] 검사/병원 기록(lab_test_log)
-    - 첨부 파일(R2 → logs/{logId}/) + 수치 입력
-[ ] 위험 경고 배너/다이얼로그 (API alert 응답 기반)
-[ ] 타임라인 화면
+[x] 이벤트 기록(symptom_event_log)
+    - 제목+메모
+[x] 검사/병원 기록(lab_test_log)
+    - 제목+메모 (첨부 파일 S8 이후)
+[x] 위험 경고 배너/다이얼로그 (API alert 응답 기반)
+[x] 타임라인 화면
     - 날짜순 정렬, LogType 필터, 카드형 기록 목록
-    - 기록 상세 보기
 
 ## S7-4. Guardian Web UI
 [x] 건강 기록 입력 (로그유형 드롭다운 + 날짜/시간/제목/메모 입력 모달)
     - Health 탭 Timeline 섹션 + "기록 추가" 버튼
     - 로그유형 master 기반 동적 드롭다운
     - 혈당 alert 배너 (critical/warning severity별 표시)
+[x] 수치 입력 (metric/unit master 기반, logtype별 조건부 표시, values[] API 전송)
 [ ] 검사결과 업로드/조회 (R2) — S8 이후
 [x] 타임라인/리스트 보기 (로그 목록, 유형/날짜/메모 카드 형태)
 

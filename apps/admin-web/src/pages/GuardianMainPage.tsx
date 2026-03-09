@@ -7,6 +7,7 @@ import {
   type FriendRequest,
   type GlucoseAlert,
   type HealthMeasurementSummary,
+  type MasterItem,
   type Pet,
   type PetAlbumMedia,
   type PetHealthMeasurementLog,
@@ -14,6 +15,16 @@ import {
   type PetWeightLog,
   type WeightSummary,
 } from '../lib/api';
+
+// log type → metric/unit config (matches local master seed)
+const LOG_TYPE_METRIC_MAP: Record<string, { metricKey: string; unitKeys: string[] }> = {
+  blood_glucose_log: { metricKey: 'blood_glucose', unitKeys: ['mg_dl', 'mmol_l'] },
+  insulin_log:       { metricKey: 'insulin_dose',  unitKeys: ['iu'] },
+  meal_log:          { metricKey: 'food_weight',   unitKeys: ['g', 'kcal', 'ml'] },
+  water_log:         { metricKey: 'water_intake',  unitKeys: ['ml'] },
+  activity_log:      { metricKey: 'duration',      unitKeys: ['min'] },
+  weight_log:        { metricKey: 'body_weight',   unitKeys: ['kg'] },
+};
 import { useI18n, useT } from '../lib/i18n';
 import { getStoredRole } from '../lib/auth';
 import PetGalleryPanel from '../components/PetGalleryPanel';
@@ -74,7 +85,11 @@ export default function GuardianMainPage() {
   const [logAlert, setLogAlert] = useState<GlucoseAlert | null>(null);
   const [logModalOpen, setLogModalOpen] = useState(false);
   const [optLogType, setOptLogType] = useState<{ id: string; code: string; label: string }[]>([]);
+  const [optMetric, setOptMetric] = useState<MasterItem[]>([]);
+  const [optUnit, setOptUnit] = useState<MasterItem[]>([]);
   const [logFormLogtypeId, setLogFormLogtypeId] = useState('');
+  const [logFormValue, setLogFormValue] = useState('');
+  const [logFormUnitId, setLogFormUnitId] = useState('');
   const [logFormDate, setLogFormDate] = useState('');
   const [logFormTime, setLogFormTime] = useState('');
   const [logFormTitle, setLogFormTitle] = useState('');
@@ -236,6 +251,8 @@ export default function GuardianMainPage() {
         coatLengthRows,
         groomingRows,
         logTypeRows,
+        metricRows,
+        unitRows,
       ] = await Promise.all([
         safe(api.pets.list(), { pets: [] }, 'pets.list'),
         safe(api.bookings.list(), { bookings: [] }, 'bookings.list'),
@@ -263,6 +280,8 @@ export default function GuardianMainPage() {
         loadCategoryItems(CATEGORY_KEYS.coat_length, lang),
         loadCategoryItems(CATEGORY_KEYS.grooming_cycle, lang),
         loadCategoryItems(['log_type'], lang),
+        loadCategoryItems(['metric'], lang),
+        loadCategoryItems(['unit'], lang),
       ]);
 
       setPets(petsRes.pets || []);
@@ -297,6 +316,8 @@ export default function GuardianMainPage() {
         code: item.key ?? '',
         label: item.display_label ?? item[lang as keyof typeof item] as string ?? item.ko ?? item.key ?? '',
       })));
+      setOptMetric(metricRows);
+      setOptUnit(unitRows);
 
       if (!silent && failedApis.length > 0) {
         setError(t('guardian.alert.partial_load_failed', 'Some data could not be loaded. Please try again shortly.'));
@@ -386,16 +407,25 @@ export default function GuardianMainPage() {
     if (!logFormLogtypeId || !logFormDate) return;
     setLogFormSaving(true);
     try {
+      const selectedCode = optLogType.find((o) => o.id === logFormLogtypeId)?.code ?? '';
+      const metricCfg = LOG_TYPE_METRIC_MAP[selectedCode];
+      const metricItem = metricCfg ? optMetric.find((m) => m.key === metricCfg.metricKey) : null;
+      const valuesPayload = metricItem && logFormValue && logFormUnitId
+        ? [{ metric_id: metricItem.id, unit_id: logFormUnitId, numeric_value: parseFloat(logFormValue) }]
+        : [];
       const result = await api.pets.logs.create(selectedPet.id, {
         logtype_id: logFormLogtypeId,
         event_date: logFormDate,
         event_time: logFormTime || null,
         title: logFormTitle || null,
         notes: logFormNotes || null,
+        values: valuesPayload,
       });
       setLogAlert(result.alert ?? null);
       setLogModalOpen(false);
       setLogFormLogtypeId('');
+      setLogFormValue('');
+      setLogFormUnitId('');
       setLogFormDate('');
       setLogFormTime('');
       setLogFormTitle('');
@@ -843,11 +873,32 @@ export default function GuardianMainPage() {
                         <div className="modal-body">
                           <div className="form-group">
                             <label className="form-label">{t('guardian.log.logtype', '기록 유형')} *</label>
-                            <select className="form-select" value={logFormLogtypeId} onChange={(e) => setLogFormLogtypeId(e.target.value)}>
+                            <select className="form-select" value={logFormLogtypeId} onChange={(e) => { setLogFormLogtypeId(e.target.value); setLogFormValue(''); setLogFormUnitId(''); }}>
                               <option value="">{t('common.select', 'Select')}</option>
                               {optLogType.map((o) => <option key={o.id} value={o.id}>{o.label}</option>)}
                             </select>
                           </div>
+                          {(() => {
+                            const selectedCode = optLogType.find((o) => o.id === logFormLogtypeId)?.code ?? '';
+                            const metricCfg = LOG_TYPE_METRIC_MAP[selectedCode];
+                            if (!metricCfg) return null;
+                            const metricItem = optMetric.find((m) => m.key === metricCfg.metricKey);
+                            if (!metricItem) return null;
+                            const unitItems = optUnit.filter((u) => metricCfg.unitKeys.includes(u.key ?? ''));
+                            const metricLabel = metricItem.display_label ?? metricItem[lang as keyof typeof metricItem] as string ?? metricItem.ko ?? metricItem.key;
+                            return (
+                              <div className="form-group">
+                                <label className="form-label">{metricLabel}</label>
+                                <div style={{ display: 'flex', gap: 8 }}>
+                                  <input className="form-input" type="number" step="any" value={logFormValue} onChange={(e) => setLogFormValue(e.target.value)} placeholder="0" style={{ flex: 1 }} />
+                                  <select className="form-select" value={logFormUnitId} onChange={(e) => setLogFormUnitId(e.target.value)} style={{ width: 100 }}>
+                                    <option value="">{t('common.unit', '단위')}</option>
+                                    {unitItems.map((u) => <option key={u.id} value={u.id}>{u.display_label ?? u.key}</option>)}
+                                  </select>
+                                </div>
+                              </div>
+                            );
+                          })()}
                           <div className="form-group">
                             <label className="form-label">{t('guardian.log.event_date', '날짜')} *</label>
                             <input className="form-input" type="date" value={logFormDate} onChange={(e) => setLogFormDate(e.target.value)} />
