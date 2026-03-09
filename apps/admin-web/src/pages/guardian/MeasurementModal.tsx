@@ -45,7 +45,18 @@ export default function MeasurementModal({
   const hasRegisteredDevices = guardianDevices.length > 0;
 
   // Whether disease was auto-set from a selected device (disable manual change)
-  const diseaseAutoMapped = !!(measurementForm.guardian_device_id && measurementForm.disease_item_id);
+  const diseaseAutoMapped = useMemo(() => {
+    if (!measurementForm.guardian_device_id) return false;
+    const device = guardianDevices.find((d) => d.id === measurementForm.guardian_device_id);
+    if (!device) return false;
+    if (device.disease_item_id) return true;
+    // Derive from device type hierarchy (device type parentId = disease)
+    if (device.type_key) {
+      const typeOpt = optDiseaseDevice.find((o) => o.key === device.type_key);
+      if (typeOpt?.parentId) return true;
+    }
+    return false;
+  }, [measurementForm.guardian_device_id, guardianDevices, optDiseaseDevice]);
 
   const optionLabel = (option: Option | undefined, fallback: string): string => {
     if (!option) return fallback;
@@ -112,12 +123,24 @@ export default function MeasurementModal({
   }, [open, editingLog?.id]);
 
   function selectDevice(d: GuardianDevice) {
+    // Derive disease + device type from registered device
+    let derivedDiseaseId = d.disease_item_id || '';
+    let derivedDeviceTypeId = '';
+    if (d.type_key) {
+      const typeOpt = optDiseaseDevice.find((o) => o.key === d.type_key);
+      if (typeOpt) {
+        derivedDeviceTypeId = typeOpt.id;
+        // Device type's parentId is the disease in master hierarchy
+        if (!derivedDiseaseId && typeOpt.parentId) {
+          derivedDiseaseId = typeOpt.parentId;
+        }
+      }
+    }
     setMeasurementForm((prev) => ({
       ...prev,
       guardian_device_id: d.id,
-      // Auto-map disease from device
-      disease_item_id: d.disease_item_id || prev.disease_item_id,
-      device_type_item_id: d.type_key ? (optDiseaseDevice.find((o) => o.key === d.type_key)?.id || prev.device_type_item_id) : prev.device_type_item_id,
+      disease_item_id: derivedDiseaseId || prev.disease_item_id,
+      device_type_item_id: derivedDeviceTypeId || prev.device_type_item_id,
       model_id: d.device_model_id || prev.model_id,
       // Reset dependent fields when device changes
       measurement_item_id: prev.guardian_device_id !== d.id ? '' : prev.measurement_item_id,

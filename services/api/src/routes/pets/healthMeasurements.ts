@@ -4,7 +4,7 @@
 import type { Env, JwtPayload } from '../../types';
 import { ok, created, err, newId, now } from '../../types';
 import {
-  assertPetOwner, hasTable, normalizeMeasuredAt, parseOptionalNumber,
+  assertPetOwner, hasColumn, hasTable, normalizeMeasuredAt, parseOptionalNumber,
   rangeStartByKey, resolveMasterItemId,
 } from './helpers';
 
@@ -322,7 +322,7 @@ export async function createHealthMeasurementLog(request: Request, env: Env, pay
     }
   }
 
-  const hasGdCol = await hasTable(env, 'guardian_devices');
+  const hasGdCol = await hasColumn(env, 'pet_health_measurement_logs', 'guardian_device_id');
   const id = newId();
   const cols = [
     'id', 'pet_id', 'disease_item_id', 'device_type_item_id', 'device_model_id',
