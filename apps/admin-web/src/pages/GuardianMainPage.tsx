@@ -1077,59 +1077,73 @@ export default function GuardianMainPage() {
                           <span className="gm-section-title">{t('guardian.health.subtab_timeline', '타임라인')}</span>
                         </div>
                         <div className="gm-section-body">
-                          <div className="guardian-pet-list">
-                            {unifiedTimeline.slice((timelinePage - 1) * PAGE_SIZE, timelinePage * PAGE_SIZE).map((item) => {
-                              if (item.type === 'weight') {
-                                const log = item.source as PetWeightLog;
-                                return (
-                                  <div key={item.id} className="guardian-pet-item">
-                                    <div>
-                                      <span className="badge badge-gray" style={{ fontSize: 10, marginRight: 6 }}>{t('guardian.health.type_weight', '몸무게')}</span>
-                                      <span className="text-sm">{fmtDate(log.measured_at)} · {log.weight_value} kg</span>
-                                      {log.notes && <p className="text-sm text-muted" style={{ fontSize: 11, margin: '2px 0 0' }}>{log.notes}</p>}
+                          {unifiedTimeline.length === 0 ? (
+                            <div className="gm-tl-empty">
+                              <div className="gm-tl-empty-icon">📋</div>
+                              <p>{t('guardian.log.no_records', '기록이 없습니다.')}</p>
+                            </div>
+                          ) : (
+                            <div className="gm-timeline">
+                              {(() => {
+                                let lastDateKey = '';
+                                return unifiedTimeline.slice((timelinePage - 1) * PAGE_SIZE, timelinePage * PAGE_SIZE).map((item) => {
+                                  const dateKey = fmtDate(item.date);
+                                  const showDateHeader = dateKey !== lastDateKey;
+                                  lastDateKey = dateKey;
+                                  const dateHeader = showDateHeader ? <div key={`date-${dateKey}-${item.id}`} className="gm-tl-date">{dateKey}</div> : null;
+
+                                  if (item.type === 'weight') {
+                                    const log = item.source as PetWeightLog;
+                                    return (<>{dateHeader}<div key={item.id} className="gm-tl-card" data-type="weight">
+                                      <div className="gm-tl-icon">⚖️</div>
+                                      <div className="gm-tl-body">
+                                        <div className="gm-tl-title">{t('guardian.health.type_weight', '몸무게')}</div>
+                                        <div className="gm-tl-value">{log.weight_value} kg</div>
+                                        {log.notes && <div className="gm-tl-memo">{log.notes}</div>}
+                                      </div>
+                                      <div className="gm-tl-actions">
+                                        <button className="btn btn-secondary btn-sm" title={t('common.edit', 'Edit')} aria-label={t('common.edit', 'Edit')} onClick={() => { setEditingWeightLog(log); setWeightModalOpen(true); }}>✏️</button>
+                                        <button className="btn btn-danger btn-sm" title={t('common.delete', 'Delete')} aria-label={t('common.delete', 'Delete')} onClick={() => removeWeightLog(log.id)}>🗑️</button>
+                                      </div>
+                                    </div></>);
+                                  }
+                                  if (item.type === 'measurement') {
+                                    const log = item.source as PetHealthMeasurementLog;
+                                    const hh = new Date(log.measured_at).getHours().toString().padStart(2, '0');
+                                    const mm = new Date(log.measured_at).getMinutes().toString().padStart(2, '0');
+                                    return (<>{dateHeader}<div key={item.id} className="gm-tl-card" data-type="measurement">
+                                      <div className="gm-tl-icon">📊</div>
+                                      <div className="gm-tl-body">
+                                        <div className="gm-tl-title">{t('guardian.health.type_measurement', '수치')} <span className="gm-tl-meta">{hh}:{mm}</span></div>
+                                        <div className="gm-tl-value">{log.value}{log.judgement_label ? <span className="gm-tl-meta" style={{ marginLeft: 6, fontWeight: 400 }}>{log.judgement_label}</span> : ''}</div>
+                                        {log.memo && <div className="gm-tl-memo">{log.memo}</div>}
+                                      </div>
+                                      <div className="gm-tl-actions">
+                                        <button className="btn btn-secondary btn-sm" title={t('common.edit', 'Edit')} aria-label={t('common.edit', 'Edit')} onClick={() => openEditHealthMeasurementLog(log)}>✏️</button>
+                                        <button className="btn btn-danger btn-sm" title={t('common.delete', 'Delete')} aria-label={t('common.delete', 'Delete')} onClick={() => removeHealthMeasurementLog(log.id)}>🗑️</button>
+                                      </div>
+                                    </div></>);
+                                  }
+                                  // feeding
+                                  const log = item.source as FeedingLog;
+                                  const fname = log.feed_nickname || log.model_display_label || log.model_name || t('common.none', '-');
+                                  const fTime = log.feeding_time ? (() => { const d = new Date(log.feeding_time); return `${d.getHours().toString().padStart(2, '0')}:${d.getMinutes().toString().padStart(2, '0')}`; })() : '';
+                                  return (<>{dateHeader}<div key={item.id} className="gm-tl-card" data-type="feeding">
+                                    <div className="gm-tl-icon">🍽️</div>
+                                    <div className="gm-tl-body">
+                                      <div className="gm-tl-title">{fname} {fTime && <span className="gm-tl-meta">{fTime}</span>}</div>
+                                      <div className="gm-tl-value">{log.amount_g != null ? `${log.amount_g}g` : '-'}</div>
+                                      {log.memo && <div className="gm-tl-memo">{log.memo}</div>}
                                     </div>
-                                    <div className="td-actions">
-                                      <button className="btn btn-secondary btn-sm" title={t('common.edit', 'Edit')} aria-label={t('common.edit', 'Edit')} onClick={() => { setEditingWeightLog(log); setWeightModalOpen(true); }}>✏️</button>
-                                      <button className="btn btn-danger btn-sm" title={t('common.delete', 'Delete')} aria-label={t('common.delete', 'Delete')} onClick={() => removeWeightLog(log.id)}>🗑️</button>
+                                    <div className="gm-tl-actions">
+                                      <button className="btn btn-secondary btn-sm" title={t('common.edit', 'Edit')} aria-label={t('common.edit', 'Edit')} onClick={() => { setEditingFeedingLog(log); setFeedingLogModalOpen(true); }}>✏️</button>
+                                      <button className="btn btn-danger btn-sm" title={t('common.delete', 'Delete')} aria-label={t('common.delete', 'Delete')} onClick={() => removeFeedingLog(log.id)}>🗑️</button>
                                     </div>
-                                  </div>
-                                );
-                              }
-                              if (item.type === 'measurement') {
-                                const log = item.source as PetHealthMeasurementLog;
-                                return (
-                                  <div key={item.id} className="guardian-pet-item">
-                                    <div>
-                                      <span className="badge badge-gray" style={{ fontSize: 10, marginRight: 6 }}>{t('guardian.health.type_measurement', '수치')}</span>
-                                      <span className="text-sm">{fmtDateTime(log.measured_at)} · {log.value}{log.judgement_label ? ` · ${log.judgement_label}` : ''}</span>
-                                      {log.memo && <p className="text-sm text-muted" style={{ fontSize: 11, margin: '2px 0 0' }}>{log.memo}</p>}
-                                    </div>
-                                    <div className="td-actions">
-                                      <button className="btn btn-secondary btn-sm" title={t('common.edit', 'Edit')} aria-label={t('common.edit', 'Edit')} onClick={() => openEditHealthMeasurementLog(log)}>✏️</button>
-                                      <button className="btn btn-danger btn-sm" title={t('common.delete', 'Delete')} aria-label={t('common.delete', 'Delete')} onClick={() => removeHealthMeasurementLog(log.id)}>🗑️</button>
-                                    </div>
-                                  </div>
-                                );
-                              }
-                              // feeding
-                              const log = item.source as FeedingLog;
-                              const fname = log.feed_nickname || log.model_display_label || log.model_name || t('common.none', '-');
-                              return (
-                                <div key={item.id} className="guardian-pet-item">
-                                  <div>
-                                    <span className="badge badge-gray" style={{ fontSize: 10, marginRight: 6 }}>{t('guardian.health.type_feeding', '급여')}</span>
-                                    <span className="text-sm">{fmtDateTime(log.feeding_time)} · {fname}{log.amount_g != null ? ` ${log.amount_g}g` : ''}</span>
-                                    {log.memo && <p className="text-sm text-muted" style={{ fontSize: 11, margin: '2px 0 0' }}>{log.memo}</p>}
-                                  </div>
-                                  <div className="td-actions">
-                                    <button className="btn btn-secondary btn-sm" title={t('common.edit', 'Edit')} aria-label={t('common.edit', 'Edit')} onClick={() => { setEditingFeedingLog(log); setFeedingLogModalOpen(true); }}>✏️</button>
-                                    <button className="btn btn-danger btn-sm" title={t('common.delete', 'Delete')} aria-label={t('common.delete', 'Delete')} onClick={() => removeFeedingLog(log.id)}>🗑️</button>
-                                  </div>
-                                </div>
-                              );
-                            })}
-                            {unifiedTimeline.length === 0 && <p className="text-muted" style={{ fontSize: 13 }}>{t('guardian.log.no_records', '기록이 없습니다.')}</p>}
-                          </div>
+                                  </div></>);
+                                });
+                              })()}
+                            </div>
+                          )}
                           {renderPagination(timelinePage, unifiedTimeline.length, setTimelinePage)}
                         </div>
                       </div>
