@@ -388,30 +388,46 @@ export async function handleDevices(request: Request, env: Env, url: URL): Promi
 
     // POST create
     if (!deviceId && method === 'POST') {
-      const body = await request.json<{ device_model_id: string; nickname?: string; serial_number?: string; start_date?: string; notes?: string }>();
+      const body = await request.json<{ device_model_id: string; nickname?: string; serial_number?: string; start_date?: string; notes?: string; disease_item_id?: string; is_default?: boolean }>();
       if (!body.device_model_id) return err('device_model_id required', 400, 'missing_field');
 
       const model = await env.DB.prepare(`SELECT id FROM device_models WHERE id = ? AND status = 'active'`).bind(body.device_model_id).first<{ id: string }>();
       if (!model) return err('Device model not found', 404, 'not_found');
 
+      const isDefault = body.is_default ? 1 : 0;
+      if (isDefault) {
+        await env.DB.prepare(
+          `UPDATE guardian_devices SET is_default = 0, updated_at = ? WHERE pet_id = ? AND is_default = 1`
+        ).bind(now(), petId).run();
+      }
+
       const id = newId();
       await env.DB.prepare(
-        `INSERT INTO guardian_devices (id, pet_id, device_model_id, nickname, serial_number, start_date, notes, status, created_at, updated_at)
-         VALUES (?, ?, ?, ?, ?, ?, ?, 'active', ?, ?)`
-      ).bind(id, petId, body.device_model_id, body.nickname ?? null, body.serial_number ?? null, body.start_date ?? null, body.notes ?? null, now(), now()).run();
+        `INSERT INTO guardian_devices (id, pet_id, device_model_id, disease_item_id, is_default, nickname, serial_number, start_date, notes, status, created_at, updated_at)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'active', ?, ?)`
+      ).bind(id, petId, body.device_model_id, body.disease_item_id ?? null, isDefault, body.nickname ?? null, body.serial_number ?? null, body.start_date ?? null, body.notes ?? null, now(), now()).run();
 
       return created({ id });
     }
 
     // PUT update
     if (deviceId && method === 'PUT') {
-      const body = await request.json<{ nickname?: string; serial_number?: string; notes?: string; start_date?: string }>();
+      const body = await request.json<{ nickname?: string; serial_number?: string; notes?: string; start_date?: string; disease_item_id?: string; is_default?: boolean }>();
+
+      if (body.is_default) {
+        await env.DB.prepare(
+          `UPDATE guardian_devices SET is_default = 0, updated_at = ? WHERE pet_id = ? AND is_default = 1 AND id != ?`
+        ).bind(now(), petId, deviceId).run();
+      }
+
       const sets: string[] = ['updated_at = ?'];
-      const vals: (string | null)[] = [now()];
+      const vals: (string | null | number)[] = [now()];
       if ('nickname' in body) { sets.push('nickname = ?'); vals.push(body.nickname ?? null); }
       if ('serial_number' in body) { sets.push('serial_number = ?'); vals.push(body.serial_number ?? null); }
       if ('notes' in body) { sets.push('notes = ?'); vals.push(body.notes ?? null); }
       if ('start_date' in body) { sets.push('start_date = ?'); vals.push(body.start_date ?? null); }
+      if ('disease_item_id' in body) { sets.push('disease_item_id = ?'); vals.push(body.disease_item_id ?? null); }
+      if ('is_default' in body) { sets.push('is_default = ?'); vals.push(body.is_default ? 1 : 0); }
       vals.push(deviceId, petId);
       await env.DB.prepare(`UPDATE guardian_devices SET ${sets.join(', ')} WHERE id = ? AND pet_id = ?`).bind(...vals).run();
       return ok({ id: deviceId, updated: true });

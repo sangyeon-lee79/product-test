@@ -8,7 +8,7 @@ export type Mode = 'create' | 'edit';
 export type PetProfileTab = 'timeline' | 'health' | 'services' | 'gallery' | 'profile';
 export type WeightRange = '7d' | '15d' | '1m' | '3m' | '6m' | '1y' | 'all';
 export type PetWizardStep = 1 | 2 | 3 | 4 | 5 | 6 | 7;
-export type MeasurementWizardStep = 1 | 2;
+export type MeasurementWizardStep = 1 | 2; // kept for backwards compat
 
 export type Option = {
   id: string;
@@ -59,6 +59,7 @@ export type FeedCompose = {
 };
 
 export type MeasurementForm = {
+  guardian_device_id: string;
   disease_item_id: string;
   device_type_item_id: string;
   measurement_item_id: string;
@@ -142,6 +143,7 @@ export const DEFAULT_FEED_COMPOSE: FeedCompose = {
 };
 
 export const EMPTY_MEASUREMENT_FORM: MeasurementForm = {
+  guardian_device_id: '',
   disease_item_id: '',
   device_type_item_id: '',
   measurement_item_id: '',

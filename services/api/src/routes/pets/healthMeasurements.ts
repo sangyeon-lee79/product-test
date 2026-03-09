@@ -267,6 +267,7 @@ export async function createHealthMeasurementLog(request: Request, env: Env, pay
     disease_item_id?: string;
     device_type_item_id?: string | null;
     device_model_id?: string | null;
+    guardian_device_id?: string | null;
     measurement_item_id?: string;
     measurement_context_id?: string | null;
     value?: number;
@@ -276,59 +277,71 @@ export async function createHealthMeasurementLog(request: Request, env: Env, pay
   };
   try { body = await request.json() as typeof body; } catch { return err('Invalid JSON body'); }
 
-  const diseaseItemId = (body.disease_item_id || '').trim();
+  // If guardian_device_id is provided, auto-resolve device fields from registered device
+  let resolvedDiseaseItemId = (body.disease_item_id || '').trim();
+  let resolvedDeviceTypeItemId = body.device_type_item_id ? String(body.device_type_item_id).trim() : null;
+  let resolvedDeviceModelId = body.device_model_id ?? null;
+  const guardianDeviceId = body.guardian_device_id ? String(body.guardian_device_id).trim() : null;
+
+  if (guardianDeviceId) {
+    const gd = await env.DB.prepare(
+      `SELECT gd.disease_item_id, gd.device_model_id, dm.device_type_item_id
+       FROM guardian_devices gd
+       LEFT JOIN device_models dm ON dm.id = gd.device_model_id
+       WHERE gd.id = ? AND gd.pet_id = ? AND gd.status != 'deleted'`
+    ).bind(guardianDeviceId, petId).first<{ disease_item_id: string | null; device_model_id: string; device_type_item_id: string | null }>();
+    if (!gd) return err('Guardian device not found', 404, 'not_found');
+    if (!resolvedDiseaseItemId && gd.disease_item_id) resolvedDiseaseItemId = gd.disease_item_id;
+    if (!resolvedDeviceTypeItemId && gd.device_type_item_id) resolvedDeviceTypeItemId = gd.device_type_item_id;
+    if (!resolvedDeviceModelId && gd.device_model_id) resolvedDeviceModelId = gd.device_model_id;
+  }
+
   const measurementItemId = (body.measurement_item_id || '').trim();
   const value = parseOptionalNumber(body.value);
-  if (!diseaseItemId) return err('disease_item_id required');
+  if (!resolvedDiseaseItemId) return err('disease_item_id required');
   if (!measurementItemId) return err('measurement_item_id required');
   if (value === null) return err('value required');
 
   const contextId = body.measurement_context_id ? String(body.measurement_context_id).trim() : null;
   const unitItemId = body.unit_item_id ? String(body.unit_item_id).trim() : null;
-  const deviceTypeItemId = body.device_type_item_id ? String(body.device_type_item_id).trim() : null;
-  const judgement = await resolveMeasurementJudgement(env, petId, diseaseItemId, measurementItemId, value, unitItemId, contextId);
+  const judgement = await resolveMeasurementJudgement(env, petId, resolvedDiseaseItemId, measurementItemId, value, unitItemId, contextId);
 
-  if (deviceTypeItemId && (await hasTable(env, 'pet_disease_devices'))) {
+  if (resolvedDeviceTypeItemId && (await hasTable(env, 'pet_disease_devices'))) {
     const existingDevice = await env.DB.prepare(
       `SELECT id
        FROM pet_disease_devices
        WHERE pet_id = ? AND disease_item_id = ? AND device_item_id = ?
        LIMIT 1`
-    ).bind(petId, diseaseItemId, deviceTypeItemId).first<{ id: string }>();
+    ).bind(petId, resolvedDiseaseItemId, resolvedDeviceTypeItemId).first<{ id: string }>();
     if (!existingDevice) {
       await env.DB.prepare(
         `INSERT INTO pet_disease_devices (
           id, pet_id, disease_item_id, device_item_id, is_active, created_at, updated_at
         ) VALUES (?, ?, ?, ?, 1, ?, ?)`
-      ).bind(newId(), petId, diseaseItemId, deviceTypeItemId, now(), now()).run();
+      ).bind(newId(), petId, resolvedDiseaseItemId, resolvedDeviceTypeItemId, now(), now()).run();
     }
   }
 
+  const hasGdCol = await hasTable(env, 'guardian_devices');
   const id = newId();
+  const cols = [
+    'id', 'pet_id', 'disease_item_id', 'device_type_item_id', 'device_model_id',
+    'measurement_item_id', 'measurement_context_id', 'value', 'unit_item_id',
+    'measured_at', 'memo', 'recorded_by_user_id', 'judgement_level', 'judgement_label', 'created_at', 'updated_at',
+  ];
+  const binds: (string | number | null)[] = [
+    id, petId, resolvedDiseaseItemId, resolvedDeviceTypeItemId, resolvedDeviceModelId,
+    measurementItemId, contextId, value, unitItemId,
+    normalizeMeasuredAt(body.measured_at), body.memo ?? null, payload.sub,
+    judgement.level, judgement.label, now(), now(),
+  ];
+  if (hasGdCol && guardianDeviceId) {
+    cols.push('guardian_device_id');
+    binds.push(guardianDeviceId);
+  }
   await env.DB.prepare(
-    `INSERT INTO pet_health_measurement_logs (
-      id, pet_id, disease_item_id, device_type_item_id, device_model_id,
-      measurement_item_id, measurement_context_id, value, unit_item_id,
-      measured_at, memo, recorded_by_user_id, judgement_level, judgement_label, created_at, updated_at
-    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
-  ).bind(
-    id,
-    petId,
-    diseaseItemId,
-    deviceTypeItemId,
-    body.device_model_id ?? null,
-    measurementItemId,
-    contextId,
-    value,
-    unitItemId,
-    normalizeMeasuredAt(body.measured_at),
-    body.memo ?? null,
-    payload.sub,
-    judgement.level,
-    judgement.label,
-    now(),
-    now(),
-  ).run();
+    `INSERT INTO pet_health_measurement_logs (${cols.join(', ')}) VALUES (${cols.map(() => '?').join(', ')})`
+  ).bind(...binds).run();
   return created({ id, judgement });
 }
 

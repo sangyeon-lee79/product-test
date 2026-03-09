@@ -331,12 +331,15 @@ export interface MeasurementUnit {
 
 export interface GuardianDevice {
   id: string; pet_id: string; device_model_id: string;
+  disease_item_id?: string | null; is_default?: number;
   nickname: string | null; serial_number: string | null;
   start_date: string | null; notes: string | null; status: string;
   model_name?: string; model_code?: string | null;
   type_name_ko?: string | null; type_name_en?: string | null; type_key?: string | null;
-  mfr_name_ko?: string | null; mfr_name_en?: string | null;
-  brand_name_ko?: string | null; brand_name_en?: string | null;
+  type_display_label?: string | null;
+  mfr_name_ko?: string | null; mfr_name_en?: string | null; mfr_display_label?: string | null;
+  brand_name_ko?: string | null; brand_name_en?: string | null; brand_display_label?: string | null;
+  model_display_label?: string | null;
   created_at: string; updated_at: string;
 }
 

@@ -21,7 +21,7 @@ import type {
   PetHealthMeasurementLog, HealthMeasurementSummary,
   Booking, FeedPost, FeedComment, PetAlbumMedia,
   FriendRequest, FriendConnection,
-  DeviceType, DeviceManufacturer, DeviceBrand, DeviceModel, MeasurementUnit,
+  DeviceType, DeviceManufacturer, DeviceBrand, DeviceModel, MeasurementUnit, GuardianDevice,
   FeedType, FeedManufacturer, FeedBrand, FeedModel,
   PetLog, GlucoseAlert,
 } from '../types/api';
@@ -361,6 +361,7 @@ export const api = {
         disease_item_id: string;
         device_type_item_id?: string | null;
         device_model_id?: string | null;
+        guardian_device_id?: string | null;
         measurement_item_id: string;
         measurement_context_id?: string | null;
         value: number;
@@ -388,6 +389,16 @@ export const api = {
       remove: (petId: string, logId: string) => request<{ deleted: boolean; id: string }>(`/api/v1/pets/${petId}/health-measurements/${logId}`, {
         method: 'DELETE',
       }),
+    },
+    guardianDevices: {
+      list: (petId: string) =>
+        request<{ devices: GuardianDevice[] }>(`/api/v1/pets/${petId}/guardian-devices`),
+      create: (petId: string, data: { device_model_id: string; disease_item_id?: string; is_default?: boolean; nickname?: string; serial_number?: string; start_date?: string; notes?: string }) =>
+        request<{ id: string }>(`/api/v1/pets/${petId}/guardian-devices`, { method: 'POST', body: JSON.stringify(data) }),
+      update: (petId: string, deviceId: string, data: Partial<{ nickname: string; serial_number: string; notes: string; start_date: string; disease_item_id: string; is_default: boolean }>) =>
+        request<{ id: string; updated: boolean }>(`/api/v1/pets/${petId}/guardian-devices/${deviceId}`, { method: 'PUT', body: JSON.stringify(data) }),
+      remove: (petId: string, deviceId: string) =>
+        request<{ id: string; deleted: boolean }>(`/api/v1/pets/${petId}/guardian-devices/${deviceId}`, { method: 'DELETE' }),
     },
     logs: {
       list: (petId: string, params?: { logtype_id?: string; date_from?: string; date_to?: string; limit?: number; offset?: number }) =>

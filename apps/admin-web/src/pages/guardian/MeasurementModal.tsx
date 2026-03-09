@@ -1,9 +1,8 @@
-// 질병 수치 추가/수정 모달 — GuardianMainPage에서 분리
+// 질병 수치 추가/수정 모달 — 단일 페이지 (등록 장비 선택 → 수치 입력)
 import { useEffect, useMemo, useState } from 'react';
-import { api, type DeviceBrand, type DeviceManufacturer, type DeviceModel, type MeasurementUnit, type Pet, type PetHealthMeasurementLog } from '../../lib/api';
+import { api, type DeviceBrand, type DeviceManufacturer, type DeviceModel, type GuardianDevice, type MeasurementUnit, type Pet, type PetHealthMeasurementLog } from '../../lib/api';
 import type { Lang } from '../../lib/i18n';
 import {
-  type MeasurementWizardStep,
   type Option,
   type MeasurementForm,
   EMPTY_MEASUREMENT_FORM,
@@ -17,6 +16,7 @@ interface Props {
   open: boolean;
   editingLog: PetHealthMeasurementLog | null;
   selectedPet: Pet | null;
+  guardianDevices: GuardianDevice[];
   optDisease: Option[];
   optDiseaseDevice: Option[];
   optMeasurement: Option[];
@@ -26,19 +26,23 @@ interface Props {
   setError: (msg: string) => void;
   onClose: () => void;
   onSuccess: () => void;
+  onOpenDeviceManage: () => void;
 }
 
 export default function MeasurementModal({
-  open, editingLog, selectedPet,
+  open, editingLog, selectedPet, guardianDevices,
   optDisease, optDiseaseDevice, optMeasurement, optMeasurementContext,
-  lang, t, setError, onClose, onSuccess,
+  lang, t, setError, onClose, onSuccess, onOpenDeviceManage,
 }: Props) {
-  const [measurementWizardStep, setMeasurementWizardStep] = useState<MeasurementWizardStep>(1);
   const [measurementForm, setMeasurementForm] = useState<MeasurementForm>(EMPTY_MEASUREMENT_FORM);
+  // Fallback cascade state (for manual entry when no registered devices)
   const [deviceManufacturers, setDeviceManufacturers] = useState<DeviceManufacturer[]>([]);
   const [deviceBrands, setDeviceBrands] = useState<DeviceBrand[]>([]);
   const [deviceModels, setDeviceModels] = useState<DeviceModel[]>([]);
   const [measurementUnits, setMeasurementUnits] = useState<MeasurementUnit[]>([]);
+  const [showManualDevice, setShowManualDevice] = useState(false);
+
+  const hasRegisteredDevices = guardianDevices.length > 0;
 
   const optionLabel = (option: Option | undefined, fallback: string): string => {
     if (!option) return fallback;
@@ -63,13 +67,15 @@ export default function MeasurementModal({
 
   function resetMeasurementForm(nextMeasuredAt?: string) {
     setMeasurementForm({ ...EMPTY_MEASUREMENT_FORM, measured_at: nextMeasuredAt || '' });
+    setShowManualDevice(false);
   }
 
-  // Populate form when modal opens or editingLog changes
+  // Populate form when modal opens
   useEffect(() => {
     if (!open) return;
     if (editingLog) {
       setMeasurementForm({
+        guardian_device_id: (editingLog as unknown as Record<string, unknown>).guardian_device_id as string || '',
         disease_item_id: editingLog.disease_item_id || '',
         device_type_item_id: editingLog.device_type_item_id || '',
         measurement_item_id: editingLog.measurement_item_id || '',
@@ -82,10 +88,14 @@ export default function MeasurementModal({
         measured_at: toDatetimeLocal(editingLog.measured_at),
         memo: editingLog.memo || '',
       });
-      setMeasurementWizardStep(1);
+      setShowManualDevice(false);
     } else {
       resetMeasurementForm();
-      setMeasurementWizardStep(1);
+      // Auto-select default device
+      const defaultDevice = guardianDevices.find((d) => d.is_default && d.status === 'active');
+      if (defaultDevice) {
+        selectDevice(defaultDevice);
+      }
       const run = async () => {
         let measuredAt = toDatetimeLocal();
         try {
@@ -98,59 +108,62 @@ export default function MeasurementModal({
     }
   }, [open, editingLog?.id]);
 
-  // Load manufacturers + units when modal opens or device_type_item_id changes
+  function selectDevice(d: GuardianDevice) {
+    setMeasurementForm((prev) => ({
+      ...prev,
+      guardian_device_id: d.id,
+      disease_item_id: d.disease_item_id || prev.disease_item_id,
+      device_type_item_id: d.type_key ? (optDiseaseDevice.find((o) => o.key === d.type_key)?.id || prev.device_type_item_id) : prev.device_type_item_id,
+      model_id: d.device_model_id || prev.model_id,
+      // Reset dependent fields when device changes
+      measurement_item_id: prev.guardian_device_id !== d.id ? '' : prev.measurement_item_id,
+      measurement_context_id: prev.guardian_device_id !== d.id ? '' : prev.measurement_context_id,
+    }));
+    setShowManualDevice(false);
+  }
+
+  // Load units
   useEffect(() => {
     if (!open) return;
     const run = async () => {
       try {
-        const [manufacturers, units] = await Promise.all([
-          api.devices.public.manufacturers(measurementForm.device_type_item_id || undefined),
-          api.devices.public.units(),
-        ]);
-        setDeviceManufacturers(manufacturers);
+        const units = await api.devices.public.units();
         setMeasurementUnits(units);
-      } catch (e) {
-        setError(uiErrorMessage(e, t('guardian.health.device_unit_load_failed', 'Failed to load device/unit data.')));
-      }
+      } catch { /* ignore */ }
     };
-    run();
-  }, [open, measurementForm.device_type_item_id]);
+    void run();
+  }, [open]);
 
-  // Load brands when manufacturer changes
+  // Load manufacturers when manual device type changes
   useEffect(() => {
-    if (!open) return;
+    if (!open || !showManualDevice) return;
     const run = async () => {
-      if (!measurementForm.manufacturer_id) {
-        setDeviceBrands([]);
-        return;
-      }
+      try {
+        const mfrs = await api.devices.public.manufacturers(measurementForm.device_type_item_id || undefined);
+        setDeviceManufacturers(mfrs);
+      } catch { /* ignore */ }
+    };
+    void run();
+  }, [open, showManualDevice, measurementForm.device_type_item_id]);
+
+  // Load brands when manual manufacturer changes
+  useEffect(() => {
+    if (!open || !showManualDevice) return;
+    if (!measurementForm.manufacturer_id) { setDeviceBrands([]); return; }
+    const run = async () => {
       try {
         const rows = await api.devices.public.brands(measurementForm.manufacturer_id);
         setDeviceBrands(rows);
-      } catch (e) {
-        setError(uiErrorMessage(e, t('guardian.health.brand_load_failed', 'Failed to load brand data.')));
-      }
+      } catch { /* ignore */ }
     };
-    run();
-  }, [open, measurementForm.manufacturer_id]);
+    void run();
+  }, [open, showManualDevice, measurementForm.manufacturer_id]);
 
-  // Reset brand when brands list changes and current brand is no longer valid
+  // Load models when manual filter changes
   useEffect(() => {
-    if (!open) return;
-    if (!measurementForm.manufacturer_id) return;
-    if (!measurementForm.brand_id) return;
-    if (deviceBrands.some((row) => row.id === measurementForm.brand_id)) return;
-    setMeasurementForm((prev) => ({ ...prev, brand_id: '', model_id: '' }));
-  }, [open, deviceBrands, measurementForm.manufacturer_id, measurementForm.brand_id]);
-
-  // Load models when device filter changes
-  useEffect(() => {
-    if (!open) return;
+    if (!open || !showManualDevice) return;
+    if (!measurementForm.device_type_item_id && !measurementForm.manufacturer_id && !measurementForm.brand_id) { setDeviceModels([]); return; }
     const run = async () => {
-      if (!measurementForm.device_type_item_id && !measurementForm.manufacturer_id && !measurementForm.brand_id) {
-        setDeviceModels([]);
-        return;
-      }
       try {
         const rows = await api.devices.public.models({
           device_type_id: measurementForm.device_type_item_id || undefined,
@@ -158,25 +171,10 @@ export default function MeasurementModal({
           brand_id: measurementForm.brand_id || undefined,
         });
         setDeviceModels(rows);
-      } catch (e) {
-        setError(uiErrorMessage(e, t('guardian.health.model_load_failed', 'Failed to load model data.')));
-      }
+      } catch { /* ignore */ }
     };
-    run();
-  }, [open, measurementForm.device_type_item_id, measurementForm.manufacturer_id, measurementForm.brand_id]);
-
-  // Auto-fill manufacturer/brand from model
-  useEffect(() => {
-    if (!open) return;
-    if (!measurementForm.model_id) return;
-    const matchedModel = deviceModels.find((row) => row.id === measurementForm.model_id);
-    if (!matchedModel) return;
-    setMeasurementForm((prev) => ({
-      ...prev,
-      manufacturer_id: prev.manufacturer_id || matchedModel.manufacturer_id || '',
-      brand_id: prev.brand_id || matchedModel.brand_id || '',
-    }));
-  }, [open, deviceModels, measurementForm.model_id]);
+    void run();
+  }, [open, showManualDevice, measurementForm.device_type_item_id, measurementForm.manufacturer_id, measurementForm.brand_id]);
 
   // Auto-set default unit
   useEffect(() => {
@@ -246,7 +244,23 @@ export default function MeasurementModal({
     [measurementUnits],
   );
 
-  async function createHealthMeasurementLog() {
+  function deviceLabel(d: GuardianDevice): string {
+    return d.model_display_label || d.model_name || d.model_code || d.device_model_id;
+  }
+
+  function deviceSubLabel(d: GuardianDevice): string {
+    const parts: string[] = [];
+    const typeName = d.type_display_label || d.type_name_ko || d.type_name_en || '';
+    if (typeName) parts.push(typeName);
+    const mfr = d.mfr_display_label || d.mfr_name_ko || d.mfr_name_en || '';
+    const brand = d.brand_display_label || d.brand_name_ko || d.brand_name_en || '';
+    if (mfr && brand) parts.push(`${mfr} > ${brand}`);
+    else if (mfr) parts.push(mfr);
+    else if (brand) parts.push(brand);
+    return parts.join(' · ');
+  }
+
+  async function saveMeasurement() {
     if (!selectedPet?.id) return;
     const stableDiseaseId = normalizeSingleStableId(measurementForm.disease_item_id, optDisease, false);
     const stableDeviceTypeId = normalizeSingleStableId(measurementForm.device_type_item_id, optDiseaseDevice, false);
@@ -255,101 +269,129 @@ export default function MeasurementModal({
     const stableUnitId = normalizeSingleStableId(measurementForm.unit_item_id, measurementUnitOptions, false);
     const value = Number(measurementForm.value);
     if (!stableDiseaseId) { setError(t('guardian.health.disease_required', 'Please select a disease.')); return; }
-    if (!stableDeviceTypeId) { setError(t('guardian.health.device_type_required', 'Please select a device type.')); return; }
     if (!stableMeasurementItemId) { setError(t('guardian.health.measurement_item_required', 'Please select a measurement item.')); return; }
     if (!measurementForm.measured_at) { setError(t('guardian.health.measured_at_required', 'Please enter measured date/time.')); return; }
     if (!Number.isFinite(value)) { setError(t('guardian.health.measurement_value_invalid', 'Please enter a valid measurement value.')); return; }
+
     try {
-      await api.pets.healthMeasurements.create(selectedPet.id, {
+      const payload = {
         disease_item_id: stableDiseaseId,
         device_type_item_id: stableDeviceTypeId || null,
         device_model_id: measurementForm.model_id || null,
+        guardian_device_id: measurementForm.guardian_device_id || null,
         measurement_item_id: stableMeasurementItemId,
         measurement_context_id: stableMeasurementContextId || null,
         value,
         unit_item_id: stableUnitId || null,
         measured_at: measurementForm.measured_at || new Date().toISOString(),
         memo: measurementForm.memo.trim() || null,
-      });
-      setMeasurementWizardStep(1);
+      };
+      if (editingLog) {
+        await api.pets.healthMeasurements.update(selectedPet.id, editingLog.id, payload);
+      } else {
+        await api.pets.healthMeasurements.create(selectedPet.id, payload);
+      }
       resetMeasurementForm();
       onSuccess();
       onClose();
     } catch (e) {
-      setError(uiErrorMessage(e, t('guardian.health.measurement_create_failed', 'Failed to add health measurement log.')));
+      setError(uiErrorMessage(e, editingLog
+        ? t('guardian.health.measurement_update_failed', 'Failed to update health measurement log.')
+        : t('guardian.health.measurement_create_failed', 'Failed to add health measurement log.')));
     }
-  }
-
-  async function updateHealthMeasurementLog() {
-    if (!selectedPet?.id || !editingLog?.id) return;
-    const stableDiseaseId = normalizeSingleStableId(measurementForm.disease_item_id, optDisease, false);
-    const stableDeviceTypeId = normalizeSingleStableId(measurementForm.device_type_item_id, optDiseaseDevice, false);
-    const stableMeasurementItemId = normalizeSingleStableId(measurementForm.measurement_item_id, optMeasurement, false);
-    const stableMeasurementContextId = normalizeSingleStableId(measurementForm.measurement_context_id, optMeasurementContext, false);
-    const stableUnitId = normalizeSingleStableId(measurementForm.unit_item_id, measurementUnitOptions, false);
-    const value = Number(measurementForm.value);
-    if (!stableDiseaseId) { setError(t('guardian.health.disease_required', 'Please select a disease.')); return; }
-    if (!stableDeviceTypeId) { setError(t('guardian.health.device_type_required', 'Please select a device type.')); return; }
-    if (!stableMeasurementItemId) { setError(t('guardian.health.measurement_item_required', 'Please select a measurement item.')); return; }
-    if (!measurementForm.measured_at) { setError(t('guardian.health.measured_at_required', 'Please enter measured date/time.')); return; }
-    if (!Number.isFinite(value)) { setError(t('guardian.health.measurement_value_invalid', 'Please enter a valid measurement value.')); return; }
-    try {
-      await api.pets.healthMeasurements.update(selectedPet.id, editingLog.id, {
-        disease_item_id: stableDiseaseId,
-        device_type_item_id: stableDeviceTypeId || null,
-        device_model_id: measurementForm.model_id || null,
-        measurement_item_id: stableMeasurementItemId,
-        measurement_context_id: stableMeasurementContextId || null,
-        value,
-        unit_item_id: stableUnitId || null,
-        measured_at: measurementForm.measured_at || new Date().toISOString(),
-        memo: measurementForm.memo.trim() || null,
-      });
-      setMeasurementWizardStep(1);
-      resetMeasurementForm();
-      onSuccess();
-      onClose();
-    } catch (e) {
-      setError(uiErrorMessage(e, t('guardian.health.measurement_update_failed', 'Failed to update health measurement log.')));
-    }
-  }
-
-  function handleClose() {
-    setMeasurementWizardStep(1);
-    onClose();
   }
 
   if (!open) return null;
 
   return (
     <div className="modal-overlay">
-      <div className="modal">
+      <div className="modal" style={{ maxWidth: 560 }}>
         <div className="modal-header">
           <h3 className="modal-title">
             {editingLog
               ? t('guardian.health.measurement.edit', '질병 수치 수정')
               : t('guardian.health.measurement.add', '질병 수치 추가')}
           </h3>
-          <button className="modal-close" onClick={handleClose}>&times;</button>
+          <button className="modal-close" onClick={() => { resetMeasurementForm(); onClose(); }}>&times;</button>
         </div>
         <div className="modal-body">
-          <div className="pet-wizard-steps mb-2">
-            <button className={`pet-wizard-step ${measurementWizardStep === 1 ? 'active' : ''}`} type="button">1 / 2</button>
-            <button className={`pet-wizard-step ${measurementWizardStep === 2 ? 'active' : ''}`} type="button">2 / 2</button>
-          </div>
 
-          {measurementWizardStep === 1 && (
+          {/* ── Step 1: Registered device selection ── */}
+          {hasRegisteredDevices && !editingLog && (
+            <div style={{ marginBottom: 16 }}>
+              <label className="form-label" style={{ marginBottom: 8, display: 'block' }}>
+                {t('guardian.health.measurement.select_registered_device', '등록된 장비에서 선택')}
+              </label>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+                {guardianDevices.filter((d) => d.status === 'active').map((d) => (
+                  <button
+                    key={d.id}
+                    type="button"
+                    onClick={() => selectDevice(d)}
+                    style={{
+                      border: measurementForm.guardian_device_id === d.id ? '2px solid var(--primary)' : '1px solid var(--border)',
+                      borderRadius: 8,
+                      padding: '10px 12px',
+                      background: measurementForm.guardian_device_id === d.id ? 'var(--primary-light, #fffbeb)' : 'var(--surface)',
+                      textAlign: 'left',
+                      cursor: 'pointer',
+                      transition: 'border-color 0.15s',
+                    }}
+                  >
+                    <div style={{ fontWeight: 600, fontSize: 14 }}>
+                      {deviceLabel(d)}
+                      {d.nickname && <span style={{ fontWeight: 400, color: 'var(--text-secondary)', marginLeft: 6 }}>({d.nickname})</span>}
+                      {!!d.is_default && <span style={{ fontSize: 11, background: 'var(--primary)', color: '#fff', borderRadius: 4, padding: '1px 5px', marginLeft: 6 }}>{t('guardian.device.is_default', '기본')}</span>}
+                    </div>
+                    <div style={{ fontSize: 12, color: 'var(--text-secondary)', marginTop: 2 }}>{deviceSubLabel(d)}</div>
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {!hasRegisteredDevices && !editingLog && (
+            <div style={{ marginBottom: 16, padding: '12px 14px', background: 'var(--bg)', borderRadius: 8, textAlign: 'center' }}>
+              <p className="text-sm text-muted" style={{ margin: '0 0 8px' }}>
+                {t('guardian.device.no_devices', '등록된 장비가 없습니다')}
+              </p>
+              <button className="btn btn-secondary btn-sm" onClick={() => { onClose(); onOpenDeviceManage(); }}>
+                {t('guardian.device.manage_title', '내 측정 장비')} →
+              </button>
+            </div>
+          )}
+
+          {/* ── Manual device toggle (fallback) ── */}
+          {!editingLog && (
+            <div style={{ marginBottom: 12, textAlign: 'right' }}>
+              <button
+                className="btn btn-sm"
+                style={{ fontSize: 12 }}
+                onClick={() => {
+                  setShowManualDevice(!showManualDevice);
+                  if (!showManualDevice) setMeasurementForm((p) => ({ ...p, guardian_device_id: '' }));
+                }}
+              >
+                {showManualDevice ? t('guardian.health.measurement.select_registered_device', '등록된 장비에서 선택') : t('guardian.health.measurement.device_type', '장치 직접 선택')}
+              </button>
+            </div>
+          )}
+
+          {/* ── Disease selection ── */}
+          {renderSelect(t('guardian.health.measurement.disease', '질병'), measurementForm.disease_item_id, diseaseOptionsForHealth, (v) => setMeasurementForm((prev) => ({
+            ...prev,
+            disease_item_id: v,
+            device_type_item_id: '',
+            manufacturer_id: '',
+            brand_id: '',
+            model_id: '',
+            measurement_item_id: '',
+            measurement_context_id: '',
+          })), true)}
+
+          {/* ── Manual cascade (only if editing or manual mode) ── */}
+          {(showManualDevice || editingLog) && (
             <>
-              {renderSelect(t('guardian.health.measurement.disease', '질병'), measurementForm.disease_item_id, diseaseOptionsForHealth, (v) => setMeasurementForm((prev) => ({
-                ...prev,
-                disease_item_id: v,
-                device_type_item_id: '',
-                manufacturer_id: '',
-                brand_id: '',
-                model_id: '',
-                measurement_item_id: '',
-                measurement_context_id: '',
-              })), true)}
               {renderSelect(t('guardian.health.measurement.device_type', '장치 유형'), measurementForm.device_type_item_id, healthDeviceOptions, (v) => setMeasurementForm((prev) => ({
                 ...prev,
                 device_type_item_id: v,
@@ -374,69 +416,51 @@ export default function MeasurementModal({
             </>
           )}
 
-          {measurementWizardStep === 2 && (
-            <>
-              {renderSelect(t('guardian.health.measurement.item', '측정항목'), measurementForm.measurement_item_id, healthMeasurementOptions, (v) => setMeasurementForm((prev) => ({
-                ...prev,
-                measurement_item_id: v,
-                measurement_context_id: '',
-              })), true)}
-              {renderSelect(t('guardian.health.measurement.context', '측정 컨텍스트'), measurementForm.measurement_context_id, healthContextOptions, (v) => setMeasurementForm((prev) => ({ ...prev, measurement_context_id: v })))}
-              <div className="form-row col2">
-                <div className="form-group">
-                  <label className="form-label">{t('guardian.health.measurement.value', '수치 값')} *</label>
-                  <input
-                    className="form-input"
-                    type="number"
-                    step="0.01"
-                    value={measurementForm.value}
-                    onChange={(e) => setMeasurementForm((prev) => ({ ...prev, value: e.target.value }))}
-                  />
-                </div>
-                {renderSelect(t('guardian.health.measurement.unit', '단위'), measurementForm.unit_item_id, measurementUnitOptions, (v) => setMeasurementForm((prev) => ({ ...prev, unit_item_id: v })))}
-              </div>
-              <div className="form-row col2">
-                <div className="form-group">
-                  <label className="form-label">{t('guardian.health.measurement.measured_at', '측정일')} *</label>
-                  <input
-                    className="form-input"
-                    type="datetime-local"
-                    value={measurementForm.measured_at}
-                    onChange={(e) => setMeasurementForm((prev) => ({ ...prev, measured_at: e.target.value }))}
-                  />
-                </div>
-                <div className="form-group">
-                  <label className="form-label">{t('guardian.health.measurement.memo', '메모')}</label>
-                  <input
-                    className="form-input"
-                    value={measurementForm.memo}
-                    onChange={(e) => setMeasurementForm((prev) => ({ ...prev, memo: e.target.value }))}
-                  />
-                </div>
-              </div>
-            </>
-          )}
+          {/* ── Measurement fields ── */}
+          {renderSelect(t('guardian.health.measurement.item', '측정항목'), measurementForm.measurement_item_id, healthMeasurementOptions, (v) => setMeasurementForm((prev) => ({
+            ...prev,
+            measurement_item_id: v,
+            measurement_context_id: '',
+          })), true)}
+          {renderSelect(t('guardian.health.measurement.context', '측정 컨텍스트'), measurementForm.measurement_context_id, healthContextOptions, (v) => setMeasurementForm((prev) => ({ ...prev, measurement_context_id: v })))}
+          <div className="form-row col2">
+            <div className="form-group">
+              <label className="form-label">{t('guardian.health.measurement.value', '수치 값')} *</label>
+              <input
+                className="form-input"
+                type="number"
+                step="0.01"
+                value={measurementForm.value}
+                onChange={(e) => setMeasurementForm((prev) => ({ ...prev, value: e.target.value }))}
+              />
+            </div>
+            {renderSelect(t('guardian.health.measurement.unit', '단위'), measurementForm.unit_item_id, measurementUnitOptions, (v) => setMeasurementForm((prev) => ({ ...prev, unit_item_id: v })))}
+          </div>
+          <div className="form-row col2">
+            <div className="form-group">
+              <label className="form-label">{t('guardian.health.measurement.measured_at', '측정일')} *</label>
+              <input
+                className="form-input"
+                type="datetime-local"
+                value={measurementForm.measured_at}
+                onChange={(e) => setMeasurementForm((prev) => ({ ...prev, measured_at: e.target.value }))}
+              />
+            </div>
+            <div className="form-group">
+              <label className="form-label">{t('guardian.health.measurement.memo', '메모')}</label>
+              <input
+                className="form-input"
+                value={measurementForm.memo}
+                onChange={(e) => setMeasurementForm((prev) => ({ ...prev, memo: e.target.value }))}
+              />
+            </div>
+          </div>
         </div>
         <div className="modal-footer">
-          {measurementWizardStep === 1 ? (
-            <>
-              <button className="btn btn-secondary" onClick={handleClose}>{t('common.cancel', 'Cancel')}</button>
-              <button
-                className="btn btn-primary"
-                onClick={() => setMeasurementWizardStep(2)}
-                disabled={!measurementForm.disease_item_id || !measurementForm.device_type_item_id}
-              >
-                {t('common.next', '다음')} &gt;
-              </button>
-            </>
-          ) : (
-            <>
-              <button className="btn btn-secondary" onClick={() => setMeasurementWizardStep(1)}>&lt; {t('common.previous', '이전')}</button>
-              <button className="btn btn-primary" onClick={() => void (editingLog ? updateHealthMeasurementLog() : createHealthMeasurementLog())}>
-                {t('common.save', 'Save')}
-              </button>
-            </>
-          )}
+          <button className="btn btn-secondary" onClick={() => { resetMeasurementForm(); onClose(); }}>{t('common.cancel', 'Cancel')}</button>
+          <button className="btn btn-primary" onClick={() => void saveMeasurement()}>
+            {t('common.save', 'Save')}
+          </button>
         </div>
       </div>
     </div>

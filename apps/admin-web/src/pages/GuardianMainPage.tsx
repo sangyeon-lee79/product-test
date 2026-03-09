@@ -6,6 +6,7 @@ import {
   type FeedPost,
   type FriendRequest,
   type GlucoseAlert,
+  type GuardianDevice,
   type HealthMeasurementSummary,
   type MasterItem,
   type Pet,
@@ -31,6 +32,7 @@ import PetGalleryPanel from '../components/PetGalleryPanel';
 import ComposeModal from './guardian/ComposeModal';
 import WeightModal from './guardian/WeightModal';
 import MeasurementModal from './guardian/MeasurementModal';
+import DeviceManageModal from './guardian/DeviceManageModal';
 import PetWizardModal from './guardian/PetWizardModal';
 import {
   type FeedTab,
@@ -75,6 +77,8 @@ export default function GuardianMainPage() {
   const [weightModalOpen, setWeightModalOpen] = useState(false);
   const [measurementModalOpen, setMeasurementModalOpen] = useState(false);
   const [editingMeasurementLog, setEditingMeasurementLog] = useState<PetHealthMeasurementLog | null>(null);
+  const [deviceManageModalOpen, setDeviceManageModalOpen] = useState(false);
+  const [guardianDevices, setGuardianDevices] = useState<GuardianDevice[]>([]);
   const [selectedMeasurementItemId, setSelectedMeasurementItemId] = useState('');
   const [feedTab, setFeedTab] = useState<FeedTab>('all');
   const [petTab, setPetTab] = useState<PetProfileTab>('gallery');
@@ -354,6 +358,7 @@ export default function GuardianMainPage() {
     loadWeightLogs(selectedPet.id, weightRange);
     loadMeasurementLogs(selectedPet.id, weightRange);
     void loadPetLogs(selectedPet.id);
+    void loadGuardianDevices(selectedPet.id);
   }, [selectedPet?.id, weightRange]);
 
   useEffect(() => {
@@ -390,6 +395,15 @@ export default function GuardianMainPage() {
       setError(uiErrorMessage(e, t('guardian.health.measurement_log_load_failed', 'Failed to load health measurement logs.')));
       setMeasurementLogs([]);
       setMeasurementSummary(null);
+    }
+  }
+
+  async function loadGuardianDevices(petId: string) {
+    try {
+      const res = await api.pets.guardianDevices.list(petId);
+      setGuardianDevices(res.devices || []);
+    } catch {
+      setGuardianDevices([]);
     }
   }
 
@@ -771,6 +785,7 @@ export default function GuardianMainPage() {
                     <div className="gm-section-header">
                       <span className="gm-section-title">{t('guardian.health.chart_title', '건강 추이')}</span>
                       <div style={{ display: 'flex', gap: 8 }}>
+                        <button className="btn btn-sm" style={{ fontSize: 12 }} onClick={() => setDeviceManageModalOpen(true)}>{t('guardian.device.manage_title', '장비 관리')}</button>
                         <button className="btn btn-primary btn-sm" onClick={() => setWeightModalOpen(true)}>{t('guardian.health.add_weight', '몸무게 추가')}</button>
                         <button className="btn btn-secondary btn-sm" onClick={openCreateHealthMeasurementModal}>{t('guardian.health.add_measurement', '수치 추가')}</button>
                       </div>
@@ -1091,6 +1106,7 @@ export default function GuardianMainPage() {
         open={measurementModalOpen}
         editingLog={editingMeasurementLog}
         selectedPet={selectedPet}
+        guardianDevices={guardianDevices}
         optDisease={optDisease}
         optDiseaseDevice={optDiseaseDevice}
         optMeasurement={optMeasurement}
@@ -1102,6 +1118,18 @@ export default function GuardianMainPage() {
         onSuccess={() => {
           if (selectedPet?.id) void loadMeasurementLogs(selectedPet.id, weightRange);
         }}
+        onOpenDeviceManage={() => setDeviceManageModalOpen(true)}
+      />
+      <DeviceManageModal
+        open={deviceManageModalOpen}
+        selectedPet={selectedPet}
+        optDisease={optDisease}
+        optDiseaseDevice={optDiseaseDevice}
+        lang={lang}
+        t={t}
+        setError={setError}
+        onClose={() => setDeviceManageModalOpen(false)}
+        onChanged={(devices) => setGuardianDevices(devices)}
       />
       <PetWizardModal
         open={petModalOpen}
