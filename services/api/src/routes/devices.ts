@@ -323,30 +323,51 @@ export async function handleDevices(request: Request, env: Env, url: URL): Promi
     ).bind(petId, user.sub).first<{ id: string }>();
     if (!pet) return err('Pet not found', 404, 'not_found');
 
+    // Check if guardian_devices table exists (migration 0044+)
+    if (!(await hasTable(env, 'guardian_devices'))) {
+      if (method === 'GET') return ok({ devices: [] });
+      return err('guardian_devices not available yet', 400, 'not_supported');
+    }
+
     // GET list
     if (!deviceId && method === 'GET') {
       const lang = resolveLang(url);
       const langCol = lang;
-      const normalized = await hasColumn(env, 'master_items', 'code');
-      const rows = normalized
-        ? await env.DB.prepare(
+      const hasDeviceModels = await hasTable(env, 'device_models');
+
+      // If device_models table doesn't exist, return simple query
+      if (!hasDeviceModels) {
+        try {
+          const rows = await env.DB.prepare(
+            `SELECT * FROM guardian_devices WHERE pet_id = ? AND status != 'deleted' ORDER BY created_at DESC`
+          ).bind(petId).all();
+          return ok({ devices: rows.results });
+        } catch {
+          return ok({ devices: [] });
+        }
+      }
+
+      try {
+        const normalized = await hasColumn(env, 'master_items', 'code');
+        const codeCol = normalized ? 'code' : 'key';
+        const rows = await env.DB.prepare(
           `SELECT gd.*, dm.model_name, dm.model_code,
-                  mi.code as type_key,
+                  mi.${codeCol} as type_key,
                   tr_type.ko as type_name_ko, tr_type.en as type_name_en,
-                  COALESCE(NULLIF(TRIM(tr_type.${langCol}), ''), NULLIF(TRIM(tr_type.en), ''), NULLIF(TRIM(tr_type.ko), ''), mi.code) AS type_display_label,
+                  COALESCE(NULLIF(TRIM(tr_type.${langCol}), ''), NULLIF(TRIM(tr_type.en), ''), NULLIF(TRIM(tr_type.ko), ''), mi.${codeCol}) AS type_display_label,
                   mfr.name_ko as mfr_name_ko, mfr.name_en as mfr_name_en,
                   COALESCE(NULLIF(TRIM(tr_mfr.${langCol}), ''), NULLIF(TRIM(tr_mfr.en), ''), NULLIF(TRIM(tr_mfr.ko), ''), mfr.name_en, mfr.name_ko, mfr.key) AS mfr_display_label,
                   b.name_ko as brand_name_ko, b.name_en as brand_name_en,
                   COALESCE(NULLIF(TRIM(tr_brand.${langCol}), ''), NULLIF(TRIM(tr_brand.en), ''), NULLIF(TRIM(tr_brand.ko), ''), b.name_en, b.name_ko) AS brand_display_label,
                   COALESCE(NULLIF(TRIM(tr_model.${langCol}), ''), NULLIF(TRIM(tr_model.en), ''), NULLIF(TRIM(tr_model.ko), ''), dm.model_name) AS model_display_label
            FROM guardian_devices gd
-           JOIN device_models dm ON dm.id = gd.device_model_id
+           LEFT JOIN device_models dm ON dm.id = gd.device_model_id
            LEFT JOIN master_items mi ON mi.id = dm.device_type_item_id
            LEFT JOIN master_categories mc ON mc.id = mi.category_id
            LEFT JOIN i18n_translations tr_type
              ON tr_type.key = CASE
-               WHEN mc.code LIKE 'master.%' THEN (mc.code || '.' || mi.code)
-               ELSE ('master.' || mc.code || '.' || mi.code)
+               WHEN mc.${codeCol} LIKE 'master.%' THEN (mc.${codeCol} || '.' || mi.${codeCol})
+               ELSE ('master.' || mc.${codeCol} || '.' || mi.${codeCol})
              END
            LEFT JOIN device_manufacturers mfr ON mfr.id = dm.manufacturer_id
            LEFT JOIN i18n_translations tr_mfr ON tr_mfr.key = mfr.name_key
@@ -354,36 +375,20 @@ export async function handleDevices(request: Request, env: Env, url: URL): Promi
            LEFT JOIN i18n_translations tr_brand ON tr_brand.key = b.name_key
            LEFT JOIN i18n_translations tr_model ON tr_model.key = dm.name_key
            WHERE gd.pet_id = ? AND gd.status != 'deleted'
-           ORDER BY gd.created_at DESC`
-        ).bind(petId).all()
-        : await env.DB.prepare(
-          `SELECT gd.*, dm.model_name, dm.model_code,
-                  mi.key as type_key,
-                  tr_type.ko as type_name_ko, tr_type.en as type_name_en,
-                  COALESCE(NULLIF(TRIM(tr_type.${langCol}), ''), NULLIF(TRIM(tr_type.en), ''), NULLIF(TRIM(tr_type.ko), ''), mi.key) AS type_display_label,
-                  mfr.name_ko as mfr_name_ko, mfr.name_en as mfr_name_en,
-                  COALESCE(NULLIF(TRIM(tr_mfr.${langCol}), ''), NULLIF(TRIM(tr_mfr.en), ''), NULLIF(TRIM(tr_mfr.ko), ''), mfr.name_en, mfr.name_ko, mfr.key) AS mfr_display_label,
-                  b.name_ko as brand_name_ko, b.name_en as brand_name_en,
-                  COALESCE(NULLIF(TRIM(tr_brand.${langCol}), ''), NULLIF(TRIM(tr_brand.en), ''), NULLIF(TRIM(tr_brand.ko), ''), b.name_en, b.name_ko) AS brand_display_label,
-                  COALESCE(NULLIF(TRIM(tr_model.${langCol}), ''), NULLIF(TRIM(tr_model.en), ''), NULLIF(TRIM(tr_model.ko), ''), dm.model_name) AS model_display_label
-           FROM guardian_devices gd
-           JOIN device_models dm ON dm.id = gd.device_model_id
-           LEFT JOIN master_items mi ON mi.id = dm.device_type_item_id
-           LEFT JOIN master_categories mc ON mc.id = mi.category_id
-           LEFT JOIN i18n_translations tr_type
-             ON tr_type.key = CASE
-               WHEN mc.key LIKE 'master.%' THEN (mc.key || '.' || mi.key)
-               ELSE ('master.' || mc.key || '.' || mi.key)
-             END
-           LEFT JOIN device_manufacturers mfr ON mfr.id = dm.manufacturer_id
-           LEFT JOIN i18n_translations tr_mfr ON tr_mfr.key = mfr.name_key
-           LEFT JOIN device_brands b ON b.id = dm.brand_id
-           LEFT JOIN i18n_translations tr_brand ON tr_brand.key = b.name_key
-           LEFT JOIN i18n_translations tr_model ON tr_model.key = dm.name_key
-           WHERE gd.pet_id = ? AND gd.status != 'deleted'
-           ORDER BY gd.created_at DESC`
+           ORDER BY gd.is_default DESC, gd.created_at DESC`
         ).bind(petId).all();
-      return ok({ devices: rows.results });
+        return ok({ devices: rows.results });
+      } catch {
+        // Fallback: simple query without JOINs
+        try {
+          const rows = await env.DB.prepare(
+            `SELECT * FROM guardian_devices WHERE pet_id = ? AND status != 'deleted' ORDER BY created_at DESC`
+          ).bind(petId).all();
+          return ok({ devices: rows.results });
+        } catch {
+          return ok({ devices: [] });
+        }
+      }
     }
 
     // POST create
@@ -391,8 +396,10 @@ export async function handleDevices(request: Request, env: Env, url: URL): Promi
       const body = await request.json<{ device_model_id: string; nickname?: string; serial_number?: string; start_date?: string; notes?: string; disease_item_id?: string; is_default?: boolean }>();
       if (!body.device_model_id) return err('device_model_id required', 400, 'missing_field');
 
-      const model = await env.DB.prepare(`SELECT id FROM device_models WHERE id = ? AND status = 'active'`).bind(body.device_model_id).first<{ id: string }>();
-      if (!model) return err('Device model not found', 404, 'not_found');
+      if (await hasTable(env, 'device_models')) {
+        const model = await env.DB.prepare(`SELECT id FROM device_models WHERE id = ? AND status = 'active'`).bind(body.device_model_id).first<{ id: string }>();
+        if (!model) return err('Device model not found', 404, 'not_found');
+      }
 
       const hasNewCols = await hasColumn(env, 'guardian_devices', 'disease_item_id');
       const isDefault = body.is_default ? 1 : 0;
