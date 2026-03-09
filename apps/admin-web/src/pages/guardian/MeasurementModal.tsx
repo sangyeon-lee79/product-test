@@ -1,4 +1,4 @@
-// 질병 수치 추가/수정 모달 — 단일 페이지 (등록 장비 선택 → 수치 입력)
+// 질병 수치 추가/수정 모달 — 등록 장비 선택 → 질병 자동매핑 → 수치 입력
 import { useEffect, useMemo, useState } from 'react';
 import { api, type DeviceBrand, type DeviceManufacturer, type DeviceModel, type GuardianDevice, type MeasurementUnit, type Pet, type PetHealthMeasurementLog } from '../../lib/api';
 import type { Lang } from '../../lib/i18n';
@@ -44,6 +44,9 @@ export default function MeasurementModal({
 
   const hasRegisteredDevices = guardianDevices.length > 0;
 
+  // Whether disease was auto-set from a selected device (disable manual change)
+  const diseaseAutoMapped = !!(measurementForm.guardian_device_id && measurementForm.disease_item_id);
+
   const optionLabel = (option: Option | undefined, fallback: string): string => {
     if (!option) return fallback;
     if (option.i18nKey) {
@@ -53,11 +56,11 @@ export default function MeasurementModal({
     return (option.label || '').trim() || fallback;
   };
 
-  function renderSelect(label: string, value: string, options: Array<{ id: string; key: string; label: string }>, onChange: (v: string) => void, required = false) {
+  function renderSelect(label: string, value: string, options: Array<{ id: string; key: string; label: string }>, onChange: (v: string) => void, required = false, disabled = false) {
     return (
       <div className="form-group">
         <label className="form-label">{label}{required ? ' *' : ''}</label>
-        <select className="form-select" value={value} onChange={(e) => onChange(e.target.value)}>
+        <select className="form-select" value={value} onChange={(e) => onChange(e.target.value)} disabled={disabled} style={disabled ? { opacity: 0.6, cursor: 'not-allowed' } : undefined}>
           <option value="">{t('common.select', 'Select')}</option>
           {options.map((o) => <option key={o.id} value={o.id}>{optionLabel(o as Option, t('common.none', '-'))}</option>)}
         </select>
@@ -112,6 +115,7 @@ export default function MeasurementModal({
     setMeasurementForm((prev) => ({
       ...prev,
       guardian_device_id: d.id,
+      // Auto-map disease from device
       disease_item_id: d.disease_item_id || prev.disease_item_id,
       device_type_item_id: d.type_key ? (optDiseaseDevice.find((o) => o.key === d.type_key)?.id || prev.device_type_item_id) : prev.device_type_item_id,
       model_id: d.device_model_id || prev.model_id,
@@ -176,16 +180,6 @@ export default function MeasurementModal({
     void run();
   }, [open, showManualDevice, measurementForm.device_type_item_id, measurementForm.manufacturer_id, measurementForm.brand_id]);
 
-  // Auto-set default unit
-  useEffect(() => {
-    if (!open) return;
-    if (measurementForm.unit_item_id) return;
-    const defaultUnit = measurementUnitOptions[0];
-    if (defaultUnit) {
-      setMeasurementForm((prev) => ({ ...prev, unit_item_id: defaultUnit.id }));
-    }
-  }, [open, measurementForm.unit_item_id]);
-
   const diseaseOptionsForHealth = useMemo(() => {
     const selectedIds = normalizeMultiStableIds(selectedPet?.disease_history_ids, optDisease);
     if (!selectedIds.length) return optDisease;
@@ -244,6 +238,29 @@ export default function MeasurementModal({
     [measurementUnits],
   );
 
+  // Auto-set unit from selected measurement item
+  useEffect(() => {
+    if (!open || !measurementForm.measurement_item_id) return;
+    const item = optMeasurement.find((o) => o.id === measurementForm.measurement_item_id);
+    if (!item) return;
+    const unitMatch = measurementUnitOptions.find((u) => {
+      if (item.metadata?.unit_key && u.key === item.metadata.unit_key) return true;
+      return false;
+    });
+    if (unitMatch) {
+      setMeasurementForm((prev) => ({ ...prev, unit_item_id: unitMatch.id }));
+    } else if (!measurementForm.unit_item_id && measurementUnitOptions.length > 0) {
+      setMeasurementForm((prev) => ({ ...prev, unit_item_id: measurementUnitOptions[0].id }));
+    }
+  }, [open, measurementForm.measurement_item_id, measurementUnitOptions.length]);
+
+  // Resolve display label for the auto-selected unit
+  const selectedUnitLabel = useMemo(() => {
+    if (!measurementForm.unit_item_id) return '';
+    const u = measurementUnitOptions.find((o) => o.id === measurementForm.unit_item_id);
+    return u ? u.label : '';
+  }, [measurementForm.unit_item_id, measurementUnitOptions]);
+
   function deviceLabel(d: GuardianDevice): string {
     return d.model_display_label || d.model_name || d.model_code || d.device_model_id;
   }
@@ -259,6 +276,13 @@ export default function MeasurementModal({
     else if (brand) parts.push(brand);
     return parts.join(' · ');
   }
+
+  // Resolve disease display label for auto-mapped display
+  const autoMappedDiseaseLabel = useMemo(() => {
+    if (!diseaseAutoMapped) return '';
+    const opt = diseaseOptionsForHealth.find((o) => o.id === measurementForm.disease_item_id);
+    return opt ? optionLabel(opt, '') : '';
+  }, [diseaseAutoMapped, measurementForm.disease_item_id, diseaseOptionsForHealth]);
 
   async function saveMeasurement() {
     if (!selectedPet?.id) return;
@@ -317,7 +341,7 @@ export default function MeasurementModal({
         <div className="modal-body">
 
           {/* ── Step 1: Registered device selection ── */}
-          {hasRegisteredDevices && !editingLog && (
+          {hasRegisteredDevices && !editingLog && !showManualDevice && (
             <div style={{ marginBottom: 16 }}>
               <label className="form-label" style={{ marginBottom: 8, display: 'block' }}>
                 {t('guardian.health.measurement.select_registered_device', '등록된 장비에서 선택')}
@@ -350,7 +374,7 @@ export default function MeasurementModal({
             </div>
           )}
 
-          {!hasRegisteredDevices && !editingLog && (
+          {!hasRegisteredDevices && !editingLog && !showManualDevice && (
             <div style={{ marginBottom: 16, padding: '12px 14px', background: 'var(--bg)', borderRadius: 8, textAlign: 'center' }}>
               <p className="text-sm text-muted" style={{ margin: '0 0 8px' }}>
                 {t('guardian.device.no_devices', '등록된 장비가 없습니다')}
@@ -361,35 +385,58 @@ export default function MeasurementModal({
             </div>
           )}
 
-          {/* ── Manual device toggle (fallback) ── */}
+          {/* ── Manual device toggle ── */}
           {!editingLog && (
             <div style={{ marginBottom: 12, textAlign: 'right' }}>
               <button
                 className="btn btn-sm"
                 style={{ fontSize: 12 }}
                 onClick={() => {
-                  setShowManualDevice(!showManualDevice);
-                  if (!showManualDevice) setMeasurementForm((p) => ({ ...p, guardian_device_id: '' }));
+                  if (!showManualDevice) {
+                    // Switch to manual mode — clear device selection
+                    setMeasurementForm((p) => ({ ...p, guardian_device_id: '', disease_item_id: '', device_type_item_id: '' }));
+                    setShowManualDevice(true);
+                  } else {
+                    // Switch back to registered device list
+                    setShowManualDevice(false);
+                  }
                 }}
               >
-                {showManualDevice ? t('guardian.health.measurement.select_registered_device', '등록된 장비에서 선택') : t('guardian.health.measurement.device_type', '장치 직접 선택')}
+                {showManualDevice
+                  ? t('guardian.health.measurement.select_registered_device', '등록된 장비에서 선택')
+                  : t('guardian.health.measurement.manual_entry', '장치 직접 입력')}
               </button>
             </div>
           )}
 
-          {/* ── Disease selection ── */}
-          {renderSelect(t('guardian.health.measurement.disease', '질병'), measurementForm.disease_item_id, diseaseOptionsForHealth, (v) => setMeasurementForm((prev) => ({
-            ...prev,
-            disease_item_id: v,
-            device_type_item_id: '',
-            manufacturer_id: '',
-            brand_id: '',
-            model_id: '',
-            measurement_item_id: '',
-            measurement_context_id: '',
-          })), true)}
+          {/* ── Disease: auto-mapped (read-only) or manual select ── */}
+          {diseaseAutoMapped && !editingLog ? (
+            <div className="form-group">
+              <label className="form-label">{t('guardian.health.measurement.disease', '질병')} *</label>
+              <div style={{
+                padding: '8px 12px', background: 'var(--bg)', border: '1px solid var(--border)',
+                borderRadius: 8, fontSize: 14, color: 'var(--text)',
+              }}>
+                {autoMappedDiseaseLabel || measurementForm.disease_item_id}
+                <span style={{ fontSize: 11, color: 'var(--text-muted)', marginLeft: 8 }}>
+                  ({t('guardian.health.measurement.auto_mapped', '장비에서 자동 설정')})
+                </span>
+              </div>
+            </div>
+          ) : (
+            renderSelect(t('guardian.health.measurement.disease', '질병'), measurementForm.disease_item_id, diseaseOptionsForHealth, (v) => setMeasurementForm((prev) => ({
+              ...prev,
+              disease_item_id: v,
+              device_type_item_id: '',
+              manufacturer_id: '',
+              brand_id: '',
+              model_id: '',
+              measurement_item_id: '',
+              measurement_context_id: '',
+            })), true)
+          )}
 
-          {/* ── Manual cascade (only if editing or manual mode) ── */}
+          {/* ── Manual cascade (only if manual mode or editing) ── */}
           {(showManualDevice || editingLog) && (
             <>
               {renderSelect(t('guardian.health.measurement.device_type', '장치 유형'), measurementForm.device_type_item_id, healthDeviceOptions, (v) => setMeasurementForm((prev) => ({
@@ -416,16 +463,21 @@ export default function MeasurementModal({
             </>
           )}
 
-          {/* ── Measurement fields ── */}
-          {renderSelect(t('guardian.health.measurement.item', '측정항목'), measurementForm.measurement_item_id, healthMeasurementOptions, (v) => setMeasurementForm((prev) => ({
-            ...prev,
-            measurement_item_id: v,
-            measurement_context_id: '',
-          })), true)}
-          {renderSelect(t('guardian.health.measurement.context', '측정 컨텍스트'), measurementForm.measurement_context_id, healthContextOptions, (v) => setMeasurementForm((prev) => ({ ...prev, measurement_context_id: v })))}
-          <div className="form-row col2">
-            <div className="form-group">
-              <label className="form-label">{t('guardian.health.measurement.value', '수치 값')} *</label>
+          {/* ── Measurement item + value in one row ── */}
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, alignItems: 'end' }}>
+            <div className="form-group" style={{ marginBottom: 0 }}>
+              <label className="form-label">{t('guardian.health.measurement.item', '측정항목')} *</label>
+              <select className="form-select" value={measurementForm.measurement_item_id} onChange={(e) => setMeasurementForm((prev) => ({
+                ...prev,
+                measurement_item_id: e.target.value,
+                measurement_context_id: '',
+              }))}>
+                <option value="">{t('common.select', 'Select')}</option>
+                {healthMeasurementOptions.map((o) => <option key={o.id} value={o.id}>{optionLabel(o, t('common.none', '-'))}</option>)}
+              </select>
+            </div>
+            <div className="form-group" style={{ marginBottom: 0 }}>
+              <label className="form-label">{t('guardian.health.measurement.value', '수치 값')} *{selectedUnitLabel ? ` (${selectedUnitLabel})` : ''}</label>
               <input
                 className="form-input"
                 type="number"
@@ -434,9 +486,16 @@ export default function MeasurementModal({
                 onChange={(e) => setMeasurementForm((prev) => ({ ...prev, value: e.target.value }))}
               />
             </div>
-            {renderSelect(t('guardian.health.measurement.unit', '단위'), measurementForm.unit_item_id, measurementUnitOptions, (v) => setMeasurementForm((prev) => ({ ...prev, unit_item_id: v })))}
           </div>
-          <div className="form-row col2">
+
+          {/* ── Context (if available) ── */}
+          {healthContextOptions.length > 0 && (
+            <div style={{ marginTop: 8 }}>
+              {renderSelect(t('guardian.health.measurement.context', '측정 컨텍스트'), measurementForm.measurement_context_id, healthContextOptions, (v) => setMeasurementForm((prev) => ({ ...prev, measurement_context_id: v })))}
+            </div>
+          )}
+
+          <div className="form-row col2" style={{ marginTop: 8 }}>
             <div className="form-group">
               <label className="form-label">{t('guardian.health.measurement.measured_at', '측정일')} *</label>
               <input
