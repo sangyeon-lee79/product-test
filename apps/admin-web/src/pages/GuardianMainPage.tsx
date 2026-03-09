@@ -1,344 +1,40 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
-import { api, type Booking, type DeviceBrand, type DeviceManufacturer, type DeviceModel, type FeedPost, type FriendRequest, type HealthMeasurementSummary, type MasterItem, type MeasurementUnit, type Pet, type PetAlbumMedia, type PetHealthMeasurementLog, type PetWeightLog, type WeightSummary } from '../lib/api';
-import { useI18n, useT, type Lang } from '../lib/i18n';
+import {
+  api,
+  type Booking,
+  type FeedPost,
+  type FriendRequest,
+  type HealthMeasurementSummary,
+  type Pet,
+  type PetAlbumMedia,
+  type PetHealthMeasurementLog,
+  type PetWeightLog,
+  type WeightSummary,
+} from '../lib/api';
+import { useI18n, useT } from '../lib/i18n';
 import { getStoredRole } from '../lib/auth';
 import PetGalleryPanel from '../components/PetGalleryPanel';
-
-type FeedTab = 'all' | 'friends';
-type Mode = 'create' | 'edit';
-type PetProfileTab = 'timeline' | 'health' | 'services' | 'gallery' | 'profile';
-type WeightRange = '7d' | '15d' | '1m' | '3m' | '6m' | '1y' | 'all';
-type PetWizardStep = 1 | 2 | 3 | 4 | 5 | 6 | 7;
-type MeasurementWizardStep = 1 | 2;
-
-type Option = { id: string; key: string; label: string; i18nKey?: string; parentId?: string | null; metadata?: Record<string, unknown> };
-const PET_WIZARD_STEPS: Array<{ step: PetWizardStep; labelKey: string; fallback: string }> = [
-  { step: 1, labelKey: 'guardian.pet_wizard.basic_info', fallback: 'Basic Info' },
-  { step: 2, labelKey: 'master.pet_type', fallback: 'Pet Type' },
-  { step: 3, labelKey: 'master.pet_gender', fallback: 'Gender' },
-  { step: 4, labelKey: 'master.vaccination_type', fallback: 'Vaccination' },
-  { step: 5, labelKey: 'master.disease_group', fallback: 'Disease Group' },
-  { step: 6, labelKey: 'master.temperament_type', fallback: 'Temperament' },
-  { step: 7, labelKey: 'master.coat_length', fallback: 'Coat Length' },
-];
-
-type PetForm = {
-  name: string;
-  microchip_no: string;
-  birthday: string;
-  current_weight: string;
-  current_weight_measured_at: string;
-  current_weight_notes: string;
-  notes: string;
-  pet_type_id: string;
-  breed_id: string;
-  gender_id: string;
-  neuter_status_id: string;
-  life_stage_id: string;
-  body_size_id: string;
-  country_id: string;
-  allergy_ids: string[];
-  disease_history_ids: string[];
-  symptom_tag_ids: string[];
-  vaccination_ids: string[];
-  weight_unit_id: string;
-  health_condition_level_id: string;
-  activity_level_id: string;
-  diet_type_id: string;
-  temperament_ids: string[];
-  ownership_type_id: string;
-  coat_length_id: string;
-  coat_type_id: string;
-  grooming_cycle_id: string;
-  color_ids: string[];
-};
-
-type FeedCompose = {
-  feed_type: 'guardian_post' | 'health_update' | 'pet_milestone' | 'supplier_story';
-  visibility_scope: 'public' | 'friends_only' | 'private' | 'connected_only' | 'booking_related_only';
-  caption: string;
-  tagsText: string;
-  pet_id: string;
-};
-
-const DEFAULT_PET_FORM: PetForm = {
-  name: '',
-  microchip_no: '',
-  birthday: '',
-  current_weight: '',
-  current_weight_measured_at: '',
-  current_weight_notes: '',
-  notes: '',
-  pet_type_id: '',
-  breed_id: '',
-  gender_id: '',
-  neuter_status_id: '',
-  life_stage_id: '',
-  body_size_id: '',
-  country_id: '',
-  allergy_ids: [],
-  disease_history_ids: [],
-  symptom_tag_ids: [],
-  vaccination_ids: [],
-  weight_unit_id: '',
-  health_condition_level_id: '',
-  activity_level_id: '',
-  diet_type_id: '',
-  temperament_ids: [],
-  ownership_type_id: '',
-  coat_length_id: '',
-  coat_type_id: '',
-  grooming_cycle_id: '',
-  color_ids: [],
-};
-
-const DEFAULT_FEED_COMPOSE: FeedCompose = {
-  feed_type: 'guardian_post',
-  visibility_scope: 'public',
-  caption: '',
-  tagsText: '',
-  pet_id: '',
-};
-
-const MAX_UPLOAD_SIZE = 10 * 1024 * 1024;
-const ALLOWED_UPLOAD_TYPES = new Set(['image/jpeg', 'image/jpg', 'image/png', 'image/webp']);
-const FEED_MAX_EDGE = 1080;
-const FEED_MAX_MB = 0.5;
-
-const CATEGORY_KEYS: Record<string, string[]> = {
-  pet_type: ['master.pet_type', 'pet_type'],
-  pet_breed: ['master.pet_type', 'pet_type'],
-  pet_gender: ['master.pet_gender', 'pet_gender', 'gender'],
-  neuter_status: ['master.neuter_status', 'neuter_status'],
-  life_stage: ['master.life_stage', 'life_stage'],
-  body_size: ['master.body_size', 'body_size'],
-  pet_color: ['master.pet_color', 'pet_color'],
-  country: ['master.country', 'country'],
-  allergy_type: ['master.allergy_type', 'allergy_type'],
-  disease_type: ['master.disease_type', 'disease_type'],
-  disease_group: ['master.disease_group', 'disease_group'],
-  disease_device_type: ['master.disease_device_type', 'disease_device_type'],
-  disease_measurement_type: ['master.disease_measurement_type', 'disease_measurement_type'],
-  disease_measurement_context: ['master.disease_measurement_context', 'disease_measurement_context'],
-  symptom_type: ['master.symptom_type', 'symptom_type'],
-  vaccination_type: ['master.vaccination_type', 'vaccination_type'],
-  weight_unit: ['master.weight_unit', 'weight_unit'],
-  health_condition_level: ['master.health_condition_level', 'health_condition_level'],
-  activity_level: ['master.activity_level', 'activity_level'],
-  diet_type: ['master.diet_type', 'diet_type'],
-  temperament_type: ['master.temperament_type', 'temperament_type'],
-  ownership_type: ['master.ownership_type', 'ownership_type'],
-  coat_length: ['master.coat_length', 'coat_length'],
-  coat_type: ['master.coat_type', 'coat_type'],
-  grooming_cycle: ['master.grooming_cycle', 'grooming_cycle'],
-};
-
-function toArray(raw: string[] | string | null | undefined): string[] {
-  if (Array.isArray(raw)) return raw;
-  if (!raw) return [];
-  try {
-    const parsed = JSON.parse(raw) as unknown;
-    if (!Array.isArray(parsed)) return [];
-    return parsed.filter((x) => typeof x === 'string') as string[];
-  } catch {
-    return [];
-  }
-}
-
-function normalizeUniqueIds(values: string[]): string[] {
-  const out: string[] = [];
-  const seen = new Set<string>();
-  for (const value of values) {
-    const id = String(value || '').trim();
-    if (!id || seen.has(id)) continue;
-    seen.add(id);
-    out.push(id);
-  }
-  return out;
-}
-
-function normalizedCategoryBaseKey(categoryKey: string): string {
-  return categoryKey.replace(/^master\./, '');
-}
-
-function localizedMasterItemLabel(
-  item: MasterItem,
-  lang: Lang,
-  t: (key: string, fallback?: string) => string,
-  categoryBaseKey?: string,
-): string {
-  if (categoryBaseKey) {
-    const i18nKey = `master.${categoryBaseKey}.${item.key}`;
-    const translated = t(i18nKey, '__MISSING__');
-    if (translated !== '__MISSING__') return translated;
-  }
-  const byLang = item[lang as keyof MasterItem];
-  if (typeof byLang === 'string' && byLang.trim()) return byLang.trim();
-  const ko = item.ko_name || item.ko;
-  if (ko && ko.trim()) return ko.trim();
-  if (typeof item.en === 'string' && item.en.trim()) return item.en.trim();
-  return '-';
-}
-
-function toOption(
-  items: MasterItem[],
-  lang: Lang,
-  t: (key: string, fallback?: string) => string,
-  categoryKey?: string,
-): Option[] {
-  const categoryBaseKey = categoryKey ? normalizedCategoryBaseKey(categoryKey) : undefined;
-  return items.map((item) => {
-    let metadata: Record<string, unknown> = {};
-    try {
-      metadata = typeof item.metadata === 'string' ? JSON.parse(item.metadata || '{}') as Record<string, unknown> : {};
-    } catch {
-      metadata = {};
-    }
-    return {
-      id: item.id,
-      key: item.key,
-      label: (item.display_label || '').trim() || localizedMasterItemLabel(item, lang, t, categoryBaseKey),
-      i18nKey: categoryBaseKey ? `master.${categoryBaseKey}.${item.key}` : undefined,
-      parentId: item.parent_id,
-      metadata,
-    };
-  });
-}
-
-function formatDate(value?: string | null, fallback = '-'): string {
-  if (!value) return fallback;
-  try {
-    return new Date(value).toLocaleString();
-  } catch {
-    return value;
-  }
-}
-
-function normalizeSingleStableId(value: string | null | undefined, options: Option[], allowUnknownWhenOptionsMissing = true): string {
-  const raw = String(value || '').trim();
-  if (!raw) return '';
-  if (options.length === 0) return allowUnknownWhenOptionsMissing ? raw : '';
-  const matched = options.find((o) => o.id === raw || o.key === raw);
-  return matched?.id || '';
-}
-
-function normalizeMultiStableIds(raw: string[] | string | null | undefined, options: Option[], allowUnknownWhenOptionsMissing = true): string[] {
-  return normalizeUniqueIds(
-    toArray(raw)
-      .map((value) => normalizeSingleStableId(value, options, allowUnknownWhenOptionsMissing))
-      .filter(Boolean),
-  );
-}
-
-function feedTypeLabel(t: (key: string, fallback?: string) => string, value: string): string {
-  const map: Record<string, string> = {
-    guardian_post: t('guardian.feed.type.guardian_post', 'Guardian Post'),
-    health_update: t('guardian.feed.type.health_update', 'Health Update'),
-    pet_milestone: t('guardian.feed.type.pet_milestone', 'Pet Milestone'),
-    supplier_story: t('guardian.feed.type.supplier_story', 'Supplier Story'),
-    booking_completed: t('guardian.feed.type.booking_completed', 'Booking Completed'),
-  };
-  return map[value] || value;
-}
-
-function visibilityLabel(t: (key: string, fallback?: string) => string, value: string): string {
-  const map: Record<string, string> = {
-    public: t('guardian.feed.visibility.public', 'Public'),
-    friends_only: t('guardian.feed.visibility.friends_only', 'Friends Only'),
-    private: t('guardian.feed.visibility.private', 'Private'),
-    connected_only: t('guardian.feed.visibility.connected_only', 'Connected Only'),
-    booking_related_only: t('guardian.feed.visibility.booking_related_only', 'Booking Related Only'),
-  };
-  return map[value] || value;
-}
-
-function fileToDataUrl(file: File): Promise<string> {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = () => {
-      if (typeof reader.result === 'string') resolve(reader.result);
-      else reject(new Error('invalid_file_data'));
-    };
-    reader.onerror = () => reject(new Error('file_read_failed'));
-    reader.readAsDataURL(file);
-  });
-}
-
-function sanitizePathSegment(value: string): string {
-  return value.replace(/[^a-zA-Z0-9_-]/g, '');
-}
-
-function loadImageElement(file: File): Promise<HTMLImageElement> {
-  return new Promise((resolve, reject) => {
-    const objectUrl = URL.createObjectURL(file);
-    const image = new Image();
-    image.onload = () => {
-      URL.revokeObjectURL(objectUrl);
-      resolve(image);
-    };
-    image.onerror = () => {
-      URL.revokeObjectURL(objectUrl);
-      reject(new Error('image_decode_failed'));
-    };
-    image.src = objectUrl;
-  });
-}
-
-async function compressImageFile(
-  file: File,
-  options: { maxEdge: number; maxSizeMB: number; preferredType?: 'image/jpeg' | 'image/webp' },
-): Promise<File> {
-  const image = await loadImageElement(file);
-  const longEdge = Math.max(image.naturalWidth, image.naturalHeight);
-  const scale = longEdge > options.maxEdge ? options.maxEdge / longEdge : 1;
-  const width = Math.max(1, Math.round(image.naturalWidth * scale));
-  const height = Math.max(1, Math.round(image.naturalHeight * scale));
-  const canvas = document.createElement('canvas');
-  canvas.width = width;
-  canvas.height = height;
-  const ctx = canvas.getContext('2d');
-  if (!ctx) throw new Error('canvas_not_supported');
-  ctx.drawImage(image, 0, 0, width, height);
-
-  const outputType = options.preferredType ?? 'image/jpeg';
-  const targetBytes = options.maxSizeMB * 1024 * 1024;
-  const qualities = [0.82, 0.75, 0.68, 0.6];
-
-  for (const quality of qualities) {
-    const blob = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, outputType, quality));
-    if (!blob) continue;
-    if (blob.size <= targetBytes || quality === qualities[qualities.length - 1]) {
-      const ext = outputType === 'image/webp' ? 'webp' : 'jpg';
-      const filename = `${file.name.replace(/\.[^.]+$/, '')}_${options.maxEdge}.${ext}`;
-      return new File([blob], filename, { type: outputType, lastModified: Date.now() });
-    }
-  }
-  throw new Error('image_compress_failed');
-}
-
-function uiErrorMessage(error: unknown, fallback: string): string {
-  if (error instanceof Error) {
-    const msg = error.message || '';
-    if (msg.includes('Failed to fetch') || msg.includes('NetworkError')) {
-      return 'Unable to load data. Please try again shortly.';
-    }
-    return msg;
-  }
-  return fallback;
-}
-
-async function loadCategoryItems(candidates: string[], lang?: Lang): Promise<MasterItem[]> {
-  for (const key of candidates) {
-    try {
-      const rows = await api.master.public.items(key, undefined, lang);
-      if (rows.length > 0) return rows;
-    } catch {
-      // try next candidate
-    }
-  }
-  return [];
-}
+import ComposeModal from './guardian/ComposeModal';
+import WeightModal from './guardian/WeightModal';
+import MeasurementModal from './guardian/MeasurementModal';
+import PetWizardModal from './guardian/PetWizardModal';
+import {
+  type FeedTab,
+  type Mode,
+  type PetProfileTab,
+  type WeightRange,
+  type Option,
+  type GuardianPetOptions,
+  CATEGORY_KEYS,
+  toOption,
+  loadCategoryItems,
+  uiErrorMessage,
+  formatDate,
+  feedTypeLabel,
+  visibilityLabel,
+  normalizeMultiStableIds,
+} from './guardian/guardianTypes';
 
 export default function GuardianMainPage() {
   const { pet_id: petIdParam } = useParams();
@@ -351,13 +47,9 @@ export default function GuardianMainPage() {
 
   const [pets, setPets] = useState<Pet[]>([]);
   const [selectedPetId, setSelectedPetId] = useState('');
-  const [activePet, setActivePet] = useState<Pet | null>(null);
   const [editingPetId, setEditingPetId] = useState('');
   const [petModalOpen, setPetModalOpen] = useState(false);
   const [petMode, setPetMode] = useState<Mode>('create');
-  const [petForm, setPetForm] = useState<PetForm>(DEFAULT_PET_FORM);
-  const [petWizardStep, setPetWizardStep] = useState<PetWizardStep>(1);
-  const [diseaseRows, setDiseaseRows] = useState<Array<{ groupId: string; diseaseId: string }>>([{ groupId: '', diseaseId: '' }]);
 
   const [bookings, setBookings] = useState<Booking[]>([]);
   const [feeds, setFeeds] = useState<FeedPost[]>([]);
@@ -369,51 +61,13 @@ export default function GuardianMainPage() {
   const [weightRange, setWeightRange] = useState<WeightRange>('1m');
   const [weightModalOpen, setWeightModalOpen] = useState(false);
   const [measurementModalOpen, setMeasurementModalOpen] = useState(false);
-  const [editingMeasurementLogId, setEditingMeasurementLogId] = useState<string | null>(null);
-  const [measurementWizardStep, setMeasurementWizardStep] = useState<MeasurementWizardStep>(1);
+  const [editingMeasurementLog, setEditingMeasurementLog] = useState<PetHealthMeasurementLog | null>(null);
   const [selectedMeasurementItemId, setSelectedMeasurementItemId] = useState('');
-  const [weightForm, setWeightForm] = useState<{ value: string; measured_at: string; notes: string }>({
-    value: '',
-    measured_at: '',
-    notes: '',
-  });
-  const [measurementForm, setMeasurementForm] = useState<{
-    disease_item_id: string;
-    device_type_item_id: string;
-    measurement_item_id: string;
-    measurement_context_id: string;
-    manufacturer_id: string;
-    brand_id: string;
-    model_id: string;
-    value: string;
-    unit_item_id: string;
-    measured_at: string;
-    memo: string;
-  }>({
-    disease_item_id: '',
-    device_type_item_id: '',
-    measurement_item_id: '',
-    measurement_context_id: '',
-    manufacturer_id: '',
-    brand_id: '',
-    model_id: '',
-    value: '',
-    unit_item_id: '',
-    measured_at: '',
-    memo: '',
-  });
   const [feedTab, setFeedTab] = useState<FeedTab>('all');
   const [petTab, setPetTab] = useState<PetProfileTab>('gallery');
   const [composeModalOpen, setComposeModalOpen] = useState(false);
   const [lightboxIndex, setLightboxIndex] = useState(-1);
   const [lightboxItems, setLightboxItems] = useState<string[]>([]);
-  const [feedCompose, setFeedCompose] = useState<FeedCompose>(DEFAULT_FEED_COMPOSE);
-  const [feedImageFile, setFeedImageFile] = useState<File | null>(null);
-  const [feedImagePreviewUrl, setFeedImagePreviewUrl] = useState('');
-  const [feedUploadProgress, setFeedUploadProgress] = useState(0);
-  const [feedUploadError, setFeedUploadError] = useState('');
-  const [isPostingFeed, setIsPostingFeed] = useState(false);
-  const fileInputRef = useRef<HTMLInputElement | null>(null);
 
   const [friendCount, setFriendCount] = useState(0);
   const [pendingRequests, setPendingRequests] = useState<FriendRequest[]>([]);
@@ -429,10 +83,6 @@ export default function GuardianMainPage() {
   const [optDiseaseDevice, setOptDiseaseDevice] = useState<Option[]>([]);
   const [optMeasurement, setOptMeasurement] = useState<Option[]>([]);
   const [optMeasurementContext, setOptMeasurementContext] = useState<Option[]>([]);
-  const [deviceManufacturers, setDeviceManufacturers] = useState<DeviceManufacturer[]>([]);
-  const [deviceBrands, setDeviceBrands] = useState<DeviceBrand[]>([]);
-  const [deviceModels, setDeviceModels] = useState<DeviceModel[]>([]);
-  const [measurementUnits, setMeasurementUnits] = useState<MeasurementUnit[]>([]);
   const [optSymptom, setOptSymptom] = useState<Option[]>([]);
   const [optVaccination, setOptVaccination] = useState<Option[]>([]);
   const [optHealthLevel, setOptHealthLevel] = useState<Option[]>([]);
@@ -448,9 +98,7 @@ export default function GuardianMainPage() {
       const translated = t(option.i18nKey, '').trim();
       if (translated) return translated;
     }
-    const display = (option.label || '').trim();
-    if (display) return display;
-    return fallback;
+    return (option.label || '').trim() || fallback;
   };
 
   const labelOf = (options: Option[], id: string | null | undefined, fallback: string): string => {
@@ -474,95 +122,9 @@ export default function GuardianMainPage() {
     }
   }
 
-  function toDatetimeLocal(value?: string | null): string {
-    const date = value ? new Date(value) : new Date();
-    if (Number.isNaN(date.getTime())) return '';
-    const local = new Date(date.getTime() - date.getTimezoneOffset() * 60000);
-    return local.toISOString().slice(0, 16);
-  }
-
-  function resetMeasurementForm(nextMeasuredAt?: string) {
-    setMeasurementForm({
-      disease_item_id: '',
-      device_type_item_id: '',
-      measurement_item_id: '',
-      measurement_context_id: '',
-      manufacturer_id: '',
-      brand_id: '',
-      model_id: '',
-      value: '',
-      unit_item_id: '',
-      measured_at: nextMeasuredAt || '',
-      memo: '',
-    });
-  }
-
   const currentUserId = currentUserIdFromToken();
 
   const selectedPet = useMemo(() => pets.find((p) => p.id === selectedPetId) || pets[0] || null, [pets, selectedPetId]);
-
-  const breedOptionsFiltered = useMemo(() => {
-    if (!petForm.pet_type_id) return optBreed;
-    return optBreed.filter((b) => b.parentId === petForm.pet_type_id);
-  }, [optBreed, petForm.pet_type_id]);
-
-  const wizardTitle = useMemo(() => {
-    const dash = '-';
-    if (petWizardStep === 1) return `${t('guardian.pet_wizard.basic_info', '기본정보')} - ${dash} - ${dash}`;
-    if (petWizardStep === 2) {
-      return `${t('master.pet_type', '펫종류')} - ${labelOf(optPetType, petForm.pet_type_id, dash)} - ${labelOf(breedOptionsFiltered, petForm.breed_id, dash)}`;
-    }
-    if (petWizardStep === 3) {
-      const colorLabel = petForm.color_ids.length
-        ? `${labelOf(optColor, petForm.color_ids[0], dash)}${petForm.color_ids.length > 1 ? ` +${petForm.color_ids.length - 1}` : ''}`
-        : dash;
-      return `${t('master.pet_gender', '성별')} - ${labelOf(optGender, petForm.gender_id, dash)} - ${colorLabel}`;
-    }
-    if (petWizardStep === 4) {
-      const vaccinationLabel = petForm.vaccination_ids.length
-        ? `${labelOf(optVaccination, petForm.vaccination_ids[0], dash)}${petForm.vaccination_ids.length > 1 ? ` +${petForm.vaccination_ids.length - 1}` : ''}`
-        : dash;
-      return `${t('master.vaccination_type', '예방접종')} - ${vaccinationLabel} - ${dash}`;
-    }
-    if (petWizardStep === 5) {
-      const diseaseLabel = petForm.disease_history_ids.length
-        ? `${labelOf(optDisease, petForm.disease_history_ids[0], dash)}${petForm.disease_history_ids.length > 1 ? ` +${petForm.disease_history_ids.length - 1}` : ''}`
-        : dash;
-      return `${t('master.disease_group', '질병군')} - ${labelOf(optDiseaseGroup, diseaseRows.find((row) => row.groupId)?.groupId || '', dash)} - ${diseaseLabel}`;
-    }
-    if (petWizardStep === 6) {
-      const temperamentLabel = petForm.temperament_ids.length
-        ? `${labelOf(optTemperament, petForm.temperament_ids[0], dash)}${petForm.temperament_ids.length > 1 ? ` +${petForm.temperament_ids.length - 1}` : ''}`
-        : dash;
-      return `${t('master.temperament_type', '성격기질')} - ${temperamentLabel} - ${labelOf(optActivity, petForm.activity_level_id, dash)}`;
-    }
-    return `${t('master.coat_length', '털길이')} - ${labelOf(optCoatLength, petForm.coat_length_id, dash)} - ${labelOf(optGrooming, petForm.grooming_cycle_id, dash)}`;
-  }, [
-    breedOptionsFiltered,
-    diseaseRows,
-    optActivity,
-    optCoatLength,
-    optColor,
-    optDisease,
-    optDiseaseGroup,
-    optGender,
-    optGrooming,
-    optPetType,
-    optTemperament,
-    optVaccination,
-    petForm.activity_level_id,
-    petForm.breed_id,
-    petForm.coat_length_id,
-    petForm.color_ids,
-    petForm.disease_history_ids,
-    petForm.gender_id,
-    petForm.grooming_cycle_id,
-    petForm.pet_type_id,
-    petForm.temperament_ids,
-    petForm.vaccination_ids,
-    petWizardStep,
-    t,
-  ]);
 
   const latestBooking = useMemo(() => {
     if (!bookings.length) return null;
@@ -576,6 +138,13 @@ export default function GuardianMainPage() {
     [bookings],
   );
 
+  function summarizeOptions(options: Option[], raw: string[] | string | null | undefined, max = 2): { text: string; tooltip: string } {
+    const ids = normalizeMultiStableIds(raw, options);
+    if (ids.length === 0) return { text: t('common.none', '-'), tooltip: '' };
+    const labels = ids.map((id) => labelOf(options, id, t('common.none', '-')));
+    const text = labels.length > max ? `${labels.slice(0, max).join(', ')} +${labels.length - max}` : labels.join(', ');
+    return { text, tooltip: labels.join('\n') };
+  }
 
   const petSummaryDetails = useMemo(() => {
     if (!selectedPet) return null;
@@ -592,6 +161,24 @@ export default function GuardianMainPage() {
       grooming: summarizeOptions(optGrooming, selectedPet.grooming_cycle_id ? [selectedPet.grooming_cycle_id] : []),
     };
   }, [optActivity, optColor, optDiet, optDisease, optGrooming, optTemperament, optVaccination, selectedPet, t]);
+
+  const healthFeeds = useMemo(
+    () => feeds.filter((f) => f.feed_type === 'health_update' && (!selectedPet || !f.pet_id || f.pet_id === selectedPet.id)),
+    [feeds, selectedPet],
+  );
+
+  const serviceFeeds = useMemo(
+    () => feeds.filter((f) => f.feed_type === 'booking_completed' && (!selectedPet || !f.pet_id || f.pet_id === selectedPet.id)),
+    [feeds, selectedPet],
+  );
+
+  const petOptions = useMemo<GuardianPetOptions>(() => ({
+    optPetType, optBreed, optGender, optLifeStage, optColor, optAllergy, optDisease,
+    optDiseaseGroup, optVaccination, optSymptom, optHealthLevel, optActivity, optDiet,
+    optTemperament, optCoatLength, optGrooming,
+  }), [optPetType, optBreed, optGender, optLifeStage, optColor, optAllergy, optDisease,
+    optDiseaseGroup, optVaccination, optSymptom, optHealthLevel, optActivity, optDiet,
+    optTemperament, optCoatLength, optGrooming]);
 
   async function loadAll(tab = feedTab, opts?: { silent?: boolean }) {
     const silent = Boolean(opts?.silent);
@@ -708,36 +295,32 @@ export default function GuardianMainPage() {
     void loadAll(feedTab, { silent: true });
   }, [lang]);
 
-  useEffect(() => () => {
-    if (feedImagePreviewUrl) URL.revokeObjectURL(feedImagePreviewUrl);
-  }, [feedImagePreviewUrl]);
-
   useEffect(() => {
     if (!petIdParam) return;
     setSelectedPetId(petIdParam);
   }, [petIdParam]);
 
   useEffect(() => {
-    if (!petModalOpen) return;
-    const normalizedDiseaseIds = normalizeMultiStableIds(petForm.disease_history_ids, optDisease);
-    const mapped = normalizedDiseaseIds
-      .map((diseaseId) => {
-        const disease = optDisease.find((d) => d.id === diseaseId || d.key === diseaseId);
-        return { groupId: disease?.parentId || '', diseaseId };
-      })
-      .filter((row) => row.groupId && row.diseaseId);
-    setDiseaseRows(mapped.length ? mapped : [{ groupId: '', diseaseId: '' }]);
-  }, [optDisease, petForm.disease_history_ids, petModalOpen]);
+    if (!selectedPet?.id) {
+      setWeightLogs([]);
+      setWeightSummary(null);
+      setMeasurementLogs([]);
+      setMeasurementSummary(null);
+      return;
+    }
+    loadWeightLogs(selectedPet.id, weightRange);
+    loadMeasurementLogs(selectedPet.id, weightRange);
+  }, [selectedPet?.id, weightRange]);
 
-  const healthFeeds = useMemo(
-    () => feeds.filter((f) => f.feed_type === 'health_update' && (!selectedPet || !f.pet_id || f.pet_id === selectedPet.id)),
-    [feeds, selectedPet],
-  );
-
-  const serviceFeeds = useMemo(
-    () => feeds.filter((f) => f.feed_type === 'booking_completed' && (!selectedPet || !f.pet_id || f.pet_id === selectedPet.id)),
-    [feeds, selectedPet],
-  );
+  useEffect(() => {
+    if (!measurementLogs.length) {
+      if (selectedMeasurementItemId) setSelectedMeasurementItemId('');
+      return;
+    }
+    if (!selectedMeasurementItemId || !measurementLogs.some((log) => String(log.measurement_item_id) === selectedMeasurementItemId)) {
+      setSelectedMeasurementItemId(String(measurementLogs[0].measurement_item_id || ''));
+    }
+  }, [measurementLogs, selectedMeasurementItemId]);
 
   async function loadWeightLogs(petId: string, range: WeightRange) {
     try {
@@ -766,41 +349,6 @@ export default function GuardianMainPage() {
     }
   }
 
-  useEffect(() => {
-    if (!selectedPet?.id) {
-      setWeightLogs([]);
-      setWeightSummary(null);
-      setMeasurementLogs([]);
-      setMeasurementSummary(null);
-      return;
-    }
-    loadWeightLogs(selectedPet.id, weightRange);
-    loadMeasurementLogs(selectedPet.id, weightRange);
-  }, [selectedPet?.id, weightRange]);
-
-  async function createWeightLog() {
-    if (!selectedPet?.id) return;
-    const value = Number(weightForm.value);
-    if (!Number.isFinite(value) || value <= 0) {
-      setError(t('guardian.health.weight_invalid', 'Please enter a valid weight.'));
-      return;
-    }
-    try {
-      await api.pets.weightLogs.create(selectedPet.id, {
-        weight_value: value,
-        weight_unit_id: selectedPet.weight_unit_id || null,
-        measured_at: weightForm.measured_at || new Date().toISOString(),
-        notes: weightForm.notes.trim() || null,
-      });
-      setWeightModalOpen(false);
-      setWeightForm({ value: '', measured_at: '', notes: '' });
-      await loadWeightLogs(selectedPet.id, weightRange);
-      await loadAll(feedTab);
-    } catch (e) {
-      setError(uiErrorMessage(e, t('guardian.health.weight_create_failed', 'Failed to add weight log.')));
-    }
-  }
-
   async function removeWeightLog(logId: string) {
     if (!selectedPet?.id) return;
     if (!confirm(t('guardian.health.weight_delete_confirm', 'Delete this weight log?'))) return;
@@ -811,292 +359,6 @@ export default function GuardianMainPage() {
     } catch (e) {
       setError(uiErrorMessage(e, t('guardian.health.weight_delete_failed', 'Failed to delete weight log.')));
     }
-  }
-
-  const diseaseOptionsForHealth = useMemo(() => {
-    const selectedIds = normalizeMultiStableIds(selectedPet?.disease_history_ids, optDisease);
-    if (!selectedIds.length) return optDisease;
-    const set = new Set(selectedIds);
-    return optDisease.filter((item) => set.has(item.id));
-  }, [optDisease, selectedPet?.disease_history_ids]);
-
-  const healthDeviceOptions = useMemo(
-    () => optDiseaseDevice.filter((item) => !measurementForm.disease_item_id || item.parentId === measurementForm.disease_item_id),
-    [optDiseaseDevice, measurementForm.disease_item_id],
-  );
-
-  const healthMeasurementOptions = useMemo(
-    () => optMeasurement.filter((item) => !measurementForm.device_type_item_id || item.parentId === measurementForm.device_type_item_id),
-    [optMeasurement, measurementForm.device_type_item_id],
-  );
-
-  const healthContextOptions = useMemo(
-    () => optMeasurementContext.filter((item) => !measurementForm.measurement_item_id || item.parentId === measurementForm.measurement_item_id),
-    [optMeasurementContext, measurementForm.measurement_item_id],
-  );
-
-  useEffect(() => {
-    if (!measurementLogs.length) {
-      if (selectedMeasurementItemId) setSelectedMeasurementItemId('');
-      return;
-    }
-    if (!selectedMeasurementItemId || !measurementLogs.some((log) => String(log.measurement_item_id) === selectedMeasurementItemId)) {
-      setSelectedMeasurementItemId(String(measurementLogs[0].measurement_item_id || ''));
-    }
-  }, [measurementLogs, selectedMeasurementItemId]);
-
-  const manufacturerOptions = useMemo(
-    () => deviceManufacturers
-      .filter((row) => row.status === 'active')
-      .map((row) => ({
-        id: row.id,
-        key: row.key,
-        label: (row.display_label || '').trim() || (lang === 'ko' ? (row.name_ko || row.name_en || row.key) : (row.name_en || row.name_ko || row.key)),
-      })),
-    [deviceManufacturers, lang],
-  );
-
-  const brandOptions = useMemo(
-    () => deviceBrands
-      .filter((row) => row.status === 'active')
-      .map((row) => ({
-        id: row.id,
-        key: row.name_en || row.name_ko || row.id,
-        label: lang === 'ko' ? (row.name_ko || row.name_en || row.id) : (row.name_en || row.name_ko || row.id),
-      })),
-    [deviceBrands, lang],
-  );
-
-  const modelOptions = useMemo(
-    () => deviceModels
-      .filter((row) => row.status === 'active')
-      .map((row) => ({ id: row.id, key: row.model_code || row.model_name || row.id, label: row.model_name || row.model_code || row.id })),
-    [deviceModels],
-  );
-
-  const measurementUnitOptions = useMemo(
-    () => measurementUnits
-      .filter((row) => row.status === 'active')
-      .map((row) => ({ id: row.id, key: row.key || row.id, label: row.symbol ? `${row.name} (${row.symbol})` : row.name })),
-    [measurementUnits],
-  );
-
-  useEffect(() => {
-    if (!measurementModalOpen) return;
-    const run = async () => {
-      try {
-        const [manufacturers, units] = await Promise.all([
-          api.devices.public.manufacturers(measurementForm.device_type_item_id || undefined),
-          api.devices.public.units(),
-        ]);
-        setDeviceManufacturers(manufacturers);
-        setMeasurementUnits(units);
-      } catch (e) {
-        setError(uiErrorMessage(e, t('guardian.health.device_unit_load_failed', 'Failed to load device/unit data.')));
-      }
-    };
-    run();
-  }, [measurementModalOpen, measurementForm.device_type_item_id]);
-
-  useEffect(() => {
-    if (!measurementModalOpen) return;
-    const run = async () => {
-      if (!measurementForm.manufacturer_id) {
-        setDeviceBrands([]);
-        return;
-      }
-      try {
-        const rows = await api.devices.public.brands(measurementForm.manufacturer_id);
-        setDeviceBrands(rows);
-      } catch (e) {
-        setError(uiErrorMessage(e, t('guardian.health.brand_load_failed', 'Failed to load brand data.')));
-      }
-    };
-    run();
-  }, [measurementModalOpen, measurementForm.manufacturer_id]);
-
-  useEffect(() => {
-    if (!measurementModalOpen) return;
-    if (!measurementForm.manufacturer_id) return;
-    if (!measurementForm.brand_id) return;
-    if (deviceBrands.some((row) => row.id === measurementForm.brand_id)) return;
-    setMeasurementForm((prev) => ({ ...prev, brand_id: '', model_id: '' }));
-  }, [measurementModalOpen, deviceBrands, measurementForm.manufacturer_id, measurementForm.brand_id]);
-
-  useEffect(() => {
-    if (!measurementModalOpen) return;
-    const run = async () => {
-      if (!measurementForm.device_type_item_id && !measurementForm.manufacturer_id && !measurementForm.brand_id) {
-        setDeviceModels([]);
-        return;
-      }
-      try {
-        const rows = await api.devices.public.models({
-          device_type_id: measurementForm.device_type_item_id || undefined,
-          manufacturer_id: measurementForm.manufacturer_id || undefined,
-          brand_id: measurementForm.brand_id || undefined,
-        });
-        setDeviceModels(rows);
-      } catch (e) {
-        setError(uiErrorMessage(e, t('guardian.health.model_load_failed', 'Failed to load model data.')));
-      }
-    };
-    run();
-  }, [measurementModalOpen, measurementForm.device_type_item_id, measurementForm.manufacturer_id, measurementForm.brand_id]);
-
-  useEffect(() => {
-    if (!measurementModalOpen) return;
-    if (!measurementForm.model_id) return;
-    const matchedModel = deviceModels.find((row) => row.id === measurementForm.model_id);
-    if (!matchedModel) return;
-    setMeasurementForm((prev) => ({
-      ...prev,
-      manufacturer_id: prev.manufacturer_id || matchedModel.manufacturer_id || '',
-      brand_id: prev.brand_id || matchedModel.brand_id || '',
-    }));
-  }, [measurementModalOpen, deviceModels, measurementForm.model_id]);
-
-  useEffect(() => {
-    if (!measurementModalOpen) return;
-    if (measurementForm.unit_item_id) return;
-    const defaultUnit = measurementUnitOptions[0];
-    if (defaultUnit) {
-      setMeasurementForm((prev) => ({ ...prev, unit_item_id: defaultUnit.id }));
-    }
-  }, [measurementModalOpen, measurementUnitOptions, measurementForm.unit_item_id]);
-
-  async function createHealthMeasurementLog() {
-    if (!selectedPet?.id) return;
-    const stableDiseaseId = normalizeSingleStableId(measurementForm.disease_item_id, optDisease, false);
-    const stableDeviceTypeId = normalizeSingleStableId(measurementForm.device_type_item_id, optDiseaseDevice, false);
-    const stableMeasurementItemId = normalizeSingleStableId(measurementForm.measurement_item_id, optMeasurement, false);
-    const stableMeasurementContextId = normalizeSingleStableId(measurementForm.measurement_context_id, optMeasurementContext, false);
-    const stableUnitId = normalizeSingleStableId(measurementForm.unit_item_id, measurementUnitOptions, false);
-    const value = Number(measurementForm.value);
-    if (!stableDiseaseId) {
-      setError(t('guardian.health.disease_required', 'Please select a disease.'));
-      return;
-    }
-    if (!stableDeviceTypeId) {
-      setError(t('guardian.health.device_type_required', 'Please select a device type.'));
-      return;
-    }
-    if (!stableMeasurementItemId) {
-      setError(t('guardian.health.measurement_item_required', 'Please select a measurement item.'));
-      return;
-    }
-    if (!measurementForm.measured_at) {
-      setError(t('guardian.health.measured_at_required', 'Please enter measured date/time.'));
-      return;
-    }
-    if (!Number.isFinite(value)) {
-      setError(t('guardian.health.measurement_value_invalid', 'Please enter a valid measurement value.'));
-      return;
-    }
-    try {
-      await api.pets.healthMeasurements.create(selectedPet.id, {
-        disease_item_id: stableDiseaseId,
-        device_type_item_id: stableDeviceTypeId || null,
-        device_model_id: measurementForm.model_id || null,
-        measurement_item_id: stableMeasurementItemId,
-        measurement_context_id: stableMeasurementContextId || null,
-        value,
-        unit_item_id: stableUnitId || null,
-        measured_at: measurementForm.measured_at || new Date().toISOString(),
-        memo: measurementForm.memo.trim() || null,
-      });
-      setMeasurementModalOpen(false);
-      setMeasurementWizardStep(1);
-      resetMeasurementForm();
-      await loadMeasurementLogs(selectedPet.id, weightRange);
-      await loadAll(feedTab);
-    } catch (e) {
-      setError(uiErrorMessage(e, t('guardian.health.measurement_create_failed', 'Failed to add health measurement log.')));
-    }
-  }
-
-  async function updateHealthMeasurementLog() {
-    if (!selectedPet?.id || !editingMeasurementLogId) return;
-    const stableDiseaseId = normalizeSingleStableId(measurementForm.disease_item_id, optDisease, false);
-    const stableDeviceTypeId = normalizeSingleStableId(measurementForm.device_type_item_id, optDiseaseDevice, false);
-    const stableMeasurementItemId = normalizeSingleStableId(measurementForm.measurement_item_id, optMeasurement, false);
-    const stableMeasurementContextId = normalizeSingleStableId(measurementForm.measurement_context_id, optMeasurementContext, false);
-    const stableUnitId = normalizeSingleStableId(measurementForm.unit_item_id, measurementUnitOptions, false);
-    const value = Number(measurementForm.value);
-    if (!stableDiseaseId) {
-      setError(t('guardian.health.disease_required', 'Please select a disease.'));
-      return;
-    }
-    if (!stableDeviceTypeId) {
-      setError(t('guardian.health.device_type_required', 'Please select a device type.'));
-      return;
-    }
-    if (!stableMeasurementItemId) {
-      setError(t('guardian.health.measurement_item_required', 'Please select a measurement item.'));
-      return;
-    }
-    if (!measurementForm.measured_at) {
-      setError(t('guardian.health.measured_at_required', 'Please enter measured date/time.'));
-      return;
-    }
-    if (!Number.isFinite(value)) {
-      setError(t('guardian.health.measurement_value_invalid', 'Please enter a valid measurement value.'));
-      return;
-    }
-    try {
-      await api.pets.healthMeasurements.update(selectedPet.id, editingMeasurementLogId, {
-        disease_item_id: stableDiseaseId,
-        device_type_item_id: stableDeviceTypeId || null,
-        device_model_id: measurementForm.model_id || null,
-        measurement_item_id: stableMeasurementItemId,
-        measurement_context_id: stableMeasurementContextId || null,
-        value,
-        unit_item_id: stableUnitId || null,
-        measured_at: measurementForm.measured_at || new Date().toISOString(),
-        memo: measurementForm.memo.trim() || null,
-      });
-      setMeasurementModalOpen(false);
-      setEditingMeasurementLogId(null);
-      setMeasurementWizardStep(1);
-      resetMeasurementForm();
-      await loadMeasurementLogs(selectedPet.id, weightRange);
-    } catch (e) {
-      setError(uiErrorMessage(e, t('guardian.health.measurement_update_failed', 'Failed to update health measurement log.')));
-    }
-  }
-
-  function openEditHealthMeasurementLog(log: PetHealthMeasurementLog) {
-    setEditingMeasurementLogId(log.id);
-    const matchedModel = log.device_model_id ? deviceModels.find((m) => m.id === log.device_model_id) : null;
-    setMeasurementForm({
-      disease_item_id: log.disease_item_id || '',
-      device_type_item_id: log.device_type_item_id || '',
-      measurement_item_id: log.measurement_item_id || '',
-      measurement_context_id: log.measurement_context_id || '',
-      manufacturer_id: matchedModel?.manufacturer_id || '',
-      brand_id: matchedModel?.brand_id || '',
-      model_id: log.device_model_id || '',
-      value: String(log.value ?? ''),
-      unit_item_id: log.unit_item_id || '',
-      measured_at: toDatetimeLocal(log.measured_at),
-      memo: log.memo || '',
-    });
-    setMeasurementWizardStep(1);
-    setMeasurementModalOpen(true);
-  }
-
-  async function openCreateHealthMeasurementModal() {
-    setEditingMeasurementLogId(null);
-    setMeasurementWizardStep(1);
-    let measuredAt = toDatetimeLocal();
-    try {
-      const health = await api.health();
-      if (health.timestamp) measuredAt = toDatetimeLocal(health.timestamp);
-    } catch {
-      // fallback to client now
-    }
-    resetMeasurementForm(measuredAt);
-    setMeasurementModalOpen(true);
   }
 
   async function removeHealthMeasurementLog(logId: string) {
@@ -1111,194 +373,14 @@ export default function GuardianMainPage() {
     }
   }
 
-  function openCreatePet() {
-    setPetMode('create');
-    setPetForm(DEFAULT_PET_FORM);
-    setPetWizardStep(1);
-    setDiseaseRows([{ groupId: '', diseaseId: '' }]);
-    setEditingPetId('');
-    setPetModalOpen(true);
-  }
-
-  async function openEditPet(petId: string) {
+  async function removeFeedPost(feedId: string) {
+    if (!confirm(t('guardian.feed.delete_confirm', 'Delete this post?'))) return;
     try {
-      const res = await api.pets.detail(petId);
-      const p = res.pet;
-      const diseaseHistoryIds = normalizeMultiStableIds(p.disease_history_ids, optDisease);
-      setPetMode('edit');
-      setActivePet(p);
-      setEditingPetId(p.id);
-      setPetWizardStep(1);
-      const mappedDiseaseRows = normalizeUniqueIds(diseaseHistoryIds)
-        .map((diseaseId) => {
-          const disease = optDisease.find((d) => d.id === diseaseId || d.key === diseaseId);
-          return { groupId: disease?.parentId || '', diseaseId };
-        })
-        .filter((row) => row.groupId && row.diseaseId);
-      setDiseaseRows(mappedDiseaseRows.length ? mappedDiseaseRows : [{ groupId: '', diseaseId: '' }]);
-      setPetForm({
-        name: p.name || '',
-        microchip_no: p.microchip_no || '',
-        birthday: p.birthday || p.birth_date || '',
-        current_weight: p.current_weight != null ? String(p.current_weight) : (p.weight_kg != null ? String(p.weight_kg) : ''),
-        current_weight_measured_at: '',
-        current_weight_notes: '',
-        notes: p.notes || '',
-        pet_type_id: normalizeSingleStableId(p.pet_type_id, optPetType),
-        breed_id: normalizeSingleStableId(p.breed_id, optBreed),
-        gender_id: normalizeSingleStableId(p.gender_id, optGender),
-        neuter_status_id: p.neuter_status_id || '',
-        life_stage_id: normalizeSingleStableId(p.life_stage_id, optLifeStage),
-        body_size_id: p.body_size_id || '',
-        country_id: p.country_id || '',
-        allergy_ids: normalizeMultiStableIds(p.allergy_ids, optAllergy),
-        disease_history_ids: diseaseHistoryIds,
-        symptom_tag_ids: normalizeMultiStableIds(p.symptom_tag_ids, optSymptom),
-        vaccination_ids: normalizeMultiStableIds(p.vaccination_ids, optVaccination),
-        weight_unit_id: p.weight_unit_id || '',
-        health_condition_level_id: normalizeSingleStableId(p.health_condition_level_id, optHealthLevel),
-        activity_level_id: normalizeSingleStableId(p.activity_level_id, optActivity),
-        diet_type_id: normalizeSingleStableId(p.diet_type_id, optDiet),
-        temperament_ids: normalizeMultiStableIds(p.temperament_ids, optTemperament),
-        ownership_type_id: p.ownership_type_id || '',
-        coat_length_id: normalizeSingleStableId(p.coat_length_id, optCoatLength),
-        coat_type_id: p.coat_type_id || '',
-        grooming_cycle_id: normalizeSingleStableId(p.grooming_cycle_id, optGrooming),
-        color_ids: normalizeMultiStableIds(p.color_ids, optColor),
-      });
-      setPetModalOpen(true);
+      await api.feeds.remove(feedId);
+      await loadAll(feedTab);
     } catch (e) {
-      setError(uiErrorMessage(e, t('guardian.alert.pet_detail_failed', '펫 상세를 불러오지 못했습니다.')));
+      setError(uiErrorMessage(e, t('guardian.feed.delete_failed', 'Failed to delete post.')));
     }
-  }
-
-  async function savePet() {
-    const stablePetTypeId = normalizeSingleStableId(petForm.pet_type_id, optPetType, false);
-    if (!petForm.name.trim()) {
-      setError(t('guardian.alert.name_required', 'Pet name is required.'));
-      return;
-    }
-    if (!stablePetTypeId) {
-      setError(t('guardian.alert.pet_type_required', 'Pet type is required.'));
-      return;
-    }
-    if (petForm.microchip_no.trim()) {
-      try {
-        const dup = await api.pets.checkMicrochip(petForm.microchip_no.trim(), petMode === 'edit' ? (editingPetId || activePet?.id) : undefined);
-        if (!dup.available) {
-          setError(dup.reason || t('guardian.alert.microchip_duplicate', 'This microchip number is already registered.'));
-          return;
-        }
-      } catch (e) {
-        setError(uiErrorMessage(e, t('guardian.alert.microchip_check_failed', '마이크로칩 중복 확인에 실패했습니다.')));
-        return;
-      }
-    }
-    if (petForm.current_weight.trim() && !Number.isFinite(Number(petForm.current_weight))) {
-      setError('Current weight must be a valid number.');
-      return;
-    }
-
-    const payload = {
-      ...petForm,
-      color_ids: normalizeMultiStableIds(petForm.color_ids, optColor, false),
-      allergy_ids: normalizeMultiStableIds(petForm.allergy_ids, optAllergy, false),
-      disease_history_ids: normalizeMultiStableIds(petForm.disease_history_ids, optDisease, false),
-      symptom_tag_ids: normalizeMultiStableIds(petForm.symptom_tag_ids, optSymptom, false),
-      vaccination_ids: normalizeMultiStableIds(petForm.vaccination_ids, optVaccination, false),
-      temperament_ids: normalizeMultiStableIds(petForm.temperament_ids, optTemperament, false),
-      microchip_no: petForm.microchip_no.trim() || null,
-      birthday: petForm.birthday || null,
-      birth_date: petForm.birthday || null,
-      current_weight: petForm.current_weight.trim() ? Number(petForm.current_weight) : null,
-      weight_kg: petForm.current_weight.trim() ? Number(petForm.current_weight) : null,
-      current_weight_measured_at: petForm.current_weight_measured_at || null,
-      current_weight_notes: petForm.current_weight_notes.trim() || null,
-      notes: petForm.notes.trim() || null,
-      pet_type_id: stablePetTypeId,
-      breed_id: normalizeSingleStableId(petForm.breed_id, optBreed, false) || null,
-      gender_id: normalizeSingleStableId(petForm.gender_id, optGender, false) || null,
-      neuter_status_id: petForm.neuter_status_id || null,
-      life_stage_id: normalizeSingleStableId(petForm.life_stage_id, optLifeStage, false) || null,
-      body_size_id: petForm.body_size_id || null,
-      country_id: petForm.country_id || null,
-      weight_unit_id: petForm.weight_unit_id || null,
-      health_condition_level_id: normalizeSingleStableId(petForm.health_condition_level_id, optHealthLevel, false) || null,
-      activity_level_id: normalizeSingleStableId(petForm.activity_level_id, optActivity, false) || null,
-      diet_type_id: normalizeSingleStableId(petForm.diet_type_id, optDiet, false) || null,
-      ownership_type_id: petForm.ownership_type_id || null,
-      coat_length_id: normalizeSingleStableId(petForm.coat_length_id, optCoatLength, false) || null,
-      coat_type_id: petForm.coat_type_id || null,
-      grooming_cycle_id: normalizeSingleStableId(petForm.grooming_cycle_id, optGrooming, false) || null,
-    };
-
-    try {
-      let savedPet: Pet | null = null;
-      if (petMode === 'create') {
-        const res = await api.pets.create(payload);
-        savedPet = res.pet;
-      } else {
-        const targetPetId = editingPetId || activePet?.id || selectedPet?.id || '';
-        if (!targetPetId) {
-          setError(t('guardian.alert.pet_edit_target_not_found', 'Cannot find target pet for edit. Please try again.'));
-          return;
-        }
-        const res = await api.pets.update(targetPetId, payload);
-        savedPet = res.pet;
-      }
-      if (savedPet) {
-        setPets((prev) => {
-          const exists = prev.some((p) => p.id === savedPet?.id);
-          if (!exists) return [...prev, savedPet as Pet];
-          return prev.map((p) => (p.id === savedPet?.id ? (savedPet as Pet) : p));
-        });
-        setSelectedPetId(savedPet.id);
-      }
-      setPetModalOpen(false);
-      setActivePet(null);
-      setEditingPetId('');
-      setPetForm(DEFAULT_PET_FORM);
-      void loadAll(feedTab, { silent: true });
-    } catch (e) {
-      setError(uiErrorMessage(e, t('guardian.alert.pet_save_failed', '반려동물 저장에 실패했습니다.')));
-    }
-  }
-
-  function closePetModal() {
-    setPetModalOpen(false);
-    setActivePet(null);
-    setEditingPetId('');
-    setPetWizardStep(1);
-    setDiseaseRows([{ groupId: '', diseaseId: '' }]);
-  }
-
-  function gotoPetStep(step: PetWizardStep) {
-    setError('');
-    setPetWizardStep(step);
-  }
-
-  function gotoNextPetStep() {
-    if (petWizardStep === 1) {
-      if (!petForm.name.trim()) {
-        setError(t('guardian.alert.name_required', 'Pet name is required.'));
-        return;
-      }
-    }
-    if (petWizardStep === 2 && !petForm.pet_type_id) {
-      setError(t('guardian.alert.pet_type_required', 'Pet type is required.'));
-      return;
-    }
-    if (petWizardStep === 3 && !petForm.gender_id) {
-      setError(t('guardian.alert.gender_required', 'Gender is required.'));
-      return;
-    }
-    setError('');
-    setPetWizardStep((prev) => (prev < 7 ? ((prev + 1) as PetWizardStep) : prev));
-  }
-
-  function gotoPrevPetStep() {
-    setError('');
-    setPetWizardStep((prev) => (prev > 1 ? ((prev - 1) as PetWizardStep) : prev));
   }
 
   async function removePet(id: string) {
@@ -1312,306 +394,30 @@ export default function GuardianMainPage() {
     }
   }
 
-  function validateFeedImage(file: File): string | null {
-    if (!ALLOWED_UPLOAD_TYPES.has(file.type.toLowerCase())) return t('guardian.feed.upload_type_invalid', 'Only JPG/PNG/WEBP files are allowed.');
-    if (file.size > MAX_UPLOAD_SIZE) return t('guardian.feed.upload_size_limit', 'File size must be 10MB or less.');
-    return null;
+  function openCreatePet() {
+    setPetMode('create');
+    setEditingPetId('');
+    setPetModalOpen(true);
   }
 
-  function resetFeedImage() {
-    if (feedImagePreviewUrl) URL.revokeObjectURL(feedImagePreviewUrl);
-    setFeedImageFile(null);
-    setFeedImagePreviewUrl('');
-    setFeedUploadProgress(0);
-    setFeedUploadError('');
-    if (fileInputRef.current) fileInputRef.current.value = '';
+  function openEditPet(petId: string) {
+    setEditingPetId(petId);
+    setPetMode('edit');
+    setPetModalOpen(true);
   }
 
-  function handleFeedImageSelected(file: File | null) {
-    if (!file) return;
-    const validationError = validateFeedImage(file);
-    if (validationError) {
-      setFeedUploadError(validationError);
-      return;
-    }
-    setFeedUploadError('');
-    setFeedImageFile(file);
-    if (feedImagePreviewUrl) URL.revokeObjectURL(feedImagePreviewUrl);
-    setFeedImagePreviewUrl(URL.createObjectURL(file));
+  function openCreateHealthMeasurementModal() {
+    setEditingMeasurementLog(null);
+    setMeasurementModalOpen(true);
   }
 
-  function uploadBinary(uploadUrl: string, file: File, onProgress: (ratio: number) => void): Promise<void> {
-    return new Promise((resolve, reject) => {
-      const xhr = new XMLHttpRequest();
-      xhr.open('PUT', uploadUrl);
-      xhr.setRequestHeader('Content-Type', file.type || 'application/octet-stream');
-      xhr.upload.onprogress = (event) => {
-        if (event.lengthComputable && event.total > 0) onProgress(event.loaded / event.total);
-      };
-      xhr.onload = () => {
-        if (xhr.status >= 200 && xhr.status < 300) {
-          onProgress(1);
-          resolve();
-          return;
-        }
-        reject(new Error(xhr.statusText || 'upload_failed'));
-      };
-      xhr.onerror = () => reject(new Error('upload_failed'));
-      xhr.send(file);
-    });
+  function openEditHealthMeasurementLog(log: PetHealthMeasurementLog) {
+    setEditingMeasurementLog(log);
+    setMeasurementModalOpen(true);
   }
 
-  async function createFeedPost() {
-    if (!feedCompose.caption.trim()) {
-      setError(t('guardian.alert.feed_caption_required', 'Please enter feed content.'));
-      return;
-    }
-    setIsPostingFeed(true);
-    setFeedUploadError('');
-    try {
-      const mediaUrls: string[] = [];
-      if (feedImageFile) {
-        try {
-          const compressed = await compressImageFile(feedImageFile, {
-            maxEdge: FEED_MAX_EDGE,
-            maxSizeMB: FEED_MAX_MB,
-            preferredType: 'image/jpeg',
-          });
-          const petSeg = sanitizePathSegment(feedCompose.pet_id || selectedPet?.id || 'pet');
-          const presigned = await api.storage.presignedUrl({
-            type: 'log_media',
-            ext: 'jpg',
-            subdir: `feed/${petSeg}`,
-          });
-          await uploadBinary(presigned.upload_url, compressed, (ratio) => setFeedUploadProgress(Math.round(ratio * 100)));
-          mediaUrls.push(presigned.public_url);
-        } catch (uploadError) {
-          const raw = uploadError instanceof Error ? uploadError.message : '';
-          const isStorageUnavailable = /Storage not configured|no_r2|storage/i.test(raw);
-          if (isStorageUnavailable) {
-            mediaUrls.push(await fileToDataUrl(feedImageFile));
-          } else {
-            throw uploadError;
-          }
-        }
-      }
-      await api.feeds.create({
-        feed_type: feedCompose.feed_type,
-        visibility_scope: feedCompose.visibility_scope,
-        caption: feedCompose.caption.trim(),
-        tags: feedCompose.tagsText.split(',').map((v) => v.trim()).filter(Boolean),
-        pet_id: feedCompose.pet_id || null,
-        media_urls: mediaUrls,
-      });
-      setFeedCompose(DEFAULT_FEED_COMPOSE);
-      resetFeedImage();
-      await loadAll(feedTab);
-    } catch (e) {
-      const raw = e instanceof Error ? e.message : '';
-      let message = uiErrorMessage(e, t('guardian.alert.feed_create_failed', '피드 등록에 실패했습니다.'));
-      if (/10MB|file size|max/i.test(raw)) message = t('guardian.feed.upload_size_error', 'File size is too large.');
-      else if (/JPG|JPEG|PNG|WEBP|type/i.test(raw)) message = t('guardian.feed.upload_type_error', 'Unsupported file type.');
-      else if (/Storage not configured|no_r2|storage/i.test(raw)) message = t('guardian.feed.upload_storage_error', 'Storage connection failed.');
-      else if (/upload/i.test(raw)) message = t('guardian.feed.upload_failed', 'Upload failed.');
-      setFeedUploadError(message);
-      setError(message);
-    } finally {
-      setIsPostingFeed(false);
-    }
-  }
-
-  async function removeFeedPost(feedId: string) {
-    if (!confirm(t('guardian.feed.delete_confirm', 'Delete this post?'))) return;
-    try {
-      await api.feeds.remove(feedId);
-      await loadAll(feedTab);
-    } catch (e) {
-      setError(uiErrorMessage(e, t('guardian.feed.delete_failed', 'Failed to delete post.')));
-    }
-  }
-
-  function renderSelect(label: string, value: string, options: Option[], onChange: (v: string) => void, required = false) {
-    return (
-      <div className="form-group">
-        <label className="form-label">{label}{required ? ' *' : ''}</label>
-        <select className="form-select" value={value} onChange={(e) => onChange(e.target.value)}>
-          <option value="">{t('common.select', 'Select')}</option>
-          {options.map((o) => <option key={o.id} value={o.id}>{optionLabel(o, t('common.none', '-'))}</option>)}
-        </select>
-      </div>
-    );
-  }
-
-  function renderDropdownRows(
-    label: string,
-    values: string[],
-    options: Option[],
-    onChange: (next: string[]) => void,
-  ) {
-    const selected = normalizeMultiStableIds(values, options);
-    const rows = selected.length > 0 ? selected : [''];
-    const remaining = options.filter((o) => !selected.includes(o.id));
-    return (
-      <div className="form-group">
-        <label className="form-label">{label}</label>
-        <div style={{ display: 'grid', gap: 8 }}>
-          {rows.map((rowValue, index) => {
-            const rowOptions = options.filter((o) => o.id === rowValue || !selected.includes(o.id));
-            return (
-              <div key={`${label}-${index}-${rowValue || 'empty'}`} style={{ display: 'flex', gap: 8 }}>
-                <select
-                  className="form-select"
-                  value={rowValue}
-                  onChange={(e) => {
-                    const nextValue = e.target.value;
-                    if (!rowValue) {
-                      if (!nextValue) return;
-                      onChange(normalizeUniqueIds([...selected, nextValue]));
-                      return;
-                    }
-                    const next = [...selected];
-                    if (!nextValue) next.splice(index, 1);
-                    else next[index] = nextValue;
-                    onChange(normalizeUniqueIds(next));
-                  }}
-                >
-                  <option value="">{t('common.select', 'Select')}</option>
-                  {rowOptions.map((o) => <option key={o.id} value={o.id}>{optionLabel(o, t('common.none', '-'))}</option>)}
-                </select>
-                <button
-                  type="button"
-                  className="btn btn-danger"
-                  onClick={() => onChange(selected.filter((_, i) => i !== index))}
-                  disabled={!rowValue}
-                  aria-label={t('common.delete', 'Delete')}
-                  title={t('common.delete', 'Delete')}
-                >
-                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-                    <path d="M3 6h18" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
-                    <path d="M8 6V4h8v2" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
-                    <path d="M7 6l1 14h8l1-14" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-                    <path d="M10 10v7M14 10v7" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
-                  </svg>
-                </button>
-              </div>
-            );
-          })}
-          <div>
-            <button
-              type="button"
-              className="btn btn-secondary"
-              onClick={() => {
-                if (remaining.length === 0) return;
-                onChange(normalizeUniqueIds([...selected, remaining[0].id]));
-              }}
-              disabled={remaining.length === 0}
-              aria-label={t('common.add', 'Add')}
-              title={t('common.add', 'Add')}
-            >
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-                <path d="M12 5v14M5 12h14" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
-              </svg>
-            </button>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
-  function renderDiseaseRows(
-    rows: Array<{ groupId: string; diseaseId: string }>,
-    onChange: (next: Array<{ groupId: string; diseaseId: string }>) => void,
-  ) {
-    const normalizedRows = rows
-      .map((row) => {
-        const groupId = normalizeSingleStableId(row.groupId, optDiseaseGroup);
-        const diseaseId = normalizeSingleStableId(row.diseaseId, optDisease);
-        return { groupId, diseaseId };
-      })
-      .filter((row) => row.groupId || row.diseaseId);
-    const displayRows = normalizedRows.length > 0 ? normalizedRows : [{ groupId: '', diseaseId: '' }];
-    return (
-      <div className="form-group">
-        <label className="form-label">{t('master.disease_group', 'Disease Group')} / {t('master.disease_type', 'Disease')}</label>
-        <div style={{ display: 'grid', gap: 8 }}>
-          {displayRows.map((row, index) => {
-            const diseaseOptions = optDisease
-              .filter((d) => !row.groupId || d.parentId === row.groupId)
-              .filter((d) => d.id === row.diseaseId || !displayRows.some((r, i) => i !== index && r.diseaseId === d.id));
-            return (
-              <div key={`disease-row-${index}-${row.groupId}-${row.diseaseId}`} style={{ display: 'grid', gap: 8, gridTemplateColumns: '1fr 1fr auto' }}>
-                <select
-                  className="form-select"
-                  value={row.groupId}
-                  onChange={(e) => {
-                    const nextGroupId = e.target.value;
-                    const next = [...displayRows];
-                    const keepDisease = optDisease.some((d) => d.id === next[index].diseaseId && d.parentId === nextGroupId);
-                    next[index] = { groupId: nextGroupId, diseaseId: keepDisease ? next[index].diseaseId : '' };
-                    onChange(next.filter((r) => r.groupId || r.diseaseId));
-                  }}
-                >
-                  <option value="">{t('common.select', 'Select')}</option>
-                  {optDiseaseGroup.map((o) => <option key={o.id} value={o.id}>{optionLabel(o, t('common.none', '-'))}</option>)}
-                </select>
-                <select
-                  className="form-select"
-                  value={row.diseaseId}
-                  onChange={(e) => {
-                    const next = [...displayRows];
-                    next[index] = { ...next[index], diseaseId: e.target.value };
-                    onChange(next.filter((r) => r.groupId || r.diseaseId));
-                  }}
-                >
-                  <option value="">{t('common.select', 'Select')}</option>
-                  {diseaseOptions.map((o) => <option key={o.id} value={o.id}>{optionLabel(o, t('common.none', '-'))}</option>)}
-                </select>
-                <button
-                  type="button"
-                  className="btn btn-danger"
-                  onClick={() => onChange(displayRows.filter((_, i) => i !== index))}
-                  disabled={!row.groupId && !row.diseaseId}
-                  aria-label={t('common.delete', 'Delete')}
-                  title={t('common.delete', 'Delete')}
-                >
-                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-                    <path d="M3 6h18" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
-                    <path d="M8 6V4h8v2" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
-                    <path d="M7 6l1 14h8l1-14" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-                    <path d="M10 10v7M14 10v7" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
-                  </svg>
-                </button>
-              </div>
-            );
-          })}
-          <div>
-            <button
-              type="button"
-              className="btn btn-secondary"
-              onClick={() => onChange([...displayRows.filter((r) => r.groupId || r.diseaseId), { groupId: '', diseaseId: '' }])}
-              aria-label={t('common.add', 'Add')}
-              title={t('common.add', 'Add')}
-            >
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-                <path d="M12 5v14M5 12h14" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
-              </svg>
-            </button>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
-  function summarizeOptions(options: Option[], raw: string[] | string | null | undefined, max = 2): { text: string; tooltip: string } {
-    const ids = normalizeMultiStableIds(raw, options);
-    if (ids.length === 0) return { text: t('common.none', '-'), tooltip: '' };
-    const labels = ids.map((id) => labelOf(options, id, t('common.none', '-')));
-    const text = labels.length > max ? `${labels.slice(0, max).join(', ')} +${labels.length - max}` : labels.join(', ');
-    return { text, tooltip: labels.join('\n') };
-  }
-
-  function renderCombinedHealthChart(weightRows: PetWeightLog[], measurementRows: PetHealthMeasurementLog[]) {
-    if (!weightRows.length && !measurementRows.length) {
+  function renderCombinedHealthChart(weightRows: PetWeightLog[], mRows: PetHealthMeasurementLog[]) {
+    if (!weightRows.length && !mRows.length) {
       return <div className="weight-chart-empty text-sm text-muted">{t('guardian.health.chart_empty', 'No health records to display.')}</div>;
     }
     const width = 720;
@@ -1623,7 +429,7 @@ export default function GuardianMainPage() {
 
     const allTimes = [
       ...weightRows.map((row) => new Date(row.measured_at).getTime()),
-      ...measurementRows.map((row) => new Date(row.measured_at).getTime()),
+      ...mRows.map((row) => new Date(row.measured_at).getTime()),
     ].filter((v) => Number.isFinite(v));
     if (!allTimes.length) return <div className="weight-chart-empty text-sm text-muted">{t('guardian.health.chart_empty', 'No health records to display.')}</div>;
     const minT = Math.min(...allTimes);
@@ -1632,7 +438,7 @@ export default function GuardianMainPage() {
 
     const normalizeX = (timeMs: number) => pad + ((timeMs - minT) / tSpan) * usableW;
     const weightValues = weightRows.map((row) => Number(row.weight_value));
-    const measurementValues = measurementRows.map((row) => Number(row.value));
+    const measurementValues = mRows.map((row) => Number(row.value));
     const minW = weightValues.length ? Math.min(...weightValues) : 0;
     const maxW = weightValues.length ? Math.max(...weightValues) : 1;
     const minM = measurementValues.length ? Math.min(...measurementValues) : 0;
@@ -1643,7 +449,7 @@ export default function GuardianMainPage() {
     const normalizeYM = (value: number) => pad + (1 - ((value - minM) / mSpan)) * usableH;
 
     const sortedWeights = [...weightRows].sort((a, b) => new Date(a.measured_at).getTime() - new Date(b.measured_at).getTime());
-    const sortedMeasurements = [...measurementRows].sort((a, b) => new Date(a.measured_at).getTime() - new Date(b.measured_at).getTime());
+    const sortedMeasurements = [...mRows].sort((a, b) => new Date(a.measured_at).getTime() - new Date(b.measured_at).getTime());
 
     const weightPath = sortedWeights
       .map((row, idx) => `${idx === 0 ? 'M' : 'L'} ${normalizeX(new Date(row.measured_at).getTime())} ${normalizeYW(Number(row.weight_value))}`)
@@ -1871,7 +677,15 @@ export default function GuardianMainPage() {
                         ))}
                       </div>
                       <div style={{ marginBottom: 12 }}>
-                        {renderSelect(t('guardian.health.measurement_item', '질병 수치 항목'), selectedMeasurementItemId, optMeasurement.filter((m) => measurementLogs.some((log) => log.measurement_item_id === m.id)), (v) => setSelectedMeasurementItemId(v))}
+                        <div className="form-group">
+                          <label className="form-label">{t('guardian.health.measurement_item', '질병 수치 항목')}</label>
+                          <select className="form-select" value={selectedMeasurementItemId} onChange={(e) => setSelectedMeasurementItemId(e.target.value)}>
+                            <option value="">{t('common.select', 'Select')}</option>
+                            {optMeasurement.filter((m) => measurementLogs.some((log) => log.measurement_item_id === m.id)).map((o) => (
+                              <option key={o.id} value={o.id}>{optionLabel(o, t('common.none', '-'))}</option>
+                            ))}
+                          </select>
+                        </div>
                       </div>
                       {renderCombinedHealthChart(weightLogs, measurementLogs.filter((log) => !selectedMeasurementItemId || log.measurement_item_id === selectedMeasurementItemId))}
                     </div>
@@ -2033,85 +847,6 @@ export default function GuardianMainPage() {
         </div>
       )}
 
-      {/* ── Compose Modal ── */}
-      {composeModalOpen && (
-        <div className="modal-overlay" onClick={() => setComposeModalOpen(false)}>
-          <div className="modal" style={{ maxWidth: 560 }} onClick={(e) => e.stopPropagation()}>
-            <div className="modal-header">
-              <h3 className="modal-title">{t('guardian.feed.create_title', 'Create Feed Post')}</h3>
-              <button className="modal-close" onClick={() => setComposeModalOpen(false)}>&times;</button>
-            </div>
-            <div className="modal-body">
-              <div className="feed-compose-layout">
-                <div className="feed-compose-media">
-                  <label className="form-label">{t('guardian.feed.photo_upload', '사진 업로드')}</label>
-                  <div className="gallery-upload-dropzone" onDragOver={(e) => e.preventDefault()} onDrop={(e) => { e.preventDefault(); handleFeedImageSelected(e.dataTransfer.files?.[0] || null); }}>
-                    <input ref={fileInputRef} type="file" className="gallery-upload-file-input" accept="image/jpeg,image/jpg,image/png,image/webp" capture="environment" onChange={(e) => handleFeedImageSelected(e.target.files?.[0] || null)} />
-                    <p>{t('guardian.feed.photo_hint', '드래그 앤 드롭 또는 파일 선택')}</p>
-                    <button type="button" className="btn btn-secondary btn-sm" onClick={() => fileInputRef.current?.click()}>{t('guardian.feed.photo_select', '사진 선택')}</button>
-                  </div>
-                  {feedImagePreviewUrl && (
-                    <div className="feed-compose-preview">
-                      <img src={feedImagePreviewUrl} alt={t('guardian.feed.photo_preview', '업로드 미리보기')} />
-                      <button type="button" className="btn btn-secondary btn-sm" onClick={resetFeedImage}>{t('guardian.feed.photo_reselect', '다시 선택')}</button>
-                    </div>
-                  )}
-                  {feedUploadError && <div className="alert alert-error mt-2">{feedUploadError}</div>}
-                  {isPostingFeed && feedUploadProgress > 0 && (
-                    <div className="gallery-upload-progress mt-2">
-                      <div className="gallery-upload-progress-bar" style={{ width: `${feedUploadProgress}%` }} />
-                      <span>{t('guardian.feed.uploading', '업로드 중')} {feedUploadProgress}%</span>
-                    </div>
-                  )}
-                </div>
-                <div className="feed-compose-fields">
-                  <div className="form-row col2">
-                    <div className="form-group">
-                      <label className="form-label">{t('guardian.feed.feed_type', 'Feed Type')}</label>
-                      <select className="form-select" value={feedCompose.feed_type} onChange={(e) => setFeedCompose((p) => ({ ...p, feed_type: e.target.value as FeedCompose['feed_type'] }))}>
-                        <option value="guardian_post">{t('guardian.feed.type.guardian_post', 'Guardian Post')}</option>
-                        <option value="health_update">{t('guardian.feed.type.health_update', 'Health Update')}</option>
-                        <option value="pet_milestone">{t('guardian.feed.type.pet_milestone', 'Pet Milestone')}</option>
-                        <option value="supplier_story">{t('guardian.feed.type.supplier_story', 'Supplier Story')}</option>
-                      </select>
-                    </div>
-                    <div className="form-group">
-                      <label className="form-label">{t('guardian.feed.visibility', 'Visibility')}</label>
-                      <select className="form-select" value={feedCompose.visibility_scope} onChange={(e) => setFeedCompose((p) => ({ ...p, visibility_scope: e.target.value as FeedCompose['visibility_scope'] }))}>
-                        <option value="public">{t('guardian.feed.visibility.public', 'Public')}</option>
-                        <option value="friends_only">{t('guardian.feed.visibility.friends_only', 'Friends Only')}</option>
-                        <option value="private">{t('guardian.feed.visibility.private', 'Private')}</option>
-                        <option value="connected_only">{t('guardian.feed.visibility.connected_only', 'Connected Only')}</option>
-                        <option value="booking_related_only">{t('guardian.feed.visibility.booking_related_only', 'Booking Related Only')}</option>
-                      </select>
-                    </div>
-                  </div>
-                  <div className="form-group">
-                    <label className="form-label">{t('guardian.feed.linked_pet', 'Linked Pet')}</label>
-                    <select className="form-select" value={feedCompose.pet_id} onChange={(e) => setFeedCompose((p) => ({ ...p, pet_id: e.target.value }))}>
-                      <option value="">{t('common.none', 'None')}</option>
-                      {pets.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
-                    </select>
-                  </div>
-                  <div className="form-group">
-                    <label className="form-label">{t('guardian.feed.caption', 'Caption')}</label>
-                    <textarea className="form-textarea" value={feedCompose.caption} onChange={(e) => setFeedCompose((p) => ({ ...p, caption: e.target.value }))} />
-                  </div>
-                  <div className="form-group">
-                    <label className="form-label">{t('guardian.feed.tags', 'Tags (comma separated)')}</label>
-                    <input className="form-input" value={feedCompose.tagsText} onChange={(e) => setFeedCompose((p) => ({ ...p, tagsText: e.target.value }))} />
-                  </div>
-                </div>
-              </div>
-            </div>
-            <div className="modal-footer">
-              <button className="btn btn-secondary" onClick={() => setComposeModalOpen(false)}>{t('common.cancel', 'Cancel')}</button>
-              <button className="btn btn-primary" disabled={isPostingFeed} onClick={createFeedPost}>{isPostingFeed ? t('guardian.feed.posting', '게시 중...') : t('guardian.feed.post', 'Post')}</button>
-            </div>
-          </div>
-        </div>
-      )}
-
       {/* ── Lightbox ── */}
       {lightboxIndex >= 0 && lightboxItems.length > 0 && (
         <div className="gm-lightbox" onClick={() => setLightboxIndex(-1)}>
@@ -2126,354 +861,63 @@ export default function GuardianMainPage() {
         </div>
       )}
 
-      {petModalOpen && (
-        <div className="modal-overlay">
-          <div className="modal guardian-pet-modal">
-            <div className="modal-header">
-              <h3 className="modal-title">{petMode === 'create' ? t('guardian.modal.add_pet', 'Add Pet') : t('guardian.modal.edit_pet', 'Edit Pet')}</h3>
-              <button className="modal-close" onClick={closePetModal}>&times;</button>
-            </div>
-            <div className="modal-body guardian-modal-body">
-              <div className="card-title mb-2">{wizardTitle}</div>
-
-              {petWizardStep === 1 && (
-                <>
-                  <div className="form-row col2">
-                    <div className="form-group">
-                      <label className="form-label">{t('guardian.form.name', 'Name')} *</label>
-                      <input className="form-input" value={petForm.name} onChange={(e) => setPetForm((p) => ({ ...p, name: e.target.value }))} />
-                    </div>
-                    <div className="form-group">
-                      <label className="form-label">{t('guardian.form.microchip', 'Microchip Number')}</label>
-                      <input className="form-input" value={petForm.microchip_no} onChange={(e) => setPetForm((p) => ({ ...p, microchip_no: e.target.value }))} />
-                    </div>
-                  </div>
-                  <div className="form-row col2">
-                    <div className="form-group">
-                      <label className="form-label">{t('guardian.form.birthday', 'Birthday')}</label>
-                      <input className="form-input" type="date" value={petForm.birthday} onChange={(e) => setPetForm((p) => ({ ...p, birthday: e.target.value }))} />
-                    </div>
-                    <div className="form-group">
-                      <label className="form-label">{t('guardian.form.current_weight', 'Current Weight')}</label>
-                      <input className="form-input" type="number" step="0.01" value={petForm.current_weight} onChange={(e) => setPetForm((p) => ({ ...p, current_weight: e.target.value }))} />
-                    </div>
-                  </div>
-                </>
-              )}
-
-              {petWizardStep === 2 && (
-                <>
-                  <div className="form-row col2">
-                    {renderSelect(t('master.pet_type', 'Pet Type'), petForm.pet_type_id, optPetType, (v) => setPetForm((p) => ({ ...p, pet_type_id: v, breed_id: '' })), true)}
-                    {renderSelect(t('master.pet_breed', 'Breed'), petForm.breed_id, breedOptionsFiltered, (v) => setPetForm((p) => ({ ...p, breed_id: v })))}
-                  </div>
-                </>
-              )}
-
-              {petWizardStep === 3 && (
-                <>
-                  <div className="form-row col2">
-                    {renderSelect(t('master.pet_gender', 'Gender'), petForm.gender_id, optGender, (v) => setPetForm((p) => ({ ...p, gender_id: v })), true)}
-                    {renderDropdownRows(
-                      t('master.pet_color', 'Primary Color'),
-                      petForm.color_ids,
-                      optColor,
-                      (next) => setPetForm((p) => ({ ...p, color_ids: normalizeUniqueIds(next) })),
-                    )}
-                  </div>
-                </>
-              )}
-
-              {petWizardStep === 4 && (
-                <>
-                  <div className="form-row col1">
-                    {renderDropdownRows(
-                      t('master.vaccination_type', 'Vaccination'),
-                      petForm.vaccination_ids,
-                      optVaccination,
-                      (next) => setPetForm((p) => ({ ...p, vaccination_ids: normalizeUniqueIds(next) })),
-                    )}
-                  </div>
-                </>
-              )}
-
-              {petWizardStep === 5 && (
-                <>
-                  <div className="form-row col1">
-                    {renderDiseaseRows(diseaseRows, (nextRows) => {
-                      const dedupByDisease = new Map<string, { groupId: string; diseaseId: string }>();
-                      for (const row of nextRows) {
-                        if (!row.groupId || !row.diseaseId) continue;
-                        dedupByDisease.set(row.diseaseId, row);
-                      }
-                      const normalizedRows = Array.from(dedupByDisease.values());
-                      setDiseaseRows(normalizedRows.length ? normalizedRows : [{ groupId: '', diseaseId: '' }]);
-                      setPetForm((p) => ({ ...p, disease_history_ids: normalizedRows.map((r) => r.diseaseId) }));
-                    })}
-                  </div>
-                </>
-              )}
-
-              {petWizardStep === 6 && (
-                <>
-                  <div className="form-row col2">
-                    {renderDropdownRows(
-                      t('master.temperament_type', 'Temperament'),
-                      petForm.temperament_ids,
-                      optTemperament,
-                      (next) => setPetForm((p) => ({ ...p, temperament_ids: normalizeUniqueIds(next) })),
-                    )}
-                    {renderSelect(t('master.activity_level', 'Activity Level'), petForm.activity_level_id, optActivity, (v) => setPetForm((p) => ({ ...p, activity_level_id: v })))}
-                  </div>
-                  <div className="form-row col2">
-                    {renderSelect(t('master.diet_type', 'Diet Type'), petForm.diet_type_id, optDiet, (v) => setPetForm((p) => ({ ...p, diet_type_id: v })))}
-                    {renderDropdownRows(
-                      t('master.allergy_type', 'Allergy'),
-                      petForm.allergy_ids,
-                      optAllergy,
-                      (next) => setPetForm((p) => ({ ...p, allergy_ids: normalizeUniqueIds(next) })),
-                    )}
-                  </div>
-                  <div className="form-row col1">
-                    {renderDropdownRows(
-                      t('master.symptom_type', 'Symptom'),
-                      petForm.symptom_tag_ids,
-                      optSymptom,
-                      (next) => setPetForm((p) => ({ ...p, symptom_tag_ids: normalizeUniqueIds(next) })),
-                    )}
-                  </div>
-                </>
-              )}
-
-              {petWizardStep === 7 && (
-                <>
-                  <div className="form-row col2">
-                    {renderSelect(t('master.coat_length', 'Coat Length'), petForm.coat_length_id, optCoatLength, (v) => setPetForm((p) => ({ ...p, coat_length_id: v })))}
-                    {renderSelect(t('master.grooming_cycle', 'Grooming Cycle'), petForm.grooming_cycle_id, optGrooming, (v) => setPetForm((p) => ({ ...p, grooming_cycle_id: v })))}
-                  </div>
-                  <div className="form-row col1">
-                    <div className="form-group">
-                      <label className="form-label">{t('guardian.form.notes', 'Notes')}</label>
-                      <textarea className="form-textarea" value={petForm.notes} onChange={(e) => setPetForm((p) => ({ ...p, notes: e.target.value }))} />
-                    </div>
-                  </div>
-                </>
-              )}
-            </div>
-            <div className="modal-footer">
-              <div style={{ display: 'flex', gap: 6, marginRight: 'auto', flexWrap: 'wrap' }}>
-                {PET_WIZARD_STEPS.map(({ step, labelKey, fallback }) => {
-                  const label = t(labelKey, fallback);
-                  return (
-                    <button
-                      key={step}
-                      type="button"
-                      className={`btn ${petWizardStep === step ? 'btn-primary' : 'btn-secondary'}`}
-                      onClick={() => gotoPetStep(step)}
-                      title={label}
-                    >
-                      {step}. {label}
-                    </button>
-                  );
-                })}
-              </div>
-              <button className="btn btn-secondary" onClick={closePetModal}>{t('common.cancel', 'Cancel')}</button>
-              <button className="btn btn-secondary" onClick={gotoPrevPetStep} disabled={petWizardStep === 1}>
-                {t('common.previous', 'Previous')}
-              </button>
-              <button className="btn btn-secondary" onClick={gotoNextPetStep} disabled={petWizardStep === 7}>
-                {t('common.next', 'Next')}
-              </button>
-              <button className="btn btn-primary" onClick={() => void savePet()}>
-                {t('common.save', 'Save')}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {weightModalOpen && (
-        <div className="modal-overlay">
-          <div className="modal">
-            <div className="modal-header">
-              <h3 className="modal-title">{t('guardian.health.weight_modal.add_title', 'Add Weight')}</h3>
-              <button className="modal-close" onClick={() => setWeightModalOpen(false)}>&times;</button>
-            </div>
-            <div className="modal-body">
-              <div className="form-group">
-                <label className="form-label">{t('guardian.health.weight_modal.weight', 'Weight')}</label>
-                <input
-                  className="form-input"
-                  type="number"
-                  step="0.01"
-                  value={weightForm.value}
-                  onChange={(e) => setWeightForm((prev) => ({ ...prev, value: e.target.value }))}
-                />
-              </div>
-              <div className="form-group">
-                <label className="form-label">{t('guardian.health.weight_modal.measured_at', 'Measured At')}</label>
-                <input
-                  className="form-input"
-                  type="datetime-local"
-                  value={weightForm.measured_at}
-                  onChange={(e) => setWeightForm((prev) => ({ ...prev, measured_at: e.target.value }))}
-                />
-              </div>
-              <div className="form-group">
-                <label className="form-label">{t('guardian.health.weight_modal.memo', 'Memo')}</label>
-                <textarea
-                  className="form-textarea"
-                  value={weightForm.notes}
-                  onChange={(e) => setWeightForm((prev) => ({ ...prev, notes: e.target.value }))}
-                />
-              </div>
-            </div>
-            <div className="modal-footer">
-              <button className="btn btn-secondary" onClick={() => setWeightModalOpen(false)}>{t('common.cancel', 'Cancel')}</button>
-              <button className="btn btn-primary" onClick={createWeightLog}>{t('common.save', 'Save')}</button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {measurementModalOpen && (
-        <div className="modal-overlay">
-          <div className="modal">
-            <div className="modal-header">
-              <h3 className="modal-title">
-                {editingMeasurementLogId
-                  ? t('guardian.health.measurement.edit', '질병 수치 수정')
-                  : t('guardian.health.measurement.add', '질병 수치 추가')}
-              </h3>
-              <button
-                className="modal-close"
-                onClick={() => {
-                  setMeasurementModalOpen(false);
-                  setEditingMeasurementLogId(null);
-                  setMeasurementWizardStep(1);
-                }}
-              >
-                &times;
-              </button>
-            </div>
-            <div className="modal-body">
-              <div className="pet-wizard-steps mb-2">
-                <button className={`pet-wizard-step ${measurementWizardStep === 1 ? 'active' : ''}`} type="button">1 / 2</button>
-                <button className={`pet-wizard-step ${measurementWizardStep === 2 ? 'active' : ''}`} type="button">2 / 2</button>
-              </div>
-
-              {measurementWizardStep === 1 && (
-                <>
-                  {renderSelect(t('guardian.health.measurement.disease', '질병'), measurementForm.disease_item_id, diseaseOptionsForHealth, (v) => setMeasurementForm((prev) => ({
-                    ...prev,
-                    disease_item_id: v,
-                    device_type_item_id: '',
-                    manufacturer_id: '',
-                    brand_id: '',
-                    model_id: '',
-                    measurement_item_id: '',
-                    measurement_context_id: '',
-                  })), true)}
-                  {renderSelect(t('guardian.health.measurement.device_type', '장치 유형'), measurementForm.device_type_item_id, healthDeviceOptions, (v) => setMeasurementForm((prev) => ({
-                    ...prev,
-                    device_type_item_id: v,
-                    manufacturer_id: '',
-                    brand_id: '',
-                    model_id: '',
-                    measurement_item_id: '',
-                    measurement_context_id: '',
-                  })), true)}
-                  {renderSelect(t('guardian.health.measurement.manufacturer', '제조사'), measurementForm.manufacturer_id, manufacturerOptions, (v) => setMeasurementForm((prev) => ({
-                    ...prev,
-                    manufacturer_id: v,
-                    brand_id: '',
-                    model_id: '',
-                  })))}
-                  {renderSelect(t('guardian.health.measurement.brand', '브랜드'), measurementForm.brand_id, brandOptions, (v) => setMeasurementForm((prev) => ({
-                    ...prev,
-                    brand_id: v,
-                    model_id: '',
-                  })))}
-                  {renderSelect(t('guardian.health.measurement.model', '모델'), measurementForm.model_id, modelOptions, (v) => setMeasurementForm((prev) => ({ ...prev, model_id: v })))}
-                </>
-              )}
-
-              {measurementWizardStep === 2 && (
-                <>
-                  {renderSelect(t('guardian.health.measurement.item', '측정항목'), measurementForm.measurement_item_id, healthMeasurementOptions, (v) => setMeasurementForm((prev) => ({
-                    ...prev,
-                    measurement_item_id: v,
-                    measurement_context_id: '',
-                  })), true)}
-                  {renderSelect(t('guardian.health.measurement.context', '측정 컨텍스트'), measurementForm.measurement_context_id, healthContextOptions, (v) => setMeasurementForm((prev) => ({ ...prev, measurement_context_id: v })))}
-                  <div className="form-row col2">
-                    <div className="form-group">
-                      <label className="form-label">{t('guardian.health.measurement.value', '수치 값')} *</label>
-                      <input
-                        className="form-input"
-                        type="number"
-                        step="0.01"
-                        value={measurementForm.value}
-                        onChange={(e) => setMeasurementForm((prev) => ({ ...prev, value: e.target.value }))}
-                      />
-                    </div>
-                    {renderSelect(t('guardian.health.measurement.unit', '단위'), measurementForm.unit_item_id, measurementUnitOptions, (v) => setMeasurementForm((prev) => ({ ...prev, unit_item_id: v })))}
-                  </div>
-                  <div className="form-row col2">
-                    <div className="form-group">
-                      <label className="form-label">{t('guardian.health.measurement.measured_at', '측정일')} *</label>
-                      <input
-                        className="form-input"
-                        type="datetime-local"
-                        value={measurementForm.measured_at}
-                        onChange={(e) => setMeasurementForm((prev) => ({ ...prev, measured_at: e.target.value }))}
-                      />
-                    </div>
-                    <div className="form-group">
-                      <label className="form-label">{t('guardian.health.measurement.memo', '메모')}</label>
-                      <input
-                        className="form-input"
-                        value={measurementForm.memo}
-                        onChange={(e) => setMeasurementForm((prev) => ({ ...prev, memo: e.target.value }))}
-                      />
-                    </div>
-                  </div>
-                </>
-              )}
-            </div>
-            <div className="modal-footer">
-              {measurementWizardStep === 1 ? (
-                <>
-                  <button
-                    className="btn btn-secondary"
-                    onClick={() => {
-                      setMeasurementModalOpen(false);
-                      setEditingMeasurementLogId(null);
-                      setMeasurementWizardStep(1);
-                    }}
-                  >
-                    {t('common.cancel', 'Cancel')}
-                  </button>
-                  <button
-                    className="btn btn-primary"
-                    onClick={() => setMeasurementWizardStep(2)}
-                    disabled={!measurementForm.disease_item_id || !measurementForm.device_type_item_id}
-                  >
-                    {t('common.next', '다음')} &gt;
-                  </button>
-                </>
-              ) : (
-                <>
-                  <button className="btn btn-secondary" onClick={() => setMeasurementWizardStep(1)}>&lt; {t('common.previous', '이전')}</button>
-                  <button className="btn btn-primary" onClick={editingMeasurementLogId ? updateHealthMeasurementLog : createHealthMeasurementLog}>
-                    {t('common.save', 'Save')}
-                  </button>
-                </>
-              )}
-            </div>
-          </div>
-        </div>
-      )}
+      {/* ── Modals ── */}
+      <ComposeModal
+        open={composeModalOpen}
+        pets={pets}
+        selectedPetId={selectedPetId}
+        t={t}
+        setError={setError}
+        onClose={() => setComposeModalOpen(false)}
+        onSuccess={() => void loadAll(feedTab)}
+      />
+      <WeightModal
+        open={weightModalOpen}
+        selectedPet={selectedPet}
+        t={t}
+        setError={setError}
+        onClose={() => setWeightModalOpen(false)}
+        onSuccess={() => {
+          if (selectedPet?.id) void loadWeightLogs(selectedPet.id, weightRange);
+          void loadAll(feedTab);
+        }}
+      />
+      <MeasurementModal
+        open={measurementModalOpen}
+        editingLog={editingMeasurementLog}
+        selectedPet={selectedPet}
+        optDisease={optDisease}
+        optDiseaseDevice={optDiseaseDevice}
+        optMeasurement={optMeasurement}
+        optMeasurementContext={optMeasurementContext}
+        lang={lang}
+        t={t}
+        setError={setError}
+        onClose={() => { setMeasurementModalOpen(false); setEditingMeasurementLog(null); }}
+        onSuccess={() => {
+          if (selectedPet?.id) void loadMeasurementLogs(selectedPet.id, weightRange);
+        }}
+      />
+      <PetWizardModal
+        open={petModalOpen}
+        mode={petMode}
+        editingPetId={editingPetId}
+        options={petOptions}
+        t={t}
+        setError={setError}
+        onClose={() => { setPetModalOpen(false); setEditingPetId(''); }}
+        onSuccess={(savedPet) => {
+          setPets((prev) => {
+            const exists = prev.some((p) => p.id === savedPet.id);
+            if (!exists) return [...prev, savedPet];
+            return prev.map((p) => (p.id === savedPet.id ? savedPet : p));
+          });
+          setSelectedPetId(savedPet.id);
+          setPetModalOpen(false);
+          setEditingPetId('');
+          void loadAll(feedTab, { silent: true });
+        }}
+      />
     </div>
   );
 }
