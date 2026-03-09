@@ -21,7 +21,12 @@ export default {
     }
 
     // 3. Route dispatch
-    const response = await dispatch(request, env, url);
+    let response: Response;
+    try {
+      response = await dispatch(request, env, url);
+    } catch {
+      response = err('Internal Server Error', 500, 'internal_error');
+    }
 
     // 4. CORS 헤더 부착
     return addCors(response, request, env);
