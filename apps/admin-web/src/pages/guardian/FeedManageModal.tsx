@@ -305,12 +305,8 @@ export default function FeedManageModal({
                       {t('guardian.feed.set_primary', '기본 설정')}
                     </button>
                   )}
-                  <button className="btn btn-sm" style={{ fontSize: 12 }} onClick={() => openEditForm(f)}>
-                    {t('guardian.feed.edit', '수정')}
-                  </button>
-                  <button className="btn btn-sm btn-danger" style={{ fontSize: 12 }} onClick={() => void handleDelete(f.id)}>
-                    {t('common.delete', 'Delete')}
-                  </button>
+                  <button className="btn btn-sm" style={{ fontSize: 12 }} title={t('common.edit', 'Edit')} aria-label={t('common.edit', 'Edit')} onClick={() => openEditForm(f)}>✏️</button>
+                  <button className="btn btn-sm btn-danger" style={{ fontSize: 12 }} title={t('common.delete', 'Delete')} aria-label={t('common.delete', 'Delete')} onClick={() => void handleDelete(f.id)}>🗑️</button>
                 </div>
               </div>
             </div>

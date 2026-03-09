@@ -424,7 +424,7 @@ export default function DevicePage() {
                     </div>
                     <div style={{ display: 'flex', flexDirection: 'column', gap: 4, alignItems: 'flex-end' }}>
                       <SBadge status={item.status} />
-                      <button className="btn btn-secondary btn-sm" style={{ fontSize: 10, padding: '1px 6px' }} onClick={(e) => { e.stopPropagation(); openEditMfr(item); }}>{t('admin.master.btn_edit')}</button>
+                      <button className="btn btn-secondary btn-sm" style={{ fontSize: 10, padding: '1px 6px' }} title={t('common.edit', 'Edit')} aria-label={t('common.edit', 'Edit')} onClick={(e) => { e.stopPropagation(); openEditMfr(item); }}>✏️</button>
                     </div>
                   </button>
                 ))}
@@ -441,7 +441,7 @@ export default function DevicePage() {
                     </div>
                     <div style={{ display: 'flex', flexDirection: 'column', gap: 4, alignItems: 'flex-end' }}>
                       <SBadge status={item.status} />
-                      <button className="btn btn-secondary btn-sm" style={{ fontSize: 10, padding: '1px 6px' }} onClick={(e) => { e.stopPropagation(); openEditBrand(item); }}>{t('admin.master.btn_edit')}</button>
+                      <button className="btn btn-secondary btn-sm" style={{ fontSize: 10, padding: '1px 6px' }} title={t('common.edit', 'Edit')} aria-label={t('common.edit', 'Edit')} onClick={(e) => { e.stopPropagation(); openEditBrand(item); }}>✏️</button>
                     </div>
                   </button>
                 ))}
@@ -458,7 +458,7 @@ export default function DevicePage() {
                     </div>
                     <div style={{ display: 'flex', flexDirection: 'column', gap: 4, alignItems: 'flex-end' }}>
                       <SBadge status={item.status} />
-                      <button className="btn btn-secondary btn-sm" style={{ fontSize: 10, padding: '1px 6px' }} onClick={(e) => { e.stopPropagation(); openEditModel(item); }}>{t('admin.master.btn_edit')}</button>
+                      <button className="btn btn-secondary btn-sm" style={{ fontSize: 10, padding: '1px 6px' }} title={t('common.edit', 'Edit')} aria-label={t('common.edit', 'Edit')} onClick={(e) => { e.stopPropagation(); openEditModel(item); }}>✏️</button>
                     </div>
                   </button>
                 ))}
@@ -470,8 +470,8 @@ export default function DevicePage() {
                 title={selectedModel.model_display_label || selectedModel.model_name}
                 onEdit={() => openEditModel(selectedModel)}
                 onDelete={() => void handleDelete('model', selectedModel.id)}
-                editLabel={t('admin.master.btn_edit')}
-                deleteLabel={t('admin.master.btn_delete')}
+                editLabel="✏️"
+                deleteLabel="🗑️"
                 fields={[
                   { label: t('admin.device.device_type'), value: selectedModel.type_display_label || selectedModel.type_name_en || selectedModel.type_name_ko || '—' },
                   { label: t('admin.device.manufacturer'), value: selectedModel.mfr_display_label || selectedModel.mfr_name_en || selectedModel.mfr_name_ko || '—' },
@@ -509,7 +509,7 @@ export default function DevicePage() {
                     <td>{u.symbol ?? '—'}</td>
                     <td>{u.sort_order}</td>
                     <td><CatalogStatusBadge status={u.status} t={t} /></td>
-                    <td><button className="btn btn-secondary btn-sm" onClick={() => openEditUnit(u)}>{t('admin.master.btn_edit')}</button></td>
+                    <td><button className="btn btn-secondary btn-sm" title={t('common.edit', 'Edit')} aria-label={t('common.edit', 'Edit')} onClick={() => openEditUnit(u)}>✏️</button></td>
                   </tr>
                 ))}
                 {units.length === 0 && <tr><td colSpan={6} style={{ textAlign: 'center', padding: 16 }}>{t('admin.device.empty')}</td></tr>}
@@ -717,9 +717,7 @@ export default function DevicePage() {
             </div>
             <div className="modal-footer">
               {modal.mode === 'edit' && modal.id && modal.target !== 'unit' && (
-                <button className="btn btn-danger" style={{ marginRight: 'auto' }} onClick={() => void handleDelete(modal.target, modal.id!).then(() => setModal(null))}>
-                  {t('admin.master.btn_delete')}
-                </button>
+                <button className="btn btn-danger" style={{ marginRight: 'auto' }} title={t('common.delete', 'Delete')} aria-label={t('common.delete', 'Delete')} onClick={() => void handleDelete(modal.target, modal.id!).then(() => setModal(null))}>🗑️</button>
               )}
               <button className="btn btn-secondary" onClick={() => setModal(null)}>{t('admin.master.btn_cancel')}</button>
               <button className="btn btn-primary" onClick={() => void handleSave()} disabled={saving}>{t('admin.master.btn_save')}</button>

@@ -388,8 +388,8 @@ export default function PublicHome() {
                           <div className="ig-comment-meta">{formatDate(c.created_at)}</div>
                           {mine && (
                             <div className="ig-comment-actions">
-                              <button className="ig-comment-post-btn" style={{ fontSize: 11 }} onClick={() => { setEditingCommentId(c.id); setEditingContent(c.content); }}>{t('common.edit', '수정')}</button>
-                              <button className="ig-comment-post-btn" style={{ fontSize: 11, color: 'var(--danger)' }} onClick={() => deleteComment(feed.id, c.id)}>{t('common.delete', '삭제')}</button>
+                              <button className="ig-comment-post-btn" style={{ fontSize: 11 }} title={t('common.edit', 'Edit')} aria-label={t('common.edit', 'Edit')} onClick={() => { setEditingCommentId(c.id); setEditingContent(c.content); }}>✏️</button>
+                              <button className="ig-comment-post-btn" style={{ fontSize: 11, color: 'var(--danger)' }} title={t('common.delete', 'Delete')} aria-label={t('common.delete', 'Delete')} onClick={() => deleteComment(feed.id, c.id)}>🗑️</button>
                             </div>
                           )}
                         </>

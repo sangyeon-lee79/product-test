@@ -50,6 +50,8 @@ import {
   loadCategoryItems,
   uiErrorMessage,
   formatDate,
+  fmtDate,
+  fmtDateTime,
   feedTypeLabel,
   visibilityLabel,
   normalizeMultiStableIds,
@@ -79,6 +81,7 @@ export default function GuardianMainPage() {
   const [measurementSummary, setMeasurementSummary] = useState<HealthMeasurementSummary | null>(null);
   const [weightRange, setWeightRange] = useState<WeightRange>('1m');
   const [weightModalOpen, setWeightModalOpen] = useState(false);
+  const [editingWeightLog, setEditingWeightLog] = useState<PetWeightLog | null>(null);
   const [measurementModalOpen, setMeasurementModalOpen] = useState(false);
   const [editingMeasurementLog, setEditingMeasurementLog] = useState<PetHealthMeasurementLog | null>(null);
   const [deviceManageModalOpen, setDeviceManageModalOpen] = useState(false);
@@ -88,10 +91,19 @@ export default function GuardianMainPage() {
   const [feedingLogModalOpen, setFeedingLogModalOpen] = useState(false);
   const [feedingLogs, setFeedingLogs] = useState<FeedingLog[]>([]);
   const [editingFeedingLog, setEditingFeedingLog] = useState<FeedingLog | null>(null);
-  const [selectedMeasurementItemId, setSelectedMeasurementItemId] = useState('');
   const [feedTab, setFeedTab] = useState<FeedTab>('all');
   const [petTab, setPetTab] = useState<PetProfileTab>('gallery');
   const [composeModalOpen, setComposeModalOpen] = useState(false);
+
+  // ── Health sub-tabs ──────────────────────────────────────────────────────
+  const [healthSubTab, setHealthSubTab] = useState<'graph' | 'timeline'>('graph');
+
+  // ── Pagination ──────────────────────────────────────────────────────────
+  const PAGE_SIZE = 10;
+  const [weightLogPage, setWeightLogPage] = useState(1);
+  const [measurementLogPage, setMeasurementLogPage] = useState(1);
+  const [feedingLogPage, setFeedingLogPage] = useState(1);
+  const [timelinePage, setTimelinePage] = useState(1);
 
   // ── S7 Health Logs ────────────────────────────────────────────────────────
   const [petLogs, setPetLogs] = useState<PetLog[]>([]);
@@ -356,6 +368,9 @@ export default function GuardianMainPage() {
   }, [petIdParam]);
 
   useEffect(() => {
+    setWeightLogPage(1);
+    setMeasurementLogPage(1);
+    setFeedingLogPage(1);
     if (!selectedPet?.id) {
       setWeightLogs([]);
       setWeightSummary(null);
@@ -377,15 +392,6 @@ export default function GuardianMainPage() {
     void loadFeedingLogs(selectedPet.id);
   }, [selectedPet?.id]);
 
-  useEffect(() => {
-    if (!measurementLogs.length) {
-      if (selectedMeasurementItemId) setSelectedMeasurementItemId('');
-      return;
-    }
-    if (!selectedMeasurementItemId || !measurementLogs.some((log) => String(log.measurement_item_id) === selectedMeasurementItemId)) {
-      setSelectedMeasurementItemId(String(measurementLogs[0].measurement_item_id || ''));
-    }
-  }, [measurementLogs, selectedMeasurementItemId]);
 
   async function loadWeightLogs(petId: string, range: WeightRange) {
     try {
@@ -404,9 +410,6 @@ export default function GuardianMainPage() {
       const res = await api.pets.healthMeasurements.list(petId, { range });
       setMeasurementLogs(res.logs || []);
       setMeasurementSummary(res.summary || null);
-      if (res.logs && res.logs.length > 0 && !selectedMeasurementItemId) {
-        setSelectedMeasurementItemId(String(res.logs[0].measurement_item_id || ''));
-      }
     } catch (e) {
       setError(uiErrorMessage(e, t('guardian.health.measurement_log_load_failed', 'Failed to load health measurement logs.')));
       setMeasurementLogs([]);
@@ -521,6 +524,29 @@ export default function GuardianMainPage() {
     }
   }
 
+  async function removeFeedingLog(logId: string) {
+    if (!selectedPet?.id) return;
+    if (!confirm(t('guardian.feeding.delete_confirm', 'Delete this feeding log?'))) return;
+    try {
+      await api.pets.feedingLogs.remove(selectedPet.id, logId);
+      await loadFeedingLogs(selectedPet.id);
+    } catch (e) {
+      setError(uiErrorMessage(e, t('guardian.feeding.delete_failed', 'Failed to delete feeding log.')));
+    }
+  }
+
+  function renderPagination(page: number, totalItems: number, setPage: (p: number) => void) {
+    const totalPages = Math.ceil(totalItems / PAGE_SIZE);
+    if (totalPages <= 1) return null;
+    return (
+      <div className="pagination" style={{ marginTop: 8 }}>
+        <button className="btn btn-secondary btn-sm" disabled={page <= 1} onClick={() => setPage(page - 1)}>{t('admin.common.prev', '이전')}</button>
+        <span>{page} / {totalPages}</span>
+        <button className="btn btn-secondary btn-sm" disabled={page >= totalPages} onClick={() => setPage(page + 1)}>{t('admin.common.next', '다음')}</button>
+      </div>
+    );
+  }
+
   async function removeFeedPost(feedId: string) {
     if (!confirm(t('guardian.feed.delete_confirm', 'Delete this post?'))) return;
     try {
@@ -563,6 +589,16 @@ export default function GuardianMainPage() {
     setEditingMeasurementLog(log);
     setMeasurementModalOpen(true);
   }
+
+  // ── Unified Timeline ──────────────────────────────────────────────────────
+  type TimelineItem = { id: string; type: 'weight' | 'measurement' | 'feeding'; date: string; source: PetWeightLog | PetHealthMeasurementLog | FeedingLog };
+  const unifiedTimeline = useMemo<TimelineItem[]>(() => {
+    const items: TimelineItem[] = [];
+    for (const log of weightLogs) items.push({ id: `w-${log.id}`, type: 'weight', date: log.measured_at, source: log });
+    for (const log of measurementLogs) items.push({ id: `m-${log.id}`, type: 'measurement', date: log.measured_at, source: log });
+    for (const log of feedingLogs) items.push({ id: `f-${log.id}`, type: 'feeding', date: log.feeding_time || log.created_at, source: log });
+    return items.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+  }, [weightLogs, measurementLogs, feedingLogs]);
 
   function renderCombinedHealthChart(weightRows: PetWeightLog[], mRows: PetHealthMeasurementLog[]) {
     if (!weightRows.length && !mRows.length && !petFeeds.length && !feedingLogs.length) {
@@ -847,7 +883,7 @@ export default function GuardianMainPage() {
                               <div className="sns-card-right">
                                 <div className="sns-badges"><span className="badge badge-green">{visibilityLabel(t, f.visibility_scope)}</span></div>
                                 {currentUserId && f.author_user_id === currentUserId && (
-                                  <button className="btn btn-danger btn-sm" onClick={() => removeFeedPost(f.id)}>{t('common.delete', 'Delete')}</button>
+                                  <button className="btn btn-danger btn-sm" title={t('common.delete', 'Delete')} aria-label={t('common.delete', 'Delete')} onClick={() => removeFeedPost(f.id)}>🗑️</button>
                                 )}
                               </div>
                             </div>
@@ -907,7 +943,7 @@ export default function GuardianMainPage() {
                   {/* ── Health Toolkit ── */}
                   <div className="gm-health-toolbar">
                     <div className="gm-toolbar-group gm-toolbar-record">
-                      <button className="gm-toolbar-tile gm-tile-weight" onClick={() => setWeightModalOpen(true)}>
+                      <button className="gm-toolbar-tile gm-tile-weight" onClick={() => { setEditingWeightLog(null); setWeightModalOpen(true); }}>
                         <span className="gm-tile-icon">⚖️</span>
                         <span className="gm-tile-label">{t('guardian.health.add_weight', '몸무게')}</span>
                       </button>
@@ -933,108 +969,205 @@ export default function GuardianMainPage() {
                     </div>
                   </div>
 
-                  {/* ── Health Chart ── */}
-                  <div className="gm-section">
-                    <div className="gm-section-header">
-                      <span className="gm-section-title">{t('guardian.health.chart_title', '건강 추이')}</span>
-                    </div>
-                    <div className="gm-section-body">
-                      <div className="gm-period-chips" style={{ marginBottom: 12 }}>
-                        {(['7d', '15d', '1m', '3m', '6m', '1y', 'all'] as const).map((range) => (
-                          <button key={range} className={`gm-period-chip${weightRange === range ? ' active' : ''}`} onClick={() => setWeightRange(range)}>
-                            {range === 'all' ? t('common.all', '전체') : range}
-                          </button>
-                        ))}
-                      </div>
-                      <div style={{ marginBottom: 12 }}>
-                        <div className="form-group">
-                          <label className="form-label" htmlFor="health-measurement-item">{t('guardian.health.measurement_item', '질병 수치 항목')}</label>
-                          <select id="health-measurement-item" name="health-measurement-item" className="form-select" value={selectedMeasurementItemId} onChange={(e) => setSelectedMeasurementItemId(e.target.value)}>
-                            <option value="">{t('common.select', 'Select')}</option>
-                            {optMeasurement.filter((m) => measurementLogs.some((log) => log.measurement_item_id === m.id)).map((o) => (
-                              <option key={o.id} value={o.id}>{optionLabel(o, t('common.none', '-'))}</option>
+                  {/* ── Health Sub-Tabs (Graph / Timeline) ── */}
+                  <div className="gm-period-chips" style={{ marginBottom: 4 }}>
+                    <button className={`gm-period-chip${healthSubTab === 'graph' ? ' active' : ''}`} onClick={() => setHealthSubTab('graph')}>
+                      {t('guardian.health.subtab_graph', '그래프')}
+                    </button>
+                    <button className={`gm-period-chip${healthSubTab === 'timeline' ? ' active' : ''}`} onClick={() => { setHealthSubTab('timeline'); setTimelinePage(1); }}>
+                      {t('guardian.health.subtab_timeline', '타임라인')}
+                    </button>
+                  </div>
+
+                  {/* ── Graph Sub-Tab ── */}
+                  {healthSubTab === 'graph' && (
+                    <>
+                      <div className="gm-section">
+                        <div className="gm-section-header">
+                          <span className="gm-section-title">{t('guardian.health.chart_title', '건강 추이')}</span>
+                        </div>
+                        <div className="gm-section-body">
+                          <div className="gm-period-chips" style={{ marginBottom: 12 }}>
+                            {(['7d', '15d', '1m', '3m', '6m', '1y', 'all'] as const).map((range) => (
+                              <button key={range} className={`gm-period-chip${weightRange === range ? ' active' : ''}`} onClick={() => setWeightRange(range)}>
+                                {range === 'all' ? t('common.all', '전체') : range}
+                              </button>
                             ))}
-                          </select>
+                          </div>
+                          {renderCombinedHealthChart(weightLogs, measurementLogs)}
                         </div>
                       </div>
-                      {renderCombinedHealthChart(weightLogs, measurementLogs.filter((log) => !selectedMeasurementItemId || log.measurement_item_id === selectedMeasurementItemId))}
-                    </div>
-                  </div>
-                  <div className="gm-section">
-                    <div className="gm-section-header"><span className="gm-section-title">{t('guardian.health.weight_log', '몸무게 기록')}</span></div>
-                    <div className="gm-section-body">
-                      <div className="guardian-pet-list">
-                        {weightLogs.map((log) => (
-                          <div key={log.id} className="guardian-pet-item">
-                            <p className="text-sm">{new Date(log.measured_at).toLocaleDateString()} · {log.weight_value} kg</p>
-                            <div className="td-actions"><button className="btn btn-danger btn-sm" onClick={() => removeWeightLog(log.id)}>{t('common.delete', '삭제')}</button></div>
+                      {/* ── Weight Logs ── */}
+                      <div className="gm-section">
+                        <div className="gm-section-header"><span className="gm-section-title">{t('guardian.health.weight_log', '몸무게 기록')}</span></div>
+                        <div className="gm-section-body">
+                          <div className="guardian-pet-list">
+                            {weightLogs.slice((weightLogPage - 1) * PAGE_SIZE, weightLogPage * PAGE_SIZE).map((log) => (
+                              <div key={log.id} className="guardian-pet-item">
+                                <div>
+                                  <p className="text-sm">{fmtDate(log.measured_at)} · {log.weight_value} kg</p>
+                                  {log.notes && <p className="text-sm text-muted" style={{ fontSize: 11 }}>{log.notes}</p>}
+                                </div>
+                                <div className="td-actions">
+                                  <button className="btn btn-secondary btn-sm" title={t('common.edit', 'Edit')} aria-label={t('common.edit', 'Edit')} onClick={() => { setEditingWeightLog(log); setWeightModalOpen(true); }}>✏️</button>
+                                  <button className="btn btn-danger btn-sm" title={t('common.delete', 'Delete')} aria-label={t('common.delete', 'Delete')} onClick={() => removeWeightLog(log.id)}>🗑️</button>
+                                </div>
+                              </div>
+                            ))}
+                            {weightLogs.length === 0 && <p className="text-muted" style={{ fontSize: 13 }}>{t('guardian.health.no_weight_logs', '몸무게 기록이 없습니다.')}</p>}
                           </div>
-                        ))}
-                        {weightLogs.length === 0 && <p className="text-muted" style={{ fontSize: 13 }}>{t('guardian.health.no_weight_logs', '몸무게 기록이 없습니다.')}</p>}
+                          {renderPagination(weightLogPage, weightLogs.length, setWeightLogPage)}
+                        </div>
                       </div>
-                    </div>
-                  </div>
-                  <div className="gm-section">
-                    <div className="gm-section-header"><span className="gm-section-title">{t('guardian.health.measurement_log', '질병 수치 로그')}</span></div>
-                    <div className="gm-section-body">
-                      <div className="guardian-pet-list">
-                        {measurementLogs.filter((log) => !selectedMeasurementItemId || log.measurement_item_id === selectedMeasurementItemId).map((log) => {
-                          const deviceLabel = log.device_model_id ? guardianDevices.find((d) => d.device_model_id === log.device_model_id)?.model_display_label || '' : '';
-                          const contextLabel = labelOf(optMeasurementContext, log.measurement_context_id, '');
-                          return (
-                            <div key={log.id} className="guardian-pet-item">
-                              <div>
-                                <p className="text-sm">{new Date(log.measured_at).toLocaleString()} · {log.value}{log.judgement_label ? ` · ${log.judgement_label}` : ''}</p>
-                                {(deviceLabel || contextLabel) && (
-                                  <p className="text-sm text-muted" style={{ fontSize: 11 }}>
-                                    {[deviceLabel, contextLabel].filter(Boolean).join(' · ')}
-                                  </p>
-                                )}
+                      {/* ── Measurement Logs ── */}
+                      <div className="gm-section">
+                        <div className="gm-section-header"><span className="gm-section-title">{t('guardian.health.measurement_log', '질병 수치 로그')}</span></div>
+                        <div className="gm-section-body">
+                          <div className="guardian-pet-list">
+                            {measurementLogs.slice((measurementLogPage - 1) * PAGE_SIZE, measurementLogPage * PAGE_SIZE).map((log) => (
+                              <div key={log.id} className="guardian-pet-item">
+                                <div>
+                                  <p className="text-sm">{fmtDateTime(log.measured_at)} · {log.value}{log.judgement_label ? ` · ${log.judgement_label}` : ''}</p>
+                                  {log.memo && <p className="text-sm text-muted" style={{ fontSize: 11 }}>{log.memo}</p>}
+                                </div>
+                                <div className="td-actions">
+                                  <button className="btn btn-secondary btn-sm" title={t('common.edit', 'Edit')} aria-label={t('common.edit', 'Edit')} onClick={() => openEditHealthMeasurementLog(log)}>✏️</button>
+                                  <button className="btn btn-danger btn-sm" title={t('common.delete', 'Delete')} aria-label={t('common.delete', 'Delete')} onClick={() => removeHealthMeasurementLog(log.id)}>🗑️</button>
+                                </div>
                               </div>
-                              <div className="td-actions">
-                                <button className="btn btn-secondary btn-sm" onClick={() => openEditHealthMeasurementLog(log)}>{t('common.edit', '수정')}</button>
-                                <button className="btn btn-danger btn-sm" onClick={() => removeHealthMeasurementLog(log.id)}>{t('common.delete', '삭제')}</button>
-                              </div>
-                            </div>
-                          );
-                        })}
-                        {measurementLogs.length === 0 && <p className="text-muted" style={{ fontSize: 13 }}>{t('guardian.health.no_measurement_logs', '질병 수치 기록이 없습니다.')}</p>}
+                            ))}
+                            {measurementLogs.length === 0 && <p className="text-muted" style={{ fontSize: 13 }}>{t('guardian.health.no_measurement_logs', '질병 수치 기록이 없습니다.')}</p>}
+                          </div>
+                          {renderPagination(measurementLogPage, measurementLogs.length, setMeasurementLogPage)}
+                        </div>
                       </div>
-                    </div>
-                  </div>
-                  {/* ── Health Log Timeline (S7) ── */}
-                  <div className="gm-section">
-                    <div className="gm-section-header">
-                      <span className="gm-section-title">{t('guardian.log.timeline', 'Timeline')}</span>
-                      {isGuardian && <button className="btn btn-primary btn-sm" onClick={() => setLogModalOpen(true)}>+ {t('guardian.log.add', '기록 추가')}</button>}
-                    </div>
-                    <div className="gm-section-body">
-                      {petLogs.length === 0 && <p className="text-muted" style={{ fontSize: 13 }}>{t('guardian.log.no_records', '기록이 없습니다.')}</p>}
-                      <div className="guardian-pet-list">
-                        {petLogs.map((log) => {
-                          const ltLabel = optLogType.find((o) => o.id === log.logtype_id)?.label ?? log.logtype_code ?? log.logtype_id;
-                          return (
-                            <div key={log.id} className="guardian-pet-item" style={{ flexDirection: 'column', alignItems: 'flex-start', gap: 4 }}>
-                              <div style={{ display: 'flex', justifyContent: 'space-between', width: '100%' }}>
-                                <span className="badge badge-gray" style={{ fontSize: 11 }}>{ltLabel}</span>
-                                <span className="text-muted" style={{ fontSize: 12 }}>{log.event_date}{log.event_time ? ` ${log.event_time}` : ''}</span>
-                              </div>
-                              {log.title && <p style={{ fontSize: 13, fontWeight: 600, margin: 0 }}>{log.title}</p>}
-                              {log.notes && <p style={{ fontSize: 12, color: 'var(--text-muted)', margin: 0 }}>{log.notes}</p>}
-                              {log.values.length > 0 && (
-                                <p style={{ fontSize: 12, margin: 0 }}>
-                                  {log.values.map((v) => `${v.numeric_value ?? v.text_value ?? ''} ${v.unit_code ?? ''}`.trim()).join(' / ')}
-                                </p>
-                              )}
-                              <div className="td-actions">
-                                <button className="btn btn-danger btn-sm" onClick={() => removePetLog(log.id)}>{t('common.delete', '삭제')}</button>
-                              </div>
-                            </div>
-                          );
-                        })}
+                      {/* ── Feeding Logs ── */}
+                      <div className="gm-section">
+                        <div className="gm-section-header"><span className="gm-section-title">{t('guardian.feeding.log_title', '급여 기록')}</span></div>
+                        <div className="gm-section-body">
+                          <div className="guardian-pet-list">
+                            {feedingLogs.slice((feedingLogPage - 1) * PAGE_SIZE, feedingLogPage * PAGE_SIZE).map((log) => {
+                              const fname = log.feed_nickname || log.model_display_label || log.model_name || t('common.none', '-');
+                              return (
+                                <div key={log.id} className="guardian-pet-item">
+                                  <div>
+                                    <p className="text-sm">{fmtDateTime(log.feeding_time)} · {fname}{log.amount_g != null ? ` ${log.amount_g}g` : ''}</p>
+                                    {log.memo && <p className="text-sm text-muted" style={{ fontSize: 11 }}>{log.memo}</p>}
+                                  </div>
+                                  <div className="td-actions">
+                                    <button className="btn btn-secondary btn-sm" title={t('common.edit', 'Edit')} aria-label={t('common.edit', 'Edit')} onClick={() => { setEditingFeedingLog(log); setFeedingLogModalOpen(true); }}>✏️</button>
+                                    <button className="btn btn-danger btn-sm" title={t('common.delete', 'Delete')} aria-label={t('common.delete', 'Delete')} onClick={() => removeFeedingLog(log.id)}>🗑️</button>
+                                  </div>
+                                </div>
+                              );
+                            })}
+                            {feedingLogs.length === 0 && <p className="text-muted" style={{ fontSize: 13 }}>{t('guardian.feeding.no_logs', '급여 기록이 없습니다.')}</p>}
+                          </div>
+                          {renderPagination(feedingLogPage, feedingLogs.length, setFeedingLogPage)}
+                        </div>
                       </div>
-                    </div>
-                  </div>
+                    </>
+                  )}
+
+                  {/* ── Timeline Sub-Tab ── */}
+                  {healthSubTab === 'timeline' && (
+                    <>
+                      <div className="gm-section">
+                        <div className="gm-section-header">
+                          <span className="gm-section-title">{t('guardian.health.subtab_timeline', '타임라인')}</span>
+                        </div>
+                        <div className="gm-section-body">
+                          <div className="guardian-pet-list">
+                            {unifiedTimeline.slice((timelinePage - 1) * PAGE_SIZE, timelinePage * PAGE_SIZE).map((item) => {
+                              if (item.type === 'weight') {
+                                const log = item.source as PetWeightLog;
+                                return (
+                                  <div key={item.id} className="guardian-pet-item">
+                                    <div>
+                                      <span className="badge badge-gray" style={{ fontSize: 10, marginRight: 6 }}>{t('guardian.health.type_weight', '몸무게')}</span>
+                                      <span className="text-sm">{fmtDate(log.measured_at)} · {log.weight_value} kg</span>
+                                      {log.notes && <p className="text-sm text-muted" style={{ fontSize: 11, margin: '2px 0 0' }}>{log.notes}</p>}
+                                    </div>
+                                    <div className="td-actions">
+                                      <button className="btn btn-secondary btn-sm" title={t('common.edit', 'Edit')} aria-label={t('common.edit', 'Edit')} onClick={() => { setEditingWeightLog(log); setWeightModalOpen(true); }}>✏️</button>
+                                      <button className="btn btn-danger btn-sm" title={t('common.delete', 'Delete')} aria-label={t('common.delete', 'Delete')} onClick={() => removeWeightLog(log.id)}>🗑️</button>
+                                    </div>
+                                  </div>
+                                );
+                              }
+                              if (item.type === 'measurement') {
+                                const log = item.source as PetHealthMeasurementLog;
+                                return (
+                                  <div key={item.id} className="guardian-pet-item">
+                                    <div>
+                                      <span className="badge badge-gray" style={{ fontSize: 10, marginRight: 6 }}>{t('guardian.health.type_measurement', '수치')}</span>
+                                      <span className="text-sm">{fmtDateTime(log.measured_at)} · {log.value}{log.judgement_label ? ` · ${log.judgement_label}` : ''}</span>
+                                      {log.memo && <p className="text-sm text-muted" style={{ fontSize: 11, margin: '2px 0 0' }}>{log.memo}</p>}
+                                    </div>
+                                    <div className="td-actions">
+                                      <button className="btn btn-secondary btn-sm" title={t('common.edit', 'Edit')} aria-label={t('common.edit', 'Edit')} onClick={() => openEditHealthMeasurementLog(log)}>✏️</button>
+                                      <button className="btn btn-danger btn-sm" title={t('common.delete', 'Delete')} aria-label={t('common.delete', 'Delete')} onClick={() => removeHealthMeasurementLog(log.id)}>🗑️</button>
+                                    </div>
+                                  </div>
+                                );
+                              }
+                              // feeding
+                              const log = item.source as FeedingLog;
+                              const fname = log.feed_nickname || log.model_display_label || log.model_name || t('common.none', '-');
+                              return (
+                                <div key={item.id} className="guardian-pet-item">
+                                  <div>
+                                    <span className="badge badge-gray" style={{ fontSize: 10, marginRight: 6 }}>{t('guardian.health.type_feeding', '급여')}</span>
+                                    <span className="text-sm">{fmtDateTime(log.feeding_time)} · {fname}{log.amount_g != null ? ` ${log.amount_g}g` : ''}</span>
+                                    {log.memo && <p className="text-sm text-muted" style={{ fontSize: 11, margin: '2px 0 0' }}>{log.memo}</p>}
+                                  </div>
+                                  <div className="td-actions">
+                                    <button className="btn btn-secondary btn-sm" title={t('common.edit', 'Edit')} aria-label={t('common.edit', 'Edit')} onClick={() => { setEditingFeedingLog(log); setFeedingLogModalOpen(true); }}>✏️</button>
+                                    <button className="btn btn-danger btn-sm" title={t('common.delete', 'Delete')} aria-label={t('common.delete', 'Delete')} onClick={() => removeFeedingLog(log.id)}>🗑️</button>
+                                  </div>
+                                </div>
+                              );
+                            })}
+                            {unifiedTimeline.length === 0 && <p className="text-muted" style={{ fontSize: 13 }}>{t('guardian.log.no_records', '기록이 없습니다.')}</p>}
+                          </div>
+                          {renderPagination(timelinePage, unifiedTimeline.length, setTimelinePage)}
+                        </div>
+                      </div>
+                      {/* ── S7 Health Logs ── */}
+                      <div className="gm-section">
+                        <div className="gm-section-header">
+                          <span className="gm-section-title">{t('guardian.log.timeline', 'Health Logs')}</span>
+                          {isGuardian && <button className="btn btn-primary btn-sm" onClick={() => setLogModalOpen(true)}>+ {t('guardian.log.add', '기록 추가')}</button>}
+                        </div>
+                        <div className="gm-section-body">
+                          {petLogs.length === 0 && <p className="text-muted" style={{ fontSize: 13 }}>{t('guardian.log.no_records', '기록이 없습니다.')}</p>}
+                          <div className="guardian-pet-list">
+                            {petLogs.map((log) => {
+                              const ltLabel = optLogType.find((o) => o.id === log.logtype_id)?.label ?? log.logtype_code ?? log.logtype_id;
+                              return (
+                                <div key={log.id} className="guardian-pet-item" style={{ flexDirection: 'column', alignItems: 'flex-start', gap: 4 }}>
+                                  <div style={{ display: 'flex', justifyContent: 'space-between', width: '100%' }}>
+                                    <span className="badge badge-gray" style={{ fontSize: 11 }}>{ltLabel}</span>
+                                    <span className="text-muted" style={{ fontSize: 12 }}>{log.event_date}{log.event_time ? ` ${log.event_time}` : ''}</span>
+                                  </div>
+                                  {log.title && <p style={{ fontSize: 13, fontWeight: 600, margin: 0 }}>{log.title}</p>}
+                                  {log.notes && <p style={{ fontSize: 12, color: 'var(--text-muted)', margin: 0 }}>{log.notes}</p>}
+                                  {log.values.length > 0 && (
+                                    <p style={{ fontSize: 12, margin: 0 }}>
+                                      {log.values.map((v) => `${v.numeric_value ?? v.text_value ?? ''} ${v.unit_code ?? ''}`.trim()).join(' / ')}
+                                    </p>
+                                  )}
+                                  <div className="td-actions">
+                                    <button className="btn btn-danger btn-sm" title={t('common.delete', 'Delete')} aria-label={t('common.delete', 'Delete')} onClick={() => removePetLog(log.id)}>🗑️</button>
+                                  </div>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        </div>
+                      </div>
+                    </>
+                  )}
 
                   {/* ── Log Create Modal ── */}
                   {logModalOpen && (
@@ -1144,7 +1277,7 @@ export default function GuardianMainPage() {
                 <div className="gm-section">
                   <div className="gm-section-header">
                     <span className="gm-section-title">{t('guardian.tab.profile', 'Pet Profile')}</span>
-                    <button className="btn btn-secondary btn-sm" onClick={() => openEditPet(selectedPet.id)}>{t('common.edit', 'Edit')}</button>
+                    <button className="btn btn-secondary btn-sm" title={t('common.edit', 'Edit')} aria-label={t('common.edit', 'Edit')} onClick={() => openEditPet(selectedPet.id)}>✏️</button>
                   </div>
                   <div className="gm-section-body">
                     <div className="gm-info-grid" style={{ marginBottom: 16 }}>
@@ -1179,8 +1312,8 @@ export default function GuardianMainPage() {
                   {pets.map((p) => (
                     <div key={p.id} className="gm-pet-select-row">
                       <button className={`gm-pet-select-btn${selectedPet?.id === p.id ? ' active' : ''}`} onClick={() => setSelectedPetId(p.id)}>{p.name}</button>
-                      <button className="btn btn-secondary btn-sm" onClick={() => openEditPet(p.id)}>{t('common.edit', 'Edit')}</button>
-                      <button className="btn btn-danger btn-sm" onClick={() => removePet(p.id)}>{t('common.delete', '삭제')}</button>
+                      <button className="btn btn-secondary btn-sm" title={t('common.edit', 'Edit')} aria-label={t('common.edit', 'Edit')} onClick={() => openEditPet(p.id)}>✏️</button>
+                      <button className="btn btn-danger btn-sm" title={t('common.delete', 'Delete')} aria-label={t('common.delete', 'Delete')} onClick={() => removePet(p.id)}>🗑️</button>
                     </div>
                   ))}
                 </div>
@@ -1230,10 +1363,11 @@ export default function GuardianMainPage() {
       />
       <WeightModal
         open={weightModalOpen}
+        editingLog={editingWeightLog}
         selectedPet={selectedPet}
         t={t}
         setError={setError}
-        onClose={() => setWeightModalOpen(false)}
+        onClose={() => { setWeightModalOpen(false); setEditingWeightLog(null); }}
         onSuccess={() => {
           if (selectedPet?.id) void loadWeightLogs(selectedPet.id, weightRange);
           void loadAll(feedTab);

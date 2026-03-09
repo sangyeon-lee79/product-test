@@ -302,12 +302,8 @@ export default function DeviceManageModal({
                       {t('guardian.device.set_default', '기본 설정')}
                     </button>
                   )}
-                  <button className="btn btn-sm" style={{ fontSize: 12 }} onClick={() => openEditForm(d)}>
-                    {t('guardian.device.edit', '수정')}
-                  </button>
-                  <button className="btn btn-sm btn-danger" style={{ fontSize: 12 }} onClick={() => void handleDelete(d.id)}>
-                    {t('common.delete', 'Delete')}
-                  </button>
+                  <button className="btn btn-sm" style={{ fontSize: 12 }} title={t('common.edit', 'Edit')} aria-label={t('common.edit', 'Edit')} onClick={() => openEditForm(d)}>✏️</button>
+                  <button className="btn btn-sm btn-danger" style={{ fontSize: 12 }} title={t('common.delete', 'Delete')} aria-label={t('common.delete', 'Delete')} onClick={() => void handleDelete(d.id)}>🗑️</button>
                 </div>
               </div>
             </div>

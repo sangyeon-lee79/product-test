@@ -531,10 +531,12 @@ export default function PetGalleryPanel({
                 {isGuardian && (
                   <button
                     className="btn btn-danger btn-sm"
+                    title={t('common.delete', 'Delete')}
+                    aria-label={t('common.delete', 'Delete')}
                     disabled={deletingId === selectedItem.id}
                     onClick={() => removeMedia(selectedItem)}
                   >
-                    {deletingId === selectedItem.id ? '삭제 중...' : '삭제'}
+                    {deletingId === selectedItem.id ? '🗑️...' : '🗑️'}
                   </button>
                 )}
               </aside>

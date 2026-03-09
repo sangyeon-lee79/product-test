@@ -1,10 +1,11 @@
-// 몸무게 추가 모달 — GuardianMainPage에서 분리
+// 몸무게 추가/수정 모달 — GuardianMainPage에서 분리
 import { useState } from 'react';
-import { api, type Pet } from '../../lib/api';
-import { uiErrorMessage } from './guardianTypes';
+import { api, type Pet, type PetWeightLog } from '../../lib/api';
+import { toDatetimeLocal, uiErrorMessage } from './guardianTypes';
 
 interface Props {
   open: boolean;
+  editingLog: PetWeightLog | null;
   selectedPet: Pet | null;
   t: (key: string, fallback?: string) => string;
   setError: (msg: string) => void;
@@ -12,16 +13,34 @@ interface Props {
   onSuccess: () => void;
 }
 
-export default function WeightModal({ open, selectedPet, t, setError, onClose, onSuccess }: Props) {
+export default function WeightModal({ open, editingLog, selectedPet, t, setError, onClose, onSuccess }: Props) {
   const [weightForm, setWeightForm] = useState<{ value: string; measured_at: string; notes: string }>({
     value: '',
     measured_at: '',
     notes: '',
   });
+  const [initialized, setInitialized] = useState(false);
+
+  // Initialize form when opening
+  if (open && !initialized) {
+    if (editingLog) {
+      setWeightForm({
+        value: String(editingLog.weight_value ?? ''),
+        measured_at: editingLog.measured_at ? toDatetimeLocal(editingLog.measured_at) : '',
+        notes: editingLog.notes || '',
+      });
+    } else {
+      setWeightForm({ value: '', measured_at: '', notes: '' });
+    }
+    setInitialized(true);
+  }
+  if (!open && initialized) {
+    setInitialized(false);
+  }
 
   if (!open) return null;
 
-  async function createWeightLog() {
+  async function handleSave() {
     if (!selectedPet?.id) return;
     const value = Number(weightForm.value);
     if (!Number.isFinite(value) || value <= 0) {
@@ -29,17 +48,23 @@ export default function WeightModal({ open, selectedPet, t, setError, onClose, o
       return;
     }
     try {
-      await api.pets.weightLogs.create(selectedPet.id, {
-        weight_value: value,
-        weight_unit_id: selectedPet.weight_unit_id || null,
-        measured_at: weightForm.measured_at || new Date().toISOString(),
-        notes: weightForm.notes.trim() || null,
-      });
-      setWeightForm({ value: '', measured_at: '', notes: '' });
+      if (editingLog) {
+        await api.pets.weightLogs.update(selectedPet.id, editingLog.id, {
+          weight_value: value,
+          notes: weightForm.notes.trim() || null,
+        });
+      } else {
+        await api.pets.weightLogs.create(selectedPet.id, {
+          weight_value: value,
+          weight_unit_id: selectedPet.weight_unit_id || null,
+          measured_at: weightForm.measured_at || new Date().toISOString(),
+          notes: weightForm.notes.trim() || null,
+        });
+      }
       onSuccess();
       onClose();
     } catch (e) {
-      setError(uiErrorMessage(e, t('guardian.health.weight_create_failed', 'Failed to add weight log.')));
+      setError(uiErrorMessage(e, t('guardian.health.weight_create_failed', 'Failed to save weight log.')));
     }
   }
 
@@ -47,7 +72,11 @@ export default function WeightModal({ open, selectedPet, t, setError, onClose, o
     <div className="modal-overlay">
       <div className="modal">
         <div className="modal-header">
-          <h3 className="modal-title">{t('guardian.health.weight_modal.add_title', 'Add Weight')}</h3>
+          <h3 className="modal-title">
+            {editingLog
+              ? t('guardian.health.weight_modal.edit_title', 'Edit Weight')
+              : t('guardian.health.weight_modal.add_title', 'Add Weight')}
+          </h3>
           <button className="modal-close" onClick={onClose}>&times;</button>
         </div>
         <div className="modal-body">
@@ -72,6 +101,7 @@ export default function WeightModal({ open, selectedPet, t, setError, onClose, o
               type="datetime-local"
               value={weightForm.measured_at}
               onChange={(e) => setWeightForm((prev) => ({ ...prev, measured_at: e.target.value }))}
+              disabled={!!editingLog}
             />
           </div>
           <div className="form-group">
@@ -87,7 +117,7 @@ export default function WeightModal({ open, selectedPet, t, setError, onClose, o
         </div>
         <div className="modal-footer">
           <button className="btn btn-secondary" onClick={onClose}>{t('common.cancel', 'Cancel')}</button>
-          <button className="btn btn-primary" onClick={() => void createWeightLog()}>{t('common.save', 'Save')}</button>
+          <button className="btn btn-primary" onClick={() => void handleSave()}>{t('common.save', 'Save')}</button>
         </div>
       </div>
     </div>

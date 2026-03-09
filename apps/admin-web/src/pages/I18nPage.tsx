@@ -140,7 +140,7 @@ export default function I18nPage() {
                       </td>
                       <td>
                         <div className="td-actions">
-                          <button className="btn btn-secondary btn-sm" onClick={() => openEdit(row)}>{t('admin.common.edit', '편집')}</button>
+                          <button className="btn btn-secondary btn-sm" title={t('common.edit', 'Edit')} aria-label={t('common.edit', 'Edit')} onClick={() => openEdit(row)}>✏️</button>
                           {row.is_active ? (
                             <button className="btn btn-danger btn-sm" onClick={() => handleDeactivate(row.id)}>{t('admin.common.deactivate', '비활성화')}</button>
                           ) : null}

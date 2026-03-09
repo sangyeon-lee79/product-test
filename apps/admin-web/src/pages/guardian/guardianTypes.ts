@@ -272,6 +272,30 @@ export function formatDate(value?: string | null, fallback = '-'): string {
   }
 }
 
+/** Date only: 2026. 3. 8. */
+export function fmtDate(value?: string | null, fallback = '-'): string {
+  if (!value) return fallback;
+  try {
+    const d = new Date(value);
+    return `${d.getFullYear()}. ${d.getMonth() + 1}. ${d.getDate()}.`;
+  } catch {
+    return value ?? fallback;
+  }
+}
+
+/** Date + 24h time (no seconds): 2026. 3. 10. 12:11 */
+export function fmtDateTime(value?: string | null, fallback = '-'): string {
+  if (!value) return fallback;
+  try {
+    const d = new Date(value);
+    const hh = String(d.getHours()).padStart(2, '0');
+    const mm = String(d.getMinutes()).padStart(2, '0');
+    return `${d.getFullYear()}. ${d.getMonth() + 1}. ${d.getDate()}. ${hh}:${mm}`;
+  } catch {
+    return value ?? fallback;
+  }
+}
+
 export function normalizeSingleStableId(value: string | null | undefined, options: Option[], allowUnknownWhenOptionsMissing = true): string {
   const raw = String(value || '').trim();
   if (!raw) return '';

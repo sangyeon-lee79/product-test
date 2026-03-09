@@ -179,7 +179,7 @@ export default function CountriesPage() {
                       <td>{c.sort_order}</td>
                       <td><span className={`badge ${c.is_active ? 'badge-green' : 'badge-gray'}`}>{c.is_active ? t('admin.common.active', '활성') : t('admin.common.inactive', '비활성')}</span></td>
                       <td>
-                        <button className="btn btn-secondary btn-sm" onClick={() => {
+                        <button className="btn btn-secondary btn-sm" title={t('common.edit', 'Edit')} aria-label={t('common.edit', 'Edit')} onClick={() => {
                           setCountryForm({
                             id: c.id,
                             code: c.code,
@@ -188,7 +188,7 @@ export default function CountriesPage() {
                           });
                           setCountryTrans(countryToTranslations(c));
                           setCountryModal('edit');
-                        }}>{t('admin.common.edit', '편집')}</button>
+                        }}>✏️</button>
                       </td>
                     </tr>
                   ))}

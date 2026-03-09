@@ -477,7 +477,7 @@ export default function MeasurementModal({
               model_id: '',
               measurement_item_id: '',
               measurement_context_id: '',
-            })), true, false, 'disease_item_id')
+            })), true, !!editingLog, 'disease_item_id')
           )}
 
           {/* ── Manual cascade (only if manual mode or editing) ── */}
@@ -491,19 +491,19 @@ export default function MeasurementModal({
                 model_id: '',
                 measurement_item_id: '',
                 measurement_context_id: '',
-              })), true, false, 'device_type_item_id')}
+              })), true, !!editingLog, 'device_type_item_id')}
               {renderSelect(t('guardian.health.measurement.manufacturer', '제조사'), measurementForm.manufacturer_id, manufacturerOptions, (v) => setMeasurementForm((prev) => ({
                 ...prev,
                 manufacturer_id: v,
                 brand_id: '',
                 model_id: '',
-              })), false, false, 'manufacturer_id')}
+              })), false, !!editingLog, 'manufacturer_id')}
               {renderSelect(t('guardian.health.measurement.brand', '브랜드'), measurementForm.brand_id, brandOptions, (v) => setMeasurementForm((prev) => ({
                 ...prev,
                 brand_id: v,
                 model_id: '',
-              })), false, false, 'brand_id')}
-              {renderSelect(t('guardian.health.measurement.model', '모델'), measurementForm.model_id, modelOptions, (v) => setMeasurementForm((prev) => ({ ...prev, model_id: v })), false, false, 'model_id')}
+              })), false, !!editingLog, 'brand_id')}
+              {renderSelect(t('guardian.health.measurement.model', '모델'), measurementForm.model_id, modelOptions, (v) => setMeasurementForm((prev) => ({ ...prev, model_id: v })), false, !!editingLog, 'model_id')}
             </>
           )}
 
@@ -515,7 +515,7 @@ export default function MeasurementModal({
                 ...prev,
                 measurement_item_id: e.target.value,
                 measurement_context_id: '',
-              }))}>
+              }))} disabled={!!editingLog} style={editingLog ? { opacity: 0.6, cursor: 'not-allowed' } : undefined}>
                 <option value="">{t('common.select', 'Select')}</option>
                 {healthMeasurementOptions.map((o) => <option key={o.id} value={o.id}>{optionLabel(o, t('common.none', '-'))}</option>)}
               </select>
@@ -536,7 +536,7 @@ export default function MeasurementModal({
           {/* ── Context (if available) ── */}
           {healthContextOptions.length > 0 && (
             <div style={{ marginTop: 8 }}>
-              {renderSelect(t('guardian.health.measurement.context', '측정 컨텍스트'), measurementForm.measurement_context_id, healthContextOptions, (v) => setMeasurementForm((prev) => ({ ...prev, measurement_context_id: v })), false, false, 'measurement_context_id')}
+              {renderSelect(t('guardian.health.measurement.context', '측정 컨텍스트'), measurementForm.measurement_context_id, healthContextOptions, (v) => setMeasurementForm((prev) => ({ ...prev, measurement_context_id: v })), false, !!editingLog, 'measurement_context_id')}
             </div>
           )}
 
@@ -549,6 +549,7 @@ export default function MeasurementModal({
                 type="datetime-local"
                 value={measurementForm.measured_at}
                 onChange={(e) => setMeasurementForm((prev) => ({ ...prev, measured_at: e.target.value }))}
+                disabled={!!editingLog}
               />
             </div>
             <div className="form-group">

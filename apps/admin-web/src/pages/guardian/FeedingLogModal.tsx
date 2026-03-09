@@ -118,6 +118,7 @@ export default function FeedingLogModal({
                   className="form-select"
                   value={form.pet_feed_id}
                   onChange={(e) => setForm((p) => ({ ...p, pet_feed_id: e.target.value }))}
+                  disabled={!!editingLog}
                 >
                   <option value="">{t('common.select', 'Select')}</option>
                   {petFeeds.map((f) => (
@@ -154,6 +155,7 @@ export default function FeedingLogModal({
                   type="datetime-local"
                   value={form.feeding_time}
                   onChange={(e) => setForm((p) => ({ ...p, feeding_time: e.target.value }))}
+                  disabled={!!editingLog}
                 />
               </div>
 

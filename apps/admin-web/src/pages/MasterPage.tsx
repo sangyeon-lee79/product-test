@@ -571,8 +571,8 @@ export default function MasterPage() {
                     <span>{t('admin.master.active')}</span>
                     <input type="checkbox" checked={Boolean(selectedNode.is_active)} onChange={() => void toggleSelectedItemActive()} />
                   </label>
-                  <button className="btn btn-secondary btn-sm" onClick={openEditSelectedItem}>{t('admin.master.btn_edit')}</button>
-                  <button className="btn btn-danger btn-sm" onClick={() => void handleDeleteSelectedItem()}>{t('admin.master.btn_delete')}</button>
+                  <button className="btn btn-secondary btn-sm" title={t('common.edit', 'Edit')} aria-label={t('common.edit', 'Edit')} onClick={openEditSelectedItem}>✏️</button>
+                  <button className="btn btn-danger btn-sm" title={t('common.delete', 'Delete')} aria-label={t('common.delete', 'Delete')} onClick={() => void handleDeleteSelectedItem()}>🗑️</button>
                 </>
               )}
               {selectedCat && (
@@ -582,7 +582,7 @@ export default function MasterPage() {
                     <span>{t('admin.master.active')}</span>
                     <input type="checkbox" checked={Boolean(selectedCat.is_active)} onChange={() => void toggleCategoryActive(selectedCat)} />
                   </label>
-                  <button className="btn btn-danger btn-sm" onClick={() => void handleCatDelete(selectedCat)}>{t('admin.master.btn_delete')}</button>
+                  <button className="btn btn-danger btn-sm" title={t('common.delete', 'Delete')} aria-label={t('common.delete', 'Delete')} onClick={() => void handleCatDelete(selectedCat)}>🗑️</button>
                 </>
               )}
             </div>

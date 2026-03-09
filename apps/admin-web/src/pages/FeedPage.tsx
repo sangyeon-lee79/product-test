@@ -433,7 +433,7 @@ export default function FeedPage() {
                 </div>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 4, alignItems: 'flex-end' }}>
                   <SBadge status={item.status} />
-                  <button className="btn btn-secondary btn-sm" style={{ fontSize: 10, padding: '1px 6px' }} onClick={(e) => { e.stopPropagation(); openEditMfr(item); }}>{t('admin.master.btn_edit')}</button>
+                  <button className="btn btn-secondary btn-sm" style={{ fontSize: 10, padding: '1px 6px' }} title={t('common.edit', 'Edit')} aria-label={t('common.edit', 'Edit')} onClick={(e) => { e.stopPropagation(); openEditMfr(item); }}>✏️</button>
                 </div>
               </button>
             ))}
@@ -450,7 +450,7 @@ export default function FeedPage() {
                 </div>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 4, alignItems: 'flex-end' }}>
                   <SBadge status={item.status} />
-                  <button className="btn btn-secondary btn-sm" style={{ fontSize: 10, padding: '1px 6px' }} onClick={(e) => { e.stopPropagation(); openEditBrand(item); }}>{t('admin.master.btn_edit')}</button>
+                  <button className="btn btn-secondary btn-sm" style={{ fontSize: 10, padding: '1px 6px' }} title={t('common.edit', 'Edit')} aria-label={t('common.edit', 'Edit')} onClick={(e) => { e.stopPropagation(); openEditBrand(item); }}>✏️</button>
                 </div>
               </button>
             ))}
@@ -467,7 +467,7 @@ export default function FeedPage() {
                 </div>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: 4, alignItems: 'flex-end' }}>
                   <SBadge status={item.status} />
-                  <button className="btn btn-secondary btn-sm" style={{ fontSize: 10, padding: '1px 6px' }} onClick={(e) => { e.stopPropagation(); openEditModel(item); }}>{t('admin.master.btn_edit')}</button>
+                  <button className="btn btn-secondary btn-sm" style={{ fontSize: 10, padding: '1px 6px' }} title={t('common.edit', 'Edit')} aria-label={t('common.edit', 'Edit')} onClick={(e) => { e.stopPropagation(); openEditModel(item); }}>✏️</button>
                 </div>
               </button>
             ))}
@@ -479,8 +479,8 @@ export default function FeedPage() {
             title={selectedModel.model_display_label || selectedModel.model_name}
             onEdit={() => openEditModel(selectedModel)}
             onDelete={() => void handleDelete('model', selectedModel.id)}
-            editLabel={t('admin.master.btn_edit')}
-            deleteLabel={t('admin.master.btn_delete')}
+            editLabel="✏️"
+            deleteLabel="🗑️"
             fields={[
               { label: t('admin.feed.type'), value: selectedModel.type_display_label || selectedModel.type_name_en || selectedModel.type_name_ko || '—' },
               { label: t('admin.feed.manufacturer'), value: selectedModel.mfr_display_label || selectedModel.mfr_name_en || selectedModel.mfr_name_ko || '—' },
@@ -719,9 +719,7 @@ export default function FeedPage() {
             </div>
             <div className="modal-footer">
               {modal.mode === 'edit' && modal.id && (
-                <button className="btn btn-danger" style={{ marginRight: 'auto' }} onClick={() => void handleDelete(modal.target, modal.id!).then(() => setModal(null))}>
-                  {t('admin.master.btn_delete')}
-                </button>
+                <button className="btn btn-danger" style={{ marginRight: 'auto' }} title={t('common.delete', 'Delete')} aria-label={t('common.delete', 'Delete')} onClick={() => void handleDelete(modal.target, modal.id!).then(() => setModal(null))}>🗑️</button>
               )}
               <button className="btn btn-secondary" onClick={() => setModal(null)}>{t('admin.master.btn_cancel')}</button>
               <button className="btn btn-primary" onClick={() => void handleSave()} disabled={saving}>{t('admin.master.btn_save')}</button>

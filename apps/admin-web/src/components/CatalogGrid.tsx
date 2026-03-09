@@ -60,8 +60,8 @@ export function CatalogModelDetail({ title, fields, onEdit, onDelete, editLabel,
       <div className="card-header">
         <div className="card-title">{title}</div>
         <div style={{ display: 'flex', gap: 8 }}>
-          <button className="btn btn-secondary btn-sm" onClick={onEdit}>{editLabel}</button>
-          <button className="btn btn-danger btn-sm" onClick={onDelete}>{deleteLabel}</button>
+          <button className="btn btn-secondary btn-sm" title="Edit" aria-label="Edit" onClick={onEdit}>{editLabel}</button>
+          <button className="btn btn-danger btn-sm" title="Delete" aria-label="Delete" onClick={onDelete}>{deleteLabel}</button>
         </div>
       </div>
       <div style={{ padding: '8px 12px', fontSize: 13, color: 'var(--text-muted)' }}>
