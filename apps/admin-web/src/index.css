@@ -1531,7 +1531,7 @@ html[data-theme="dark"] .ig-card-image { background: #333; }
 }
 .gm-compose-placeholder { flex: 1; font-size: 14px; color: var(--text-muted); }
 
-/* Health stats 2×2 */
+/* Health stats 2×2 (legacy) */
 .gm-health-stats { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
 .gm-health-stat {
   background: var(--surface); border: 1px solid var(--border);
@@ -1542,6 +1542,32 @@ html[data-theme="dark"] .ig-card-image { background: #333; }
   letter-spacing: .5px; margin-bottom: 4px;
 }
 .gm-health-stat-value { font-size: 20px; font-weight: 700; color: var(--text); line-height: 1.2; }
+
+/* Health summary card (integrated) */
+.gm-health-summary-card {
+  display: flex; align-items: center; gap: 16px;
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: 12px; padding: 16px; margin-bottom: 8px;
+}
+.gm-health-summary-info { flex: 1; min-width: 0; }
+.gm-health-summary-name { font-size: 16px; font-weight: 700; color: var(--text); margin-bottom: 4px; }
+.gm-health-summary-row { font-size: 13px; color: var(--text-muted); line-height: 1.6; }
+.gm-health-summary-row strong { color: var(--text); font-weight: 600; }
+.gm-health-summary-sep { margin: 0 6px; opacity: .5; }
+
+/* Chart legend (below chart) */
+.gm-chart-legend { display: flex; gap: 16px; justify-content: center; padding: 8px 0 0; }
+.gm-chart-legend-item { display: flex; align-items: center; gap: 4px; font-size: 12px; color: var(--text-muted); }
+.gm-chart-legend-dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
+
+/* Manage links (bottom of section) */
+.gm-manage-links { display: flex; gap: 12px; justify-content: center; padding: 12px 0 0; border-top: 1px solid var(--border); margin-top: 12px; }
+.gm-manage-link {
+  background: none; border: none; cursor: pointer;
+  font-size: 12px; color: var(--text-muted); text-decoration: underline;
+  transition: color .15s;
+}
+.gm-manage-link:hover { color: var(--primary); }
 
 /* Period chips */
 .gm-period-chips { display: flex; gap: 6px; flex-wrap: wrap; }

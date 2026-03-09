@@ -565,7 +565,7 @@ export default function GuardianMainPage() {
   }
 
   function renderCombinedHealthChart(weightRows: PetWeightLog[], mRows: PetHealthMeasurementLog[]) {
-    if (!weightRows.length && !mRows.length && !petFeeds.length) {
+    if (!weightRows.length && !mRows.length && !petFeeds.length && !feedingLogs.length) {
       return <div className="weight-chart-empty text-sm text-muted">{t('guardian.health.chart_empty', 'No health records to display.')}</div>;
     }
     const width = 720;
@@ -578,9 +578,13 @@ export default function GuardianMainPage() {
     const chartBottom = height - pad - feedBandHeight;
     const usableH = chartBottom - pad;
 
+    // Feeding logs with valid amount
+    const feedingWithAmount = feedingLogs.filter((fl) => fl.amount_g != null && fl.feeding_time);
+
     const allTimes = [
       ...weightRows.map((row) => new Date(row.measured_at).getTime()),
       ...mRows.map((row) => new Date(row.measured_at).getTime()),
+      ...feedingWithAmount.map((fl) => new Date(fl.feeding_time!).getTime()),
     ].filter((v) => Number.isFinite(v));
     if (!allTimes.length && !hasFeedBands) return <div className="weight-chart-empty text-sm text-muted">{t('guardian.health.chart_empty', 'No health records to display.')}</div>;
     const minT = allTimes.length ? Math.min(...allTimes) : Date.now() - 86400000 * 30;
@@ -590,17 +594,23 @@ export default function GuardianMainPage() {
     const normalizeX = (timeMs: number) => pad + Math.max(0, Math.min(usableW, ((timeMs - minT) / tSpan) * usableW));
     const weightValues = weightRows.map((row) => Number(row.weight_value));
     const measurementValues = mRows.map((row) => Number(row.value));
+    const feedingValues = feedingWithAmount.map((fl) => Number(fl.amount_g));
     const minW = weightValues.length ? Math.min(...weightValues) : 0;
     const maxW = weightValues.length ? Math.max(...weightValues) : 1;
     const minM = measurementValues.length ? Math.min(...measurementValues) : 0;
     const maxM = measurementValues.length ? Math.max(...measurementValues) : 1;
+    const minF = feedingValues.length ? Math.min(...feedingValues) : 0;
+    const maxF = feedingValues.length ? Math.max(...feedingValues) : 1;
     const wSpan = Math.max(0.0001, maxW - minW);
     const mSpan = Math.max(0.0001, maxM - minM);
+    const fSpan = Math.max(0.0001, maxF - minF);
     const normalizeYW = (value: number) => pad + (1 - ((value - minW) / wSpan)) * usableH;
     const normalizeYM = (value: number) => pad + (1 - ((value - minM) / mSpan)) * usableH;
+    const normalizeYF = (value: number) => pad + (1 - ((value - minF) / fSpan)) * usableH;
 
     const sortedWeights = [...weightRows].sort((a, b) => new Date(a.measured_at).getTime() - new Date(b.measured_at).getTime());
     const sortedMeasurements = [...mRows].sort((a, b) => new Date(a.measured_at).getTime() - new Date(b.measured_at).getTime());
+    const sortedFeedings = [...feedingWithAmount].sort((a, b) => new Date(a.feeding_time!).getTime() - new Date(b.feeding_time!).getTime());
 
     const weightPath = sortedWeights
       .map((row, idx) => `${idx === 0 ? 'M' : 'L'} ${normalizeX(new Date(row.measured_at).getTime())} ${normalizeYW(Number(row.weight_value))}`)
@@ -608,6 +618,14 @@ export default function GuardianMainPage() {
     const measurementPath = sortedMeasurements
       .map((row, idx) => `${idx === 0 ? 'M' : 'L'} ${normalizeX(new Date(row.measured_at).getTime())} ${normalizeYM(Number(row.value))}`)
       .join(' ');
+    const feedingPath = sortedFeedings
+      .map((fl, idx) => `${idx === 0 ? 'M' : 'L'} ${normalizeX(new Date(fl.feeding_time!).getTime())} ${normalizeYF(Number(fl.amount_g))}`)
+      .join(' ');
+
+    // Last points for end-of-line labels
+    const lastWeight = sortedWeights[sortedWeights.length - 1];
+    const lastMeasurement = sortedMeasurements[sortedMeasurements.length - 1];
+    const lastFeeding = sortedFeedings[sortedFeedings.length - 1];
 
     // Feed timeline bands
     const feedColors = ['#43a047', '#7b1fa2', '#e65100', '#0277bd', '#c62828', '#558b2f'];
@@ -640,6 +658,24 @@ export default function GuardianMainPage() {
 
           {weightPath && <path d={weightPath} fill="none" stroke="#1a73e8" strokeWidth="3" />}
           {measurementPath && <path d={measurementPath} fill="none" stroke="#ef6c00" strokeWidth="3" />}
+          {feedingPath && <path d={feedingPath} fill="none" stroke="#43a047" strokeWidth="2" strokeDasharray="6 3" />}
+
+          {/* Last-value labels */}
+          {lastWeight && (
+            <text x={normalizeX(new Date(lastWeight.measured_at).getTime()) + 6} y={normalizeYW(Number(lastWeight.weight_value)) - 6} fontSize="10" fill="#1a73e8" fontWeight="600">
+              {Number(lastWeight.weight_value).toFixed(1)}
+            </text>
+          )}
+          {lastMeasurement && (
+            <text x={normalizeX(new Date(lastMeasurement.measured_at).getTime()) + 6} y={normalizeYM(Number(lastMeasurement.value)) - 6} fontSize="10" fill="#ef6c00" fontWeight="600">
+              {Number(lastMeasurement.value).toFixed(1)}
+            </text>
+          )}
+          {lastFeeding && (
+            <text x={normalizeX(new Date(lastFeeding.feeding_time!).getTime()) + 6} y={normalizeYF(Number(lastFeeding.amount_g)) - 6} fontSize="10" fill="#43a047" fontWeight="600">
+              {Number(lastFeeding.amount_g).toFixed(0)}g
+            </text>
+          )}
 
           {/* Feed timeline bands */}
           {feedBands.map(({ feed, startMs, endMs, color }) => {
@@ -659,20 +695,18 @@ export default function GuardianMainPage() {
               </g>
             );
           })}
-
-          {/* Legend */}
-          <text x={pad} y={16} fontSize="11" fill="#1a73e8">
-            {`${t('guardian.health.chart_weight_legend', 'Weight')} ${maxW.toFixed(2)} / ${minW.toFixed(2)}`}
-          </text>
-          <text x={width - rightPad + 4} y={16} fontSize="11" fill="#ef6c00">
-            {`${t('guardian.health.chart_measure_legend', 'M')} ${maxM.toFixed(2)} / ${minM.toFixed(2)}`}
-          </text>
-          {hasFeedBands && (
-            <text x={pad} y={feedBandY + 28} fontSize="10" fill="#43a047">
-              {t('guardian.health.chart_feed_legend', 'Feed')}
-            </text>
-          )}
         </svg>
+        <div className="gm-chart-legend">
+          {weightRows.length > 0 && (
+            <div className="gm-chart-legend-item"><span className="gm-chart-legend-dot" style={{ background: '#1a73e8' }} />{t('guardian.health.chart_weight_legend', 'Weight')} (kg)</div>
+          )}
+          {mRows.length > 0 && (
+            <div className="gm-chart-legend-item"><span className="gm-chart-legend-dot" style={{ background: '#ef6c00' }} />{t('guardian.health.chart_measure_legend', 'Measurement')}</div>
+          )}
+          {feedingWithAmount.length > 0 && (
+            <div className="gm-chart-legend-item"><span className="gm-chart-legend-dot" style={{ background: '#43a047' }} />{t('guardian.feeding.amount', 'Feeding')} (g)</div>
+          )}
+        </div>
       </div>
     );
   }
@@ -852,33 +886,31 @@ export default function GuardianMainPage() {
                       <button style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 16 }} onClick={() => setLogAlert(null)}>✕</button>
                     </div>
                   )}
-                  <div className="gm-health-stats">
-                    <div className="gm-health-stat">
-                      <div className="gm-health-stat-label">{t('guardian.health.current_weight', '현재 몸무게')}</div>
-                      <div className="gm-health-stat-value">{weightSummary?.latest_weight ?? selectedPet?.current_weight ?? '-'}</div>
+                  <div className="gm-health-summary-card">
+                    <div className="gm-pet-avatar" style={{ width: 48, height: 48, fontSize: 20 }}>
+                      {selectedPet ? selectedPet.name[0].toUpperCase() : '🐾'}
                     </div>
-                    <div className="gm-health-stat">
-                      <div className="gm-health-stat-label">{t('guardian.health.last_measured', '최근 측정일')}</div>
-                      <div className="gm-health-stat-value" style={{ fontSize: 14 }}>{formatDate(weightSummary?.latest_measured_at, '-')}</div>
-                    </div>
-                    <div className="gm-health-stat">
-                      <div className="gm-health-stat-label">{t('guardian.health.latest_measurement', '최근 질병 수치')}</div>
-                      <div className="gm-health-stat-value">{measurementSummary?.latest_value ?? '-'}</div>
-                    </div>
-                    <div className="gm-health-stat">
-                      <div className="gm-health-stat-label">{t('guardian.health.judgement', '최근 판단 상태')}</div>
-                      <div className="gm-health-stat-value" style={{ fontSize: 14 }}>{measurementSummary?.latest_judgement_label || measurementSummary?.latest_judgement_level || '-'}</div>
+                    <div className="gm-health-summary-info">
+                      <div className="gm-health-summary-name">{selectedPet?.name || '-'}</div>
+                      <div className="gm-health-summary-row">
+                        <span>{t('guardian.health.current_weight', '체중')}: <strong>{weightSummary?.latest_weight ?? selectedPet?.current_weight ?? '-'} kg</strong></span>
+                        <span className="gm-health-summary-sep">·</span>
+                        <span>{t('guardian.health.last_measured', '측정')}: <strong>{formatDate(weightSummary?.latest_measured_at, '-')}</strong></span>
+                      </div>
+                      <div className="gm-health-summary-row">
+                        <span>{t('guardian.health.latest_measurement', '수치')}: <strong>{measurementSummary?.latest_value ?? '-'}</strong></span>
+                        <span className="gm-health-summary-sep">·</span>
+                        <span>{t('guardian.health.judgement', '상태')}: <strong>{measurementSummary?.latest_judgement_label || measurementSummary?.latest_judgement_level || '-'}</strong></span>
+                      </div>
                     </div>
                   </div>
                   <div className="gm-section">
                     <div className="gm-section-header">
                       <span className="gm-section-title">{t('guardian.health.chart_title', '건강 추이')}</span>
                       <div style={{ display: 'flex', gap: 8 }}>
-                        <button className="btn btn-sm" style={{ fontSize: 12 }} onClick={() => setFeedManageModalOpen(true)}>{t('guardian.feed.manage_title', '사료 관리')}</button>
-                        <button className="btn btn-sm" style={{ fontSize: 12 }} onClick={() => { setEditingFeedingLog(null); setFeedingLogModalOpen(true); }}>{t('guardian.feeding.log_title', '급여 기록')}{feedingLogs.length > 0 ? ` (${feedingLogs.length})` : ''}</button>
-                        <button className="btn btn-sm" style={{ fontSize: 12 }} onClick={() => setDeviceManageModalOpen(true)}>{t('guardian.device.manage_title', '장비 관리')}</button>
-                        <button className="btn btn-primary btn-sm" onClick={() => setWeightModalOpen(true)}>{t('guardian.health.add_weight', '몸무게 추가')}</button>
-                        <button className="btn btn-secondary btn-sm" onClick={openCreateHealthMeasurementModal}>{t('guardian.health.add_measurement', '수치 추가')}</button>
+                        <button className="btn btn-primary btn-sm" onClick={() => setWeightModalOpen(true)}>+ {t('guardian.health.add_weight', '몸무게')}</button>
+                        <button className="btn btn-secondary btn-sm" onClick={openCreateHealthMeasurementModal}>+ {t('guardian.health.add_measurement', '수치 추가')}</button>
+                        <button className="btn btn-secondary btn-sm" onClick={() => { setEditingFeedingLog(null); setFeedingLogModalOpen(true); }}>+ {t('guardian.feeding.add', '급여 추가')}</button>
                       </div>
                     </div>
                     <div className="gm-section-body">
@@ -901,6 +933,10 @@ export default function GuardianMainPage() {
                         </div>
                       </div>
                       {renderCombinedHealthChart(weightLogs, measurementLogs.filter((log) => !selectedMeasurementItemId || log.measurement_item_id === selectedMeasurementItemId))}
+                      <div className="gm-manage-links">
+                        <button className="gm-manage-link" onClick={() => setFeedManageModalOpen(true)}>{t('guardian.feed.manage_title', '사료 관리')}</button>
+                        <button className="gm-manage-link" onClick={() => setDeviceManageModalOpen(true)}>{t('guardian.device.manage_title', '장비 관리')}</button>
+                      </div>
                     </div>
                   </div>
                   <div className="gm-section">
@@ -921,15 +957,26 @@ export default function GuardianMainPage() {
                     <div className="gm-section-header"><span className="gm-section-title">{t('guardian.health.measurement_log', '질병 수치 로그')}</span></div>
                     <div className="gm-section-body">
                       <div className="guardian-pet-list">
-                        {measurementLogs.filter((log) => !selectedMeasurementItemId || log.measurement_item_id === selectedMeasurementItemId).map((log) => (
-                          <div key={log.id} className="guardian-pet-item">
-                            <p className="text-sm">{new Date(log.measured_at).toLocaleString()} · {log.value}{log.judgement_label ? ` · ${log.judgement_label}` : ''}</p>
-                            <div className="td-actions">
-                              <button className="btn btn-secondary btn-sm" onClick={() => openEditHealthMeasurementLog(log)}>{t('common.edit', '수정')}</button>
-                              <button className="btn btn-danger btn-sm" onClick={() => removeHealthMeasurementLog(log.id)}>{t('common.delete', '삭제')}</button>
+                        {measurementLogs.filter((log) => !selectedMeasurementItemId || log.measurement_item_id === selectedMeasurementItemId).map((log) => {
+                          const deviceLabel = log.device_model_id ? guardianDevices.find((d) => d.device_model_id === log.device_model_id)?.model_display_label || '' : '';
+                          const contextLabel = labelOf(optMeasurementContext, log.measurement_context_id, '');
+                          return (
+                            <div key={log.id} className="guardian-pet-item">
+                              <div>
+                                <p className="text-sm">{new Date(log.measured_at).toLocaleString()} · {log.value}{log.judgement_label ? ` · ${log.judgement_label}` : ''}</p>
+                                {(deviceLabel || contextLabel) && (
+                                  <p className="text-sm text-muted" style={{ fontSize: 11 }}>
+                                    {[deviceLabel, contextLabel].filter(Boolean).join(' · ')}
+                                  </p>
+                                )}
+                              </div>
+                              <div className="td-actions">
+                                <button className="btn btn-secondary btn-sm" onClick={() => openEditHealthMeasurementLog(log)}>{t('common.edit', '수정')}</button>
+                                <button className="btn btn-danger btn-sm" onClick={() => removeHealthMeasurementLog(log.id)}>{t('common.delete', '삭제')}</button>
+                              </div>
                             </div>
-                          </div>
-                        ))}
+                          );
+                        })}
                         {measurementLogs.length === 0 && <p className="text-muted" style={{ fontSize: 13 }}>{t('guardian.health.no_measurement_logs', '질병 수치 기록이 없습니다.')}</p>}
                       </div>
                     </div>
@@ -1124,21 +1171,11 @@ export default function GuardianMainPage() {
                     <button className="gm-quick-btn" onClick={() => setComposeModalOpen(true)}>✏️ {t('guardian.sidebar.post', 'Post')}</button>
                     <button className="gm-quick-btn" onClick={() => setWeightModalOpen(true)}>⚖️ {t('guardian.health.add_weight', 'Weight')}</button>
                     <button className="gm-quick-btn" onClick={openCreateHealthMeasurementModal}>📊 {t('guardian.health.add_measurement', 'Measure')}</button>
+                    <button className="gm-quick-btn" onClick={() => { setEditingFeedingLog(null); setFeedingLogModalOpen(true); }}>🍽️ {t('guardian.feeding.add', 'Feed')}</button>
                     <button className="gm-quick-btn" onClick={() => setPetTab('gallery')}>🖼️ {t('guardian.tab.gallery', 'Gallery')}</button>
                   </div>
                 </div>
               </div>
-              {selectedPet && (
-                <div className="gm-sidebar-section">
-                  <div className="gm-sidebar-header">{t('guardian.sidebar.health_snapshot', 'Health Snapshot')}</div>
-                  <div className="gm-sidebar-body">
-                    <p className="text-sm">{t('guardian.health.current_weight', '현재 몸무게')}: <strong>{weightSummary?.latest_weight ?? selectedPet.current_weight ?? '-'}</strong></p>
-                    <p className="text-sm">{t('guardian.health.delta', '직전 대비')}: <strong>{weightSummary?.delta_from_prev ?? '-'}{weightSummary?.delta_from_prev != null ? ' kg' : ''}</strong></p>
-                    <p className="text-sm">{t('guardian.health.latest_measurement', '최근 수치')}: <strong>{measurementSummary?.latest_value ?? '-'}</strong></p>
-                    <p className="text-sm" style={{ marginTop: 6 }}>{t('guardian.health.log_count', '수치 기록 수')}: <strong>{measurementLogs.length}</strong></p>
-                  </div>
-                </div>
-              )}
               <div className="gm-sidebar-section">
                 <div className="gm-sidebar-header">{t('guardian.summary.health_booking', 'Bookings')}</div>
                 <div className="gm-sidebar-body">

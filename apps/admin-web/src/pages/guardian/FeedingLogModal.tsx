@@ -18,7 +18,6 @@ interface Props {
 const EMPTY_FORM = {
   pet_feed_id: '',
   amount_g: '',
-  frequency: '',
   feeding_time: '',
   memo: '',
 };
@@ -38,13 +37,13 @@ export default function FeedingLogModal({
       setForm({
         pet_feed_id: editingLog.pet_feed_id || '',
         amount_g: editingLog.amount_g != null ? String(editingLog.amount_g) : '',
-        frequency: editingLog.frequency != null ? String(editingLog.frequency) : '',
         feeding_time: editingLog.feeding_time ? toDatetimeLocal(editingLog.feeding_time) : toDatetimeLocal(),
         memo: editingLog.memo || '',
       });
     } else {
       setForm({
         ...EMPTY_FORM,
+        pet_feed_id: petFeeds.find((f) => f.is_primary)?.id || '',
         feeding_time: toDatetimeLocal(),
       });
     }
@@ -68,7 +67,6 @@ export default function FeedingLogModal({
       pet_feed_id: form.pet_feed_id,
       feed_model_id: feedModelId,
       amount_g: form.amount_g ? Number(form.amount_g) : undefined,
-      frequency: form.frequency ? Number(form.frequency) : undefined,
       feeding_time: form.feeding_time || undefined,
       memo: form.memo || undefined,
     };
@@ -131,34 +129,19 @@ export default function FeedingLogModal({
                 </select>
               </div>
 
-              {/* Amount + Frequency */}
-              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
-                <div className="form-group">
-                  <label className="form-label" htmlFor="flog-amount">{t('guardian.feeding.amount', '급여량 (g)')}</label>
-                  <input
-                    id="flog-amount"
-                    name="flog-amount"
-                    className="form-input"
-                    type="number"
-                    step="0.1"
-                    min="0"
-                    value={form.amount_g}
-                    onChange={(e) => setForm((p) => ({ ...p, amount_g: e.target.value }))}
-                  />
-                </div>
-                <div className="form-group">
-                  <label className="form-label" htmlFor="flog-freq">{t('guardian.feeding.frequency', '급여 횟수/일')}</label>
-                  <input
-                    id="flog-freq"
-                    name="flog-freq"
-                    className="form-input"
-                    type="number"
-                    min="1"
-                    max="20"
-                    value={form.frequency}
-                    onChange={(e) => setForm((p) => ({ ...p, frequency: e.target.value }))}
-                  />
-                </div>
+              {/* Amount */}
+              <div className="form-group">
+                <label className="form-label" htmlFor="flog-amount">{t('guardian.feeding.amount', '급여량 (g)')}</label>
+                <input
+                  id="flog-amount"
+                  name="flog-amount"
+                  className="form-input"
+                  type="number"
+                  step="0.1"
+                  min="0"
+                  value={form.amount_g}
+                  onChange={(e) => setForm((p) => ({ ...p, amount_g: e.target.value }))}
+                />
               </div>
 
               {/* Feeding time */}
