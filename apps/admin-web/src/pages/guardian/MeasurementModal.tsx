@@ -67,11 +67,11 @@ export default function MeasurementModal({
     return (option.label || '').trim() || fallback;
   };
 
-  function renderSelect(label: string, value: string, options: Array<{ id: string; key: string; label: string }>, onChange: (v: string) => void, required = false, disabled = false) {
+  function renderSelect(label: string, value: string, options: Array<{ id: string; key: string; label: string }>, onChange: (v: string) => void, required = false, disabled = false, name?: string) {
     return (
       <div className="form-group">
         <label className="form-label">{label}{required ? ' *' : ''}</label>
-        <select className="form-select" value={value} onChange={(e) => onChange(e.target.value)} disabled={disabled} style={disabled ? { opacity: 0.6, cursor: 'not-allowed' } : undefined}>
+        <select className="form-select" name={name} value={value} onChange={(e) => onChange(e.target.value)} disabled={disabled} style={disabled ? { opacity: 0.6, cursor: 'not-allowed' } : undefined}>
           <option value="">{t('common.select', 'Select')}</option>
           {options.map((o) => <option key={o.id} value={o.id}>{optionLabel(o as Option, t('common.none', '-'))}</option>)}
         </select>
@@ -477,7 +477,7 @@ export default function MeasurementModal({
               model_id: '',
               measurement_item_id: '',
               measurement_context_id: '',
-            })), true)
+            })), true, false, 'disease_item_id')
           )}
 
           {/* ── Manual cascade (only if manual mode or editing) ── */}
@@ -491,19 +491,19 @@ export default function MeasurementModal({
                 model_id: '',
                 measurement_item_id: '',
                 measurement_context_id: '',
-              })), true)}
+              })), true, false, 'device_type_item_id')}
               {renderSelect(t('guardian.health.measurement.manufacturer', '제조사'), measurementForm.manufacturer_id, manufacturerOptions, (v) => setMeasurementForm((prev) => ({
                 ...prev,
                 manufacturer_id: v,
                 brand_id: '',
                 model_id: '',
-              })))}
+              })), false, false, 'manufacturer_id')}
               {renderSelect(t('guardian.health.measurement.brand', '브랜드'), measurementForm.brand_id, brandOptions, (v) => setMeasurementForm((prev) => ({
                 ...prev,
                 brand_id: v,
                 model_id: '',
-              })))}
-              {renderSelect(t('guardian.health.measurement.model', '모델'), measurementForm.model_id, modelOptions, (v) => setMeasurementForm((prev) => ({ ...prev, model_id: v })))}
+              })), false, false, 'brand_id')}
+              {renderSelect(t('guardian.health.measurement.model', '모델'), measurementForm.model_id, modelOptions, (v) => setMeasurementForm((prev) => ({ ...prev, model_id: v })), false, false, 'model_id')}
             </>
           )}
 
@@ -511,7 +511,7 @@ export default function MeasurementModal({
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8, alignItems: 'end' }}>
             <div className="form-group" style={{ marginBottom: 0 }}>
               <label className="form-label">{t('guardian.health.measurement.item', '측정항목')} *</label>
-              <select className="form-select" value={measurementForm.measurement_item_id} onChange={(e) => setMeasurementForm((prev) => ({
+              <select className="form-select" name="measurement_item_id" value={measurementForm.measurement_item_id} onChange={(e) => setMeasurementForm((prev) => ({
                 ...prev,
                 measurement_item_id: e.target.value,
                 measurement_context_id: '',
@@ -524,6 +524,7 @@ export default function MeasurementModal({
               <label className="form-label">{t('guardian.health.measurement.value', '수치 값')} *{selectedUnitLabel ? ` (${selectedUnitLabel})` : ''}</label>
               <input
                 className="form-input"
+                name="measurement_value"
                 type="number"
                 step="0.01"
                 value={measurementForm.value}
@@ -535,7 +536,7 @@ export default function MeasurementModal({
           {/* ── Context (if available) ── */}
           {healthContextOptions.length > 0 && (
             <div style={{ marginTop: 8 }}>
-              {renderSelect(t('guardian.health.measurement.context', '측정 컨텍스트'), measurementForm.measurement_context_id, healthContextOptions, (v) => setMeasurementForm((prev) => ({ ...prev, measurement_context_id: v })))}
+              {renderSelect(t('guardian.health.measurement.context', '측정 컨텍스트'), measurementForm.measurement_context_id, healthContextOptions, (v) => setMeasurementForm((prev) => ({ ...prev, measurement_context_id: v })), false, false, 'measurement_context_id')}
             </div>
           )}
 
@@ -544,6 +545,7 @@ export default function MeasurementModal({
               <label className="form-label">{t('guardian.health.measurement.measured_at', '측정일')} *</label>
               <input
                 className="form-input"
+                name="measured_at"
                 type="datetime-local"
                 value={measurementForm.measured_at}
                 onChange={(e) => setMeasurementForm((prev) => ({ ...prev, measured_at: e.target.value }))}
@@ -553,6 +555,7 @@ export default function MeasurementModal({
               <label className="form-label">{t('guardian.health.measurement.memo', '메모')}</label>
               <input
                 className="form-input"
+                name="memo"
                 value={measurementForm.memo}
                 onChange={(e) => setMeasurementForm((prev) => ({ ...prev, memo: e.target.value }))}
               />
