@@ -284,16 +284,21 @@ export async function createHealthMeasurementLog(request: Request, env: Env, pay
   const guardianDeviceId = body.guardian_device_id ? String(body.guardian_device_id).trim() : null;
 
   if (guardianDeviceId) {
-    const gd = await env.DB.prepare(
-      `SELECT gd.disease_item_id, gd.device_model_id, dm.device_type_item_id
-       FROM guardian_devices gd
-       LEFT JOIN device_models dm ON dm.id = gd.device_model_id
-       WHERE gd.id = ? AND gd.pet_id = ? AND gd.status != 'deleted'`
-    ).bind(guardianDeviceId, petId).first<{ disease_item_id: string | null; device_model_id: string; device_type_item_id: string | null }>();
-    if (!gd) return err('Guardian device not found', 404, 'not_found');
-    if (!resolvedDiseaseItemId && gd.disease_item_id) resolvedDiseaseItemId = gd.disease_item_id;
-    if (!resolvedDeviceTypeItemId && gd.device_type_item_id) resolvedDeviceTypeItemId = gd.device_type_item_id;
-    if (!resolvedDeviceModelId && gd.device_model_id) resolvedDeviceModelId = gd.device_model_id;
+    try {
+      // Guard: device_type_item_id may not exist on device_models in older DBs
+      const hasDmCol = await hasColumn(env, 'device_models', 'device_type_item_id');
+      const dmSelect = hasDmCol ? 'dm.device_type_item_id' : 'NULL as device_type_item_id';
+      const gd = await env.DB.prepare(
+        `SELECT gd.disease_item_id, gd.device_model_id, ${dmSelect}
+         FROM guardian_devices gd
+         LEFT JOIN device_models dm ON dm.id = gd.device_model_id
+         WHERE gd.id = ? AND gd.pet_id = ? AND gd.status != 'deleted'`
+      ).bind(guardianDeviceId, petId).first<{ disease_item_id: string | null; device_model_id: string; device_type_item_id: string | null }>();
+      if (!gd) return err('Guardian device not found', 404, 'not_found');
+      if (!resolvedDiseaseItemId && gd.disease_item_id) resolvedDiseaseItemId = gd.disease_item_id;
+      if (!resolvedDeviceTypeItemId && gd.device_type_item_id) resolvedDeviceTypeItemId = gd.device_type_item_id;
+      if (!resolvedDeviceModelId && gd.device_model_id) resolvedDeviceModelId = gd.device_model_id;
+    } catch { /* guardian device resolution failed — continue with body values */ }
   }
 
   const measurementItemId = (body.measurement_item_id || '').trim();
@@ -306,42 +311,42 @@ export async function createHealthMeasurementLog(request: Request, env: Env, pay
   const unitItemId = body.unit_item_id ? String(body.unit_item_id).trim() : null;
   const judgement = await resolveMeasurementJudgement(env, petId, resolvedDiseaseItemId, measurementItemId, value, unitItemId, contextId);
 
-  if (resolvedDeviceTypeItemId && (await hasTable(env, 'pet_disease_devices'))) {
-    const existingDevice = await env.DB.prepare(
-      `SELECT id
-       FROM pet_disease_devices
-       WHERE pet_id = ? AND disease_item_id = ? AND device_item_id = ?
-       LIMIT 1`
-    ).bind(petId, resolvedDiseaseItemId, resolvedDeviceTypeItemId).first<{ id: string }>();
-    if (!existingDevice) {
-      await env.DB.prepare(
-        `INSERT INTO pet_disease_devices (
-          id, pet_id, disease_item_id, device_item_id, is_active, created_at, updated_at
-        ) VALUES (?, ?, ?, ?, 1, ?, ?)`
-      ).bind(newId(), petId, resolvedDiseaseItemId, resolvedDeviceTypeItemId, now(), now()).run();
+  // Auto-register disease-device mapping (soft — ignore errors)
+  try {
+    if (resolvedDeviceTypeItemId && (await hasTable(env, 'pet_disease_devices'))) {
+      const existingDevice = await env.DB.prepare(
+        `SELECT id FROM pet_disease_devices WHERE pet_id = ? AND disease_item_id = ? AND device_item_id = ? LIMIT 1`
+      ).bind(petId, resolvedDiseaseItemId, resolvedDeviceTypeItemId).first<{ id: string }>();
+      if (!existingDevice) {
+        await env.DB.prepare(
+          `INSERT INTO pet_disease_devices (id, pet_id, disease_item_id, device_item_id, is_active, created_at, updated_at) VALUES (?, ?, ?, ?, 1, ?, ?)`
+        ).bind(newId(), petId, resolvedDiseaseItemId, resolvedDeviceTypeItemId, now(), now()).run();
+      }
     }
-  }
+  } catch { /* disease-device mapping is non-critical */ }
 
   const hasGdCol = await hasColumn(env, 'pet_health_measurement_logs', 'guardian_device_id');
+  const hasDtiCol = await hasColumn(env, 'pet_health_measurement_logs', 'device_type_item_id');
+  const hasDmIdCol = await hasColumn(env, 'pet_health_measurement_logs', 'device_model_id');
   const id = newId();
-  const cols = [
-    'id', 'pet_id', 'disease_item_id', 'device_type_item_id', 'device_model_id',
-    'measurement_item_id', 'measurement_context_id', 'value', 'unit_item_id',
-    'measured_at', 'memo', 'recorded_by_user_id', 'judgement_level', 'judgement_label', 'created_at', 'updated_at',
-  ];
+  const cols = ['id', 'pet_id', 'disease_item_id', 'measurement_item_id', 'measurement_context_id', 'value', 'unit_item_id',
+    'measured_at', 'memo', 'recorded_by_user_id', 'judgement_level', 'judgement_label', 'created_at', 'updated_at'];
   const binds: (string | number | null)[] = [
-    id, petId, resolvedDiseaseItemId, resolvedDeviceTypeItemId, resolvedDeviceModelId,
-    measurementItemId, contextId, value, unitItemId,
+    id, petId, resolvedDiseaseItemId, measurementItemId, contextId, value, unitItemId,
     normalizeMeasuredAt(body.measured_at), body.memo ?? null, payload.sub,
     judgement.level, judgement.label, now(), now(),
   ];
-  if (hasGdCol && guardianDeviceId) {
-    cols.push('guardian_device_id');
-    binds.push(guardianDeviceId);
+  if (hasDtiCol) { cols.push('device_type_item_id'); binds.push(resolvedDeviceTypeItemId); }
+  if (hasDmIdCol) { cols.push('device_model_id'); binds.push(resolvedDeviceModelId); }
+  if (hasGdCol && guardianDeviceId) { cols.push('guardian_device_id'); binds.push(guardianDeviceId); }
+
+  try {
+    await env.DB.prepare(
+      `INSERT INTO pet_health_measurement_logs (${cols.join(', ')}) VALUES (${cols.map(() => '?').join(', ')})`
+    ).bind(...binds).run();
+  } catch (e) {
+    return err(`DB insert failed: ${e instanceof Error ? e.message : String(e)}`, 500, 'db_error');
   }
-  await env.DB.prepare(
-    `INSERT INTO pet_health_measurement_logs (${cols.join(', ')}) VALUES (${cols.map(() => '?').join(', ')})`
-  ).bind(...binds).run();
   return created({ id, judgement });
 }
 
