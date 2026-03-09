@@ -308,8 +308,19 @@ export async function createHealthMeasurementLog(request: Request, env: Env, pay
   if (value === null) return err('value required');
 
   const contextId = body.measurement_context_id ? String(body.measurement_context_id).trim() : null;
-  const unitItemId = body.unit_item_id ? String(body.unit_item_id).trim() : null;
-  const judgement = await resolveMeasurementJudgement(env, petId, resolvedDiseaseItemId, measurementItemId, value, unitItemId, contextId);
+  let unitItemId = body.unit_item_id ? String(body.unit_item_id).trim() : null;
+
+  // Validate FK references: nullable FK columns must exist in master_items or be set to NULL
+  async function validateMasterItemFK(id: string | null): Promise<string | null> {
+    if (!id) return null;
+    const exists = await env.DB.prepare(`SELECT id FROM master_items WHERE id = ?`).bind(id).first<{ id: string }>();
+    return exists ? id : null;
+  }
+  unitItemId = await validateMasterItemFK(unitItemId);
+  const validContextId = await validateMasterItemFK(contextId);
+  if (resolvedDeviceTypeItemId) resolvedDeviceTypeItemId = await validateMasterItemFK(resolvedDeviceTypeItemId);
+
+  const judgement = await resolveMeasurementJudgement(env, petId, resolvedDiseaseItemId, measurementItemId, value, unitItemId, validContextId);
 
   // Auto-register disease-device mapping (soft — ignore errors)
   try {
@@ -332,7 +343,7 @@ export async function createHealthMeasurementLog(request: Request, env: Env, pay
   const cols = ['id', 'pet_id', 'disease_item_id', 'measurement_item_id', 'measurement_context_id', 'value', 'unit_item_id',
     'measured_at', 'memo', 'recorded_by_user_id', 'judgement_level', 'judgement_label', 'created_at', 'updated_at'];
   const binds: (string | number | null)[] = [
-    id, petId, resolvedDiseaseItemId, measurementItemId, contextId, value, unitItemId,
+    id, petId, resolvedDiseaseItemId, measurementItemId, validContextId, value, unitItemId,
     normalizeMeasuredAt(body.measured_at), body.memo ?? null, payload.sub,
     judgement.level, judgement.label, now(), now(),
   ];
