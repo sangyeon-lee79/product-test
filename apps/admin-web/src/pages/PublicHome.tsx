@@ -232,8 +232,17 @@ export default function PublicHome() {
               </Link>
             );
           }
+          const handleNavClick = () => {
+            if (!loggedIn) {
+              navigate('/login');
+              return;
+            }
+            if (item.label === t('public.nav.profile', '프로필') || item.label === t('public.nav.mypet', '내 펫')) {
+              navigate('/guardian');
+            }
+          };
           return (
-            <button key={item.label} className="ig-nav-item" disabled={!loggedIn} style={{ opacity: !loggedIn ? .4 : 1 }}>
+            <button key={item.label} className="ig-nav-item" onClick={handleNavClick} style={{ opacity: !loggedIn ? .72 : 1 }}>
               <span className="ig-nav-icon">{item.icon}</span>
               <span>{item.label}</span>
             </button>
@@ -572,9 +581,9 @@ export default function PublicHome() {
       <nav className="ig-bottom-tabbar">
         <Link to="/"        className="ig-tabbar-item active">🏠</Link>
         <Link to="/explore" className="ig-tabbar-item">🔍</Link>
-        <button className="ig-tabbar-item" disabled={!loggedIn} onClick={() => loggedIn && navigate('/guardian')}>✏️</button>
-        <button className="ig-tabbar-item" disabled={!loggedIn}>🔔</button>
-        <button className="ig-tabbar-item" disabled={!loggedIn} onClick={() => loggedIn && navigate('/guardian')}>👤</button>
+        <button className="ig-tabbar-item" onClick={() => navigate(loggedIn ? '/guardian' : '/login')} aria-label={loggedIn ? t('public.nav.mypet', '내 펫') : t('public.auth.login', '로그인')}>✏️</button>
+        <button className="ig-tabbar-item" onClick={() => navigate(loggedIn ? '/' : '/login')} aria-label={loggedIn ? t('public.nav.alerts', '알림') : t('public.auth.login', '로그인')}>{loggedIn ? '🔔' : '🔑'}</button>
+        <button className="ig-tabbar-item" onClick={() => navigate(loggedIn ? '/guardian' : '/login')} aria-label={loggedIn ? t('public.nav.profile', '프로필') : t('public.auth.login', '로그인')}>👤</button>
       </nav>
     </div>
   );
