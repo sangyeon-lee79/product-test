@@ -678,6 +678,15 @@ export const api = {
           method: 'PUT',
           body: JSON.stringify(data),
         }),
+      testTranslate: (data: {
+        google_translate_service_account_email: string;
+        google_translate_service_account_private_key: string;
+        text?: string;
+      }) =>
+        request<{ ok: boolean; translated_text: string }>('/api/v1/admin/settings/google/test-translate', {
+          method: 'POST',
+          body: JSON.stringify(data),
+        }),
     },
   },
   devices: {

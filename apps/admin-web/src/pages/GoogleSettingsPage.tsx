@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { api } from '../lib/api';
+import { testGoogleIdentityClient, testGooglePlacesKey } from '../lib/google';
 import { useT } from '../lib/i18n';
 
 function FieldHint({ children }: { children: React.ReactNode }) {
@@ -18,6 +19,10 @@ export default function GoogleSettingsPage() {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
+  const [placesTestMessage, setPlacesTestMessage] = useState('');
+  const [oauthTestMessage, setOauthTestMessage] = useState('');
+  const [translateTestMessage, setTranslateTestMessage] = useState('');
+  const [testingTarget, setTestingTarget] = useState<'places' | 'oauth' | 'translate' | ''>('');
 
   async function load() {
     setLoading(true);
@@ -69,6 +74,49 @@ export default function GoogleSettingsPage() {
     }
   }
 
+  async function testPlacesConnection() {
+    setTestingTarget('places');
+    setPlacesTestMessage('');
+    try {
+      await testGooglePlacesKey(placesKey);
+      setPlacesTestMessage('정상입니다. 현재 관리자 웹에서 Google Places 스크립트 로드가 확인되었습니다.');
+    } catch (e) {
+      setPlacesTestMessage(e instanceof Error ? e.message : 'Google Places 연결 확인에 실패했습니다.');
+    } finally {
+      setTestingTarget('');
+    }
+  }
+
+  async function testOAuthConnection() {
+    setTestingTarget('oauth');
+    setOauthTestMessage('');
+    try {
+      await testGoogleIdentityClient(oauthClientId);
+      setOauthTestMessage('정상입니다. Google 로그인 스크립트와 Client ID 초기화가 확인되었습니다.');
+    } catch (e) {
+      setOauthTestMessage(e instanceof Error ? e.message : 'Google 로그인 연결 확인에 실패했습니다.');
+    } finally {
+      setTestingTarget('');
+    }
+  }
+
+  async function testTranslateConnection() {
+    setTestingTarget('translate');
+    setTranslateTestMessage('');
+    try {
+      const result = await api.platformSettings.google.testTranslate({
+        google_translate_service_account_email: translateServiceEmail,
+        google_translate_service_account_private_key: translatePrivateKey,
+        text: '테스트 번역',
+      });
+      setTranslateTestMessage(`정상입니다. 테스트 번역 결과: ${result.translated_text || '(빈 응답)'}`);
+    } catch (e) {
+      setTranslateTestMessage(e instanceof Error ? e.message : 'Google 번역 연결 확인에 실패했습니다.');
+    } finally {
+      setTestingTarget('');
+    }
+  }
+
   return (
     <>
       <div className="topbar">
@@ -106,6 +154,12 @@ export default function GoogleSettingsPage() {
                   <FieldHint>
                     콘솔에서 같이 확인할 것: <strong>HTTP referrers</strong>, <strong>Maps JavaScript API</strong>, <strong>Places API</strong>
                   </FieldHint>
+                  <div style={{ marginTop: 10, display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
+                    <button className="btn btn-secondary" type="button" onClick={() => void testPlacesConnection()} disabled={testingTarget !== ''}>
+                      {testingTarget === 'places' ? '확인중...' : '연결 확인'}
+                    </button>
+                    {placesTestMessage && <span className="text-muted" style={{ fontSize: 12 }}>{placesTestMessage}</span>}
+                  </div>
                 </div>
               </div>
             </div>
@@ -125,6 +179,12 @@ export default function GoogleSettingsPage() {
                   <FieldHint>
                     콘솔에서 같이 확인할 것: <strong>Authorized JavaScript origins</strong>에 현재 관리자 웹 주소 등록
                   </FieldHint>
+                  <div style={{ marginTop: 10, display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
+                    <button className="btn btn-secondary" type="button" onClick={() => void testOAuthConnection()} disabled={testingTarget !== ''}>
+                      {testingTarget === 'oauth' ? '확인중...' : '연결 확인'}
+                    </button>
+                    {oauthTestMessage && <span className="text-muted" style={{ fontSize: 12 }}>{oauthTestMessage}</span>}
+                  </div>
                 </div>
                 <div className="form-group">
                   <label className="form-label">{t('admin.google.field.oauth_redirect_uri', 'Google OAuth Redirect URI')}</label>
@@ -165,6 +225,12 @@ export default function GoogleSettingsPage() {
                   <FieldHint>
                     <strong>BEGIN PRIVATE KEY</strong>부터 <strong>END PRIVATE KEY</strong>까지 전체를 그대로 붙여넣어야 합니다.
                   </FieldHint>
+                  <div style={{ marginTop: 10, display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
+                    <button className="btn btn-secondary" type="button" onClick={() => void testTranslateConnection()} disabled={testingTarget !== ''}>
+                      {testingTarget === 'translate' ? '확인중...' : '연결 확인'}
+                    </button>
+                    {translateTestMessage && <span className="text-muted" style={{ fontSize: 12 }}>{translateTestMessage}</span>}
+                  </div>
                 </div>
               </div>
             </div>
