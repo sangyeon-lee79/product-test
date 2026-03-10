@@ -1,7 +1,7 @@
 import { useEffect, useState, useCallback } from 'react';
 import { api, type FeedType, type FeedManufacturer, type FeedBrand, type FeedModel, type FeedNutrition, type FeedRegistrationRequest } from '../lib/api';
 import { useI18n, useT, SUPPORTED_LANGS, LANG_LABELS } from '../lib/i18n';
-import { emptyTrans, itemLabel, sortByModelCountDesc, i18nRowToTranslations, autoTranslate, findMissingTranslationLangs } from '../lib/catalogUtils';
+import { emptyTrans, itemLabel, sortCatalog, i18nRowToTranslations, autoTranslate, findMissingTranslationLangs, type CatalogSortMode } from '../lib/catalogUtils';
 import { TranslationFields } from '../components/TranslationFields';
 import { CatalogCol, CatalogStatusBadge, CatalogModelDetail, type ModelDetailField } from '../components/CatalogGrid';
 
@@ -122,6 +122,10 @@ export default function FeedPage() {
   const [selectedBrand, setSelectedBrand] = useState<FeedBrand | null>(null);
   const [selectedModel, setSelectedModel] = useState<FeedModel | null>(null);
 
+  const [typeSort, setTypeSort] = useState<CatalogSortMode>('count_desc');
+  const [mfrSort, setMfrSort] = useState<CatalogSortMode>('count_desc');
+  const [brandSort, setBrandSort] = useState<CatalogSortMode>('count_desc');
+
   const [modal, setModal] = useState<{ target: ModalTarget; mode: 'create' | 'edit'; id?: string } | null>(null);
   const [saving, setSaving] = useState(false);
   const [translating, setTranslating] = useState(false);
@@ -147,28 +151,31 @@ export default function FeedPage() {
   const loadTypes = useCallback(async () => {
     try {
       const rows = await api.feedCatalog.types.list(lang);
-      setTypes(sortByModelCountDesc(rows));
+      setTypes(sortCatalog(rows, typeSort));
     } catch (e) {
       setError(String(e));
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [lang]);
 
   const loadManufacturers = useCallback(async (typeId?: string) => {
     try {
       const rows = await api.feedCatalog.manufacturers.list(lang, typeId);
-      setManufacturers(sortByModelCountDesc(rows));
+      setManufacturers(sortCatalog(rows, mfrSort));
     } catch (e) {
       setError(String(e));
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [lang]);
 
   const loadBrands = useCallback(async (mfrId?: string, typeId?: string) => {
     try {
       const rows = await api.feedCatalog.brands.list(mfrId, typeId);
-      setBrands(sortByModelCountDesc(rows));
+      setBrands(sortCatalog(rows, brandSort));
     } catch (e) {
       setError(String(e));
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const loadModels = useCallback(async (filters?: { feed_type_id?: string; manufacturer_id?: string; brand_id?: string }) => {
@@ -182,6 +189,11 @@ export default function FeedPage() {
   useEffect(() => {
     void loadTypes();
   }, [loadTypes]);
+
+  // Re-sort in place when sort mode changes (no re-fetch)
+  useEffect(() => { setTypes(prev => prev.length ? sortCatalog(prev, typeSort) : prev); }, [typeSort]);
+  useEffect(() => { setManufacturers(prev => prev.length ? sortCatalog(prev, mfrSort) : prev); }, [mfrSort]);
+  useEffect(() => { setBrands(prev => prev.length ? sortCatalog(prev, brandSort) : prev); }, [brandSort]);
 
   useEffect(() => {
     if (!selectedType) {
@@ -770,7 +782,7 @@ export default function FeedPage() {
         <div className="alert" style={{ marginBottom: 12 }}>{t('admin.feed.guide')}</div>
 
         <div className="master-explorer-grid" style={{ gridTemplateColumns: 'repeat(4, minmax(0, 1fr))' }}>
-          <CatalogCol title={t('admin.feed.types')}>
+          <CatalogCol title={t('admin.feed.types')} sortMode={typeSort} onSortChange={setTypeSort}>
             {types.length === 0 && <div className="master-empty">{t('admin.feed.empty')}</div>}
             {types.map((item) => (
               <button
@@ -787,7 +799,7 @@ export default function FeedPage() {
             ))}
           </CatalogCol>
 
-          <CatalogCol title={t('admin.feed.manufacturers')} onAdd={openCreateMfr} addLabel={addLabel}>
+          <CatalogCol title={t('admin.feed.manufacturers')} onAdd={openCreateMfr} addLabel={addLabel} sortMode={mfrSort} onSortChange={setMfrSort}>
             {manufacturers.length === 0 && <div className="master-empty">{t('admin.feed.empty')}</div>}
             {manufacturers.map((item) => (
               <button key={item.id} className={`master-row-btn ${selectedMfr?.id === item.id ? 'active' : ''}`} onClick={() => { setSelectedMfr(item); setSelectedBrand(null); setSelectedModel(null); }}>
@@ -803,7 +815,7 @@ export default function FeedPage() {
             ))}
           </CatalogCol>
 
-          <CatalogCol title={t('admin.feed.brands')} onAdd={openCreateBrand} addLabel={addLabel}>
+          <CatalogCol title={t('admin.feed.brands')} onAdd={openCreateBrand} addLabel={addLabel} sortMode={brandSort} onSortChange={setBrandSort}>
             {!selectedMfr && <div className="master-empty">{t('admin.feed.select_manufacturer')}</div>}
             {selectedMfr && brands.length === 0 && <div className="master-empty">{t('admin.feed.empty')}</div>}
             {selectedMfr && brands.map((item) => (

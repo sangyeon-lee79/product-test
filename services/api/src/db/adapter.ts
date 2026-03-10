@@ -2,7 +2,19 @@
 // Provides the same .prepare().bind().all()/.first()/.run() interface as Cloudflare D1
 // so that 452+ existing env.DB.prepare() call sites work without changes.
 
-import { Client } from 'pg';
+import { Client, types } from 'pg';
+
+// PostgreSQL COUNT(*) returns bigint (OID 20), which node-postgres serializes as string.
+// Override to return JavaScript number for correct frontend type checks.
+types.setTypeParser(20, (val: string) => {
+  const n = Number(val);
+  return Number.isSafeInteger(n) ? n : val; // keep string if exceeds safe integer range
+});
+// Also handle numeric (OID 1700) for COALESCE(COUNT(*), 0) cases
+types.setTypeParser(1700, (val: string) => {
+  const n = Number(val);
+  return Number.isFinite(n) ? n : val;
+});
 
 // ─── D1-compatible type definitions ──────────────────────────────────────────
 

@@ -17,20 +17,45 @@ export function itemLabel(item?: {
   name_en?: string | null;
   name_ko?: string | null;
   key?: string | null;
-  model_count?: number;
+  model_count?: number | string;
 } | null): string {
   if (!item) return '-';
   const display = (item.display_label || '').trim();
   const base = display || item.name_en || item.name_ko || item.key || '-';
-  const count = typeof item.model_count === 'number' ? item.model_count : null;
+  const count = item.model_count != null ? toCount(item.model_count) : null;
   return count === null ? base : `${base} [ ${count} ]`;
 }
 
-export function sortByModelCountDesc<T extends { model_count?: number; sort_order?: number }>(rows: T[]): T[] {
+export type CatalogSortMode = 'count_desc' | 'count_asc' | 'name_asc';
+
+/** Parse model_count robustly — handles both number and string (PostgreSQL bigint) */
+function toCount(v: unknown): number {
+  if (typeof v === 'number') return v;
+  if (typeof v === 'string') { const n = Number(v); return Number.isFinite(n) ? n : 0; }
+  return 0;
+}
+
+export function sortByModelCountDesc<T extends { model_count?: number | string; sort_order?: number }>(rows: T[]): T[] {
+  return sortCatalog(rows, 'count_desc');
+}
+
+export function sortCatalog<T extends { model_count?: number | string; sort_order?: number; display_label?: string | null; name_en?: string | null; name_ko?: string | null }>(
+  rows: T[],
+  mode: CatalogSortMode = 'count_desc',
+): T[] {
   return [...rows].sort((a, b) => {
-    const ac = typeof a.model_count === 'number' ? a.model_count : 0;
-    const bc = typeof b.model_count === 'number' ? b.model_count : 0;
-    if (bc !== ac) return bc - ac;
+    if (mode === 'name_asc') {
+      const aName = (a.display_label || a.name_en || a.name_ko || '').toLowerCase();
+      const bName = (b.display_label || b.name_en || b.name_ko || '').toLowerCase();
+      return aName.localeCompare(bName);
+    }
+    const ac = toCount(a.model_count);
+    const bc = toCount(b.model_count);
+    if (mode === 'count_asc') {
+      if (ac !== bc) return ac - bc;
+    } else {
+      if (bc !== ac) return bc - ac;
+    }
     return (a.sort_order ?? 0) - (b.sort_order ?? 0);
   });
 }

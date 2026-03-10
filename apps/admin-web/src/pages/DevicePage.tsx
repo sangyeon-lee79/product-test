@@ -1,7 +1,7 @@
 import { useEffect, useState, useCallback } from 'react';
 import { api, type DeviceType, type DeviceManufacturer, type DeviceBrand, type DeviceModel, type MeasurementUnit } from '../lib/api';
 import { useI18n, useT, LANG_LABELS, SUPPORTED_LANGS } from '../lib/i18n';
-import { emptyTrans, itemLabel, sortByModelCountDesc, i18nRowToTranslations, autoTranslate, findMissingTranslationLangs } from '../lib/catalogUtils';
+import { emptyTrans, itemLabel, sortCatalog, i18nRowToTranslations, autoTranslate, findMissingTranslationLangs, type CatalogSortMode } from '../lib/catalogUtils';
 import { TranslationFields } from '../components/TranslationFields';
 import { CatalogCol, CatalogStatusBadge, CatalogModelDetail, type ModelDetailField } from '../components/CatalogGrid';
 
@@ -26,6 +26,10 @@ export default function DevicePage() {
   const [selectedBrand, setSelectedBrand] = useState<DeviceBrand | null>(null);
   const [selectedModel, setSelectedModel] = useState<DeviceModel | null>(null);
 
+  const [typeSort, setTypeSort] = useState<CatalogSortMode>('count_desc');
+  const [mfrSort, setMfrSort] = useState<CatalogSortMode>('count_desc');
+  const [brandSort, setBrandSort] = useState<CatalogSortMode>('count_desc');
+
   const [modal, setModal] = useState<{ target: ModalTarget; mode: 'create' | 'edit'; id?: string } | null>(null);
   const [saving, setSaving] = useState(false);
   const [translating, setTranslating] = useState(false);
@@ -47,28 +51,31 @@ export default function DevicePage() {
   const loadTypes = useCallback(async () => {
     try {
       const rows = await api.devices.types.list(lang);
-      setTypes(sortByModelCountDesc(rows));
+      setTypes(sortCatalog(rows, typeSort));
     } catch (e) {
       setError(String(e));
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [lang]);
 
   const loadManufacturers = useCallback(async (typeId?: string) => {
     try {
       const rows = await api.devices.manufacturers.list(lang, typeId);
-      setManufacturers(sortByModelCountDesc(rows));
+      setManufacturers(sortCatalog(rows, mfrSort));
     } catch (e) {
       setError(String(e));
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [lang]);
 
   const loadBrands = useCallback(async (mfrId?: string, typeId?: string) => {
     try {
       const rows = await api.devices.brands.list(mfrId, typeId);
-      setBrands(sortByModelCountDesc(rows));
+      setBrands(sortCatalog(rows, brandSort));
     } catch (e) {
       setError(String(e));
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const loadModels = useCallback(async (filters?: { device_type_id?: string; manufacturer_id?: string; brand_id?: string }) => {
@@ -91,6 +98,11 @@ export default function DevicePage() {
     void loadTypes();
     void loadUnits();
   }, [loadTypes, loadUnits]);
+
+  // Re-sort in place when sort mode changes (no re-fetch)
+  useEffect(() => { setTypes(prev => prev.length ? sortCatalog(prev, typeSort) : prev); }, [typeSort]);
+  useEffect(() => { setManufacturers(prev => prev.length ? sortCatalog(prev, mfrSort) : prev); }, [mfrSort]);
+  useEffect(() => { setBrands(prev => prev.length ? sortCatalog(prev, brandSort) : prev); }, [brandSort]);
 
   useEffect(() => {
     void loadManufacturers(selectedType?.id);
@@ -393,7 +405,7 @@ export default function DevicePage() {
           <>
             <div className="alert" style={{ marginBottom: 12 }}>{t('admin.device.guide')}</div>
             <div className="master-explorer-grid" style={{ gridTemplateColumns: 'repeat(4, minmax(0, 1fr))' }}>
-              <CatalogCol title={t('admin.device.types')}>
+              <CatalogCol title={t('admin.device.types')} sortMode={typeSort} onSortChange={setTypeSort}>
                 {types.length === 0 && <div className="master-empty">{t('admin.device.empty')}</div>}
                 {types.map((item) => (
                   <button
@@ -410,7 +422,7 @@ export default function DevicePage() {
                 ))}
               </CatalogCol>
 
-              <CatalogCol title={t('admin.device.manufacturers')} onAdd={openCreateMfr} addLabel={addLabel}>
+              <CatalogCol title={t('admin.device.manufacturers')} onAdd={openCreateMfr} addLabel={addLabel} sortMode={mfrSort} onSortChange={setMfrSort}>
                 {manufacturers.length === 0 && <div className="master-empty">{t('admin.device.empty')}</div>}
                 {manufacturers.map((item) => (
                   <button
@@ -430,7 +442,7 @@ export default function DevicePage() {
                 ))}
               </CatalogCol>
 
-              <CatalogCol title={t('admin.device.brands')} onAdd={openCreateBrand} addLabel={addLabel}>
+              <CatalogCol title={t('admin.device.brands')} onAdd={openCreateBrand} addLabel={addLabel} sortMode={brandSort} onSortChange={setBrandSort}>
                 {!selectedMfr && <div className="master-empty">{t('admin.device.select_manufacturer')}</div>}
                 {selectedMfr && brands.length === 0 && <div className="master-empty">{t('admin.device.empty')}</div>}
                 {selectedMfr && brands.map((item) => (

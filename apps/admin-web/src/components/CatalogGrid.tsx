@@ -1,6 +1,7 @@
 // Shared components for catalog hierarchy pages (DevicePage, FeedPage)
 
 import type { ReactNode } from 'react';
+import type { CatalogSortMode } from '../lib/catalogUtils';
 
 // ─── Col ─────────────────────────────────────────────────────────────────────
 
@@ -8,15 +9,41 @@ interface CatalogColProps {
   title: string;
   onAdd?: () => void;
   addLabel?: string;
+  sortMode?: CatalogSortMode;
+  onSortChange?: (mode: CatalogSortMode) => void;
   children: ReactNode;
 }
 
-export function CatalogCol({ title, onAdd, addLabel, children }: CatalogColProps) {
+const SORT_LABELS: Record<CatalogSortMode, string> = {
+  count_desc: '#↓',
+  count_asc: '#↑',
+  name_asc: 'A-Z',
+};
+const SORT_CYCLE: CatalogSortMode[] = ['count_desc', 'name_asc', 'count_asc'];
+
+export function CatalogCol({ title, onAdd, addLabel, sortMode, onSortChange, children }: CatalogColProps) {
+  const handleSort = () => {
+    if (!onSortChange || !sortMode) return;
+    const idx = SORT_CYCLE.indexOf(sortMode);
+    onSortChange(SORT_CYCLE[(idx + 1) % SORT_CYCLE.length]);
+  };
+
   return (
     <div className="card">
       <div className="card-header">
         <div className="card-title">{title}</div>
-        {onAdd && <button className="btn btn-primary btn-sm" onClick={onAdd}>+ {addLabel}</button>}
+        <div style={{ display: 'flex', gap: 4, alignItems: 'center' }}>
+          {sortMode && onSortChange && (
+            <button
+              className="btn btn-secondary btn-sm catalog-sort-btn"
+              onClick={handleSort}
+              title="Sort"
+            >
+              {SORT_LABELS[sortMode]}
+            </button>
+          )}
+          {onAdd && <button className="btn btn-primary btn-sm" onClick={onAdd}>+ {addLabel}</button>}
+        </div>
       </div>
       <div className="master-column-list">{children}</div>
     </div>
