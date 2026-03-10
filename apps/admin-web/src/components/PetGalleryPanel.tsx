@@ -1,6 +1,7 @@
 import { useMemo, useRef, useState } from 'react';
 import { api, type Booking, type Pet, type PetAlbumMedia } from '../lib/api';
-import { useT } from '../lib/i18n';
+import { useI18n, useT } from '../lib/i18n';
+import { BCP47_LOCALE_MAP, type Lang } from '@petfolio/shared';
 
 export type GallerySourceType = 'profile' | 'feed' | 'booking_completed' | 'health_record' | 'manual_upload';
 type MediaFilter = 'all' | 'image' | 'video';
@@ -55,10 +56,10 @@ function ensureArray(raw: string[] | string | null | undefined): string[] {
   }
 }
 
-function formatDate(value?: string | null, fallback = '-'): string {
+function formatDate(value?: string | null, fallback = '-', locale?: string): string {
   if (!value) return fallback;
   try {
-    return new Date(value).toLocaleDateString();
+    return new Date(value).toLocaleDateString(locale);
   } catch {
     return value;
   }
@@ -81,13 +82,13 @@ function badgeFor(item: GalleryItem): string {
   return 'FEED';
 }
 
-function sourceLabel(source: GallerySourceType): string {
+function sourceLabel(source: GallerySourceType, t: (key: string, fallback: string) => string): string {
   const map: Record<GallerySourceType, string> = {
-    profile: '프로필',
-    feed: '피드',
-    booking_completed: '예약완료',
-    health_record: '건강기록',
-    manual_upload: '수동업로드',
+    profile: t('guardian.gallery.source.profile', 'Profile'),
+    feed: t('guardian.gallery.source.feed', 'Feed'),
+    booking_completed: t('guardian.gallery.source.booking_completed', 'Booking'),
+    health_record: t('guardian.gallery.source.health_record', 'Health'),
+    manual_upload: t('guardian.gallery.source.manual_upload', 'Upload'),
   };
   return map[source];
 }
@@ -169,6 +170,8 @@ export default function PetGalleryPanel({
   setError,
 }: Props) {
   const t = useT();
+  const { lang } = useI18n();
+  const locale = BCP47_LOCALE_MAP[lang as Lang] || 'en-US';
   const [sourceFilter, setSourceFilter] = useState<'all' | GallerySourceType>('all');
   const [mediaFilter, setMediaFilter] = useState<MediaFilter>('all');
   const [sortOrder, setSortOrder] = useState<SortOrder>('latest');
@@ -227,7 +230,7 @@ export default function PetGalleryPanel({
   const photoCount = allItems.filter((v) => v.mediaType === 'image').length;
   const videoCount = allItems.filter((v) => v.mediaType === 'video').length;
   const latestUploadDate = allItems.length
-    ? formatDate([...allItems].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())[0].createdAt)
+    ? formatDate([...allItems].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())[0].createdAt, '-', locale)
     : '-';
 
   const bookingMap = useMemo(() => {
@@ -391,14 +394,14 @@ export default function PetGalleryPanel({
   }
 
   async function removeMedia(item: GalleryItem) {
-    if (!confirm('이 미디어를 삭제할까요?')) return;
+    if (!confirm(t('guardian.gallery.confirm_delete', 'Delete this media?'))) return;
     setDeletingId(item.id);
     try {
       await api.petAlbum.remove(item.id);
       setSelectedIndex(null);
       await onRefresh();
     } catch (e) {
-      setError(e instanceof Error ? e.message : '삭제에 실패했습니다.');
+      setError(e instanceof Error ? e.message : t('guardian.gallery.delete_failed', 'Failed to delete.'));
     } finally {
       setDeletingId('');
     }
@@ -408,7 +411,7 @@ export default function PetGalleryPanel({
     return (
       <div className="card">
         <div className="card-body">
-          <h3>Gallery</h3>
+          <h3>{t('guardian.gallery.title', 'Gallery')}</h3>
           <p className="text-muted">{t('guardian.pet.gallery.empty.no_pet')}</p>
         </div>
       </div>
@@ -423,7 +426,7 @@ export default function PetGalleryPanel({
           <div className="gallery-summary-text">
             <h3>{selectedPet.name}</h3>
             <p className="text-muted">{breedLabel} / {genderLabel} / {lifeStageLabel}</p>
-            <p className="gallery-summary-meta">사진 {photoCount}장 · 영상 {videoCount}개 · 최근 업데이트: {latestUploadDate}</p>
+            <p className="gallery-summary-meta">{t('guardian.gallery.photo_count', 'Photos')} {photoCount} · {t('guardian.gallery.video_count', 'Videos')} {videoCount} · {t('guardian.gallery.last_update', 'Last update')}: {latestUploadDate}</p>
           </div>
           {isGuardian && <button className="btn btn-primary" onClick={() => setUploadOpen(true)}>{t('guardian.pet.gallery.add_photo.open')}</button>}
         </header>
@@ -436,29 +439,29 @@ export default function PetGalleryPanel({
                 className={`feed-tab ${sourceFilter === v ? 'active' : ''}`}
                 onClick={() => setSourceFilter(v)}
               >
-                {v === 'all' ? '전체' : sourceLabel(v)}
+                {v === 'all' ? t('guardian.gallery.filter.all', 'All') : sourceLabel(v, t)}
               </button>
             ))}
           </div>
           <div className="gallery-filter-group">
-            <button className={`feed-tab ${mediaFilter === 'image' ? 'active' : ''}`} onClick={() => setMediaFilter('image')}>사진만</button>
-            <button className={`feed-tab ${mediaFilter === 'video' ? 'active' : ''}`} onClick={() => setMediaFilter('video')}>영상만</button>
-            <button className={`feed-tab ${mediaFilter === 'all' ? 'active' : ''}`} onClick={() => setMediaFilter('all')}>영상포함</button>
+            <button className={`feed-tab ${mediaFilter === 'image' ? 'active' : ''}`} onClick={() => setMediaFilter('image')}>{t('guardian.gallery.filter.image_only', 'Photos')}</button>
+            <button className={`feed-tab ${mediaFilter === 'video' ? 'active' : ''}`} onClick={() => setMediaFilter('video')}>{t('guardian.gallery.filter.video_only', 'Videos')}</button>
+            <button className={`feed-tab ${mediaFilter === 'all' ? 'active' : ''}`} onClick={() => setMediaFilter('all')}>{t('guardian.gallery.filter.all_media', 'All')}</button>
             <select className="form-select gallery-sort" value={sortOrder} onChange={(e) => setSortOrder(e.target.value as SortOrder)}>
-              <option value="latest">최신순</option>
-              <option value="oldest">오래된순</option>
+              <option value="latest">{t('guardian.gallery.sort.latest', 'Latest')}</option>
+              <option value="oldest">{t('guardian.gallery.sort.oldest', 'Oldest')}</option>
             </select>
           </div>
         </div>
 
         {allItems.length === 0 ? (
           <div className="gallery-empty">
-            <h4>아직 사진이 없습니다.</h4>
-            <p>첫 프로필 사진이나 반려동물 사진을 업로드해보세요.</p>
+            <h4>{t('guardian.gallery.empty.title', 'No photos yet.')}</h4>
+            <p>{t('guardian.gallery.empty.desc', 'Upload your first profile or pet photo.')}</p>
             {isGuardian && <button className="btn btn-primary" onClick={() => setUploadOpen(true)}>{t('guardian.pet.gallery.add_photo.open')}</button>}
           </div>
         ) : visibleItems.length === 0 ? (
-          <div className="gallery-empty compact">선택한 유형의 사진이 없습니다.</div>
+          <div className="gallery-empty compact">{t('guardian.gallery.empty.filtered', 'No photos for the selected type.')}</div>
         ) : (
           <div className="gallery-grid" role="list">
             {visibleItems.map((item, idx) => (
@@ -480,7 +483,7 @@ export default function PetGalleryPanel({
         <div className="modal-overlay">
           <div className="modal gallery-detail-modal">
             <div className="modal-header">
-              <h3 className="modal-title">{selectedPet.name} Gallery</h3>
+              <h3 className="modal-title">{selectedPet.name} {t('guardian.gallery.title', 'Gallery')}</h3>
               <button className="modal-close" onClick={() => setSelectedIndex(null)}>&times;</button>
             </div>
             <div className="modal-body gallery-detail-body">
@@ -498,7 +501,7 @@ export default function PetGalleryPanel({
                       return prev <= 0 ? visibleItems.length - 1 : prev - 1;
                     })}
                   >
-                    이전
+                    {t('common.previous', 'Prev')}
                   </button>
                   <button
                     className="btn btn-secondary btn-sm"
@@ -507,26 +510,26 @@ export default function PetGalleryPanel({
                       return prev >= visibleItems.length - 1 ? 0 : prev + 1;
                     })}
                   >
-                    다음
+                    {t('common.next', 'Next')}
                   </button>
                 </div>
               </div>
               <aside className="gallery-detail-meta">
                 <h4>{selectedPet.name}</h4>
-                <p><strong>업로드 유형:</strong> {sourceLabel(selectedItem.sourceType)}</p>
-                <p><strong>업로드 날짜:</strong> {formatDate(selectedItem.createdAt)}</p>
-                <p><strong>업로드자:</strong> {selectedItem.uploadedBy}</p>
-                <p><strong>공개 범위:</strong> {selectedItem.visibilityScope}</p>
+                <p><strong>{t('guardian.gallery.meta.upload_type', 'Upload type')}:</strong> {sourceLabel(selectedItem.sourceType, t)}</p>
+                <p><strong>{t('guardian.gallery.meta.upload_date', 'Upload date')}:</strong> {formatDate(selectedItem.createdAt, '-', locale)}</p>
+                <p><strong>{t('guardian.gallery.meta.uploader', 'Uploader')}:</strong> {selectedItem.uploadedBy}</p>
+                <p><strong>{t('guardian.gallery.meta.visibility', 'Visibility')}:</strong> {selectedItem.visibilityScope}</p>
                 {selectedItem.bookingId && (
-                  <p><strong>예약 상태:</strong> {bookingMap.get(selectedItem.bookingId)?.status || '예약 정보 없음'}</p>
+                  <p><strong>{t('guardian.gallery.meta.booking_status', 'Booking status')}:</strong> {bookingMap.get(selectedItem.bookingId)?.status || t('guardian.gallery.meta.no_booking', 'No booking info')}</p>
                 )}
-                {selectedItem.isPrimary && <p><strong>현재 프로필</strong></p>}
+                {selectedItem.isPrimary && <p><strong>{t('guardian.gallery.meta.current_profile', 'Current profile')}</strong></p>}
                 {selectedItem.caption && <p className="gallery-caption">{selectedItem.caption}</p>}
                 {selectedItem.tags.length > 0 && (
                   <p className="gallery-tags">{selectedItem.tags.map((tag) => `#${tag}`).join(' ')}</p>
                 )}
                 {selectedItem.sourceId && (
-                  <p><a href={`/#/?feed_id=${selectedItem.sourceId}`}>원본 피드 보기</a></p>
+                  <p><a href={`/#/?feed_id=${selectedItem.sourceId}`}>{t('guardian.gallery.view_original', 'View original feed')}</a></p>
                 )}
                 {isGuardian && (
                   <button

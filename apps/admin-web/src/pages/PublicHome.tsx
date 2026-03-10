@@ -3,6 +3,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { api, type FeedComment, type FeedPost } from '../lib/api';
 import { getStoredRole, isLoggedIn } from '../lib/auth';
 import { LANG_LABELS, SUPPORTED_LANGS, useI18n, useT } from '../lib/i18n';
+import { BCP47_LOCALE_MAP, type Lang } from '@petfolio/shared';
 import AuthModal from '../components/AuthModal';
 
 type FeedTab = 'all' | 'friends';
@@ -30,9 +31,9 @@ function ensureArray(raw: string[] | string | null | undefined): string[] {
   } catch { return []; }
 }
 
-function formatDate(iso?: string | null): string {
+function formatDate(iso?: string | null, locale?: string): string {
   if (!iso) return '-';
-  try { return new Date(iso).toLocaleString(); } catch { return iso; }
+  try { return new Date(iso).toLocaleString(locale); } catch { return iso; }
 }
 
 function uiErrorMessage(error: unknown, fallback: string): string {
@@ -48,6 +49,7 @@ function uiErrorMessage(error: unknown, fallback: string): string {
 export default function PublicHome() {
   const t = useT();
   const { lang, setLang } = useI18n();
+  const locale = BCP47_LOCALE_MAP[lang as Lang] || 'en-US';
   /* ── State (모든 기존 state 유지) ─────────────────────── */
   const [loading, setLoading] = useState(true);
   const [error, setError]     = useState('');
@@ -298,7 +300,7 @@ export default function PublicHome() {
           <div className="ig-card-author">
             <div className="ig-card-username">{authorLine.split('@')[0] || authorLine}</div>
             <div className="ig-card-meta">
-              <span>{formatDate(feed.created_at)}</span>
+              <span>{formatDate(feed.created_at, locale)}</span>
               {feed.pet_name && <span className="ig-pet-badge">{feed.pet_name}</span>}
               {displayBusiness && <span className="ig-pet-badge" style={{ background: 'rgba(100,150,255,.12)', color: '#3B5BDB' }}>{displayBusiness}</span>}
             </div>
@@ -390,7 +392,7 @@ export default function PublicHome() {
                         <>
                           <span className="ig-comment-user">{c.author_email?.split('@')[0] || c.author_user_id}</span>
                           {c.content}
-                          <div className="ig-comment-meta">{formatDate(c.created_at)}</div>
+                          <div className="ig-comment-meta">{formatDate(c.created_at, locale)}</div>
                           {mine && (
                             <div className="ig-comment-actions">
                               <button className="ig-comment-post-btn" style={{ fontSize: 11 }} title={t('common.edit', 'Edit')} aria-label={t('common.edit', 'Edit')} onClick={() => { setEditingCommentId(c.id); setEditingContent(c.content); }}>✏️</button>

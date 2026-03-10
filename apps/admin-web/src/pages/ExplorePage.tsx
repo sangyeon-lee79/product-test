@@ -2,6 +2,8 @@ import { useEffect, useMemo, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { api, type FeedPost } from '../lib/api';
 import { isLoggedIn } from '../lib/auth';
+import { useI18n } from '../lib/i18n';
+import { BCP47_LOCALE_MAP, type Lang } from '@petfolio/shared';
 
 function ensureArray(raw: string[] | string | null | undefined): string[] {
   if (Array.isArray(raw)) return raw;
@@ -12,9 +14,9 @@ function ensureArray(raw: string[] | string | null | undefined): string[] {
   } catch { return []; }
 }
 
-function formatDate(iso?: string | null): string {
+function formatDate(iso?: string | null, locale?: string): string {
   if (!iso) return '-';
-  try { return new Date(iso).toLocaleString(); } catch { return iso; }
+  try { return new Date(iso).toLocaleString(locale); } catch { return iso; }
 }
 
 const NAV_ITEMS = [
@@ -27,6 +29,8 @@ const NAV_ITEMS = [
 ];
 
 export default function ExplorePage() {
+  const { lang } = useI18n();
+  const locale = BCP47_LOCALE_MAP[lang as Lang] || 'en-US';
   const [allFeeds, setAllFeeds] = useState<FeedPost[]>([]);
   const [loading,  setLoading]  = useState(true);
   const [search,   setSearch]   = useState('');
@@ -105,7 +109,7 @@ export default function ExplorePage() {
             <div className="ig-avatar">{(feed.author_email || '?')[0].toUpperCase()}</div>
             <div className="ig-card-author">
               <div className="ig-card-username">{(feed.author_email || '-').split('@')[0]}</div>
-              <div className="ig-card-meta">{formatDate(feed.created_at)}</div>
+              <div className="ig-card-meta">{formatDate(feed.created_at, locale)}</div>
             </div>
             <button className="ig-card-menu" onClick={() => setSelected(null)}>✕</button>
           </div>

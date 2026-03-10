@@ -29,7 +29,7 @@ import type {
   PetFeed, FeedNutrition, FeedingLog, FeedingMixFavorite,
   FeedRegistrationRequest,
   PetLog, GlucoseAlert, MemberSummary, MemberRecord, GoogleSettingItem, PublicGoogleConfig, OAuthLoginResponse,
-  PlatformSettingItem,
+  PublicKakaoConfig, PublicAppleConfig, PlatformSettingItem,
 } from '../types/api';
 
 const API_BASE = getApiBase();
@@ -155,10 +155,14 @@ export const api = {
   login: (email: string, password: string) =>
     request<{ user_id: string; role: string; access_token: string; refresh_token: string }>
       ('/api/v1/auth/login', { method: 'POST', body: JSON.stringify({ email, password }) }),
-  oauthLogin: (provider: 'google', idToken: string) =>
+  oauthLogin: (provider: 'google' | 'kakao' | 'apple', credential: string, extra?: { user_name?: string }) =>
     request<OAuthLoginResponse>('/api/v1/auth/oauth', {
       method: 'POST',
-      body: JSON.stringify({ provider, id_token: idToken }),
+      body: JSON.stringify({
+        provider,
+        ...(provider === 'kakao' ? { code: credential } : { id_token: credential }),
+        ...(extra?.user_name ? { user_name: extra.user_name } : {}),
+      }),
     }),
   signup: (payload: { email: string; role: string; display_name: string; country_code: string; language?: string; timezone?: string }) =>
     request<{
@@ -676,6 +680,10 @@ export const api = {
   platformSettings: {
     googlePublicConfig: () =>
       request<PublicGoogleConfig>('/api/v1/google/config'),
+    kakaoPublicConfig: () =>
+      request<PublicKakaoConfig>('/api/v1/kakao/config'),
+    applePublicConfig: () =>
+      request<PublicAppleConfig>('/api/v1/apple/config'),
     google: {
       get: () =>
         request<{ settings: Record<string, GoogleSettingItem> }>('/api/v1/admin/settings/google'),

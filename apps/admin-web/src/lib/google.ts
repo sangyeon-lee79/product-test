@@ -1,3 +1,4 @@
+import { loadScript } from './scriptLoader';
 import { api, type PublicGoogleConfig } from './api';
 
 declare global {
@@ -41,39 +42,6 @@ declare global {
 }
 
 let googleConfigCache: Promise<PublicGoogleConfig> | null = null;
-const scriptCache = new Map<string, Promise<void>>();
-
-function loadScript(src: string): Promise<void> {
-  const existing = scriptCache.get(src);
-  if (existing) return existing;
-
-  const promise = new Promise<void>((resolve, reject) => {
-    const found = document.querySelector(`script[src="${src}"]`) as HTMLScriptElement | null;
-    if (found) {
-      if (found.dataset.loaded === 'true') {
-        resolve();
-        return;
-      }
-      found.addEventListener('load', () => resolve(), { once: true });
-      found.addEventListener('error', () => reject(new Error(`Failed to load script: ${src}`)), { once: true });
-      return;
-    }
-
-    const script = document.createElement('script');
-    script.src = src;
-    script.async = true;
-    script.defer = true;
-    script.addEventListener('load', () => {
-      script.dataset.loaded = 'true';
-      resolve();
-    }, { once: true });
-    script.addEventListener('error', () => reject(new Error(`Failed to load script: ${src}`)), { once: true });
-    document.head.appendChild(script);
-  });
-
-  scriptCache.set(src, promise);
-  return promise;
-}
 
 export function getGoogleConfig(): Promise<PublicGoogleConfig> {
   if (!googleConfigCache) {

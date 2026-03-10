@@ -43,6 +43,23 @@ export const GOOGLE_LANG_MAP: Record<Exclude<Lang, 'ko'>, string> = {
 
 export const DEFAULT_LANG: Lang = 'ko';
 
+/** BCP-47 locale strings for Intl / toLocaleString */
+export const BCP47_LOCALE_MAP: Record<Lang, string> = {
+  ko: 'ko-KR',
+  en: 'en-US',
+  ja: 'ja-JP',
+  zh_cn: 'zh-CN',
+  zh_tw: 'zh-TW',
+  es: 'es-ES',
+  fr: 'fr-FR',
+  de: 'de-DE',
+  pt: 'pt-BR',
+  vi: 'vi-VN',
+  th: 'th-TH',
+  id_lang: 'id-ID',
+  ar: 'ar-SA',
+};
+
 export const MISSING_TRANSLATION_MAP: Record<Lang, string> = {
   ko: '번역 누락',
   en: 'Missing translation',

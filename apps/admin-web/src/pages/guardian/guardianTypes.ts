@@ -262,34 +262,30 @@ export function toOption(
   });
 }
 
-export function formatDate(value?: string | null, fallback = '-'): string {
+export function formatDate(value?: string | null, fallback = '-', locale?: string): string {
   if (!value) return fallback;
   try {
-    return new Date(value).toLocaleString();
+    return new Date(value).toLocaleString(locale);
   } catch {
     return value;
   }
 }
 
-/** Date only: 2026. 3. 8. */
-export function fmtDate(value?: string | null, fallback = '-'): string {
+/** Date only — locale-aware */
+export function fmtDate(value?: string | null, fallback = '-', locale?: string): string {
   if (!value) return fallback;
   try {
-    const d = new Date(value);
-    return `${d.getFullYear()}. ${d.getMonth() + 1}. ${d.getDate()}.`;
+    return new Date(value).toLocaleDateString(locale, { year: 'numeric', month: 'short', day: 'numeric' });
   } catch {
     return value ?? fallback;
   }
 }
 
-/** Date + 24h time (no seconds): 2026. 3. 10. 12:11 */
-export function fmtDateTime(value?: string | null, fallback = '-'): string {
+/** Date + 24h time (no seconds) — locale-aware */
+export function fmtDateTime(value?: string | null, fallback = '-', locale?: string): string {
   if (!value) return fallback;
   try {
-    const d = new Date(value);
-    const hh = String(d.getHours()).padStart(2, '0');
-    const mm = String(d.getMinutes()).padStart(2, '0');
-    return `${d.getFullYear()}. ${d.getMonth() + 1}. ${d.getDate()}. ${hh}:${mm}`;
+    return new Date(value).toLocaleString(locale, { year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit', hour12: false });
   } catch {
     return value ?? fallback;
   }

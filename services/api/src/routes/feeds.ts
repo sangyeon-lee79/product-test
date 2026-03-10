@@ -188,7 +188,7 @@ async function upsertAlbumFromFeed(env: Env, params: {
 
 async function feedFilters(request: Request, env: Env, url: URL): Promise<Response> {
   const lang = (url.searchParams.get('lang') || 'ko').trim();
-  const langCol = SUPPORTED_LANGS.includes(lang) ? lang : 'ko';
+  const langCol = (SUPPORTED_LANGS as readonly string[]).includes(lang) ? lang : 'ko';
 
   // Business categories: distinct L1 from provider_profiles
   const bizRows = await env.DB.prepare(

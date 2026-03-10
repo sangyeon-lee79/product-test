@@ -3,6 +3,8 @@ import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { api, setTokens } from '../lib/api';
 import { getRoleHomePath, storeRole } from '../lib/auth';
 import { ensureGoogleIdentityScript } from '../lib/google';
+import { getKakaoConfig, loginWithKakao, getKakaoCodeFromUrl, clearKakaoCodeFromUrl } from '../lib/kakao';
+import { getAppleConfig, loginWithApple } from '../lib/apple';
 import { useT } from '../lib/i18n';
 
 export default function Login() {
@@ -17,6 +19,8 @@ export default function Login() {
   const [loadingMode, setLoadingMode] = useState<'password' | ''>('');
   const [error, setError] = useState('');
   const googleButtonRef = useRef<HTMLDivElement | null>(null);
+  const [kakaoAvailable, setKakaoAvailable] = useState(false);
+  const [appleAvailable, setAppleAvailable] = useState(false);
   const title = useMemo(() => (forcedAdmin ? t('admin.login.console', 'Admin Console') : t('public.login.title', '로그인')), [forcedAdmin, t]);
 
   function uiErrorMessage(err: unknown): string {
@@ -34,6 +38,46 @@ export default function Login() {
     setTokens(data.access_token, data.refresh_token);
     storeRole(data.role);
     navigate(getRoleHomePath(data.role), { replace: true });
+  }
+
+  // Check which OAuth platforms are configured
+  useEffect(() => {
+    getKakaoConfig().then(c => setKakaoAvailable(!!c.kakao_javascript_key)).catch(() => {});
+    getAppleConfig().then(c => setAppleAvailable(!!c.apple_service_id)).catch(() => {});
+  }, []);
+
+  // Handle Kakao redirect (URL has ?code= before the hash)
+  useEffect(() => {
+    const code = getKakaoCodeFromUrl();
+    if (!code) return;
+    clearKakaoCodeFromUrl();
+    setLoadingMode('password');
+    setError('');
+    api.oauthLogin('kakao', code)
+      .then(data => completeLogin(data))
+      .catch(err => setError(err instanceof Error ? err.message : t('public.signup.kakao_fail', '카카오 로그인에 실패했습니다.')))
+      .finally(() => setLoadingMode(''));
+  }, []);
+
+  async function handleKakaoLogin() {
+    setError('');
+    try { await loginWithKakao(); } catch (err) {
+      setError(err instanceof Error ? err.message : t('public.signup.kakao_no_code', '카카오 인증 코드를 받지 못했습니다.'));
+    }
+  }
+
+  async function handleAppleLogin() {
+    setLoadingMode('password');
+    setError('');
+    try {
+      const { id_token, user_name } = await loginWithApple();
+      const data = await api.oauthLogin('apple', id_token, { user_name });
+      await completeLogin(data);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : t('public.signup.apple_fail', 'Apple 로그인에 실패했습니다.'));
+    } finally {
+      setLoadingMode('');
+    }
   }
 
   async function handlePasswordLogin(e: React.FormEvent) {
@@ -137,6 +181,18 @@ export default function Login() {
                 {loadingMode === 'password' ? t('admin.login.loading', '로그인 중...') : t('public.login.submit_password', '이메일 로그인')}
               </button>
               <div ref={googleButtonRef} style={{ display: 'flex', justifyContent: 'center', minHeight: 42 }} />
+              <div className="oauth-buttons">
+                {kakaoAvailable && (
+                  <button className="oauth-btn oauth-btn-kakao" onClick={handleKakaoLogin} disabled={loadingMode !== ''} type="button">
+                    {t('public.login.kakao', '카카오 로그인')}
+                  </button>
+                )}
+                {appleAvailable && (
+                  <button className="oauth-btn oauth-btn-apple" onClick={() => void handleAppleLogin()} disabled={loadingMode !== ''} type="button">
+                    {t('public.login.apple', 'Apple로 로그인')}
+                  </button>
+                )}
+              </div>
             </div>
           </form>
           <p className="text-muted text-sm mt-3" style={{ textAlign: 'center' }}>

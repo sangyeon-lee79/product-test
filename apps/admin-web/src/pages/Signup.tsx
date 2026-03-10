@@ -4,6 +4,8 @@ import { api, setTokens, type MasterItem } from '../lib/api';
 import { getApiBase } from '../lib/apiBase';
 import { getRoleHomePath, storeRole } from '../lib/auth';
 import { ensureGoogleIdentityScript } from '../lib/google';
+import { getKakaoConfig, loginWithKakao, getKakaoCodeFromUrl, clearKakaoCodeFromUrl } from '../lib/kakao';
+import { getAppleConfig, loginWithApple } from '../lib/apple';
 import { LANG_LABELS, SUPPORTED_LANGS, useI18n, useT } from '../lib/i18n';
 
 type SignupPhase = 'choose' | 'direct' | 'sns';
@@ -88,6 +90,8 @@ export default function Signup() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [snsToken, setSnsToken] = useState<{ access: string; refresh: string; role: string } | null>(null);
+  const [kakaoAvailable, setKakaoAvailable] = useState(false);
+  const [appleAvailable, setAppleAvailable] = useState(false);
   const googleButtonRef = useRef<HTMLDivElement | null>(null);
 
   const totalSteps = phase === 'direct' ? 5 : 4;
@@ -151,6 +155,55 @@ export default function Signup() {
   useEffect(() => {
     if (!providerL1Id || !providerPetTypeL1Id || !providerPetTypeL2Id) { setProviderL3Id(''); return; }
   }, [providerL1Id, providerPetTypeL1Id, providerPetTypeL2Id]);
+
+  // Check which OAuth platforms are configured
+  useEffect(() => {
+    getKakaoConfig().then(c => setKakaoAvailable(!!c.kakao_javascript_key)).catch(() => {});
+    getAppleConfig().then(c => setAppleAvailable(!!c.apple_service_id)).catch(() => {});
+  }, []);
+
+  // Handle Kakao redirect (URL has ?code= before the hash)
+  useEffect(() => {
+    const code = getKakaoCodeFromUrl();
+    if (!code) return;
+    clearKakaoCodeFromUrl();
+    setLoading(true);
+    setError('');
+    api.oauthLogin('kakao', code)
+      .then(data => {
+        setSnsToken({ access: data.access_token, refresh: data.refresh_token, role: data.role });
+        if (data.email) setEmail(data.email);
+        setPhase('sns');
+        setStep(1);
+      })
+      .catch(err => setError(err instanceof Error ? err.message : t('public.signup.kakao_fail', '카카오 가입에 실패했습니다.')))
+      .finally(() => setLoading(false));
+  }, []);
+
+  async function handleKakaoSignup() {
+    setError('');
+    try { await loginWithKakao(); } catch (err) {
+      setError(err instanceof Error ? err.message : t('public.signup.kakao_no_code', '카카오 인증 코드를 받지 못했습니다.'));
+    }
+  }
+
+  async function handleAppleSignup() {
+    setLoading(true);
+    setError('');
+    try {
+      const { id_token, user_name } = await loginWithApple();
+      const data = await api.oauthLogin('apple', id_token, { user_name });
+      setSnsToken({ access: data.access_token, refresh: data.refresh_token, role: data.role });
+      if (data.email) setEmail(data.email);
+      if (user_name) setDisplayName(user_name);
+      setPhase('sns');
+      setStep(1);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : t('public.signup.apple_fail', 'Apple 가입에 실패했습니다.'));
+    } finally {
+      setLoading(false);
+    }
+  }
 
   // ── Google OAuth for choose phase ──
   useEffect(() => {
@@ -352,6 +405,18 @@ export default function Signup() {
                     {t('public.signup.sns_desc', 'Google 계정으로 빠르게 가입')}
                   </p>
                   <div ref={googleButtonRef} style={{ display: 'flex', justifyContent: 'center', minHeight: 42 }} />
+                  <div className="oauth-buttons">
+                    {kakaoAvailable && (
+                      <button className="oauth-btn oauth-btn-kakao" onClick={handleKakaoSignup} disabled={loading} type="button">
+                        {t('public.signup.kakao', '카카오로 가입')}
+                      </button>
+                    )}
+                    {appleAvailable && (
+                      <button className="oauth-btn oauth-btn-apple" onClick={() => void handleAppleSignup()} disabled={loading} type="button">
+                        {t('public.signup.apple', 'Apple로 가입')}
+                      </button>
+                    )}
+                  </div>
                 </div>
               </div>
 

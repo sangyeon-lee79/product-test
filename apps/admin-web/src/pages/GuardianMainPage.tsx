@@ -30,6 +30,7 @@ const LOG_TYPE_METRIC_MAP: Record<string, { metricKey: string; unitKeys: string[
   weight_log:        { metricKey: 'body_weight',   unitKeys: ['kg'] },
 };
 import { useI18n, useT } from '../lib/i18n';
+import { BCP47_LOCALE_MAP, type Lang } from '@petfolio/shared';
 import { getStoredRole } from '../lib/auth';
 import PetGalleryPanel from '../components/PetGalleryPanel';
 import ComposeModal from './guardian/ComposeModal';
@@ -62,6 +63,7 @@ export default function GuardianMainPage() {
   const { pet_id: petIdParam } = useParams();
   const t = useT();
   const { lang } = useI18n();
+  const locale = BCP47_LOCALE_MAP[lang as Lang] || 'en-US';
   const role = getStoredRole();
   const isGuardian = role === 'guardian';
   const [loading, setLoading] = useState(true);
@@ -611,7 +613,7 @@ export default function GuardianMainPage() {
   const groupedTimeline = useMemo<TimelineGroup[]>(() => {
     const map = new Map<string, TimelineGroup>();
     for (const item of unifiedTimeline) {
-      const dk = fmtDate(item.date);
+      const dk = fmtDate(item.date, '-', locale);
       const key = `${dk}__${item.type}`;
       if (!map.has(key)) map.set(key, { dateKey: dk, type: item.type, items: [] });
       map.get(key)!.items.push(item);
@@ -823,7 +825,7 @@ export default function GuardianMainPage() {
             return <g key={`wd-${i}`}>
               <circle cx={p.x} cy={p.y} r="2.5" fill="#1a73e8" />
               <circle cx={p.x} cy={p.y} r="8" fill="transparent" cursor="pointer"
-                onMouseEnter={() => setChartTooltip({ x: p.x, y: p.y, type: 'weight', lines: [`${fmtDate(d.measured_at)} · ${Number(d.weight_value).toFixed(2)} kg`] })}
+                onMouseEnter={() => setChartTooltip({ x: p.x, y: p.y, type: 'weight', lines: [`${fmtDate(d.measured_at, '-', locale)} · ${Number(d.weight_value).toFixed(2)} kg`] })}
                 onMouseLeave={() => setChartTooltip(null)} />
             </g>;
           })}
@@ -833,7 +835,7 @@ export default function GuardianMainPage() {
             return <g key={`md-${i}`}>
               <circle cx={p.x} cy={p.y} r="2.5" fill="#ef6c00" />
               <circle cx={p.x} cy={p.y} r="8" fill="transparent" cursor="pointer"
-                onMouseEnter={() => setChartTooltip({ x: p.x, y: p.y, type: 'measurement', lines: [`${fmtDateTime(d.measured_at)} · ${Number(d.value).toFixed(1)}`, ...(ctxLabel ? [ctxLabel] : [])] })}
+                onMouseEnter={() => setChartTooltip({ x: p.x, y: p.y, type: 'measurement', lines: [`${fmtDateTime(d.measured_at, '-', locale)} · ${Number(d.value).toFixed(1)}`, ...(ctxLabel ? [ctxLabel] : [])] })}
                 onMouseLeave={() => setChartTooltip(null)} />
             </g>;
           })}
@@ -845,7 +847,7 @@ export default function GuardianMainPage() {
             return <g key={`fd-${i}`}>
               <circle cx={p.x} cy={p.y} r="2.5" fill="#43a047" />
               <circle cx={p.x} cy={p.y} r="8" fill="transparent" cursor="pointer"
-                onMouseEnter={() => setChartTooltip({ x: p.x, y: p.y, type: 'feeding', lines: [`${fmtDateTime(d.feeding_time!)} · ${Number(d.amount_g).toFixed(0)}g${kcal ? ` / ${kcal}kcal` : ''}`, ...(feedName ? [feedName] : [])] })}
+                onMouseEnter={() => setChartTooltip({ x: p.x, y: p.y, type: 'feeding', lines: [`${fmtDateTime(d.feeding_time!, '-', locale)} · ${Number(d.amount_g).toFixed(0)}g${kcal ? ` / ${kcal}kcal` : ''}`, ...(feedName ? [feedName] : [])] })}
                 onMouseLeave={() => setChartTooltip(null)} />
             </g>;
           })}
@@ -1083,7 +1085,7 @@ export default function GuardianMainPage() {
                                 <div className="sns-author-info">
                                   <p className="sns-meta">{feedTypeLabel(t, f.feed_type)}</p>
                                   <span className="sns-author-name">{f.author_email || t('common.none', '-')}</span>
-                                  <p className="text-sm text-muted">{formatDate(f.created_at, t('common.none', '-'))}</p>
+                                  <p className="text-sm text-muted">{formatDate(f.created_at, t('common.none', '-'), locale)}</p>
                                 </div>
                               </div>
                               <div className="sns-card-right">
@@ -1148,7 +1150,7 @@ export default function GuardianMainPage() {
                           <div className="gm-health-summary-row">
                             <span>{t('guardian.health.current_weight', '체중')}: <strong>{weightSummary?.latest_weight ?? selectedPet.current_weight ?? '-'} kg</strong></span>
                             <span className="gm-health-summary-sep">·</span>
-                            <span>{t('guardian.health.last_measured', '측정')}: <strong>{formatDate(weightSummary?.latest_measured_at, '-')}</strong></span>
+                            <span>{t('guardian.health.last_measured', '측정')}: <strong>{formatDate(weightSummary?.latest_measured_at, '-', locale)}</strong></span>
                           </div>
                           <div className="gm-health-summary-row">
                             <span>{t('guardian.health.latest_measurement', '수치')}: <strong>{measurementSummary?.latest_value ?? '-'}</strong></span>
@@ -1222,7 +1224,7 @@ export default function GuardianMainPage() {
                             {weightLogs.slice((weightLogPage - 1) * PAGE_SIZE, weightLogPage * PAGE_SIZE).map((log) => (
                               <div key={log.id} className="guardian-pet-item">
                                 <div>
-                                  <p className="text-sm">{fmtDate(log.measured_at)} · {log.weight_value} kg</p>
+                                  <p className="text-sm">{fmtDate(log.measured_at, '-', locale)} · {log.weight_value} kg</p>
                                   {log.notes && <p className="text-sm text-muted" style={{ fontSize: 11 }}>{log.notes}</p>}
                                 </div>
                                 <div className="td-actions">
@@ -1244,7 +1246,7 @@ export default function GuardianMainPage() {
                             {measurementLogs.slice((measurementLogPage - 1) * PAGE_SIZE, measurementLogPage * PAGE_SIZE).map((log) => (
                               <div key={log.id} className="guardian-pet-item">
                                 <div>
-                                  <p className="text-sm">{fmtDateTime(log.measured_at)} · {log.value}{log.judgement_label ? ` · ${log.judgement_label}` : ''}</p>
+                                  <p className="text-sm">{fmtDateTime(log.measured_at, '-', locale)} · {log.value}{log.judgement_label ? ` · ${log.judgement_label}` : ''}</p>
                                   {log.memo && <p className="text-sm text-muted" style={{ fontSize: 11 }}>{log.memo}</p>}
                                 </div>
                                 <div className="td-actions">
@@ -1268,7 +1270,7 @@ export default function GuardianMainPage() {
                               return (
                                 <div key={log.id} className="guardian-pet-item">
                                   <div>
-                                    <p className="text-sm">{fmtDateTime(log.feeding_time)} · {fname}{log.amount_g != null ? ` ${log.amount_g}g` : ''}</p>
+                                    <p className="text-sm">{fmtDateTime(log.feeding_time, '-', locale)} · {fname}{log.amount_g != null ? ` ${log.amount_g}g` : ''}</p>
                                     {log.memo && <p className="text-sm text-muted" style={{ fontSize: 11 }}>{log.memo}</p>}
                                   </div>
                                   <div className="td-actions">
@@ -1501,7 +1503,7 @@ export default function GuardianMainPage() {
                         {healthFeeds.map((f) => (
                           <article key={f.id} className="sns-card">
                             <p className="sns-meta">{feedTypeLabel(t, f.feed_type)}</p>
-                            <p className="text-sm text-muted">{formatDate(f.created_at, t('common.none', '-'))}</p>
+                            <p className="text-sm text-muted">{formatDate(f.created_at, t('common.none', '-'), locale)}</p>
                             <p>{f.caption || t('common.none', '-')}</p>
                           </article>
                         ))}
@@ -1519,7 +1521,7 @@ export default function GuardianMainPage() {
                     {bookings.filter((b) => !selectedPet || !b.pet_id || b.pet_id === selectedPet.id).map((b) => (
                       <div key={b.id} className="guardian-pet-item">
                         <p className="text-sm">#{b.id.slice(0, 8)} · {b.status}</p>
-                        <p className="text-sm text-muted">{formatDate(b.updated_at, t('common.none', '-'))}</p>
+                        <p className="text-sm text-muted">{formatDate(b.updated_at, t('common.none', '-'), locale)}</p>
                       </div>
                     ))}
                     {bookings.filter((b) => !selectedPet || !b.pet_id || b.pet_id === selectedPet.id).length === 0 && (

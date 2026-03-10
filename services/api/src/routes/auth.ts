@@ -13,11 +13,6 @@ import { hasColumn } from '../helpers/sqlHelpers';
 const GOOGLE_ISSUERS = new Set(['accounts.google.com', 'https://accounts.google.com']);
 const GOOGLE_JWKS_URL = 'https://www.googleapis.com/oauth2/v3/certs';
 
-type GoogleOAuthBody = {
-  provider?: string;
-  id_token?: string;
-};
-
 type GoogleTokenHeader = {
   alg?: string;
   kid?: string;
@@ -49,6 +44,57 @@ type GoogleCertCache = {
 };
 
 let googleCertCache: GoogleCertCache | null = null;
+
+// ─── Apple JWKS ────────────────────────────────────────────────────────────────
+
+const APPLE_JWKS_URL = 'https://appleid.apple.com/auth/keys';
+const APPLE_ISSUER = 'https://appleid.apple.com';
+
+type AppleJwk = JsonWebKey & {
+  kid?: string;
+  alg?: string;
+  use?: string;
+  kty?: string;
+};
+
+type AppleCertCache = {
+  expiresAt: number;
+  keys: AppleJwk[];
+};
+
+let appleCertCache: AppleCertCache | null = null;
+
+type AppleTokenPayload = {
+  iss?: string;
+  aud?: string;
+  exp?: number;
+  iat?: number;
+  sub?: string;
+  email?: string;
+  email_verified?: boolean | string;
+};
+
+// ─── Kakao OAuth types ─────────────────────────────────────────────────────────
+
+type KakaoTokenResponse = {
+  access_token?: string;
+  token_type?: string;
+  expires_in?: number;
+  error?: string;
+  error_description?: string;
+};
+
+type KakaoUserResponse = {
+  id?: number;
+  kakao_account?: {
+    email?: string;
+    is_email_verified?: boolean;
+    profile?: {
+      nickname?: string;
+      profile_image_url?: string;
+    };
+  };
+};
 
 function decodeBase64Url(input: string): string {
   let normalized = input.replace(/-/g, '+').replace(/_/g, '/');
@@ -124,22 +170,128 @@ async function verifyGoogleIdToken(idToken: string, audience: string): Promise<G
   return payload;
 }
 
-async function findUserByGoogleIdentity(
+// ─── Apple ID Token Verification ──────────────────────────────────────────────
+
+async function getAppleCerts(): Promise<AppleJwk[]> {
+  if (appleCertCache && appleCertCache.expiresAt > Date.now()) {
+    return appleCertCache.keys;
+  }
+
+  const response = await fetch(APPLE_JWKS_URL);
+  const cacheControl = response.headers.get('cache-control') || '';
+  const maxAgeMatch = cacheControl.match(/max-age=(\d+)/);
+  const maxAgeSec = maxAgeMatch ? Number.parseInt(maxAgeMatch[1], 10) : 3600;
+  const json = await response.json() as { keys?: AppleJwk[] };
+
+  if (!response.ok || !Array.isArray(json.keys) || json.keys.length === 0) {
+    throw new Error('Failed to fetch Apple signing keys');
+  }
+
+  appleCertCache = {
+    keys: json.keys,
+    expiresAt: Date.now() + (Number.isFinite(maxAgeSec) ? maxAgeSec : 3600) * 1000,
+  };
+  return json.keys;
+}
+
+async function verifyAppleIdToken(idToken: string, audience: string): Promise<AppleTokenPayload> {
+  const parts = idToken.split('.');
+  if (parts.length !== 3) throw new Error('Invalid Apple ID token');
+
+  const [headerB64, payloadB64, signatureB64] = parts;
+  const header = parseJsonPart<{ alg?: string; kid?: string }>(headerB64);
+  const payload = parseJsonPart<AppleTokenPayload>(payloadB64);
+  if (header.alg !== 'ES256' || !header.kid) throw new Error('Unsupported Apple ID token');
+
+  const signingKey = (await getAppleCerts()).find((key) => key.kid === header.kid);
+  if (!signingKey) throw new Error('Apple signing key not found');
+
+  const cryptoKey = await crypto.subtle.importKey(
+    'jwk',
+    signingKey,
+    { name: 'ECDSA', namedCurve: 'P-256' },
+    false,
+    ['verify'],
+  );
+
+  const encoder = new TextEncoder();
+  const data = encoder.encode(`${headerB64}.${payloadB64}`);
+  const rawSig = Uint8Array.from(decodeBase64Url(signatureB64), (char) => char.charCodeAt(0));
+  const valid = await crypto.subtle.verify(
+    { name: 'ECDSA', hash: 'SHA-256' },
+    cryptoKey,
+    rawSig,
+    data,
+  );
+  if (!valid) throw new Error('Invalid Apple ID token signature');
+
+  const nowSec = Math.floor(Date.now() / 1000);
+  if (!payload.exp || payload.exp <= nowSec) throw new Error('Apple ID token expired');
+  if (payload.iss !== APPLE_ISSUER) throw new Error('Invalid Apple ID token issuer');
+  if (payload.aud !== audience) throw new Error('Apple ID token audience mismatch');
+  if (!payload.sub) throw new Error('Apple account id missing');
+
+  return payload;
+}
+
+// ─── Kakao OAuth (authorization code flow) ────────────────────────────────────
+
+async function exchangeKakaoCode(
+  code: string,
+  clientId: string,
+  redirectUri: string,
+): Promise<string> {
+  const body = new URLSearchParams({
+    grant_type: 'authorization_code',
+    client_id: clientId,
+    redirect_uri: redirectUri,
+    code,
+  });
+
+  const response = await fetch('https://kauth.kakao.com/oauth/token', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+    body: body.toString(),
+  });
+
+  const json = await response.json() as KakaoTokenResponse;
+  if (!response.ok || !json.access_token) {
+    throw new Error(json.error_description || 'Failed to exchange Kakao auth code');
+  }
+  return json.access_token;
+}
+
+async function getKakaoUserInfo(accessToken: string): Promise<KakaoUserResponse> {
+  const response = await fetch('https://kapi.kakao.com/v2/user/me', {
+    headers: { Authorization: `Bearer ${accessToken}` },
+  });
+
+  if (!response.ok) throw new Error('Failed to fetch Kakao user info');
+  return response.json() as Promise<KakaoUserResponse>;
+}
+
+// ─── Provider-agnostic user lookup/upsert ─────────────────────────────────────
+
+async function findUserByOAuth(
   env: Env,
+  provider: string,
+  oauthId: string,
   email: string,
-  googleSub: string,
 ): Promise<{ id: string; role: string; status: string | null } | null> {
   const byOauth = await env.DB.prepare(
     `SELECT id, role, status
      FROM users
-     WHERE oauth_provider = 'google' AND oauth_id = ?
+     WHERE oauth_provider = ? AND oauth_id = ?
      LIMIT 1`
-  ).bind(googleSub).first<{ id: string; role: string; status: string | null }>();
+  ).bind(provider, oauthId).first<{ id: string; role: string; status: string | null }>();
   if (byOauth?.id) return byOauth;
 
-  return env.DB.prepare(
-    'SELECT id, role, status FROM users WHERE email = ? LIMIT 1'
-  ).bind(email).first<{ id: string; role: string; status: string | null }>();
+  if (email) {
+    return env.DB.prepare(
+      'SELECT id, role, status FROM users WHERE email = ? LIMIT 1'
+    ).bind(email).first<{ id: string; role: string; status: string | null }>();
+  }
+  return null;
 }
 
 async function ensureOAuthProfile(
@@ -187,25 +339,24 @@ async function ensureOAuthProfile(
   }
 }
 
-async function upsertGoogleUser(
+async function upsertOAuthUser(
   env: Env,
-  googleUser: GoogleTokenPayload,
+  provider: string,
+  oauthId: string,
+  email: string,
+  displayName: string,
+  pictureUrl: string | null,
 ): Promise<{ id: string; role: JwtPayload['role']; email: string }> {
-  const email = String(googleUser.email || '').trim().toLowerCase();
-  const displayName = String(googleUser.name || googleUser.given_name || email).trim();
-  const pictureUrl = googleUser.picture ? String(googleUser.picture).trim() : null;
-  const googleSub = String(googleUser.sub || '').trim();
   const ts = now();
-
-  const existing = await findUserByGoogleIdentity(env, email, googleSub);
+  const existing = await findUserByOAuth(env, provider, oauthId, email);
   const role = (existing?.role || 'guardian') as JwtPayload['role'];
 
   if (existing?.id) {
     await env.DB.prepare(
       `UPDATE users
-       SET email = ?, oauth_provider = 'google', oauth_id = ?, status = 'active', updated_at = ?
+       SET email = ?, oauth_provider = ?, oauth_id = ?, status = 'active', updated_at = ?
        WHERE id = ?`
-    ).bind(email, googleSub, ts, existing.id).run();
+    ).bind(email || null, provider, oauthId, ts, existing.id).run();
     await ensureOAuthProfile(env, existing.id, email, displayName, pictureUrl);
     return { id: existing.id, role, email };
   }
@@ -213,30 +364,16 @@ async function upsertGoogleUser(
   const userId = newId();
   await env.DB.prepare(
     `INSERT INTO users (id, email, password_hash, role, oauth_provider, oauth_id, status, created_at, updated_at)
-     VALUES (?, ?, NULL, 'guardian', 'google', ?, 'active', ?, ?)`
-  ).bind(userId, email, googleSub, ts, ts).run();
+     VALUES (?, ?, NULL, 'guardian', ?, ?, 'active', ?, ?)`
+  ).bind(userId, email || null, provider, oauthId, ts, ts).run();
 
   await ensureOAuthProfile(env, userId, email, displayName, pictureUrl);
   return { id: userId, role: 'guardian', email };
 }
 
-async function googleOAuthLogin(request: Request, env: Env): Promise<Response> {
-  let body: GoogleOAuthBody;
-  try {
-    body = await request.json() as GoogleOAuthBody;
-  } catch {
-    return err('Invalid JSON body');
-  }
-
-  if (body.provider !== 'google') return err('unsupported oauth provider', 400);
-  const idToken = String(body.id_token || '').trim();
-  if (!idToken) return err('id_token required');
-
+async function googleOAuthLogin(idToken: string, env: Env): Promise<Response> {
   const clientIdRow = await env.DB.prepare(
-    `SELECT setting_value
-     FROM platform_settings
-     WHERE setting_key = 'google_oauth_client_id'
-     LIMIT 1`
+    `SELECT setting_value FROM platform_settings WHERE setting_key = 'google_oauth_client_id' LIMIT 1`
   ).first<{ setting_value: string | null }>();
   const clientId = String(clientIdRow?.setting_value || '').trim();
   if (!clientId) return err('google oauth client id is not configured', 503);
@@ -248,15 +385,114 @@ async function googleOAuthLogin(request: Request, env: Env): Promise<Response> {
     return err(verifyError instanceof Error ? verifyError.message : 'invalid google id token', 401, 'invalid_google_token');
   }
 
-  const user = await upsertGoogleUser(env, googleUser);
+  const email = String(googleUser.email || '').trim().toLowerCase();
+  const displayName = String(googleUser.name || googleUser.given_name || email).trim();
+  const pictureUrl = googleUser.picture ? String(googleUser.picture).trim() : null;
+  const googleSub = String(googleUser.sub || '').trim();
+
+  const user = await upsertOAuthUser(env, 'google', googleSub, email, displayName, pictureUrl);
   const tokens = await issueTokens(user.id, user.role, env.JWT_SECRET);
-  return created({
-    user_id: user.id,
-    role: user.role,
-    email: user.email,
-    provider: 'google',
-    ...tokens,
-  });
+  return created({ user_id: user.id, role: user.role, email: user.email, provider: 'google', ...tokens });
+}
+
+async function kakaoOAuthLogin(code: string, env: Env): Promise<Response> {
+  const restApiKeyRow = await env.DB.prepare(
+    `SELECT setting_value FROM platform_settings WHERE setting_key = 'kakao_rest_api_key' LIMIT 1`
+  ).first<{ setting_value: string | null }>();
+  const restApiKey = String(restApiKeyRow?.setting_value || '').trim();
+  if (!restApiKey) return err('kakao rest api key is not configured', 503);
+
+  const redirectUriRow = await env.DB.prepare(
+    `SELECT setting_value FROM platform_settings WHERE setting_key = 'kakao_redirect_uri' LIMIT 1`
+  ).first<{ setting_value: string | null }>();
+  const redirectUri = String(redirectUriRow?.setting_value || '').trim();
+  if (!redirectUri) return err('kakao redirect uri is not configured', 503);
+
+  let accessToken: string;
+  try {
+    accessToken = await exchangeKakaoCode(code, restApiKey, redirectUri);
+  } catch (e) {
+    return err(e instanceof Error ? e.message : 'kakao auth code exchange failed', 401, 'kakao_code_exchange_failed');
+  }
+
+  let kakaoUser: KakaoUserResponse;
+  try {
+    kakaoUser = await getKakaoUserInfo(accessToken);
+  } catch (e) {
+    return err(e instanceof Error ? e.message : 'failed to fetch kakao user info', 401, 'kakao_user_info_failed');
+  }
+
+  const kakaoId = String(kakaoUser.id || '').trim();
+  if (!kakaoId) return err('kakao account id missing', 401);
+
+  const email = (kakaoUser.kakao_account?.email || '').trim().toLowerCase();
+  const displayName = kakaoUser.kakao_account?.profile?.nickname || email || `kakao_${kakaoId}`;
+  const pictureUrl = kakaoUser.kakao_account?.profile?.profile_image_url || null;
+
+  const user = await upsertOAuthUser(env, 'kakao', kakaoId, email, displayName, pictureUrl);
+  const tokens = await issueTokens(user.id, user.role, env.JWT_SECRET);
+  return created({ user_id: user.id, role: user.role, email: user.email, provider: 'kakao', ...tokens });
+}
+
+async function appleOAuthLogin(idToken: string, userName: string | undefined, env: Env): Promise<Response> {
+  const serviceIdRow = await env.DB.prepare(
+    `SELECT setting_value FROM platform_settings WHERE setting_key = 'apple_service_id' LIMIT 1`
+  ).first<{ setting_value: string | null }>();
+  const serviceId = String(serviceIdRow?.setting_value || '').trim();
+  if (!serviceId) return err('apple service id is not configured', 503);
+
+  let applePayload: AppleTokenPayload;
+  try {
+    applePayload = await verifyAppleIdToken(idToken, serviceId);
+  } catch (e) {
+    return err(e instanceof Error ? e.message : 'invalid apple id token', 401, 'invalid_apple_token');
+  }
+
+  const appleSub = String(applePayload.sub || '').trim();
+  const email = (applePayload.email || '').trim().toLowerCase();
+  const displayName = (userName || email || `apple_${appleSub}`).trim();
+
+  const user = await upsertOAuthUser(env, 'apple', appleSub, email, displayName, null);
+  const tokens = await issueTokens(user.id, user.role, env.JWT_SECRET);
+  return created({ user_id: user.id, role: user.role, email: user.email, provider: 'apple', ...tokens });
+}
+
+type OAuthBody = {
+  provider?: string;
+  id_token?: string;
+  code?: string;
+  user_name?: string;
+};
+
+async function oauthLogin(request: Request, env: Env): Promise<Response> {
+  let body: OAuthBody;
+  try {
+    body = await request.json() as OAuthBody;
+  } catch {
+    return err('Invalid JSON body');
+  }
+
+  const provider = (body.provider || '').trim().toLowerCase();
+
+  if (provider === 'google') {
+    const idToken = String(body.id_token || '').trim();
+    if (!idToken) return err('id_token required');
+    return googleOAuthLogin(idToken, env);
+  }
+
+  if (provider === 'kakao') {
+    const code = String(body.code || '').trim();
+    if (!code) return err('code required');
+    return kakaoOAuthLogin(code, env);
+  }
+
+  if (provider === 'apple') {
+    const idToken = String(body.id_token || '').trim();
+    if (!idToken) return err('id_token required');
+    return appleOAuthLogin(idToken, body.user_name, env);
+  }
+
+  return err('unsupported oauth provider', 400);
 }
 
 export async function handleAuth(request: Request, env: Env, url: URL): Promise<Response> {
@@ -265,7 +501,7 @@ export async function handleAuth(request: Request, env: Env, url: URL): Promise<
   if (sub === '/login' && request.method === 'POST') return passwordLogin(request, env);
   if (sub === '/test-login' && request.method === 'POST') return testLogin(request, env);
   if (sub === '/signup' && request.method === 'POST') return signup(request, env);
-  if (sub === '/oauth' && request.method === 'POST') return googleOAuthLogin(request, env);
+  if (sub === '/oauth' && request.method === 'POST') return oauthLogin(request, env);
   if (sub === '/refresh' && request.method === 'POST') return refreshToken(request, env);
 
   return err('Not found', 404);

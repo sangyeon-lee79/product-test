@@ -4,6 +4,8 @@ import { api, setTokens, type MasterItem } from '../lib/api';
 import { getApiBase } from '../lib/apiBase';
 import { getRoleHomePath, storeRole } from '../lib/auth';
 import { ensureGoogleIdentityScript } from '../lib/google';
+import { getKakaoConfig, loginWithKakao, getKakaoCodeFromUrl, clearKakaoCodeFromUrl } from '../lib/kakao';
+import { getAppleConfig, loginWithApple } from '../lib/apple';
 import { LANG_LABELS, SUPPORTED_LANGS, useI18n, useT } from '../lib/i18n';
 
 type AuthMode = 'login' | 'signup';
@@ -96,6 +98,8 @@ export default function AuthModal({ open, initialMode, onClose, onSuccess }: Aut
   const [signupError, setSignupError] = useState('');
   const [snsToken, setSnsToken] = useState<{ access: string; refresh: string; role: string } | null>(null);
   const signupGoogleRef = useRef<HTMLDivElement | null>(null);
+  const [kakaoAvailable, setKakaoAvailable] = useState(false);
+  const [appleAvailable, setAppleAvailable] = useState(false);
 
   const totalSteps = phase === 'direct' ? 5 : 4;
 
@@ -120,6 +124,88 @@ export default function AuthModal({ open, initialMode, onClose, onSuccess }: Aut
       window.removeEventListener('keydown', onKey);
     };
   }, [open, onClose]);
+
+  // Check which OAuth platforms are configured
+  useEffect(() => {
+    if (!open) return;
+    getKakaoConfig().then(c => setKakaoAvailable(!!c.kakao_javascript_key)).catch(() => {});
+    getAppleConfig().then(c => setAppleAvailable(!!c.apple_service_id)).catch(() => {});
+  }, [open]);
+
+  // Handle Kakao redirect (URL has ?code= before the hash)
+  useEffect(() => {
+    if (!open) return;
+    const code = getKakaoCodeFromUrl();
+    if (!code) return;
+    clearKakaoCodeFromUrl();
+
+    if (mode === 'signup') {
+      setSignupLoading(true);
+      setSignupError('');
+      api.oauthLogin('kakao', code)
+        .then(data => {
+          setSnsToken({ access: data.access_token, refresh: data.refresh_token, role: data.role });
+          if (data.email) setEmail(data.email);
+          setPhase('sns');
+          setStep(1);
+        })
+        .catch(err => setSignupError(err instanceof Error ? err.message : t('public.signup.kakao_fail', '카카오 가입에 실패했습니다.')))
+        .finally(() => setSignupLoading(false));
+    } else {
+      setLoginLoading(true);
+      setLoginError('');
+      api.oauthLogin('kakao', code)
+        .then(data => completeAuth(data))
+        .catch(err => setLoginError(err instanceof Error ? err.message : t('public.signup.kakao_fail', '카카오 로그인에 실패했습니다.')))
+        .finally(() => setLoginLoading(false));
+    }
+  }, [open]);
+
+  async function handleKakaoLogin() {
+    setLoginError('');
+    try { await loginWithKakao(); } catch (err) {
+      setLoginError(err instanceof Error ? err.message : t('public.signup.kakao_no_code', '카카오 인증 코드를 받지 못했습니다.'));
+    }
+  }
+
+  async function handleAppleLogin() {
+    setLoginLoading(true);
+    setLoginError('');
+    try {
+      const { id_token, user_name } = await loginWithApple();
+      const data = await api.oauthLogin('apple', id_token, { user_name });
+      completeAuth(data);
+    } catch (err) {
+      setLoginError(err instanceof Error ? err.message : t('public.signup.apple_fail', 'Apple 로그인에 실패했습니다.'));
+    } finally {
+      setLoginLoading(false);
+    }
+  }
+
+  async function handleKakaoSignup() {
+    setSignupError('');
+    try { await loginWithKakao(); } catch (err) {
+      setSignupError(err instanceof Error ? err.message : t('public.signup.kakao_no_code', '카카오 인증 코드를 받지 못했습니다.'));
+    }
+  }
+
+  async function handleAppleSignup() {
+    setSignupLoading(true);
+    setSignupError('');
+    try {
+      const { id_token, user_name } = await loginWithApple();
+      const data = await api.oauthLogin('apple', id_token, { user_name });
+      setSnsToken({ access: data.access_token, refresh: data.refresh_token, role: data.role });
+      if (data.email) setEmail(data.email);
+      if (user_name) setDisplayName(user_name);
+      setPhase('sns');
+      setStep(1);
+    } catch (err) {
+      setSignupError(err instanceof Error ? err.message : t('public.signup.apple_fail', 'Apple 가입에 실패했습니다.'));
+    } finally {
+      setSignupLoading(false);
+    }
+  }
 
   // ── Login helpers ──
   function uiErrorMessage(err: unknown): string {
@@ -440,6 +526,18 @@ export default function AuthModal({ open, initialMode, onClose, onSuccess }: Aut
               {loginLoading ? t('admin.login.loading', '로그인 중...') : t('public.login.submit_password', '이메일 로그인')}
             </button>
             <div ref={loginGoogleRef} style={{ display: 'flex', justifyContent: 'center', minHeight: 42 }} />
+            <div className="oauth-buttons">
+              {kakaoAvailable && (
+                <button className="oauth-btn oauth-btn-kakao" onClick={handleKakaoLogin} disabled={loginLoading} type="button">
+                  {t('public.login.kakao', '카카오 로그인')}
+                </button>
+              )}
+              {appleAvailable && (
+                <button className="oauth-btn oauth-btn-apple" onClick={() => void handleAppleLogin()} disabled={loginLoading} type="button">
+                  {t('public.login.apple', 'Apple로 로그인')}
+                </button>
+              )}
+            </div>
           </div>
         </form>
 
@@ -472,6 +570,18 @@ export default function AuthModal({ open, initialMode, onClose, onSuccess }: Aut
                 {t('public.signup.sns_desc', 'Google 계정으로 빠르게 가입')}
               </p>
               <div ref={signupGoogleRef} style={{ display: 'flex', justifyContent: 'center', minHeight: 42 }} />
+              <div className="oauth-buttons">
+                {kakaoAvailable && (
+                  <button className="oauth-btn oauth-btn-kakao" onClick={handleKakaoSignup} disabled={signupLoading} type="button">
+                    {t('public.signup.kakao', '카카오로 가입')}
+                  </button>
+                )}
+                {appleAvailable && (
+                  <button className="oauth-btn oauth-btn-apple" onClick={() => void handleAppleSignup()} disabled={signupLoading} type="button">
+                    {t('public.signup.apple', 'Apple로 가입')}
+                  </button>
+                )}
+              </div>
             </div>
           </div>
 
