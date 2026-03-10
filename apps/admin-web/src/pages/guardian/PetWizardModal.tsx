@@ -65,7 +65,7 @@ export default function PetWizardModal({ open, mode, editingPetId, options, t, s
       setPetWizardStep(1);
       setDiseaseRows([{ groupId: '', diseaseId: '' }]);
       setActivePet(null);
-      setFetchedDiseaseOptions([]);
+      setFetchedDiseaseOptions((prev) => (prev.length > 0 ? [] : prev));
       return;
     }
     if (!editingPetId) return;
