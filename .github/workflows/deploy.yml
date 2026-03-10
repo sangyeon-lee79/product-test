@@ -128,30 +128,30 @@ jobs:
           NEON_DATABASE_URL: ${{ secrets.NEON_DATABASE_URL }}
         run: |
           set -euo pipefail
-
-          # Create migration tracking table if not exists
-          psql "$NEON_DATABASE_URL" -v ON_ERROR_STOP=on -c "
-            CREATE TABLE IF NOT EXISTS schema_migrations (
-              filename TEXT PRIMARY KEY,
-              applied_at TIMESTAMPTZ DEFAULT NOW()
-            );
+          if [ -z "${NEON_DATABASE_URL:-}" ]; then
+            echo "⏭️  NEON_DATABASE_URL not set — skipping migrations"
+            exit 0
+          fi
+          node -e "
+            const { neon } = require('@neondatabase/serverless');
+            const fs = require('fs');
+            const path = require('path');
+            (async () => {
+              const sql = neon(process.env.NEON_DATABASE_URL);
+              const dir = 'src/db/pg-schema';
+              const files = fs.readdirSync(dir).filter(f => f.endsWith('.sql')).sort();
+              for (const file of files) {
+                console.log('Applying:', file);
+                const content = fs.readFileSync(path.join(dir, file), 'utf-8');
+                const stmts = content.replace(/--[^\n]*/g,'').split(/;\s*\n/).map(s=>s.trim()).filter(s=>s);
+                for (const stmt of stmts) {
+                  await sql.query(stmt + ';');
+                }
+                console.log('Done:', file);
+              }
+              console.log('All migrations applied');
+            })().catch(e => { console.error(e.message); process.exit(1); });
           "
-
-          # Apply each migration file in order
-          for file in src/db/pg-schema/*.sql; do
-            fname=$(basename "$file")
-            already=$(psql "$NEON_DATABASE_URL" -v ON_ERROR_STOP=on -tAc \
-              "SELECT 1 FROM schema_migrations WHERE filename = '$fname';")
-            if [ "$already" = "1" ]; then
-              echo "⏭️  Already applied: $fname"
-            else
-              echo "🚀 Applying: $fname"
-              psql "$NEON_DATABASE_URL" -v ON_ERROR_STOP=on -f "$file"
-              psql "$NEON_DATABASE_URL" -v ON_ERROR_STOP=on -c \
-                "INSERT INTO schema_migrations (filename) VALUES ('$fname');"
-              echo "✅ Applied: $fname"
-            fi
-          done
 
       - name: Deploy to Cloudflare Workers (with retry)
         working-directory: services/api
