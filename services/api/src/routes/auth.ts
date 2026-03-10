@@ -442,14 +442,9 @@ async function ensureDefaultSampleAccount(
     'SELECT id, role, password_hash, status FROM users WHERE email = ?'
   ).bind(sample.email).first<UserRow>();
 
-  const ensuredBase =
-    existing?.id
-      ? { id: existing.id, role: existing.role }
-      : sample.role === 'guardian'
-        ? await ensureBangulGuardianSample(env)
-        : sample.role === 'provider'
-          ? await ensureProviderSample(env)
-          : await ensureAdminSample(env);
+  const ensuredBase = existing?.id
+    ? { id: existing.id, role: existing.role }
+    : await ensureMinimalSampleUser(env, sample.email, sample.role);
   if (!ensuredBase) return null;
 
   const passwordHash = await forceSamplePassword(env, ensuredBase.id, sample.password);
@@ -464,6 +459,30 @@ async function ensureDefaultSampleAccount(
     password_hash: passwordHash,
     status: 'active',
   };
+}
+
+async function ensureMinimalSampleUser(
+  env: Env,
+  email: string,
+  role: JwtPayload['role'],
+): Promise<{ id: string; role: string } | null> {
+  const ts = now();
+  const existing = await env.DB.prepare(
+    'SELECT id, role FROM users WHERE email = ?'
+  ).bind(email).first<{ id: string; role: string }>();
+  const userId = existing?.id || newId();
+
+  if (!existing) {
+    await env.DB.prepare(
+      'INSERT INTO users (id, email, role, created_at, updated_at) VALUES (?, ?, ?, ?, ?)'
+    ).bind(userId, email, role, ts, ts).run();
+  } else if (existing.role !== role) {
+    await env.DB.prepare(
+      'UPDATE users SET role = ?, updated_at = ? WHERE id = ?'
+    ).bind(role, ts, userId).run();
+  }
+
+  return { id: userId, role };
 }
 
 async function ensureSamplePassword(env: Env, userId: string, password: string): Promise<string> {
