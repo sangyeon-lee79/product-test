@@ -63,7 +63,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
           </select>
           <div>{getStoredRole()} {t('admin.common.account', '계정')}</div>
           <button className="nav-item" style={{ padding: '6px 0', marginTop: 4 }}
-            onClick={() => { logout(); navigate('/login', { replace: true }); }}>
+            onClick={() => { logout(); navigate('/', { replace: true }); }}>
             {t('admin.common.logout', '로그아웃')}
           </button>
         </div>

@@ -182,7 +182,7 @@ export default function SupplierDashboardPage() {
 
   function handleLogout() {
     logout();
-    navigate('/login', { replace: true });
+    navigate('/', { replace: true });
   }
 
   return (
