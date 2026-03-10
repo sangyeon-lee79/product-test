@@ -1,4 +1,4 @@
-INSERT INTO i18n (
+INSERT OR IGNORE INTO i18n_translations (
   id, key, page,
   ko, en, ja, zh_cn, zh_tw, es, fr, de, pt, vi, th, id_lang, ar,
   is_active, created_at, updated_at
