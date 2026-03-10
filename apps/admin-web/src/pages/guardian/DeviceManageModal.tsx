@@ -2,12 +2,11 @@
 import { useEffect, useMemo, useState } from 'react';
 import { api, type DeviceBrand, type DeviceManufacturer, type DeviceModel, type DeviceType, type GuardianDevice, type Pet } from '../../lib/api';
 import type { Lang } from '../../lib/i18n';
-import { type Option, uiErrorMessage } from './guardianTypes';
+import { uiErrorMessage } from './guardianTypes';
 
 interface Props {
   open: boolean;
   selectedPet: Pet | null;
-  optDisease: Option[];
   lang: Lang;
   t: (key: string, fallback?: string) => string;
   setError: (msg: string) => void;
@@ -20,13 +19,12 @@ const EMPTY_FORM = {
   manufacturer_id: '',
   brand_id: '',
   model_id: '',
-  disease_item_id: '',
   nickname: '',
   is_default: false,
 };
 
 export default function DeviceManageModal({
-  open, selectedPet, optDisease,
+  open, selectedPet,
   lang, t, setError, onClose, onChanged,
 }: Props) {
   const [devices, setDevices] = useState<GuardianDevice[]>([]);
@@ -91,12 +89,12 @@ export default function DeviceManageModal({
     if (!open || !showForm || !form.manufacturer_id) { setBrands([]); return; }
     const run = async () => {
       try {
-        const rows = await api.devices.public.brands(form.manufacturer_id);
+        const rows = await api.devices.public.brands(form.manufacturer_id, form.device_type_item_id || undefined);
         setBrands(rows);
       } catch { setBrands([]); }
     };
     void run();
-  }, [open, showForm, form.manufacturer_id]);
+  }, [open, showForm, form.manufacturer_id, form.device_type_item_id]);
 
   // Load models when filter changes
   useEffect(() => {
@@ -115,19 +113,6 @@ export default function DeviceManageModal({
     void run();
   }, [open, showForm, form.device_type_item_id, form.manufacturer_id, form.brand_id]);
 
-  const diseaseOptionsForPet = useMemo(() => {
-    if (!selectedPet?.disease_history_ids) return optDisease;
-    let ids: string[] = [];
-    try {
-      const raw = selectedPet.disease_history_ids;
-      ids = Array.isArray(raw) ? raw : JSON.parse(raw as string) as string[];
-    } catch { return optDisease; }
-    if (!ids.length) return optDisease;
-    const set = new Set(ids);
-    const filtered = optDisease.filter((o) => set.has(o.id));
-    return filtered.length ? filtered : optDisease;
-  }, [optDisease, selectedPet?.disease_history_ids]);
-
   // Device type options: only types with model_count > 0, showing count
   const deviceTypeOptions = useMemo(
     () => deviceTypes
@@ -141,35 +126,63 @@ export default function DeviceManageModal({
   );
 
   const mfrOptions = useMemo(
-    () => manufacturers.filter((r) => r.status === 'active').map((r) => ({
-      id: r.id, key: r.key,
-      label: (r.display_label || '').trim() || (lang === 'ko' ? (r.name_ko || r.name_en || r.key) : (r.name_en || r.name_ko || r.key)),
-    })),
+    () => manufacturers
+      .filter((r) => r.status === 'active' && (r.model_count ?? 0) > 0)
+      .map((r) => {
+        const baseLabel = (r.display_label || '').trim() || (lang === 'ko' ? (r.name_ko || r.name_en || r.key) : (r.name_en || r.name_ko || r.key));
+        return {
+          id: r.id,
+          key: r.key,
+          label: `${baseLabel} (${r.model_count ?? 0})`,
+        };
+      }),
     [manufacturers, lang],
   );
 
   const brandOptions = useMemo(
-    () => brands.filter((r) => r.status === 'active').map((r) => ({
-      id: r.id, key: r.name_en || r.name_ko || r.id,
-      label: lang === 'ko' ? (r.name_ko || r.name_en || r.id) : (r.name_en || r.name_ko || r.id),
-    })),
+    () => brands
+      .filter((r) => r.status === 'active' && (r.model_count ?? 0) > 0)
+      .map((r) => {
+        const baseLabel = (r.display_label || '').trim() || (lang === 'ko' ? (r.name_ko || r.name_en || r.id) : (r.name_en || r.name_ko || r.id));
+        return {
+          id: r.id,
+          key: r.name_en || r.name_ko || r.id,
+          label: `${baseLabel} (${r.model_count ?? 0})`,
+        };
+      }),
     [brands, lang],
   );
 
   const modelOptions = useMemo(
     () => models.filter((r) => r.status === 'active').map((r) => ({
       id: r.id, key: r.model_code || r.model_name || r.id,
-      label: r.model_name || r.model_code || r.id,
+      label: r.model_display_label || r.model_name || r.model_code || r.id,
     })),
     [models],
   );
 
-  function renderSelect(label: string, value: string, options: Array<{ id: string; key: string; label: string }>, onChange: (v: string) => void, required = false, name?: string) {
+  function renderSelect(
+    label: string,
+    value: string,
+    options: Array<{ id: string; key: string; label: string }>,
+    onChange: (v: string) => void,
+    required = false,
+    name?: string,
+    placeholder?: string,
+    disabled = false,
+  ) {
     return (
       <div className="form-group">
         <label className="form-label" htmlFor={name}>{label}{required ? ' *' : ''}</label>
-        <select id={name} name={name} className="form-select" value={value} onChange={(e) => onChange(e.target.value)}>
-          <option value="">{t('common.select', 'Select')}</option>
+        <select
+          id={name}
+          name={name}
+          className="form-select"
+          value={value}
+          onChange={(e) => onChange(e.target.value)}
+          disabled={disabled}
+        >
+          <option value="">{placeholder || t('common.select', 'Select')}</option>
           {options.map((o) => <option key={o.id} value={o.id}>{o.label}</option>)}
         </select>
       </div>
@@ -189,7 +202,6 @@ export default function DeviceManageModal({
       manufacturer_id: '',
       brand_id: '',
       model_id: d.device_model_id,
-      disease_item_id: d.disease_item_id || '',
       nickname: d.nickname || '',
       is_default: !!d.is_default,
     });
@@ -202,14 +214,12 @@ export default function DeviceManageModal({
     try {
       if (editingId) {
         await api.pets.guardianDevices.update(petId, editingId, {
-          disease_item_id: form.disease_item_id || undefined,
           nickname: form.nickname,
           is_default: form.is_default,
         });
       } else {
         await api.pets.guardianDevices.create(petId, {
           device_model_id: form.model_id,
-          disease_item_id: form.disease_item_id || undefined,
           nickname: form.nickname || undefined,
           is_default: form.is_default,
         });
@@ -259,6 +269,14 @@ export default function DeviceManageModal({
     else if (brand) parts.push(brand);
     return parts.join(' · ');
   }
+
+  const hasBrandOptions = brandOptions.length > 0;
+  const brandSelectDisabled = !form.manufacturer_id || !hasBrandOptions;
+  const brandPlaceholder = !form.manufacturer_id
+    ? t('admin.device.select_manufacturer', '제조사를 먼저 선택하세요')
+    : hasBrandOptions
+      ? t('common.select', 'Select')
+      : t('guardian.feed.no_brand_data', '브랜드 없음');
 
   if (!open) return null;
 
@@ -314,9 +332,6 @@ export default function DeviceManageModal({
               <h4 style={{ margin: '0 0 12px', fontSize: 15 }}>
                 {editingId ? t('guardian.device.edit', '장비 수정') : t('guardian.device.add', '장비 추가')}
               </h4>
-              {renderSelect(t('guardian.device.disease', '질병'), form.disease_item_id, diseaseOptionsForPet, (v) => setForm((p) => ({
-                ...p, disease_item_id: v, device_type_item_id: '', manufacturer_id: '', brand_id: '', model_id: '',
-              })), false, 'device-disease')}
               {!editingId && (
                 <>
                   {renderSelect(t('guardian.health.measurement.device_type', '장치 유형'), form.device_type_item_id, deviceTypeOptions, (v) => setForm((p) => ({
@@ -327,7 +342,7 @@ export default function DeviceManageModal({
                   })), false, 'device-manufacturer')}
                   {renderSelect(t('guardian.health.measurement.brand', '브랜드'), form.brand_id, brandOptions, (v) => setForm((p) => ({
                     ...p, brand_id: v, model_id: '',
-                  })), false, 'device-brand')}
+                  })), false, 'device-brand', brandPlaceholder, brandSelectDisabled)}
                   {renderSelect(t('guardian.health.measurement.model', '모델'), form.model_id, modelOptions, (v) => setForm((p) => ({ ...p, model_id: v })), true, 'device-model')}
                 </>
               )}

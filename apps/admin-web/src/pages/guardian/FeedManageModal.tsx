@@ -299,12 +299,28 @@ export default function FeedManageModal({
     [models],
   );
 
-  function renderSelect(label: string, value: string, options: Array<{ id: string; key: string; label: string }>, onChange: (v: string) => void, required = false, name?: string) {
+  function renderSelect(
+    label: string,
+    value: string,
+    options: Array<{ id: string; key: string; label: string }>,
+    onChange: (v: string) => void,
+    required = false,
+    name?: string,
+    placeholder?: string,
+    disabled = false,
+  ) {
     return (
       <div className="form-group">
         <label className="form-label" htmlFor={name}>{label}{required ? ' *' : ''}</label>
-        <select id={name} name={name} className="form-select" value={value} onChange={(e) => onChange(e.target.value)}>
-          <option value="">{t('common.select', 'Select')}</option>
+        <select
+          id={name}
+          name={name}
+          className="form-select"
+          value={value}
+          onChange={(e) => onChange(e.target.value)}
+          disabled={disabled}
+        >
+          <option value="">{placeholder || t('common.select', 'Select')}</option>
           {options.map((o) => <option key={o.id} value={o.id}>{o.label}</option>)}
         </select>
       </div>
@@ -393,6 +409,14 @@ export default function FeedManageModal({
     return parts.join(' · ');
   }
 
+  const hasBrandOptions = brandOptions.length > 0;
+  const brandSelectDisabled = !form.manufacturer_id || !hasBrandOptions;
+  const brandPlaceholder = !form.manufacturer_id
+    ? t('admin.feed.select_manufacturer', '제조사를 먼저 선택하세요.')
+    : hasBrandOptions
+      ? t('common.select', 'Select')
+      : t('guardian.feed.no_brand_data', '브랜드 없음');
+
   if (!open) return null;
 
   return (
@@ -464,7 +488,7 @@ export default function FeedManageModal({
                   })), false, 'feed-manufacturer')}
                   {renderSelect(t('admin.feed.brand', '브랜드'), form.brand_id, brandOptions, (v) => setForm((p) => ({
                     ...p, brand_id: v, model_id: '',
-                  })), false, 'feed-brand')}
+                  })), false, 'feed-brand', brandPlaceholder, brandSelectDisabled)}
                   {renderSelect(t('admin.feed.models', '제품'), form.model_id, modelOptions, (v) => setForm((p) => ({ ...p, model_id: v })), true, 'feed-model')}
                 </>
               )}

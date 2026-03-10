@@ -130,27 +130,21 @@ export async function handleDevices(request: Request, env: Env, url: URL): Promi
         )`;
         binds.push(typeItemId, typeItemId);
       }
+      where += ` AND EXISTS (
+        SELECT 1
+        FROM device_models dm
+        WHERE dm.manufacturer_id = mfr.id
+          AND dm.status = 'active'`;
       if (typeItemId) {
-        where += ` AND (
-          EXISTS (
-            SELECT 1
-            FROM device_manufacturer_type_map mtm
-            WHERE mtm.manufacturer_id = mfr.id
-              AND mtm.type_item_id = ?
-          )
-          OR EXISTS (
-            SELECT 1
-            FROM device_models dm
-            WHERE dm.manufacturer_id = mfr.id
-              AND dm.status = 'active'
-              AND (
-                dm.device_type_item_id = ?
-                OR (dm.device_type_item_id IS NULL AND dm.device_type_id = ?)
-              )
-          )
-        )`;
-        binds.push(typeItemId, typeItemId, typeItemId);
+        where += `
+          AND (
+            dm.device_type_item_id = ?
+            OR (dm.device_type_item_id IS NULL AND dm.device_type_id = ?)
+          )`;
+        binds.push(typeItemId, typeItemId);
       }
+      where += `
+      )`;
       const rows = await env.DB.prepare(
        `SELECT
            mfr.*,
@@ -189,15 +183,47 @@ export async function handleDevices(request: Request, env: Env, url: URL): Promi
         )`;
         binds.push(typeItemId, typeItemId);
       }
+      if (manufacturerId) {
+        modelCountExpr = modelCountExpr.replace(
+          'WHERE dm.brand_id = b.id',
+          `WHERE dm.brand_id = b.id
+            AND (
+              dm.manufacturer_id = ?
+              OR EXISTS (
+                SELECT 1
+                FROM device_brand_manufacturer_map bmm2
+                WHERE bmm2.brand_id = b.id
+                  AND bmm2.manufacturer_id = ?
+              )
+            )`,
+        );
+        binds.push(manufacturerId, manufacturerId);
+      }
       let q = `SELECT
                  b.*,
                  ${modelCountExpr} AS model_count,
                  COALESCE(NULLIF(TRIM(tr.${langCol}), ''), NULLIF(TRIM(tr.en), ''), NULLIF(TRIM(tr.ko), ''), b.name_en, b.name_ko) AS display_label
                FROM device_brands b
                LEFT JOIN i18n_translations tr ON tr.key = b.name_key
-               WHERE b.status = 'active'`;
+               WHERE b.status = 'active'
+                 AND EXISTS (
+                   SELECT 1
+                   FROM device_models dm
+                   WHERE dm.brand_id = b.id
+                     AND dm.status = 'active'`;
       if (manufacturerId) {
-        q += ` AND (
+        q += `
+                     AND (
+                       dm.manufacturer_id = ?
+                       OR EXISTS (
+                         SELECT 1
+                         FROM device_brand_manufacturer_map bmm2
+                         WHERE bmm2.brand_id = b.id
+                           AND bmm2.manufacturer_id = ?
+                       )
+                     )
+                 )
+                 AND (
           b.manufacturer_id = ?
           OR EXISTS (
             SELECT 1
@@ -206,7 +232,38 @@ export async function handleDevices(request: Request, env: Env, url: URL): Promi
               AND bmm.manufacturer_id = ?
           )
         )`;
-        binds.push(manufacturerId, manufacturerId);
+        binds.push(manufacturerId, manufacturerId, manufacturerId, manufacturerId);
+      } else {
+        q += `
+                 )`;
+      }
+      if (typeItemId) {
+        q += ` AND EXISTS (
+          SELECT 1
+          FROM device_models dm_type
+          WHERE dm_type.brand_id = b.id
+            AND dm_type.status = 'active'
+            AND (
+              dm_type.device_type_item_id = ?
+              OR (dm_type.device_type_item_id IS NULL AND dm_type.device_type_id = ?)
+            )`;
+        if (manufacturerId) {
+          q += `
+            AND (
+              dm_type.manufacturer_id = ?
+              OR EXISTS (
+                SELECT 1
+                FROM device_brand_manufacturer_map bmm3
+                WHERE bmm3.brand_id = b.id
+                  AND bmm3.manufacturer_id = ?
+              )
+            )`;
+          binds.push(typeItemId, typeItemId, manufacturerId, manufacturerId);
+        } else {
+          binds.push(typeItemId, typeItemId);
+        }
+        q += `
+        )`;
       }
       q += ` ORDER BY COALESCE(NULLIF(TRIM(tr.${langCol}), ''), NULLIF(TRIM(tr.en), ''), NULLIF(TRIM(tr.ko), ''), b.name_en, b.name_ko)`;
       const rows = await env.DB.prepare(q).bind(...binds).all();
