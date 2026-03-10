@@ -202,7 +202,13 @@ export default function MasterPage() {
     const key = categoryChain[level];
     if (!key) return [];
     const all = (itemsByCategory[key] || []).slice().sort(sortByOrderAndLabel);
-    if (level === 0) return all.filter((it) => !it.parent_id);
+    if (level === 0) return all.filter((it) => {
+      if (it.parent_id) return false;
+      // Hide cross-dimensional items (l3) that have no parent but aren't true L1
+      const meta = typeof it.metadata === 'string' ? (() => { try { return JSON.parse(it.metadata); } catch { return {}; } })() : (it.metadata || {});
+      const lvl = meta.item_level;
+      return !lvl || lvl === 'l1';
+    });
 
     const parentId = selectedIds[level - 1];
     if (!parentId) return [];
