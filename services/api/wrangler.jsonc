@@ -23,7 +23,7 @@
 	"hyperdrive": [
 		{
 			"binding": "HYPERDRIVE",
-			"id": "caa43a77f6ff4129a69b7bcc21e77a93",
+			"id": "7a5070bd5794470c9584ff9bd5039e1d",
 			"localConnectionString": "postgresql://petfolio:petfolio_dev@localhost:5432/petfolio"
 		}
 	],
