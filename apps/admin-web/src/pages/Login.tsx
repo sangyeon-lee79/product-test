@@ -9,8 +9,10 @@ export default function Login() {
   const location = useLocation();
   const t = useT();
   const forcedAdmin = location.pathname === '/admin/login';
-  const [email, setEmail] = useState(forcedAdmin ? 'admin@petlife.com' : 'guardian@petlife.com');
-  const [password, setPassword] = useState('');
+  const defaultEmail = forcedAdmin ? 'admin@petlife.com' : 'guardian@petlife.com';
+  const defaultPassword = forcedAdmin ? 'Admin123!' : 'Guardian123!';
+  const [email, setEmail] = useState(defaultEmail);
+  const [password, setPassword] = useState(defaultPassword);
   const [loadingMode, setLoadingMode] = useState<'password' | ''>('');
   const [error, setError] = useState('');
   const title = useMemo(() => (forcedAdmin ? t('admin.login.console', 'Admin Console') : t('public.login.title', '로그인')), [forcedAdmin, t]);
