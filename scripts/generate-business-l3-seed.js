@@ -26,6 +26,13 @@ const TIMESTAMP = '2026-03-10 12:00:00';
 const CATEGORY_ID = 'mc-business-category';
 const I18N_PAGE = 'master';
 
+// L1 business → L2 parent mapping (L3 items are children of L2 professional roles)
+const BIZ_L2_PARENT = {
+  grooming: 'mi-business-groomer',
+  hospital: 'mi-business-doctor',
+  training: 'mi-business-trainer',
+};
+
 // Build breed lookup: breedSlug -> breedId
 const BREED_LOOKUP = {};
 for (const [id, slug] of DOG_BREEDS) BREED_LOOKUP[slug] = id;
@@ -89,11 +96,14 @@ function generate() {
           pet_type_l2_id: breedMasterId,
         });
 
+        // L3 parent = L2 professional role
+        const parentItemId = BIZ_L2_PARENT[bizSlug] || null;
+
         // master_items entry
         masterItems.push({
           id,
           category_id: CATEGORY_ID,
-          parent_item_id: null,
+          parent_item_id: parentItemId,
           code,
           name: null,
           description: null,

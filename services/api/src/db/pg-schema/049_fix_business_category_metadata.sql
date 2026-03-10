@@ -78,8 +78,32 @@ UPDATE master_items SET
   updated_at = NOW()
 WHERE id = 'mi-business-trainer';
 
--- L3 items: ensure metadata has item_level l3 (for any that might have been
--- inserted by older seed without proper metadata)
+-- L3 items: fix parent_item_id and ensure metadata has item_level l3
+-- Grooming L3 -> parent: groomer
+UPDATE master_items SET
+  parent_item_id = 'mi-business-groomer',
+  updated_at = NOW()
+WHERE category_id = 'mc-business-category'
+  AND id LIKE 'mi-svc-grooming-%'
+  AND (parent_item_id IS NULL OR parent_item_id != 'mi-business-groomer');
+
+-- Hospital L3 -> parent: doctor
+UPDATE master_items SET
+  parent_item_id = 'mi-business-doctor',
+  updated_at = NOW()
+WHERE category_id = 'mc-business-category'
+  AND id LIKE 'mi-svc-hospital-%'
+  AND (parent_item_id IS NULL OR parent_item_id != 'mi-business-doctor');
+
+-- Training L3 -> parent: trainer
+UPDATE master_items SET
+  parent_item_id = 'mi-business-trainer',
+  updated_at = NOW()
+WHERE category_id = 'mc-business-category'
+  AND id LIKE 'mi-svc-training-%'
+  AND (parent_item_id IS NULL OR parent_item_id != 'mi-business-trainer');
+
+-- L3 items: ensure metadata has item_level l3
 UPDATE master_items SET
   metadata = jsonb_set(metadata::jsonb, '{item_level}', '"l3"')::text,
   updated_at = NOW()

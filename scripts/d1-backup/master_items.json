@@ -6582,7 +6582,7 @@
   {
     "id": "mi-svc-grooming-dog-poodle-continental-clip",
     "category_id": "mc-business-category",
-    "parent_item_id": null,
+    "parent_item_id": "mi-business-groomer",
     "code": "grooming_dog_poodle_continental_clip",
     "name": null,
     "description": null,
@@ -6596,7 +6596,7 @@
   {
     "id": "mi-svc-grooming-dog-poodle-teddy-bear-cut",
     "category_id": "mc-business-category",
-    "parent_item_id": null,
+    "parent_item_id": "mi-business-groomer",
     "code": "grooming_dog_poodle_teddy_bear_cut",
     "name": null,
     "description": null,
@@ -6610,7 +6610,7 @@
   {
     "id": "mi-svc-grooming-dog-poodle-lamb-clip",
     "category_id": "mc-business-category",
-    "parent_item_id": null,
+    "parent_item_id": "mi-business-groomer",
     "code": "grooming_dog_poodle_lamb_clip",
     "name": null,
     "description": null,
@@ -6624,7 +6624,7 @@
   {
     "id": "mi-svc-grooming-dog-poodle-puppy-cut",
     "category_id": "mc-business-category",
-    "parent_item_id": null,
+    "parent_item_id": "mi-business-groomer",
     "code": "grooming_dog_poodle_puppy_cut",
     "name": null,
     "description": null,
@@ -6638,7 +6638,7 @@
   {
     "id": "mi-svc-grooming-dog-maltese-puppy-cut",
     "category_id": "mc-business-category",
-    "parent_item_id": null,
+    "parent_item_id": "mi-business-groomer",
     "code": "grooming_dog_maltese_puppy_cut",
     "name": null,
     "description": null,
@@ -6652,7 +6652,7 @@
   {
     "id": "mi-svc-grooming-dog-maltese-top-knot-cut",
     "category_id": "mc-business-category",
-    "parent_item_id": null,
+    "parent_item_id": "mi-business-groomer",
     "code": "grooming_dog_maltese_top_knot_cut",
     "name": null,
     "description": null,
@@ -6666,7 +6666,7 @@
   {
     "id": "mi-svc-grooming-dog-maltese-show-cut",
     "category_id": "mc-business-category",
-    "parent_item_id": null,
+    "parent_item_id": "mi-business-groomer",
     "code": "grooming_dog_maltese_show_cut",
     "name": null,
     "description": null,
@@ -6680,7 +6680,7 @@
   {
     "id": "mi-svc-grooming-dog-bichon-frise-powder-puff-cut",
     "category_id": "mc-business-category",
-    "parent_item_id": null,
+    "parent_item_id": "mi-business-groomer",
     "code": "grooming_dog_bichon_frise_powder_puff_cut",
     "name": null,
     "description": null,
@@ -6694,7 +6694,7 @@
   {
     "id": "mi-svc-grooming-dog-bichon-frise-puppy-cut",
     "category_id": "mc-business-category",
-    "parent_item_id": null,
+    "parent_item_id": "mi-business-groomer",
     "code": "grooming_dog_bichon_frise_puppy_cut",
     "name": null,
     "description": null,
@@ -6708,7 +6708,7 @@
   {
     "id": "mi-svc-grooming-dog-bichon-frise-short-trim",
     "category_id": "mc-business-category",
-    "parent_item_id": null,
+    "parent_item_id": "mi-business-groomer",
     "code": "grooming_dog_bichon_frise_short_trim",
     "name": null,
     "description": null,
@@ -6722,7 +6722,7 @@
   {
     "id": "mi-svc-grooming-dog-shih-tzu-puppy-cut",
     "category_id": "mc-business-category",
-    "parent_item_id": null,
+    "parent_item_id": "mi-business-groomer",
     "code": "grooming_dog_shih_tzu_puppy_cut",
     "name": null,
     "description": null,
@@ -6736,7 +6736,7 @@
   {
     "id": "mi-svc-grooming-dog-shih-tzu-teddy-bear-cut",
     "category_id": "mc-business-category",
-    "parent_item_id": null,
+    "parent_item_id": "mi-business-groomer",
     "code": "grooming_dog_shih_tzu_teddy_bear_cut",
     "name": null,
     "description": null,
@@ -6750,7 +6750,7 @@
   {
     "id": "mi-svc-grooming-dog-shih-tzu-top-knot-cut",
     "category_id": "mc-business-category",
-    "parent_item_id": null,
+    "parent_item_id": "mi-business-groomer",
     "code": "grooming_dog_shih_tzu_top_knot_cut",
     "name": null,
     "description": null,
@@ -6764,7 +6764,7 @@
   {
     "id": "mi-svc-grooming-dog-yorkshire-terrier-puppy-cut",
     "category_id": "mc-business-category",
-    "parent_item_id": null,
+    "parent_item_id": "mi-business-groomer",
     "code": "grooming_dog_yorkshire_terrier_puppy_cut",
     "name": null,
     "description": null,
@@ -6778,7 +6778,7 @@
   {
     "id": "mi-svc-grooming-dog-yorkshire-terrier-top-knot-cut",
     "category_id": "mc-business-category",
-    "parent_item_id": null,
+    "parent_item_id": "mi-business-groomer",
     "code": "grooming_dog_yorkshire_terrier_top_knot_cut",
     "name": null,
     "description": null,
@@ -6792,7 +6792,7 @@
   {
     "id": "mi-svc-grooming-dog-yorkshire-terrier-show-cut",
     "category_id": "mc-business-category",
-    "parent_item_id": null,
+    "parent_item_id": "mi-business-groomer",
     "code": "grooming_dog_yorkshire_terrier_show_cut",
     "name": null,
     "description": null,
@@ -6806,7 +6806,7 @@
   {
     "id": "mi-svc-grooming-dog-pomeranian-teddy-bear-cut",
     "category_id": "mc-business-category",
-    "parent_item_id": null,
+    "parent_item_id": "mi-business-groomer",
     "code": "grooming_dog_pomeranian_teddy_bear_cut",
     "name": null,
     "description": null,
@@ -6820,7 +6820,7 @@
   {
     "id": "mi-svc-grooming-dog-pomeranian-lion-cut",
     "category_id": "mc-business-category",
-    "parent_item_id": null,
+    "parent_item_id": "mi-business-groomer",
     "code": "grooming_dog_pomeranian_lion_cut",
     "name": null,
     "description": null,
@@ -6834,7 +6834,7 @@
   {
     "id": "mi-svc-grooming-dog-pomeranian-fox-cut",
     "category_id": "mc-business-category",
-    "parent_item_id": null,
+    "parent_item_id": "mi-business-groomer",
     "code": "grooming_dog_pomeranian_fox_cut",
     "name": null,
     "description": null,
@@ -6848,7 +6848,7 @@
   {
     "id": "mi-svc-grooming-dog-pomeranian-puppy-cut",
     "category_id": "mc-business-category",
-    "parent_item_id": null,
+    "parent_item_id": "mi-business-groomer",
     "code": "grooming_dog_pomeranian_puppy_cut",
     "name": null,
     "description": null,
@@ -6862,7 +6862,7 @@
   {
     "id": "mi-svc-grooming-dog-chihuahua-bath-and-brush",
     "category_id": "mc-business-category",
-    "parent_item_id": null,
+    "parent_item_id": "mi-business-groomer",
     "code": "grooming_dog_chihuahua_bath_and_brush",
     "name": null,
     "description": null,
@@ -6876,7 +6876,7 @@
   {
     "id": "mi-svc-grooming-dog-chihuahua-puppy-cut",
     "category_id": "mc-business-category",
-    "parent_item_id": null,
+    "parent_item_id": "mi-business-groomer",
     "code": "grooming_dog_chihuahua_puppy_cut",
     "name": null,
     "description": null,
@@ -6890,7 +6890,7 @@
   {
     "id": "mi-svc-grooming-dog-chihuahua-short-trim",
     "category_id": "mc-business-category",
-    "parent_item_id": null,
+    "parent_item_id": "mi-business-groomer",
     "code": "grooming_dog_chihuahua_short_trim",
     "name": null,
     "description": null,
@@ -6904,7 +6904,7 @@
   {
     "id": "mi-svc-grooming-dog-golden-breed-standard",
     "category_id": "mc-business-category",
-    "parent_item_id": null,
+    "parent_item_id": "mi-business-groomer",
     "code": "grooming_dog_golden_breed_standard",
     "name": null,
     "description": null,
@@ -6918,7 +6918,7 @@
   {
     "id": "mi-svc-grooming-dog-golden-summer-trim",
     "category_id": "mc-business-category",
-    "parent_item_id": null,
+    "parent_item_id": "mi-business-groomer",
     "code": "grooming_dog_golden_summer_trim",
     "name": null,
     "description": null,
@@ -6932,7 +6932,7 @@
   {
     "id": "mi-svc-grooming-dog-golden-feathering-trim",
     "category_id": "mc-business-category",
-    "parent_item_id": null,
+    "parent_item_id": "mi-business-groomer",
     "code": "grooming_dog_golden_feathering_trim",
     "name": null,
     "description": null,
@@ -6946,7 +6946,7 @@
   {
     "id": "mi-svc-grooming-dog-golden-bath-and-deshed",
     "category_id": "mc-business-category",
-    "parent_item_id": null,
+    "parent_item_id": "mi-business-groomer",
     "code": "grooming_dog_golden_bath_and_deshed",
     "name": null,
     "description": null,
@@ -6960,7 +6960,7 @@
   {
     "id": "mi-svc-grooming-dog-labrador-bath-and-deshed",
     "category_id": "mc-business-category",
-    "parent_item_id": null,
+    "parent_item_id": "mi-business-groomer",
     "code": "grooming_dog_labrador_bath_and_deshed",
     "name": null,
     "description": null,
@@ -6974,7 +6974,7 @@
   {
     "id": "mi-svc-grooming-dog-labrador-summer-trim",
     "category_id": "mc-business-category",
-    "parent_item_id": null,
+    "parent_item_id": "mi-business-groomer",
     "code": "grooming_dog_labrador_summer_trim",
     "name": null,
     "description": null,
@@ -6988,7 +6988,7 @@
   {
     "id": "mi-svc-grooming-dog-labrador-sanitary-trim",
     "category_id": "mc-business-category",
-    "parent_item_id": null,
+    "parent_item_id": "mi-business-groomer",
     "code": "grooming_dog_labrador_sanitary_trim",
     "name": null,
     "description": null,
@@ -7002,7 +7002,7 @@
   {
     "id": "mi-svc-grooming-dog-welsh-corgi-bath-and-deshed",
     "category_id": "mc-business-category",
-    "parent_item_id": null,
+    "parent_item_id": "mi-business-groomer",
     "code": "grooming_dog_welsh_corgi_bath_and_deshed",
     "name": null,
     "description": null,
@@ -7016,7 +7016,7 @@
   {
     "id": "mi-svc-grooming-dog-welsh-corgi-summer-trim",
     "category_id": "mc-business-category",
-    "parent_item_id": null,
+    "parent_item_id": "mi-business-groomer",
     "code": "grooming_dog_welsh_corgi_summer_trim",
     "name": null,
     "description": null,
@@ -7030,7 +7030,7 @@
   {
     "id": "mi-svc-grooming-dog-welsh-corgi-sanitary-trim",
     "category_id": "mc-business-category",
-    "parent_item_id": null,
+    "parent_item_id": "mi-business-groomer",
     "code": "grooming_dog_welsh_corgi_sanitary_trim",
     "name": null,
     "description": null,
@@ -7044,7 +7044,7 @@
   {
     "id": "mi-svc-grooming-dog-corgi-bath-and-deshed",
     "category_id": "mc-business-category",
-    "parent_item_id": null,
+    "parent_item_id": "mi-business-groomer",
     "code": "grooming_dog_corgi_bath_and_deshed",
     "name": null,
     "description": null,
@@ -7058,7 +7058,7 @@
   {
     "id": "mi-svc-grooming-dog-corgi-summer-trim",
     "category_id": "mc-business-category",
-    "parent_item_id": null,
+    "parent_item_id": "mi-business-groomer",
     "code": "grooming_dog_corgi_summer_trim",
     "name": null,
     "description": null,
@@ -7072,7 +7072,7 @@
   {
     "id": "mi-svc-grooming-dog-corgi-sanitary-trim",
     "category_id": "mc-business-category",
-    "parent_item_id": null,
+    "parent_item_id": "mi-business-groomer",
     "code": "grooming_dog_corgi_sanitary_trim",
     "name": null,
     "description": null,
@@ -7086,7 +7086,7 @@
   {
     "id": "mi-svc-grooming-dog-french-bulldog-bath-and-brush",
     "category_id": "mc-business-category",
-    "parent_item_id": null,
+    "parent_item_id": "mi-business-groomer",
     "code": "grooming_dog_french_bulldog_bath_and_brush",
     "name": null,
     "description": null,
@@ -7100,7 +7100,7 @@
   {
     "id": "mi-svc-grooming-dog-french-bulldog-wrinkle-care",
     "category_id": "mc-business-category",
-    "parent_item_id": null,
+    "parent_item_id": "mi-business-groomer",
     "code": "grooming_dog_french_bulldog_wrinkle_care",
     "name": null,
     "description": null,
@@ -7114,7 +7114,7 @@
   {
     "id": "mi-svc-grooming-dog-french-bulldog-short-trim",
     "category_id": "mc-business-category",
-    "parent_item_id": null,
+    "parent_item_id": "mi-business-groomer",
     "code": "grooming_dog_french_bulldog_short_trim",
     "name": null,
     "description": null,
@@ -7128,7 +7128,7 @@
   {
     "id": "mi-svc-grooming-dog-bulldog-bath-and-brush",
     "category_id": "mc-business-category",
-    "parent_item_id": null,
+    "parent_item_id": "mi-business-groomer",
     "code": "grooming_dog_bulldog_bath_and_brush",
     "name": null,
     "description": null,
@@ -7142,7 +7142,7 @@
   {
     "id": "mi-svc-grooming-dog-bulldog-wrinkle-care",
     "category_id": "mc-business-category",
-    "parent_item_id": null,
+    "parent_item_id": "mi-business-groomer",
     "code": "grooming_dog_bulldog_wrinkle_care",
     "name": null,
     "description": null,
@@ -7156,7 +7156,7 @@
   {
     "id": "mi-svc-grooming-dog-bulldog-short-trim",
     "category_id": "mc-business-category",
-    "parent_item_id": null,
+    "parent_item_id": "mi-business-groomer",
     "code": "grooming_dog_bulldog_short_trim",
     "name": null,
     "description": null,
@@ -7170,7 +7170,7 @@
   {
     "id": "mi-svc-grooming-dog-dachshund-bath-and-brush",
     "category_id": "mc-business-category",
-    "parent_item_id": null,
+    "parent_item_id": "mi-business-groomer",
     "code": "grooming_dog_dachshund_bath_and_brush",
     "name": null,
     "description": null,
@@ -7184,7 +7184,7 @@
   {
     "id": "mi-svc-grooming-dog-dachshund-wire-stripping",
     "category_id": "mc-business-category",
-    "parent_item_id": null,
+    "parent_item_id": "mi-business-groomer",
     "code": "grooming_dog_dachshund_wire_stripping",
     "name": null,
     "description": null,
@@ -7198,7 +7198,7 @@
   {
     "id": "mi-svc-grooming-dog-dachshund-short-trim",
     "category_id": "mc-business-category",
-    "parent_item_id": null,
+    "parent_item_id": "mi-business-groomer",
     "code": "grooming_dog_dachshund_short_trim",
     "name": null,
     "description": null,
@@ -7212,7 +7212,7 @@
   {
     "id": "mi-svc-grooming-dog-beagle-bath-and-brush",
     "category_id": "mc-business-category",
-    "parent_item_id": null,
+    "parent_item_id": "mi-business-groomer",
     "code": "grooming_dog_beagle_bath_and_brush",
     "name": null,
     "description": null,
@@ -7226,7 +7226,7 @@
   {
     "id": "mi-svc-grooming-dog-beagle-deshedding",
     "category_id": "mc-business-category",
-    "parent_item_id": null,
+    "parent_item_id": "mi-business-groomer",
     "code": "grooming_dog_beagle_deshedding",
     "name": null,
     "description": null,
@@ -7240,7 +7240,7 @@
   {
     "id": "mi-svc-grooming-dog-beagle-short-trim",
     "category_id": "mc-business-category",
-    "parent_item_id": null,
+    "parent_item_id": "mi-business-groomer",
     "code": "grooming_dog_beagle_short_trim",
     "name": null,
     "description": null,
@@ -7254,7 +7254,7 @@
   {
     "id": "mi-svc-grooming-dog-schnauzer-breed-standard",
     "category_id": "mc-business-category",
-    "parent_item_id": null,
+    "parent_item_id": "mi-business-groomer",
     "code": "grooming_dog_schnauzer_breed_standard",
     "name": null,
     "description": null,
@@ -7268,7 +7268,7 @@
   {
     "id": "mi-svc-grooming-dog-schnauzer-puppy-cut",
     "category_id": "mc-business-category",
-    "parent_item_id": null,
+    "parent_item_id": "mi-business-groomer",
     "code": "grooming_dog_schnauzer_puppy_cut",
     "name": null,
     "description": null,
@@ -7282,7 +7282,7 @@
   {
     "id": "mi-svc-grooming-dog-schnauzer-summer-cut",
     "category_id": "mc-business-category",
-    "parent_item_id": null,
+    "parent_item_id": "mi-business-groomer",
     "code": "grooming_dog_schnauzer_summer_cut",
     "name": null,
     "description": null,
@@ -7296,7 +7296,7 @@
   {
     "id": "mi-svc-grooming-dog-schnauzer-wire-stripping",
     "category_id": "mc-business-category",
-    "parent_item_id": null,
+    "parent_item_id": "mi-business-groomer",
     "code": "grooming_dog_schnauzer_wire_stripping",
     "name": null,
     "description": null,
@@ -7310,7 +7310,7 @@
   {
     "id": "mi-svc-grooming-dog-jindo-bath-and-deshed",
     "category_id": "mc-business-category",
-    "parent_item_id": null,
+    "parent_item_id": "mi-business-groomer",
     "code": "grooming_dog_jindo_bath_and_deshed",
     "name": null,
     "description": null,
@@ -7324,7 +7324,7 @@
   {
     "id": "mi-svc-grooming-dog-jindo-summer-trim",
     "category_id": "mc-business-category",
-    "parent_item_id": null,
+    "parent_item_id": "mi-business-groomer",
     "code": "grooming_dog_jindo_summer_trim",
     "name": null,
     "description": null,
@@ -7338,7 +7338,7 @@
   {
     "id": "mi-svc-grooming-dog-jindo-sanitary-trim",
     "category_id": "mc-business-category",
-    "parent_item_id": null,
+    "parent_item_id": "mi-business-groomer",
     "code": "grooming_dog_jindo_sanitary_trim",
     "name": null,
     "description": null,
@@ -7352,7 +7352,7 @@
   {
     "id": "mi-svc-grooming-dog-shiba-inu-bath-and-deshed",
     "category_id": "mc-business-category",
-    "parent_item_id": null,
+    "parent_item_id": "mi-business-groomer",
     "code": "grooming_dog_shiba_inu_bath_and_deshed",
     "name": null,
     "description": null,
@@ -7366,7 +7366,7 @@
   {
     "id": "mi-svc-grooming-dog-shiba-inu-summer-trim",
     "category_id": "mc-business-category",
-    "parent_item_id": null,
+    "parent_item_id": "mi-business-groomer",
     "code": "grooming_dog_shiba_inu_summer_trim",
     "name": null,
     "description": null,
@@ -7380,7 +7380,7 @@
   {
     "id": "mi-svc-grooming-dog-shiba-inu-sanitary-trim",
     "category_id": "mc-business-category",
-    "parent_item_id": null,
+    "parent_item_id": "mi-business-groomer",
     "code": "grooming_dog_shiba_inu_sanitary_trim",
     "name": null,
     "description": null,
@@ -7394,7 +7394,7 @@
   {
     "id": "mi-svc-grooming-dog-husky-bath-and-deshed",
     "category_id": "mc-business-category",
-    "parent_item_id": null,
+    "parent_item_id": "mi-business-groomer",
     "code": "grooming_dog_husky_bath_and_deshed",
     "name": null,
     "description": null,
@@ -7408,7 +7408,7 @@
   {
     "id": "mi-svc-grooming-dog-husky-line-trim",
     "category_id": "mc-business-category",
-    "parent_item_id": null,
+    "parent_item_id": "mi-business-groomer",
     "code": "grooming_dog_husky_line_trim",
     "name": null,
     "description": null,
@@ -7422,7 +7422,7 @@
   {
     "id": "mi-svc-grooming-dog-husky-sanitary-trim",
     "category_id": "mc-business-category",
-    "parent_item_id": null,
+    "parent_item_id": "mi-business-groomer",
     "code": "grooming_dog_husky_sanitary_trim",
     "name": null,
     "description": null,
@@ -7436,7 +7436,7 @@
   {
     "id": "mi-svc-grooming-dog-samoyed-bath-and-deshed",
     "category_id": "mc-business-category",
-    "parent_item_id": null,
+    "parent_item_id": "mi-business-groomer",
     "code": "grooming_dog_samoyed_bath_and_deshed",
     "name": null,
     "description": null,
@@ -7450,7 +7450,7 @@
   {
     "id": "mi-svc-grooming-dog-samoyed-line-trim",
     "category_id": "mc-business-category",
-    "parent_item_id": null,
+    "parent_item_id": "mi-business-groomer",
     "code": "grooming_dog_samoyed_line_trim",
     "name": null,
     "description": null,
@@ -7464,7 +7464,7 @@
   {
     "id": "mi-svc-grooming-dog-samoyed-teddy-bear-cut",
     "category_id": "mc-business-category",
-    "parent_item_id": null,
+    "parent_item_id": "mi-business-groomer",
     "code": "grooming_dog_samoyed_teddy_bear_cut",
     "name": null,
     "description": null,
@@ -7478,7 +7478,7 @@
   {
     "id": "mi-svc-grooming-dog-akita-bath-and-deshed",
     "category_id": "mc-business-category",
-    "parent_item_id": null,
+    "parent_item_id": "mi-business-groomer",
     "code": "grooming_dog_akita_bath_and_deshed",
     "name": null,
     "description": null,
@@ -7492,7 +7492,7 @@
   {
     "id": "mi-svc-grooming-dog-akita-line-trim",
     "category_id": "mc-business-category",
-    "parent_item_id": null,
+    "parent_item_id": "mi-business-groomer",
     "code": "grooming_dog_akita_line_trim",
     "name": null,
     "description": null,
@@ -7506,7 +7506,7 @@
   {
     "id": "mi-svc-grooming-dog-akita-sanitary-trim",
     "category_id": "mc-business-category",
-    "parent_item_id": null,
+    "parent_item_id": "mi-business-groomer",
     "code": "grooming_dog_akita_sanitary_trim",
     "name": null,
     "description": null,
@@ -7520,7 +7520,7 @@
   {
     "id": "mi-svc-grooming-dog-chow-chow-teddy-bear-cut",
     "category_id": "mc-business-category",
-    "parent_item_id": null,
+    "parent_item_id": "mi-business-groomer",
     "code": "grooming_dog_chow_chow_teddy_bear_cut",
     "name": null,
     "description": null,
@@ -7534,7 +7534,7 @@
   {
     "id": "mi-svc-grooming-dog-chow-chow-lion-cut",
     "category_id": "mc-business-category",
-    "parent_item_id": null,
+    "parent_item_id": "mi-business-groomer",
     "code": "grooming_dog_chow_chow_lion_cut",
     "name": null,
     "description": null,
@@ -7548,7 +7548,7 @@
   {
     "id": "mi-svc-grooming-dog-chow-chow-bath-and-deshed",
     "category_id": "mc-business-category",
-    "parent_item_id": null,
+    "parent_item_id": "mi-business-groomer",
     "code": "grooming_dog_chow_chow_bath_and_deshed",
     "name": null,
     "description": null,
@@ -7562,7 +7562,7 @@
   {
     "id": "mi-svc-grooming-dog-mixed-dog-puppy-cut",
     "category_id": "mc-business-category",
-    "parent_item_id": null,
+    "parent_item_id": "mi-business-groomer",
     "code": "grooming_dog_mixed_dog_puppy_cut",
     "name": null,
     "description": null,
@@ -7576,7 +7576,7 @@
   {
     "id": "mi-svc-grooming-dog-mixed-dog-short-trim",
     "category_id": "mc-business-category",
-    "parent_item_id": null,
+    "parent_item_id": "mi-business-groomer",
     "code": "grooming_dog_mixed_dog_short_trim",
     "name": null,
     "description": null,
@@ -7590,7 +7590,7 @@
   {
     "id": "mi-svc-grooming-dog-mixed-dog-summer-cut",
     "category_id": "mc-business-category",
-    "parent_item_id": null,
+    "parent_item_id": "mi-business-groomer",
     "code": "grooming_dog_mixed_dog_summer_cut",
     "name": null,
     "description": null,
@@ -7604,7 +7604,7 @@
   {
     "id": "mi-svc-grooming-dog-other-dog-puppy-cut",
     "category_id": "mc-business-category",
-    "parent_item_id": null,
+    "parent_item_id": "mi-business-groomer",
     "code": "grooming_dog_other_dog_puppy_cut",
     "name": null,
     "description": null,
@@ -7618,7 +7618,7 @@
   {
     "id": "mi-svc-grooming-dog-other-dog-short-trim",
     "category_id": "mc-business-category",
-    "parent_item_id": null,
+    "parent_item_id": "mi-business-groomer",
     "code": "grooming_dog_other_dog_short_trim",
     "name": null,
     "description": null,
@@ -7632,7 +7632,7 @@
   {
     "id": "mi-svc-grooming-dog-other-dog-summer-cut",
     "category_id": "mc-business-category",
-    "parent_item_id": null,
+    "parent_item_id": "mi-business-groomer",
     "code": "grooming_dog_other_dog_summer_cut",
     "name": null,
     "description": null,
@@ -7646,7 +7646,7 @@
   {
     "id": "mi-svc-grooming-cat-ksh-bath-and-brush",
     "category_id": "mc-business-category",
-    "parent_item_id": null,
+    "parent_item_id": "mi-business-groomer",
     "code": "grooming_cat_ksh_bath_and_brush",
     "name": null,
     "description": null,
@@ -7660,7 +7660,7 @@
   {
     "id": "mi-svc-grooming-cat-ksh-sanitary-trim",
     "category_id": "mc-business-category",
-    "parent_item_id": null,
+    "parent_item_id": "mi-business-groomer",
     "code": "grooming_cat_ksh_sanitary_trim",
     "name": null,
     "description": null,
@@ -7674,7 +7674,7 @@
   {
     "id": "mi-svc-grooming-cat-ksh-short-trim",
     "category_id": "mc-business-category",
-    "parent_item_id": null,
+    "parent_item_id": "mi-business-groomer",
     "code": "grooming_cat_ksh_short_trim",
     "name": null,
     "description": null,
@@ -7688,7 +7688,7 @@
   {
     "id": "mi-svc-grooming-cat-rblue-bath-and-brush",
     "category_id": "mc-business-category",
-    "parent_item_id": null,
+    "parent_item_id": "mi-business-groomer",
     "code": "grooming_cat_rblue_bath_and_brush",
     "name": null,
     "description": null,
@@ -7702,7 +7702,7 @@
   {
     "id": "mi-svc-grooming-cat-rblue-sanitary-trim",
     "category_id": "mc-business-category",
-    "parent_item_id": null,
+    "parent_item_id": "mi-business-groomer",
     "code": "grooming_cat_rblue_sanitary_trim",
     "name": null,
     "description": null,
@@ -7716,7 +7716,7 @@
   {
     "id": "mi-svc-grooming-cat-rblue-short-trim",
     "category_id": "mc-business-category",
-    "parent_item_id": null,
+    "parent_item_id": "mi-business-groomer",
     "code": "grooming_cat_rblue_short_trim",
     "name": null,
     "description": null,
@@ -7730,7 +7730,7 @@
   {
     "id": "mi-svc-grooming-cat-persian-lion-cut",
     "category_id": "mc-business-category",
-    "parent_item_id": null,
+    "parent_item_id": "mi-business-groomer",
     "code": "grooming_cat_persian_lion_cut",
     "name": null,
     "description": null,
@@ -7744,7 +7744,7 @@
   {
     "id": "mi-svc-grooming-cat-persian-teddy-bear-cut",
     "category_id": "mc-business-category",
-    "parent_item_id": null,
+    "parent_item_id": "mi-business-groomer",
     "code": "grooming_cat_persian_teddy_bear_cut",
     "name": null,
     "description": null,
@@ -7758,7 +7758,7 @@
   {
     "id": "mi-svc-grooming-cat-persian-comb-cut",
     "category_id": "mc-business-category",
-    "parent_item_id": null,
+    "parent_item_id": "mi-business-groomer",
     "code": "grooming_cat_persian_comb_cut",
     "name": null,
     "description": null,
@@ -7772,7 +7772,7 @@
   {
     "id": "mi-svc-grooming-cat-persian-sanitary-trim",
     "category_id": "mc-business-category",
-    "parent_item_id": null,
+    "parent_item_id": "mi-business-groomer",
     "code": "grooming_cat_persian_sanitary_trim",
     "name": null,
     "description": null,
@@ -7786,7 +7786,7 @@
   {
     "id": "mi-svc-grooming-cat-british-sh-bath-and-brush",
     "category_id": "mc-business-category",
-    "parent_item_id": null,
+    "parent_item_id": "mi-business-groomer",
     "code": "grooming_cat_british_sh_bath_and_brush",
     "name": null,
     "description": null,
@@ -7800,7 +7800,7 @@
   {
     "id": "mi-svc-grooming-cat-british-sh-sanitary-trim",
     "category_id": "mc-business-category",
-    "parent_item_id": null,
+    "parent_item_id": "mi-business-groomer",
     "code": "grooming_cat_british_sh_sanitary_trim",
     "name": null,
     "description": null,
@@ -7814,7 +7814,7 @@
   {
     "id": "mi-svc-grooming-cat-british-sh-short-trim",
     "category_id": "mc-business-category",
-    "parent_item_id": null,
+    "parent_item_id": "mi-business-groomer",
     "code": "grooming_cat_british_sh_short_trim",
     "name": null,
     "description": null,
@@ -7828,7 +7828,7 @@
   {
     "id": "mi-svc-grooming-cat-scottish-fold-bath-and-brush",
     "category_id": "mc-business-category",
-    "parent_item_id": null,
+    "parent_item_id": "mi-business-groomer",
     "code": "grooming_cat_scottish_fold_bath_and_brush",
     "name": null,
     "description": null,
@@ -7842,7 +7842,7 @@
   {
     "id": "mi-svc-grooming-cat-scottish-fold-sanitary-trim",
     "category_id": "mc-business-category",
-    "parent_item_id": null,
+    "parent_item_id": "mi-business-groomer",
     "code": "grooming_cat_scottish_fold_sanitary_trim",
     "name": null,
     "description": null,
@@ -7856,7 +7856,7 @@
   {
     "id": "mi-svc-grooming-cat-scottish-fold-short-trim",
     "category_id": "mc-business-category",
-    "parent_item_id": null,
+    "parent_item_id": "mi-business-groomer",
     "code": "grooming_cat_scottish_fold_short_trim",
     "name": null,
     "description": null,
@@ -7870,7 +7870,7 @@
   {
     "id": "mi-svc-grooming-cat-munchkin-bath-and-brush",
     "category_id": "mc-business-category",
-    "parent_item_id": null,
+    "parent_item_id": "mi-business-groomer",
     "code": "grooming_cat_munchkin_bath_and_brush",
     "name": null,
     "description": null,
@@ -7884,7 +7884,7 @@
   {
     "id": "mi-svc-grooming-cat-munchkin-sanitary-trim",
     "category_id": "mc-business-category",
-    "parent_item_id": null,
+    "parent_item_id": "mi-business-groomer",
     "code": "grooming_cat_munchkin_sanitary_trim",
     "name": null,
     "description": null,
@@ -7898,7 +7898,7 @@
   {
     "id": "mi-svc-grooming-cat-munchkin-belly-trim",
     "category_id": "mc-business-category",
-    "parent_item_id": null,
+    "parent_item_id": "mi-business-groomer",
     "code": "grooming_cat_munchkin_belly_trim",
     "name": null,
     "description": null,
@@ -7912,7 +7912,7 @@
   {
     "id": "mi-svc-grooming-cat-siamese-bath-and-brush",
     "category_id": "mc-business-category",
-    "parent_item_id": null,
+    "parent_item_id": "mi-business-groomer",
     "code": "grooming_cat_siamese_bath_and_brush",
     "name": null,
     "description": null,
@@ -7926,7 +7926,7 @@
   {
     "id": "mi-svc-grooming-cat-siamese-sanitary-trim",
     "category_id": "mc-business-category",
-    "parent_item_id": null,
+    "parent_item_id": "mi-business-groomer",
     "code": "grooming_cat_siamese_sanitary_trim",
     "name": null,
     "description": null,
@@ -7940,7 +7940,7 @@
   {
     "id": "mi-svc-grooming-cat-siamese-short-trim",
     "category_id": "mc-business-category",
-    "parent_item_id": null,
+    "parent_item_id": "mi-business-groomer",
     "code": "grooming_cat_siamese_short_trim",
     "name": null,
     "description": null,
@@ -7954,7 +7954,7 @@
   {
     "id": "mi-svc-grooming-cat-norwegian-forest-lion-cut",
     "category_id": "mc-business-category",
-    "parent_item_id": null,
+    "parent_item_id": "mi-business-groomer",
     "code": "grooming_cat_norwegian_forest_lion_cut",
     "name": null,
     "description": null,
@@ -7968,7 +7968,7 @@
   {
     "id": "mi-svc-grooming-cat-norwegian-forest-comb-cut",
     "category_id": "mc-business-category",
-    "parent_item_id": null,
+    "parent_item_id": "mi-business-groomer",
     "code": "grooming_cat_norwegian_forest_comb_cut",
     "name": null,
     "description": null,
@@ -7982,7 +7982,7 @@
   {
     "id": "mi-svc-grooming-cat-norwegian-forest-sanitary-trim",
     "category_id": "mc-business-category",
-    "parent_item_id": null,
+    "parent_item_id": "mi-business-groomer",
     "code": "grooming_cat_norwegian_forest_sanitary_trim",
     "name": null,
     "description": null,
@@ -7996,7 +7996,7 @@
   {
     "id": "mi-svc-grooming-cat-bengal-bath-and-brush",
     "category_id": "mc-business-category",
-    "parent_item_id": null,
+    "parent_item_id": "mi-business-groomer",
     "code": "grooming_cat_bengal_bath_and_brush",
     "name": null,
     "description": null,
@@ -8010,7 +8010,7 @@
   {
     "id": "mi-svc-grooming-cat-bengal-short-trim",
     "category_id": "mc-business-category",
-    "parent_item_id": null,
+    "parent_item_id": "mi-business-groomer",
     "code": "grooming_cat_bengal_short_trim",
     "name": null,
     "description": null,
@@ -8024,7 +8024,7 @@
   {
     "id": "mi-svc-grooming-cat-ragdoll-lion-cut",
     "category_id": "mc-business-category",
-    "parent_item_id": null,
+    "parent_item_id": "mi-business-groomer",
     "code": "grooming_cat_ragdoll_lion_cut",
     "name": null,
     "description": null,
@@ -8038,7 +8038,7 @@
   {
     "id": "mi-svc-grooming-cat-ragdoll-comb-cut",
     "category_id": "mc-business-category",
-    "parent_item_id": null,
+    "parent_item_id": "mi-business-groomer",
     "code": "grooming_cat_ragdoll_comb_cut",
     "name": null,
     "description": null,
@@ -8052,7 +8052,7 @@
   {
     "id": "mi-svc-grooming-cat-ragdoll-sanitary-trim",
     "category_id": "mc-business-category",
-    "parent_item_id": null,
+    "parent_item_id": "mi-business-groomer",
     "code": "grooming_cat_ragdoll_sanitary_trim",
     "name": null,
     "description": null,
@@ -8066,7 +8066,7 @@
   {
     "id": "mi-svc-grooming-cat-sphynx-bath-and-skin-care",
     "category_id": "mc-business-category",
-    "parent_item_id": null,
+    "parent_item_id": "mi-business-groomer",
     "code": "grooming_cat_sphynx_bath_and_skin_care",
     "name": null,
     "description": null,
@@ -8080,7 +8080,7 @@
   {
     "id": "mi-svc-grooming-cat-sphynx-nail-care",
     "category_id": "mc-business-category",
-    "parent_item_id": null,
+    "parent_item_id": "mi-business-groomer",
     "code": "grooming_cat_sphynx_nail_care",
     "name": null,
     "description": null,
@@ -8094,7 +8094,7 @@
   {
     "id": "mi-svc-grooming-cat-maine-coon-lion-cut",
     "category_id": "mc-business-category",
-    "parent_item_id": null,
+    "parent_item_id": "mi-business-groomer",
     "code": "grooming_cat_maine_coon_lion_cut",
     "name": null,
     "description": null,
@@ -8108,7 +8108,7 @@
   {
     "id": "mi-svc-grooming-cat-maine-coon-comb-cut",
     "category_id": "mc-business-category",
-    "parent_item_id": null,
+    "parent_item_id": "mi-business-groomer",
     "code": "grooming_cat_maine_coon_comb_cut",
     "name": null,
     "description": null,
@@ -8122,7 +8122,7 @@
   {
     "id": "mi-svc-grooming-cat-maine-coon-belly-trim",
     "category_id": "mc-business-category",
-    "parent_item_id": null,
+    "parent_item_id": "mi-business-groomer",
     "code": "grooming_cat_maine_coon_belly_trim",
     "name": null,
     "description": null,
@@ -8136,7 +8136,7 @@
   {
     "id": "mi-svc-grooming-cat-american-sh-bath-and-brush",
     "category_id": "mc-business-category",
-    "parent_item_id": null,
+    "parent_item_id": "mi-business-groomer",
     "code": "grooming_cat_american_sh_bath_and_brush",
     "name": null,
     "description": null,
@@ -8150,7 +8150,7 @@
   {
     "id": "mi-svc-grooming-cat-american-sh-sanitary-trim",
     "category_id": "mc-business-category",
-    "parent_item_id": null,
+    "parent_item_id": "mi-business-groomer",
     "code": "grooming_cat_american_sh_sanitary_trim",
     "name": null,
     "description": null,
@@ -8164,7 +8164,7 @@
   {
     "id": "mi-svc-grooming-cat-american-sh-short-trim",
     "category_id": "mc-business-category",
-    "parent_item_id": null,
+    "parent_item_id": "mi-business-groomer",
     "code": "grooming_cat_american_sh_short_trim",
     "name": null,
     "description": null,
@@ -8178,7 +8178,7 @@
   {
     "id": "mi-svc-grooming-cat-abyssinian-bath-and-brush",
     "category_id": "mc-business-category",
-    "parent_item_id": null,
+    "parent_item_id": "mi-business-groomer",
     "code": "grooming_cat_abyssinian_bath_and_brush",
     "name": null,
     "description": null,
@@ -8192,7 +8192,7 @@
   {
     "id": "mi-svc-grooming-cat-abyssinian-short-trim",
     "category_id": "mc-business-category",
-    "parent_item_id": null,
+    "parent_item_id": "mi-business-groomer",
     "code": "grooming_cat_abyssinian_short_trim",
     "name": null,
     "description": null,
@@ -8206,7 +8206,7 @@
   {
     "id": "mi-svc-grooming-cat-birman-comb-cut",
     "category_id": "mc-business-category",
-    "parent_item_id": null,
+    "parent_item_id": "mi-business-groomer",
     "code": "grooming_cat_birman_comb_cut",
     "name": null,
     "description": null,
@@ -8220,7 +8220,7 @@
   {
     "id": "mi-svc-grooming-cat-birman-sanitary-trim",
     "category_id": "mc-business-category",
-    "parent_item_id": null,
+    "parent_item_id": "mi-business-groomer",
     "code": "grooming_cat_birman_sanitary_trim",
     "name": null,
     "description": null,
@@ -8234,7 +8234,7 @@
   {
     "id": "mi-svc-grooming-cat-birman-lion-cut",
     "category_id": "mc-business-category",
-    "parent_item_id": null,
+    "parent_item_id": "mi-business-groomer",
     "code": "grooming_cat_birman_lion_cut",
     "name": null,
     "description": null,
@@ -8248,7 +8248,7 @@
   {
     "id": "mi-svc-grooming-cat-burmese-bath-and-brush",
     "category_id": "mc-business-category",
-    "parent_item_id": null,
+    "parent_item_id": "mi-business-groomer",
     "code": "grooming_cat_burmese_bath_and_brush",
     "name": null,
     "description": null,
@@ -8262,7 +8262,7 @@
   {
     "id": "mi-svc-grooming-cat-burmese-short-trim",
     "category_id": "mc-business-category",
-    "parent_item_id": null,
+    "parent_item_id": "mi-business-groomer",
     "code": "grooming_cat_burmese_short_trim",
     "name": null,
     "description": null,
@@ -8276,7 +8276,7 @@
   {
     "id": "mi-svc-grooming-cat-oriental-sh-bath-and-brush",
     "category_id": "mc-business-category",
-    "parent_item_id": null,
+    "parent_item_id": "mi-business-groomer",
     "code": "grooming_cat_oriental_sh_bath_and_brush",
     "name": null,
     "description": null,
@@ -8290,7 +8290,7 @@
   {
     "id": "mi-svc-grooming-cat-oriental-sh-short-trim",
     "category_id": "mc-business-category",
-    "parent_item_id": null,
+    "parent_item_id": "mi-business-groomer",
     "code": "grooming_cat_oriental_sh_short_trim",
     "name": null,
     "description": null,
@@ -8304,7 +8304,7 @@
   {
     "id": "mi-svc-grooming-cat-mixed-cat-lion-cut",
     "category_id": "mc-business-category",
-    "parent_item_id": null,
+    "parent_item_id": "mi-business-groomer",
     "code": "grooming_cat_mixed_cat_lion_cut",
     "name": null,
     "description": null,
@@ -8318,7 +8318,7 @@
   {
     "id": "mi-svc-grooming-cat-mixed-cat-sanitary-trim",
     "category_id": "mc-business-category",
-    "parent_item_id": null,
+    "parent_item_id": "mi-business-groomer",
     "code": "grooming_cat_mixed_cat_sanitary_trim",
     "name": null,
     "description": null,
@@ -8332,7 +8332,7 @@
   {
     "id": "mi-svc-grooming-cat-mixed-cat-short-trim",
     "category_id": "mc-business-category",
-    "parent_item_id": null,
+    "parent_item_id": "mi-business-groomer",
     "code": "grooming_cat_mixed_cat_short_trim",
     "name": null,
     "description": null,
@@ -8346,7 +8346,7 @@
   {
     "id": "mi-svc-grooming-cat-other-cat-lion-cut",
     "category_id": "mc-business-category",
-    "parent_item_id": null,
+    "parent_item_id": "mi-business-groomer",
     "code": "grooming_cat_other_cat_lion_cut",
     "name": null,
     "description": null,
@@ -8360,7 +8360,7 @@
   {
     "id": "mi-svc-grooming-cat-other-cat-sanitary-trim",
     "category_id": "mc-business-category",
-    "parent_item_id": null,
+    "parent_item_id": "mi-business-groomer",
     "code": "grooming_cat_other_cat_sanitary_trim",
     "name": null,
     "description": null,
@@ -8374,7 +8374,7 @@
   {
     "id": "mi-svc-grooming-cat-other-cat-short-trim",
     "category_id": "mc-business-category",
-    "parent_item_id": null,
+    "parent_item_id": "mi-business-groomer",
     "code": "grooming_cat_other_cat_short_trim",
     "name": null,
     "description": null,
@@ -8388,7 +8388,7 @@
   {
     "id": "mi-svc-hospital-dog-poodle-eye-care",
     "category_id": "mc-business-category",
-    "parent_item_id": null,
+    "parent_item_id": "mi-business-doctor",
     "code": "hospital_dog_poodle_eye_care",
     "name": null,
     "description": null,
@@ -8402,7 +8402,7 @@
   {
     "id": "mi-svc-hospital-dog-poodle-dental-scaling",
     "category_id": "mc-business-category",
-    "parent_item_id": null,
+    "parent_item_id": "mi-business-doctor",
     "code": "hospital_dog_poodle_dental_scaling",
     "name": null,
     "description": null,
@@ -8416,7 +8416,7 @@
   {
     "id": "mi-svc-hospital-dog-poodle-hip-screening",
     "category_id": "mc-business-category",
-    "parent_item_id": null,
+    "parent_item_id": "mi-business-doctor",
     "code": "hospital_dog_poodle_hip_screening",
     "name": null,
     "description": null,
@@ -8430,7 +8430,7 @@
   {
     "id": "mi-svc-hospital-dog-maltese-dental-scaling",
     "category_id": "mc-business-category",
-    "parent_item_id": null,
+    "parent_item_id": "mi-business-doctor",
     "code": "hospital_dog_maltese_dental_scaling",
     "name": null,
     "description": null,
@@ -8444,7 +8444,7 @@
   {
     "id": "mi-svc-hospital-dog-maltese-patella-check",
     "category_id": "mc-business-category",
-    "parent_item_id": null,
+    "parent_item_id": "mi-business-doctor",
     "code": "hospital_dog_maltese_patella_check",
     "name": null,
     "description": null,
@@ -8458,7 +8458,7 @@
   {
     "id": "mi-svc-hospital-dog-maltese-eye-care",
     "category_id": "mc-business-category",
-    "parent_item_id": null,
+    "parent_item_id": "mi-business-doctor",
     "code": "hospital_dog_maltese_eye_care",
     "name": null,
     "description": null,
@@ -8472,7 +8472,7 @@
   {
     "id": "mi-svc-hospital-dog-bichon-frise-dental-scaling",
     "category_id": "mc-business-category",
-    "parent_item_id": null,
+    "parent_item_id": "mi-business-doctor",
     "code": "hospital_dog_bichon_frise_dental_scaling",
     "name": null,
     "description": null,
@@ -8486,7 +8486,7 @@
   {
     "id": "mi-svc-hospital-dog-bichon-frise-patella-check",
     "category_id": "mc-business-category",
-    "parent_item_id": null,
+    "parent_item_id": "mi-business-doctor",
     "code": "hospital_dog_bichon_frise_patella_check",
     "name": null,
     "description": null,
@@ -8500,7 +8500,7 @@
   {
     "id": "mi-svc-hospital-dog-bichon-frise-allergy-treatment",
     "category_id": "mc-business-category",
-    "parent_item_id": null,
+    "parent_item_id": "mi-business-doctor",
     "code": "hospital_dog_bichon_frise_allergy_treatment",
     "name": null,
     "description": null,
@@ -8514,7 +8514,7 @@
   {
     "id": "mi-svc-hospital-dog-shih-tzu-eye-care",
     "category_id": "mc-business-category",
-    "parent_item_id": null,
+    "parent_item_id": "mi-business-doctor",
     "code": "hospital_dog_shih_tzu_eye_care",
     "name": null,
     "description": null,
@@ -8528,7 +8528,7 @@
   {
     "id": "mi-svc-hospital-dog-shih-tzu-dental-scaling",
     "category_id": "mc-business-category",
-    "parent_item_id": null,
+    "parent_item_id": "mi-business-doctor",
     "code": "hospital_dog_shih_tzu_dental_scaling",
     "name": null,
     "description": null,
@@ -8542,7 +8542,7 @@
   {
     "id": "mi-svc-hospital-dog-shih-tzu-respiratory-check",
     "category_id": "mc-business-category",
-    "parent_item_id": null,
+    "parent_item_id": "mi-business-doctor",
     "code": "hospital_dog_shih_tzu_respiratory_check",
     "name": null,
     "description": null,
@@ -8556,7 +8556,7 @@
   {
     "id": "mi-svc-hospital-dog-yorkshire-terrier-dental-scaling",
     "category_id": "mc-business-category",
-    "parent_item_id": null,
+    "parent_item_id": "mi-business-doctor",
     "code": "hospital_dog_yorkshire_terrier_dental_scaling",
     "name": null,
     "description": null,
@@ -8570,7 +8570,7 @@
   {
     "id": "mi-svc-hospital-dog-yorkshire-terrier-patella-check",
     "category_id": "mc-business-category",
-    "parent_item_id": null,
+    "parent_item_id": "mi-business-doctor",
     "code": "hospital_dog_yorkshire_terrier_patella_check",
     "name": null,
     "description": null,
@@ -8584,7 +8584,7 @@
   {
     "id": "mi-svc-hospital-dog-yorkshire-terrier-trachea-check",
     "category_id": "mc-business-category",
-    "parent_item_id": null,
+    "parent_item_id": "mi-business-doctor",
     "code": "hospital_dog_yorkshire_terrier_trachea_check",
     "name": null,
     "description": null,
@@ -8598,7 +8598,7 @@
   {
     "id": "mi-svc-hospital-dog-pomeranian-patella-check",
     "category_id": "mc-business-category",
-    "parent_item_id": null,
+    "parent_item_id": "mi-business-doctor",
     "code": "hospital_dog_pomeranian_patella_check",
     "name": null,
     "description": null,
@@ -8612,7 +8612,7 @@
   {
     "id": "mi-svc-hospital-dog-pomeranian-dental-scaling",
     "category_id": "mc-business-category",
-    "parent_item_id": null,
+    "parent_item_id": "mi-business-doctor",
     "code": "hospital_dog_pomeranian_dental_scaling",
     "name": null,
     "description": null,
@@ -8626,7 +8626,7 @@
   {
     "id": "mi-svc-hospital-dog-pomeranian-trachea-check",
     "category_id": "mc-business-category",
-    "parent_item_id": null,
+    "parent_item_id": "mi-business-doctor",
     "code": "hospital_dog_pomeranian_trachea_check",
     "name": null,
     "description": null,
@@ -8640,7 +8640,7 @@
   {
     "id": "mi-svc-hospital-dog-chihuahua-dental-scaling",
     "category_id": "mc-business-category",
-    "parent_item_id": null,
+    "parent_item_id": "mi-business-doctor",
     "code": "hospital_dog_chihuahua_dental_scaling",
     "name": null,
     "description": null,
@@ -8654,7 +8654,7 @@
   {
     "id": "mi-svc-hospital-dog-chihuahua-patella-check",
     "category_id": "mc-business-category",
-    "parent_item_id": null,
+    "parent_item_id": "mi-business-doctor",
     "code": "hospital_dog_chihuahua_patella_check",
     "name": null,
     "description": null,
@@ -8668,7 +8668,7 @@
   {
     "id": "mi-svc-hospital-dog-chihuahua-eye-care",
     "category_id": "mc-business-category",
-    "parent_item_id": null,
+    "parent_item_id": "mi-business-doctor",
     "code": "hospital_dog_chihuahua_eye_care",
     "name": null,
     "description": null,
@@ -8682,7 +8682,7 @@
   {
     "id": "mi-svc-hospital-dog-golden-hip-screening",
     "category_id": "mc-business-category",
-    "parent_item_id": null,
+    "parent_item_id": "mi-business-doctor",
     "code": "hospital_dog_golden_hip_screening",
     "name": null,
     "description": null,
@@ -8696,7 +8696,7 @@
   {
     "id": "mi-svc-hospital-dog-golden-cancer-screening",
     "category_id": "mc-business-category",
-    "parent_item_id": null,
+    "parent_item_id": "mi-business-doctor",
     "code": "hospital_dog_golden_cancer_screening",
     "name": null,
     "description": null,
@@ -8710,7 +8710,7 @@
   {
     "id": "mi-svc-hospital-dog-golden-allergy-treatment",
     "category_id": "mc-business-category",
-    "parent_item_id": null,
+    "parent_item_id": "mi-business-doctor",
     "code": "hospital_dog_golden_allergy_treatment",
     "name": null,
     "description": null,
@@ -8724,7 +8724,7 @@
   {
     "id": "mi-svc-hospital-dog-labrador-hip-screening",
     "category_id": "mc-business-category",
-    "parent_item_id": null,
+    "parent_item_id": "mi-business-doctor",
     "code": "hospital_dog_labrador_hip_screening",
     "name": null,
     "description": null,
@@ -8738,7 +8738,7 @@
   {
     "id": "mi-svc-hospital-dog-labrador-obesity-mgmt",
     "category_id": "mc-business-category",
-    "parent_item_id": null,
+    "parent_item_id": "mi-business-doctor",
     "code": "hospital_dog_labrador_obesity_mgmt",
     "name": null,
     "description": null,
@@ -8752,7 +8752,7 @@
   {
     "id": "mi-svc-hospital-dog-labrador-eye-care",
     "category_id": "mc-business-category",
-    "parent_item_id": null,
+    "parent_item_id": "mi-business-doctor",
     "code": "hospital_dog_labrador_eye_care",
     "name": null,
     "description": null,
@@ -8766,7 +8766,7 @@
   {
     "id": "mi-svc-hospital-dog-welsh-corgi-hip-screening",
     "category_id": "mc-business-category",
-    "parent_item_id": null,
+    "parent_item_id": "mi-business-doctor",
     "code": "hospital_dog_welsh_corgi_hip_screening",
     "name": null,
     "description": null,
@@ -8780,7 +8780,7 @@
   {
     "id": "mi-svc-hospital-dog-welsh-corgi-spinal-screening",
     "category_id": "mc-business-category",
-    "parent_item_id": null,
+    "parent_item_id": "mi-business-doctor",
     "code": "hospital_dog_welsh_corgi_spinal_screening",
     "name": null,
     "description": null,
@@ -8794,7 +8794,7 @@
   {
     "id": "mi-svc-hospital-dog-welsh-corgi-obesity-mgmt",
     "category_id": "mc-business-category",
-    "parent_item_id": null,
+    "parent_item_id": "mi-business-doctor",
     "code": "hospital_dog_welsh_corgi_obesity_mgmt",
     "name": null,
     "description": null,
@@ -8808,7 +8808,7 @@
   {
     "id": "mi-svc-hospital-dog-corgi-hip-screening",
     "category_id": "mc-business-category",
-    "parent_item_id": null,
+    "parent_item_id": "mi-business-doctor",
     "code": "hospital_dog_corgi_hip_screening",
     "name": null,
     "description": null,
@@ -8822,7 +8822,7 @@
   {
     "id": "mi-svc-hospital-dog-corgi-spinal-screening",
     "category_id": "mc-business-category",
-    "parent_item_id": null,
+    "parent_item_id": "mi-business-doctor",
     "code": "hospital_dog_corgi_spinal_screening",
     "name": null,
     "description": null,
@@ -8836,7 +8836,7 @@
   {
     "id": "mi-svc-hospital-dog-corgi-obesity-mgmt",
     "category_id": "mc-business-category",
-    "parent_item_id": null,
+    "parent_item_id": "mi-business-doctor",
     "code": "hospital_dog_corgi_obesity_mgmt",
     "name": null,
     "description": null,
@@ -8850,7 +8850,7 @@
   {
     "id": "mi-svc-hospital-dog-french-bulldog-brachy-airway",
     "category_id": "mc-business-category",
-    "parent_item_id": null,
+    "parent_item_id": "mi-business-doctor",
     "code": "hospital_dog_french_bulldog_brachy_airway",
     "name": null,
     "description": null,
@@ -8864,7 +8864,7 @@
   {
     "id": "mi-svc-hospital-dog-french-bulldog-skin-fold-care",
     "category_id": "mc-business-category",
-    "parent_item_id": null,
+    "parent_item_id": "mi-business-doctor",
     "code": "hospital_dog_french_bulldog_skin_fold_care",
     "name": null,
     "description": null,
@@ -8878,7 +8878,7 @@
   {
     "id": "mi-svc-hospital-dog-french-bulldog-spinal-screening",
     "category_id": "mc-business-category",
-    "parent_item_id": null,
+    "parent_item_id": "mi-business-doctor",
     "code": "hospital_dog_french_bulldog_spinal_screening",
     "name": null,
     "description": null,
@@ -8892,7 +8892,7 @@
   {
     "id": "mi-svc-hospital-dog-bulldog-brachy-airway",
     "category_id": "mc-business-category",
-    "parent_item_id": null,
+    "parent_item_id": "mi-business-doctor",
     "code": "hospital_dog_bulldog_brachy_airway",
     "name": null,
     "description": null,
@@ -8906,7 +8906,7 @@
   {
     "id": "mi-svc-hospital-dog-bulldog-skin-fold-care",
     "category_id": "mc-business-category",
-    "parent_item_id": null,
+    "parent_item_id": "mi-business-doctor",
     "code": "hospital_dog_bulldog_skin_fold_care",
     "name": null,
     "description": null,
@@ -8920,7 +8920,7 @@
   {
     "id": "mi-svc-hospital-dog-bulldog-joint-care",
     "category_id": "mc-business-category",
-    "parent_item_id": null,
+    "parent_item_id": "mi-business-doctor",
     "code": "hospital_dog_bulldog_joint_care",
     "name": null,
     "description": null,
@@ -8934,7 +8934,7 @@
   {
     "id": "mi-svc-hospital-dog-dachshund-ivdd-screening",
     "category_id": "mc-business-category",
-    "parent_item_id": null,
+    "parent_item_id": "mi-business-doctor",
     "code": "hospital_dog_dachshund_ivdd_screening",
     "name": null,
     "description": null,
@@ -8948,7 +8948,7 @@
   {
     "id": "mi-svc-hospital-dog-dachshund-obesity-mgmt",
     "category_id": "mc-business-category",
-    "parent_item_id": null,
+    "parent_item_id": "mi-business-doctor",
     "code": "hospital_dog_dachshund_obesity_mgmt",
     "name": null,
     "description": null,
@@ -8962,7 +8962,7 @@
   {
     "id": "mi-svc-hospital-dog-dachshund-dental-scaling",
     "category_id": "mc-business-category",
-    "parent_item_id": null,
+    "parent_item_id": "mi-business-doctor",
     "code": "hospital_dog_dachshund_dental_scaling",
     "name": null,
     "description": null,
@@ -8976,7 +8976,7 @@
   {
     "id": "mi-svc-hospital-dog-beagle-ear-care",
     "category_id": "mc-business-category",
-    "parent_item_id": null,
+    "parent_item_id": "mi-business-doctor",
     "code": "hospital_dog_beagle_ear_care",
     "name": null,
     "description": null,
@@ -8990,7 +8990,7 @@
   {
     "id": "mi-svc-hospital-dog-beagle-obesity-mgmt",
     "category_id": "mc-business-category",
-    "parent_item_id": null,
+    "parent_item_id": "mi-business-doctor",
     "code": "hospital_dog_beagle_obesity_mgmt",
     "name": null,
     "description": null,
@@ -9004,7 +9004,7 @@
   {
     "id": "mi-svc-hospital-dog-beagle-epilepsy-check",
     "category_id": "mc-business-category",
-    "parent_item_id": null,
+    "parent_item_id": "mi-business-doctor",
     "code": "hospital_dog_beagle_epilepsy_check",
     "name": null,
     "description": null,
@@ -9018,7 +9018,7 @@
   {
     "id": "mi-svc-hospital-dog-schnauzer-pancreatitis-chk",
     "category_id": "mc-business-category",
-    "parent_item_id": null,
+    "parent_item_id": "mi-business-doctor",
     "code": "hospital_dog_schnauzer_pancreatitis_chk",
     "name": null,
     "description": null,
@@ -9032,7 +9032,7 @@
   {
     "id": "mi-svc-hospital-dog-schnauzer-eye-care",
     "category_id": "mc-business-category",
-    "parent_item_id": null,
+    "parent_item_id": "mi-business-doctor",
     "code": "hospital_dog_schnauzer_eye_care",
     "name": null,
     "description": null,
@@ -9046,7 +9046,7 @@
   {
     "id": "mi-svc-hospital-dog-schnauzer-allergy-treatment",
     "category_id": "mc-business-category",
-    "parent_item_id": null,
+    "parent_item_id": "mi-business-doctor",
     "code": "hospital_dog_schnauzer_allergy_treatment",
     "name": null,
     "description": null,
@@ -9060,7 +9060,7 @@
   {
     "id": "mi-svc-hospital-dog-jindo-allergy-treatment",
     "category_id": "mc-business-category",
-    "parent_item_id": null,
+    "parent_item_id": "mi-business-doctor",
     "code": "hospital_dog_jindo_allergy_treatment",
     "name": null,
     "description": null,
@@ -9074,7 +9074,7 @@
   {
     "id": "mi-svc-hospital-dog-jindo-hip-screening",
     "category_id": "mc-business-category",
-    "parent_item_id": null,
+    "parent_item_id": "mi-business-doctor",
     "code": "hospital_dog_jindo_hip_screening",
     "name": null,
     "description": null,
@@ -9088,7 +9088,7 @@
   {
     "id": "mi-svc-hospital-dog-shiba-inu-allergy-treatment",
     "category_id": "mc-business-category",
-    "parent_item_id": null,
+    "parent_item_id": "mi-business-doctor",
     "code": "hospital_dog_shiba_inu_allergy_treatment",
     "name": null,
     "description": null,
@@ -9102,7 +9102,7 @@
   {
     "id": "mi-svc-hospital-dog-shiba-inu-eye-care",
     "category_id": "mc-business-category",
-    "parent_item_id": null,
+    "parent_item_id": "mi-business-doctor",
     "code": "hospital_dog_shiba_inu_eye_care",
     "name": null,
     "description": null,
@@ -9116,7 +9116,7 @@
   {
     "id": "mi-svc-hospital-dog-shiba-inu-patella-check",
     "category_id": "mc-business-category",
-    "parent_item_id": null,
+    "parent_item_id": "mi-business-doctor",
     "code": "hospital_dog_shiba_inu_patella_check",
     "name": null,
     "description": null,
@@ -9130,7 +9130,7 @@
   {
     "id": "mi-svc-hospital-dog-husky-hip-screening",
     "category_id": "mc-business-category",
-    "parent_item_id": null,
+    "parent_item_id": "mi-business-doctor",
     "code": "hospital_dog_husky_hip_screening",
     "name": null,
     "description": null,
@@ -9144,7 +9144,7 @@
   {
     "id": "mi-svc-hospital-dog-husky-eye-care",
     "category_id": "mc-business-category",
-    "parent_item_id": null,
+    "parent_item_id": "mi-business-doctor",
     "code": "hospital_dog_husky_eye_care",
     "name": null,
     "description": null,
@@ -9158,7 +9158,7 @@
   {
     "id": "mi-svc-hospital-dog-husky-thyroid-check",
     "category_id": "mc-business-category",
-    "parent_item_id": null,
+    "parent_item_id": "mi-business-doctor",
     "code": "hospital_dog_husky_thyroid_check",
     "name": null,
     "description": null,
@@ -9172,7 +9172,7 @@
   {
     "id": "mi-svc-hospital-dog-samoyed-hip-screening",
     "category_id": "mc-business-category",
-    "parent_item_id": null,
+    "parent_item_id": "mi-business-doctor",
     "code": "hospital_dog_samoyed_hip_screening",
     "name": null,
     "description": null,
@@ -9186,7 +9186,7 @@
   {
     "id": "mi-svc-hospital-dog-samoyed-cardiac-screening",
     "category_id": "mc-business-category",
-    "parent_item_id": null,
+    "parent_item_id": "mi-business-doctor",
     "code": "hospital_dog_samoyed_cardiac_screening",
     "name": null,
     "description": null,
@@ -9200,7 +9200,7 @@
   {
     "id": "mi-svc-hospital-dog-samoyed-eye-care",
     "category_id": "mc-business-category",
-    "parent_item_id": null,
+    "parent_item_id": "mi-business-doctor",
     "code": "hospital_dog_samoyed_eye_care",
     "name": null,
     "description": null,
@@ -9214,7 +9214,7 @@
   {
     "id": "mi-svc-hospital-dog-akita-hip-screening",
     "category_id": "mc-business-category",
-    "parent_item_id": null,
+    "parent_item_id": "mi-business-doctor",
     "code": "hospital_dog_akita_hip_screening",
     "name": null,
     "description": null,
@@ -9228,7 +9228,7 @@
   {
     "id": "mi-svc-hospital-dog-akita-thyroid-check",
     "category_id": "mc-business-category",
-    "parent_item_id": null,
+    "parent_item_id": "mi-business-doctor",
     "code": "hospital_dog_akita_thyroid_check",
     "name": null,
     "description": null,
@@ -9242,7 +9242,7 @@
   {
     "id": "mi-svc-hospital-dog-akita-eye-care",
     "category_id": "mc-business-category",
-    "parent_item_id": null,
+    "parent_item_id": "mi-business-doctor",
     "code": "hospital_dog_akita_eye_care",
     "name": null,
     "description": null,
@@ -9256,7 +9256,7 @@
   {
     "id": "mi-svc-hospital-dog-chow-chow-hip-screening",
     "category_id": "mc-business-category",
-    "parent_item_id": null,
+    "parent_item_id": "mi-business-doctor",
     "code": "hospital_dog_chow_chow_hip_screening",
     "name": null,
     "description": null,
@@ -9270,7 +9270,7 @@
   {
     "id": "mi-svc-hospital-dog-chow-chow-eye-care",
     "category_id": "mc-business-category",
-    "parent_item_id": null,
+    "parent_item_id": "mi-business-doctor",
     "code": "hospital_dog_chow_chow_eye_care",
     "name": null,
     "description": null,
@@ -9284,7 +9284,7 @@
   {
     "id": "mi-svc-hospital-dog-chow-chow-thyroid-check",
     "category_id": "mc-business-category",
-    "parent_item_id": null,
+    "parent_item_id": "mi-business-doctor",
     "code": "hospital_dog_chow_chow_thyroid_check",
     "name": null,
     "description": null,
@@ -9298,7 +9298,7 @@
   {
     "id": "mi-svc-hospital-dog-mixed-dog-health-screening",
     "category_id": "mc-business-category",
-    "parent_item_id": null,
+    "parent_item_id": "mi-business-doctor",
     "code": "hospital_dog_mixed_dog_health_screening",
     "name": null,
     "description": null,
@@ -9312,7 +9312,7 @@
   {
     "id": "mi-svc-hospital-dog-mixed-dog-dental-scaling",
     "category_id": "mc-business-category",
-    "parent_item_id": null,
+    "parent_item_id": "mi-business-doctor",
     "code": "hospital_dog_mixed_dog_dental_scaling",
     "name": null,
     "description": null,
@@ -9326,7 +9326,7 @@
   {
     "id": "mi-svc-hospital-dog-other-dog-health-screening",
     "category_id": "mc-business-category",
-    "parent_item_id": null,
+    "parent_item_id": "mi-business-doctor",
     "code": "hospital_dog_other_dog_health_screening",
     "name": null,
     "description": null,
@@ -9340,7 +9340,7 @@
   {
     "id": "mi-svc-hospital-dog-other-dog-dental-scaling",
     "category_id": "mc-business-category",
-    "parent_item_id": null,
+    "parent_item_id": "mi-business-doctor",
     "code": "hospital_dog_other_dog_dental_scaling",
     "name": null,
     "description": null,
@@ -9354,7 +9354,7 @@
   {
     "id": "mi-svc-hospital-cat-ksh-dental-care",
     "category_id": "mc-business-category",
-    "parent_item_id": null,
+    "parent_item_id": "mi-business-doctor",
     "code": "hospital_cat_ksh_dental_care",
     "name": null,
     "description": null,
@@ -9368,7 +9368,7 @@
   {
     "id": "mi-svc-hospital-cat-ksh-kidney-check",
     "category_id": "mc-business-category",
-    "parent_item_id": null,
+    "parent_item_id": "mi-business-doctor",
     "code": "hospital_cat_ksh_kidney_check",
     "name": null,
     "description": null,
@@ -9382,7 +9382,7 @@
   {
     "id": "mi-svc-hospital-cat-rblue-kidney-check",
     "category_id": "mc-business-category",
-    "parent_item_id": null,
+    "parent_item_id": "mi-business-doctor",
     "code": "hospital_cat_rblue_kidney_check",
     "name": null,
     "description": null,
@@ -9396,7 +9396,7 @@
   {
     "id": "mi-svc-hospital-cat-rblue-urinary-care",
     "category_id": "mc-business-category",
-    "parent_item_id": null,
+    "parent_item_id": "mi-business-doctor",
     "code": "hospital_cat_rblue_urinary_care",
     "name": null,
     "description": null,
@@ -9410,7 +9410,7 @@
   {
     "id": "mi-svc-hospital-cat-persian-eye-care",
     "category_id": "mc-business-category",
-    "parent_item_id": null,
+    "parent_item_id": "mi-business-doctor",
     "code": "hospital_cat_persian_eye_care",
     "name": null,
     "description": null,
@@ -9424,7 +9424,7 @@
   {
     "id": "mi-svc-hospital-cat-persian-respiratory-check",
     "category_id": "mc-business-category",
-    "parent_item_id": null,
+    "parent_item_id": "mi-business-doctor",
     "code": "hospital_cat_persian_respiratory_check",
     "name": null,
     "description": null,
@@ -9438,7 +9438,7 @@
   {
     "id": "mi-svc-hospital-cat-persian-kidney-check",
     "category_id": "mc-business-category",
-    "parent_item_id": null,
+    "parent_item_id": "mi-business-doctor",
     "code": "hospital_cat_persian_kidney_check",
     "name": null,
     "description": null,
@@ -9452,7 +9452,7 @@
   {
     "id": "mi-svc-hospital-cat-british-sh-cardiac-screening",
     "category_id": "mc-business-category",
-    "parent_item_id": null,
+    "parent_item_id": "mi-business-doctor",
     "code": "hospital_cat_british_sh_cardiac_screening",
     "name": null,
     "description": null,
@@ -9466,7 +9466,7 @@
   {
     "id": "mi-svc-hospital-cat-british-sh-kidney-check",
     "category_id": "mc-business-category",
-    "parent_item_id": null,
+    "parent_item_id": "mi-business-doctor",
     "code": "hospital_cat_british_sh_kidney_check",
     "name": null,
     "description": null,
@@ -9480,7 +9480,7 @@
   {
     "id": "mi-svc-hospital-cat-scottish-fold-joint-care",
     "category_id": "mc-business-category",
-    "parent_item_id": null,
+    "parent_item_id": "mi-business-doctor",
     "code": "hospital_cat_scottish_fold_joint_care",
     "name": null,
     "description": null,
@@ -9494,7 +9494,7 @@
   {
     "id": "mi-svc-hospital-cat-scottish-fold-cardiac-screening",
     "category_id": "mc-business-category",
-    "parent_item_id": null,
+    "parent_item_id": "mi-business-doctor",
     "code": "hospital_cat_scottish_fold_cardiac_screening",
     "name": null,
     "description": null,
@@ -9508,7 +9508,7 @@
   {
     "id": "mi-svc-hospital-cat-munchkin-spinal-screening",
     "category_id": "mc-business-category",
-    "parent_item_id": null,
+    "parent_item_id": "mi-business-doctor",
     "code": "hospital_cat_munchkin_spinal_screening",
     "name": null,
     "description": null,
@@ -9522,7 +9522,7 @@
   {
     "id": "mi-svc-hospital-cat-munchkin-joint-care",
     "category_id": "mc-business-category",
-    "parent_item_id": null,
+    "parent_item_id": "mi-business-doctor",
     "code": "hospital_cat_munchkin_joint_care",
     "name": null,
     "description": null,
@@ -9536,7 +9536,7 @@
   {
     "id": "mi-svc-hospital-cat-siamese-dental-care",
     "category_id": "mc-business-category",
-    "parent_item_id": null,
+    "parent_item_id": "mi-business-doctor",
     "code": "hospital_cat_siamese_dental_care",
     "name": null,
     "description": null,
@@ -9550,7 +9550,7 @@
   {
     "id": "mi-svc-hospital-cat-siamese-respiratory-check",
     "category_id": "mc-business-category",
-    "parent_item_id": null,
+    "parent_item_id": "mi-business-doctor",
     "code": "hospital_cat_siamese_respiratory_check",
     "name": null,
     "description": null,
@@ -9564,7 +9564,7 @@
   {
     "id": "mi-svc-hospital-cat-siamese-eye-care",
     "category_id": "mc-business-category",
-    "parent_item_id": null,
+    "parent_item_id": "mi-business-doctor",
     "code": "hospital_cat_siamese_eye_care",
     "name": null,
     "description": null,
@@ -9578,7 +9578,7 @@
   {
     "id": "mi-svc-hospital-cat-norwegian-forest-cardiac-screening",
     "category_id": "mc-business-category",
-    "parent_item_id": null,
+    "parent_item_id": "mi-business-doctor",
     "code": "hospital_cat_norwegian_forest_cardiac_screening",
     "name": null,
     "description": null,
@@ -9592,7 +9592,7 @@
   {
     "id": "mi-svc-hospital-cat-norwegian-forest-kidney-check",
     "category_id": "mc-business-category",
-    "parent_item_id": null,
+    "parent_item_id": "mi-business-doctor",
     "code": "hospital_cat_norwegian_forest_kidney_check",
     "name": null,
     "description": null,
@@ -9606,7 +9606,7 @@
   {
     "id": "mi-svc-hospital-cat-norwegian-forest-joint-care",
     "category_id": "mc-business-category",
-    "parent_item_id": null,
+    "parent_item_id": "mi-business-doctor",
     "code": "hospital_cat_norwegian_forest_joint_care",
     "name": null,
     "description": null,
@@ -9620,7 +9620,7 @@
   {
     "id": "mi-svc-hospital-cat-bengal-cardiac-screening",
     "category_id": "mc-business-category",
-    "parent_item_id": null,
+    "parent_item_id": "mi-business-doctor",
     "code": "hospital_cat_bengal_cardiac_screening",
     "name": null,
     "description": null,
@@ -9634,7 +9634,7 @@
   {
     "id": "mi-svc-hospital-cat-bengal-dental-care",
     "category_id": "mc-business-category",
-    "parent_item_id": null,
+    "parent_item_id": "mi-business-doctor",
     "code": "hospital_cat_bengal_dental_care",
     "name": null,
     "description": null,
@@ -9648,7 +9648,7 @@
   {
     "id": "mi-svc-hospital-cat-ragdoll-cardiac-screening",
     "category_id": "mc-business-category",
-    "parent_item_id": null,
+    "parent_item_id": "mi-business-doctor",
     "code": "hospital_cat_ragdoll_cardiac_screening",
     "name": null,
     "description": null,
@@ -9662,7 +9662,7 @@
   {
     "id": "mi-svc-hospital-cat-ragdoll-kidney-check",
     "category_id": "mc-business-category",
-    "parent_item_id": null,
+    "parent_item_id": "mi-business-doctor",
     "code": "hospital_cat_ragdoll_kidney_check",
     "name": null,
     "description": null,
@@ -9676,7 +9676,7 @@
   {
     "id": "mi-svc-hospital-cat-sphynx-skin-care",
     "category_id": "mc-business-category",
-    "parent_item_id": null,
+    "parent_item_id": "mi-business-doctor",
     "code": "hospital_cat_sphynx_skin_care",
     "name": null,
     "description": null,
@@ -9690,7 +9690,7 @@
   {
     "id": "mi-svc-hospital-cat-sphynx-cardiac-screening",
     "category_id": "mc-business-category",
-    "parent_item_id": null,
+    "parent_item_id": "mi-business-doctor",
     "code": "hospital_cat_sphynx_cardiac_screening",
     "name": null,
     "description": null,
@@ -9704,7 +9704,7 @@
   {
     "id": "mi-svc-hospital-cat-sphynx-ear-care",
     "category_id": "mc-business-category",
-    "parent_item_id": null,
+    "parent_item_id": "mi-business-doctor",
     "code": "hospital_cat_sphynx_ear_care",
     "name": null,
     "description": null,
@@ -9718,7 +9718,7 @@
   {
     "id": "mi-svc-hospital-cat-maine-coon-cardiac-screening",
     "category_id": "mc-business-category",
-    "parent_item_id": null,
+    "parent_item_id": "mi-business-doctor",
     "code": "hospital_cat_maine_coon_cardiac_screening",
     "name": null,
     "description": null,
@@ -9732,7 +9732,7 @@
   {
     "id": "mi-svc-hospital-cat-maine-coon-hip-screening",
     "category_id": "mc-business-category",
-    "parent_item_id": null,
+    "parent_item_id": "mi-business-doctor",
     "code": "hospital_cat_maine_coon_hip_screening",
     "name": null,
     "description": null,
@@ -9746,7 +9746,7 @@
   {
     "id": "mi-svc-hospital-cat-maine-coon-joint-care",
     "category_id": "mc-business-category",
-    "parent_item_id": null,
+    "parent_item_id": "mi-business-doctor",
     "code": "hospital_cat_maine_coon_joint_care",
     "name": null,
     "description": null,
@@ -9760,7 +9760,7 @@
   {
     "id": "mi-svc-hospital-cat-american-sh-dental-care",
     "category_id": "mc-business-category",
-    "parent_item_id": null,
+    "parent_item_id": "mi-business-doctor",
     "code": "hospital_cat_american_sh_dental_care",
     "name": null,
     "description": null,
@@ -9774,7 +9774,7 @@
   {
     "id": "mi-svc-hospital-cat-american-sh-obesity-mgmt",
     "category_id": "mc-business-category",
-    "parent_item_id": null,
+    "parent_item_id": "mi-business-doctor",
     "code": "hospital_cat_american_sh_obesity_mgmt",
     "name": null,
     "description": null,
@@ -9788,7 +9788,7 @@
   {
     "id": "mi-svc-hospital-cat-abyssinian-kidney-check",
     "category_id": "mc-business-category",
-    "parent_item_id": null,
+    "parent_item_id": "mi-business-doctor",
     "code": "hospital_cat_abyssinian_kidney_check",
     "name": null,
     "description": null,
@@ -9802,7 +9802,7 @@
   {
     "id": "mi-svc-hospital-cat-abyssinian-dental-care",
     "category_id": "mc-business-category",
-    "parent_item_id": null,
+    "parent_item_id": "mi-business-doctor",
     "code": "hospital_cat_abyssinian_dental_care",
     "name": null,
     "description": null,
@@ -9816,7 +9816,7 @@
   {
     "id": "mi-svc-hospital-cat-birman-cardiac-screening",
     "category_id": "mc-business-category",
-    "parent_item_id": null,
+    "parent_item_id": "mi-business-doctor",
     "code": "hospital_cat_birman_cardiac_screening",
     "name": null,
     "description": null,
@@ -9830,7 +9830,7 @@
   {
     "id": "mi-svc-hospital-cat-birman-kidney-check",
     "category_id": "mc-business-category",
-    "parent_item_id": null,
+    "parent_item_id": "mi-business-doctor",
     "code": "hospital_cat_birman_kidney_check",
     "name": null,
     "description": null,
@@ -9844,7 +9844,7 @@
   {
     "id": "mi-svc-hospital-cat-burmese-dental-care",
     "category_id": "mc-business-category",
-    "parent_item_id": null,
+    "parent_item_id": "mi-business-doctor",
     "code": "hospital_cat_burmese_dental_care",
     "name": null,
     "description": null,
@@ -9858,7 +9858,7 @@
   {
     "id": "mi-svc-hospital-cat-burmese-diabetes-check",
     "category_id": "mc-business-category",
-    "parent_item_id": null,
+    "parent_item_id": "mi-business-doctor",
     "code": "hospital_cat_burmese_diabetes_check",
     "name": null,
     "description": null,
@@ -9872,7 +9872,7 @@
   {
     "id": "mi-svc-hospital-cat-oriental-sh-dental-care",
     "category_id": "mc-business-category",
-    "parent_item_id": null,
+    "parent_item_id": "mi-business-doctor",
     "code": "hospital_cat_oriental_sh_dental_care",
     "name": null,
     "description": null,
@@ -9886,7 +9886,7 @@
   {
     "id": "mi-svc-hospital-cat-oriental-sh-cardiac-screening",
     "category_id": "mc-business-category",
-    "parent_item_id": null,
+    "parent_item_id": "mi-business-doctor",
     "code": "hospital_cat_oriental_sh_cardiac_screening",
     "name": null,
     "description": null,
@@ -9900,7 +9900,7 @@
   {
     "id": "mi-svc-hospital-cat-mixed-cat-health-screening",
     "category_id": "mc-business-category",
-    "parent_item_id": null,
+    "parent_item_id": "mi-business-doctor",
     "code": "hospital_cat_mixed_cat_health_screening",
     "name": null,
     "description": null,
@@ -9914,7 +9914,7 @@
   {
     "id": "mi-svc-hospital-cat-mixed-cat-dental-care",
     "category_id": "mc-business-category",
-    "parent_item_id": null,
+    "parent_item_id": "mi-business-doctor",
     "code": "hospital_cat_mixed_cat_dental_care",
     "name": null,
     "description": null,
@@ -9928,7 +9928,7 @@
   {
     "id": "mi-svc-hospital-cat-other-cat-health-screening",
     "category_id": "mc-business-category",
-    "parent_item_id": null,
+    "parent_item_id": "mi-business-doctor",
     "code": "hospital_cat_other_cat_health_screening",
     "name": null,
     "description": null,
@@ -9942,7 +9942,7 @@
   {
     "id": "mi-svc-hospital-cat-other-cat-dental-care",
     "category_id": "mc-business-category",
-    "parent_item_id": null,
+    "parent_item_id": "mi-business-doctor",
     "code": "hospital_cat_other_cat_dental_care",
     "name": null,
     "description": null,
@@ -9956,7 +9956,7 @@
   {
     "id": "mi-svc-training-dog-poodle-agility",
     "category_id": "mc-business-category",
-    "parent_item_id": null,
+    "parent_item_id": "mi-business-trainer",
     "code": "training_dog_poodle_agility",
     "name": null,
     "description": null,
@@ -9970,7 +9970,7 @@
   {
     "id": "mi-svc-training-dog-poodle-trick-training",
     "category_id": "mc-business-category",
-    "parent_item_id": null,
+    "parent_item_id": "mi-business-trainer",
     "code": "training_dog_poodle_trick_training",
     "name": null,
     "description": null,
@@ -9984,7 +9984,7 @@
   {
     "id": "mi-svc-training-dog-maltese-socialization",
     "category_id": "mc-business-category",
-    "parent_item_id": null,
+    "parent_item_id": "mi-business-trainer",
     "code": "training_dog_maltese_socialization",
     "name": null,
     "description": null,
@@ -9998,7 +9998,7 @@
   {
     "id": "mi-svc-training-dog-maltese-trick-training",
     "category_id": "mc-business-category",
-    "parent_item_id": null,
+    "parent_item_id": "mi-business-trainer",
     "code": "training_dog_maltese_trick_training",
     "name": null,
     "description": null,
@@ -10012,7 +10012,7 @@
   {
     "id": "mi-svc-training-dog-bichon-frise-socialization",
     "category_id": "mc-business-category",
-    "parent_item_id": null,
+    "parent_item_id": "mi-business-trainer",
     "code": "training_dog_bichon_frise_socialization",
     "name": null,
     "description": null,
@@ -10026,7 +10026,7 @@
   {
     "id": "mi-svc-training-dog-bichon-frise-trick-training",
     "category_id": "mc-business-category",
-    "parent_item_id": null,
+    "parent_item_id": "mi-business-trainer",
     "code": "training_dog_bichon_frise_trick_training",
     "name": null,
     "description": null,
@@ -10040,7 +10040,7 @@
   {
     "id": "mi-svc-training-dog-shih-tzu-socialization",
     "category_id": "mc-business-category",
-    "parent_item_id": null,
+    "parent_item_id": "mi-business-trainer",
     "code": "training_dog_shih_tzu_socialization",
     "name": null,
     "description": null,
@@ -10054,7 +10054,7 @@
   {
     "id": "mi-svc-training-dog-shih-tzu-basic-obedience",
     "category_id": "mc-business-category",
-    "parent_item_id": null,
+    "parent_item_id": "mi-business-trainer",
     "code": "training_dog_shih_tzu_basic_obedience",
     "name": null,
     "description": null,
@@ -10068,7 +10068,7 @@
   {
     "id": "mi-svc-training-dog-yorkshire-terrier-socialization",
     "category_id": "mc-business-category",
-    "parent_item_id": null,
+    "parent_item_id": "mi-business-trainer",
     "code": "training_dog_yorkshire_terrier_socialization",
     "name": null,
     "description": null,
@@ -10082,7 +10082,7 @@
   {
     "id": "mi-svc-training-dog-yorkshire-terrier-basic-obedience",
     "category_id": "mc-business-category",
-    "parent_item_id": null,
+    "parent_item_id": "mi-business-trainer",
     "code": "training_dog_yorkshire_terrier_basic_obedience",
     "name": null,
     "description": null,
@@ -10096,7 +10096,7 @@
   {
     "id": "mi-svc-training-dog-pomeranian-socialization",
     "category_id": "mc-business-category",
-    "parent_item_id": null,
+    "parent_item_id": "mi-business-trainer",
     "code": "training_dog_pomeranian_socialization",
     "name": null,
     "description": null,
@@ -10110,7 +10110,7 @@
   {
     "id": "mi-svc-training-dog-pomeranian-trick-training",
     "category_id": "mc-business-category",
-    "parent_item_id": null,
+    "parent_item_id": "mi-business-trainer",
     "code": "training_dog_pomeranian_trick_training",
     "name": null,
     "description": null,
@@ -10124,7 +10124,7 @@
   {
     "id": "mi-svc-training-dog-chihuahua-socialization",
     "category_id": "mc-business-category",
-    "parent_item_id": null,
+    "parent_item_id": "mi-business-trainer",
     "code": "training_dog_chihuahua_socialization",
     "name": null,
     "description": null,
@@ -10138,7 +10138,7 @@
   {
     "id": "mi-svc-training-dog-chihuahua-behavior-mod",
     "category_id": "mc-business-category",
-    "parent_item_id": null,
+    "parent_item_id": "mi-business-trainer",
     "code": "training_dog_chihuahua_behavior_mod",
     "name": null,
     "description": null,
@@ -10152,7 +10152,7 @@
   {
     "id": "mi-svc-training-dog-golden-retriever-training",
     "category_id": "mc-business-category",
-    "parent_item_id": null,
+    "parent_item_id": "mi-business-trainer",
     "code": "training_dog_golden_retriever_training",
     "name": null,
     "description": null,
@@ -10166,7 +10166,7 @@
   {
     "id": "mi-svc-training-dog-golden-therapy-dog",
     "category_id": "mc-business-category",
-    "parent_item_id": null,
+    "parent_item_id": "mi-business-trainer",
     "code": "training_dog_golden_therapy_dog",
     "name": null,
     "description": null,
@@ -10180,7 +10180,7 @@
   {
     "id": "mi-svc-training-dog-golden-agility",
     "category_id": "mc-business-category",
-    "parent_item_id": null,
+    "parent_item_id": "mi-business-trainer",
     "code": "training_dog_golden_agility",
     "name": null,
     "description": null,
@@ -10194,7 +10194,7 @@
   {
     "id": "mi-svc-training-dog-labrador-retriever-training",
     "category_id": "mc-business-category",
-    "parent_item_id": null,
+    "parent_item_id": "mi-business-trainer",
     "code": "training_dog_labrador_retriever_training",
     "name": null,
     "description": null,
@@ -10208,7 +10208,7 @@
   {
     "id": "mi-svc-training-dog-labrador-scent-work",
     "category_id": "mc-business-category",
-    "parent_item_id": null,
+    "parent_item_id": "mi-business-trainer",
     "code": "training_dog_labrador_scent_work",
     "name": null,
     "description": null,
@@ -10222,7 +10222,7 @@
   {
     "id": "mi-svc-training-dog-labrador-service-dog",
     "category_id": "mc-business-category",
-    "parent_item_id": null,
+    "parent_item_id": "mi-business-trainer",
     "code": "training_dog_labrador_service_dog",
     "name": null,
     "description": null,
@@ -10236,7 +10236,7 @@
   {
     "id": "mi-svc-training-dog-welsh-corgi-herding",
     "category_id": "mc-business-category",
-    "parent_item_id": null,
+    "parent_item_id": "mi-business-trainer",
     "code": "training_dog_welsh_corgi_herding",
     "name": null,
     "description": null,
@@ -10250,7 +10250,7 @@
   {
     "id": "mi-svc-training-dog-welsh-corgi-agility",
     "category_id": "mc-business-category",
-    "parent_item_id": null,
+    "parent_item_id": "mi-business-trainer",
     "code": "training_dog_welsh_corgi_agility",
     "name": null,
     "description": null,
@@ -10264,7 +10264,7 @@
   {
     "id": "mi-svc-training-dog-corgi-herding",
     "category_id": "mc-business-category",
-    "parent_item_id": null,
+    "parent_item_id": "mi-business-trainer",
     "code": "training_dog_corgi_herding",
     "name": null,
     "description": null,
@@ -10278,7 +10278,7 @@
   {
     "id": "mi-svc-training-dog-corgi-agility",
     "category_id": "mc-business-category",
-    "parent_item_id": null,
+    "parent_item_id": "mi-business-trainer",
     "code": "training_dog_corgi_agility",
     "name": null,
     "description": null,
@@ -10292,7 +10292,7 @@
   {
     "id": "mi-svc-training-dog-french-bulldog-socialization",
     "category_id": "mc-business-category",
-    "parent_item_id": null,
+    "parent_item_id": "mi-business-trainer",
     "code": "training_dog_french_bulldog_socialization",
     "name": null,
     "description": null,
@@ -10306,7 +10306,7 @@
   {
     "id": "mi-svc-training-dog-french-bulldog-basic-obedience",
     "category_id": "mc-business-category",
-    "parent_item_id": null,
+    "parent_item_id": "mi-business-trainer",
     "code": "training_dog_french_bulldog_basic_obedience",
     "name": null,
     "description": null,
@@ -10320,7 +10320,7 @@
   {
     "id": "mi-svc-training-dog-bulldog-socialization",
     "category_id": "mc-business-category",
-    "parent_item_id": null,
+    "parent_item_id": "mi-business-trainer",
     "code": "training_dog_bulldog_socialization",
     "name": null,
     "description": null,
@@ -10334,7 +10334,7 @@
   {
     "id": "mi-svc-training-dog-bulldog-basic-obedience",
     "category_id": "mc-business-category",
-    "parent_item_id": null,
+    "parent_item_id": "mi-business-trainer",
     "code": "training_dog_bulldog_basic_obedience",
     "name": null,
     "description": null,
@@ -10348,7 +10348,7 @@
   {
     "id": "mi-svc-training-dog-dachshund-recall-training",
     "category_id": "mc-business-category",
-    "parent_item_id": null,
+    "parent_item_id": "mi-business-trainer",
     "code": "training_dog_dachshund_recall_training",
     "name": null,
     "description": null,
@@ -10362,7 +10362,7 @@
   {
     "id": "mi-svc-training-dog-dachshund-socialization",
     "category_id": "mc-business-category",
-    "parent_item_id": null,
+    "parent_item_id": "mi-business-trainer",
     "code": "training_dog_dachshund_socialization",
     "name": null,
     "description": null,
@@ -10376,7 +10376,7 @@
   {
     "id": "mi-svc-training-dog-beagle-scent-work",
     "category_id": "mc-business-category",
-    "parent_item_id": null,
+    "parent_item_id": "mi-business-trainer",
     "code": "training_dog_beagle_scent_work",
     "name": null,
     "description": null,
@@ -10390,7 +10390,7 @@
   {
     "id": "mi-svc-training-dog-beagle-recall-training",
     "category_id": "mc-business-category",
-    "parent_item_id": null,
+    "parent_item_id": "mi-business-trainer",
     "code": "training_dog_beagle_recall_training",
     "name": null,
     "description": null,
@@ -10404,7 +10404,7 @@
   {
     "id": "mi-svc-training-dog-schnauzer-basic-obedience",
     "category_id": "mc-business-category",
-    "parent_item_id": null,
+    "parent_item_id": "mi-business-trainer",
     "code": "training_dog_schnauzer_basic_obedience",
     "name": null,
     "description": null,
@@ -10418,7 +10418,7 @@
   {
     "id": "mi-svc-training-dog-schnauzer-agility",
     "category_id": "mc-business-category",
-    "parent_item_id": null,
+    "parent_item_id": "mi-business-trainer",
     "code": "training_dog_schnauzer_agility",
     "name": null,
     "description": null,
@@ -10432,7 +10432,7 @@
   {
     "id": "mi-svc-training-dog-jindo-recall-training",
     "category_id": "mc-business-category",
-    "parent_item_id": null,
+    "parent_item_id": "mi-business-trainer",
     "code": "training_dog_jindo_recall_training",
     "name": null,
     "description": null,
@@ -10446,7 +10446,7 @@
   {
     "id": "mi-svc-training-dog-jindo-socialization",
     "category_id": "mc-business-category",
-    "parent_item_id": null,
+    "parent_item_id": "mi-business-trainer",
     "code": "training_dog_jindo_socialization",
     "name": null,
     "description": null,
@@ -10460,7 +10460,7 @@
   {
     "id": "mi-svc-training-dog-jindo-behavior-mod",
     "category_id": "mc-business-category",
-    "parent_item_id": null,
+    "parent_item_id": "mi-business-trainer",
     "code": "training_dog_jindo_behavior_mod",
     "name": null,
     "description": null,
@@ -10474,7 +10474,7 @@
   {
     "id": "mi-svc-training-dog-shiba-inu-recall-training",
     "category_id": "mc-business-category",
-    "parent_item_id": null,
+    "parent_item_id": "mi-business-trainer",
     "code": "training_dog_shiba_inu_recall_training",
     "name": null,
     "description": null,
@@ -10488,7 +10488,7 @@
   {
     "id": "mi-svc-training-dog-shiba-inu-socialization",
     "category_id": "mc-business-category",
-    "parent_item_id": null,
+    "parent_item_id": "mi-business-trainer",
     "code": "training_dog_shiba_inu_socialization",
     "name": null,
     "description": null,
@@ -10502,7 +10502,7 @@
   {
     "id": "mi-svc-training-dog-husky-recall-training",
     "category_id": "mc-business-category",
-    "parent_item_id": null,
+    "parent_item_id": "mi-business-trainer",
     "code": "training_dog_husky_recall_training",
     "name": null,
     "description": null,
@@ -10516,7 +10516,7 @@
   {
     "id": "mi-svc-training-dog-husky-mushing",
     "category_id": "mc-business-category",
-    "parent_item_id": null,
+    "parent_item_id": "mi-business-trainer",
     "code": "training_dog_husky_mushing",
     "name": null,
     "description": null,
@@ -10530,7 +10530,7 @@
   {
     "id": "mi-svc-training-dog-samoyed-basic-obedience",
     "category_id": "mc-business-category",
-    "parent_item_id": null,
+    "parent_item_id": "mi-business-trainer",
     "code": "training_dog_samoyed_basic_obedience",
     "name": null,
     "description": null,
@@ -10544,7 +10544,7 @@
   {
     "id": "mi-svc-training-dog-samoyed-socialization",
     "category_id": "mc-business-category",
-    "parent_item_id": null,
+    "parent_item_id": "mi-business-trainer",
     "code": "training_dog_samoyed_socialization",
     "name": null,
     "description": null,
@@ -10558,7 +10558,7 @@
   {
     "id": "mi-svc-training-dog-akita-basic-obedience",
     "category_id": "mc-business-category",
-    "parent_item_id": null,
+    "parent_item_id": "mi-business-trainer",
     "code": "training_dog_akita_basic_obedience",
     "name": null,
     "description": null,
@@ -10572,7 +10572,7 @@
   {
     "id": "mi-svc-training-dog-akita-protection",
     "category_id": "mc-business-category",
-    "parent_item_id": null,
+    "parent_item_id": "mi-business-trainer",
     "code": "training_dog_akita_protection",
     "name": null,
     "description": null,
@@ -10586,7 +10586,7 @@
   {
     "id": "mi-svc-training-dog-chow-chow-socialization",
     "category_id": "mc-business-category",
-    "parent_item_id": null,
+    "parent_item_id": "mi-business-trainer",
     "code": "training_dog_chow_chow_socialization",
     "name": null,
     "description": null,
@@ -10600,7 +10600,7 @@
   {
     "id": "mi-svc-training-dog-chow-chow-basic-obedience",
     "category_id": "mc-business-category",
-    "parent_item_id": null,
+    "parent_item_id": "mi-business-trainer",
     "code": "training_dog_chow_chow_basic_obedience",
     "name": null,
     "description": null,
@@ -10614,7 +10614,7 @@
   {
     "id": "mi-svc-training-dog-mixed-dog-basic-obedience",
     "category_id": "mc-business-category",
-    "parent_item_id": null,
+    "parent_item_id": "mi-business-trainer",
     "code": "training_dog_mixed_dog_basic_obedience",
     "name": null,
     "description": null,
@@ -10628,7 +10628,7 @@
   {
     "id": "mi-svc-training-dog-mixed-dog-socialization",
     "category_id": "mc-business-category",
-    "parent_item_id": null,
+    "parent_item_id": "mi-business-trainer",
     "code": "training_dog_mixed_dog_socialization",
     "name": null,
     "description": null,
@@ -10642,7 +10642,7 @@
   {
     "id": "mi-svc-training-dog-other-dog-basic-obedience",
     "category_id": "mc-business-category",
-    "parent_item_id": null,
+    "parent_item_id": "mi-business-trainer",
     "code": "training_dog_other_dog_basic_obedience",
     "name": null,
     "description": null,
@@ -10656,7 +10656,7 @@
   {
     "id": "mi-svc-training-dog-other-dog-socialization",
     "category_id": "mc-business-category",
-    "parent_item_id": null,
+    "parent_item_id": "mi-business-trainer",
     "code": "training_dog_other_dog_socialization",
     "name": null,
     "description": null,
