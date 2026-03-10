@@ -60,6 +60,10 @@ function addCors(response: Response, request: Request, env: Env): Response {
   for (const [k, v] of Object.entries(cors)) {
     if (v) headers.set(k, v);
   }
+  // Prevent browser from caching API responses (unless endpoint sets its own Cache-Control)
+  if (!headers.has('Cache-Control')) {
+    headers.set('Cache-Control', 'no-store, no-cache, must-revalidate');
+  }
   return new Response(response.body, { status: response.status, headers });
 }
 
