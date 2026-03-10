@@ -485,6 +485,19 @@ export interface FeedingLog {
   updated_at: string;
 }
 
+// ─── Feeding Mix Favorites ────────────────────────────────────────────────────
+
+export interface FeedingMixFavorite {
+  id: string;
+  pet_id: string;
+  name: string;
+  items_json: string; // JSON string of [{pet_feed_id, amount_g}]
+  sort_order: number;
+  status: string;
+  created_at: string;
+  updated_at: string;
+}
+
 // ─── S7: Health Logs ──────────────────────────────────────────────────────────
 
 export interface LogValue {

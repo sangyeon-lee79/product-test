@@ -11,7 +11,7 @@ export type {
   FriendRequest, FriendConnection,
   DeviceType, DeviceManufacturer, DeviceBrand, DeviceModel, MeasurementUnit, GuardianDevice,
   FeedType, FeedManufacturer, FeedBrand, FeedModel,
-  PetFeed, FeedNutrition, FeedingLog,
+  PetFeed, FeedNutrition, FeedingLog, FeedingMixFavorite,
   PetLog, GlucoseAlert,
 } from '../types/api';
 import type {
@@ -24,7 +24,7 @@ import type {
   FriendRequest, FriendConnection,
   DeviceType, DeviceManufacturer, DeviceBrand, DeviceModel, MeasurementUnit, GuardianDevice,
   FeedType, FeedManufacturer, FeedBrand, FeedModel,
-  PetFeed, FeedNutrition, FeedingLog,
+  PetFeed, FeedNutrition, FeedingLog, FeedingMixFavorite,
   PetLog, GlucoseAlert,
 } from '../types/api';
 
@@ -423,6 +423,14 @@ export const api = {
       }>) => request<{ id: string; updated: boolean }>(`/api/v1/pets/${petId}/feeding-logs/${logId}`, { method: 'PUT', body: JSON.stringify(data) }),
       remove: (petId: string, logId: string) =>
         request<{ id: string; deleted: boolean }>(`/api/v1/pets/${petId}/feeding-logs/${logId}`, { method: 'DELETE' }),
+    },
+    feedingMixFavorites: {
+      list: (petId: string) =>
+        request<{ favorites: FeedingMixFavorite[] }>(`/api/v1/pets/${petId}/feeding-mix-favorites`),
+      create: (petId: string, data: { name: string; items: Array<{ pet_feed_id: string; amount_g?: number }> }) =>
+        request<{ id: string }>(`/api/v1/pets/${petId}/feeding-mix-favorites`, { method: 'POST', body: JSON.stringify(data) }),
+      remove: (petId: string, favId: string) =>
+        request<{ deleted: boolean; id: string }>(`/api/v1/pets/${petId}/feeding-mix-favorites/${favId}`, { method: 'DELETE' }),
     },
     guardianDevices: {
       list: (petId: string) =>

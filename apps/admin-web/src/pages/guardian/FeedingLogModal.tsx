@@ -1,6 +1,7 @@
 // 급여 기록 모달 — 단일 사료 또는 혼합 급여 (multi-feed mixing)
-import { useMemo, useState } from 'react';
-import { api, type FeedingLog, type Pet, type PetFeed } from '../../lib/api';
+// + 중복 사료 선택 방지, 즐겨찾기 저장/불러오기
+import { useEffect, useMemo, useState } from 'react';
+import { api, type FeedingLog, type FeedingMixFavorite, type Pet, type PetFeed } from '../../lib/api';
 import { toDatetimeLocal, uiErrorMessage } from './guardianTypes';
 
 interface Props {
@@ -36,6 +37,11 @@ export default function FeedingLogModal({
   const [isMixed, setIsMixed] = useState(false);
   const [mixedRows, setMixedRows] = useState<MixedRow[]>([{ pet_feed_id: '', amount_g: '' }]);
 
+  // Favorites state
+  const [favorites, setFavorites] = useState<FeedingMixFavorite[]>([]);
+  const [showSaveFav, setShowSaveFav] = useState(false);
+  const [saveFavName, setSaveFavName] = useState('');
+
   const petId = selectedPet?.id;
 
   // Build nutrition lookup from petFeeds
@@ -44,6 +50,29 @@ export default function FeedingLogModal({
     for (const f of petFeeds) m.set(f.id, f);
     return m;
   }, [petFeeds]);
+
+  // Set of pet_feed_ids selected in other rows (for duplicate prevention)
+  const selectedFeedIds = useMemo(() => {
+    const s = new Set<string>();
+    for (const row of mixedRows) {
+      if (row.pet_feed_id) s.add(row.pet_feed_id);
+    }
+    return s;
+  }, [mixedRows]);
+
+  // Load favorites when modal opens in mixed mode
+  useEffect(() => {
+    if (open && petId) {
+      api.pets.feedingMixFavorites.list(petId)
+        .then((res) => setFavorites(res.favorites))
+        .catch(() => { /* silently ignore */ });
+    }
+    if (!open) {
+      setFavorites([]);
+      setShowSaveFav(false);
+      setSaveFavName('');
+    }
+  }, [open, petId]);
 
   // Initialize form when opening
   if (open && !initialized) {
@@ -108,6 +137,9 @@ export default function FeedingLogModal({
 
   // Single mode calorie display
   const singleCalories = !isMixed ? calcCalories(form.pet_feed_id, form.amount_g) : 0;
+
+  // Valid mixed rows count (for save favorite button)
+  const validMixedRowCount = mixedRows.filter((r) => r.pet_feed_id).length;
 
   async function handleSave() {
     if (!petId) return;
@@ -174,6 +206,7 @@ export default function FeedingLogModal({
   }
 
   function addRow() {
+    if (mixedRows.length >= petFeeds.length) return;
     setMixedRows((prev) => [...prev, { pet_feed_id: '', amount_g: '' }]);
   }
 
@@ -183,6 +216,51 @@ export default function FeedingLogModal({
 
   function updateRow(idx: number, field: keyof MixedRow, value: string) {
     setMixedRows((prev) => prev.map((r, i) => i === idx ? { ...r, [field]: value } : r));
+  }
+
+  // Load a favorite into mixedRows
+  function loadFavorite(fav: FeedingMixFavorite) {
+    try {
+      const items = JSON.parse(fav.items_json) as Array<{ pet_feed_id: string; amount_g?: number }>;
+      if (!Array.isArray(items) || items.length === 0) return;
+      setMixedRows(items.map((it) => ({
+        pet_feed_id: it.pet_feed_id || '',
+        amount_g: it.amount_g != null ? String(it.amount_g) : '',
+      })));
+    } catch { /* ignore parse errors */ }
+  }
+
+  // Save current mixed rows as favorite
+  async function handleSaveFavorite() {
+    if (!petId || !saveFavName.trim()) return;
+    const validRows = mixedRows.filter((r) => r.pet_feed_id);
+    if (validRows.length < 2) return;
+    try {
+      await api.pets.feedingMixFavorites.create(petId, {
+        name: saveFavName.trim(),
+        items: validRows.map((r) => ({
+          pet_feed_id: r.pet_feed_id,
+          amount_g: Number(r.amount_g) || undefined,
+        })),
+      });
+      const res = await api.pets.feedingMixFavorites.list(petId);
+      setFavorites(res.favorites);
+      setShowSaveFav(false);
+      setSaveFavName('');
+    } catch (e) {
+      setError(uiErrorMessage(e, t('common.err.save', 'Failed to save.')));
+    }
+  }
+
+  // Delete a favorite
+  async function handleDeleteFavorite(favId: string) {
+    if (!petId) return;
+    try {
+      await api.pets.feedingMixFavorites.remove(petId, favId);
+      setFavorites((prev) => prev.filter((f) => f.id !== favId));
+    } catch (e) {
+      setError(uiErrorMessage(e, t('common.err.save', 'Failed to delete.')));
+    }
   }
 
   if (!open) return null;
@@ -274,6 +352,35 @@ export default function FeedingLogModal({
               {/* ── Mixed mode ── */}
               {isMixed && (
                 <div style={{ marginBottom: 12 }}>
+                  {/* Favorites dropdown */}
+                  {favorites.length > 0 && (
+                    <div style={{ marginBottom: 10, padding: '8px 10px', background: 'var(--bg)', borderRadius: 6, border: '1px solid var(--border)' }}>
+                      <label className="form-label" style={{ fontSize: 12, marginBottom: 4 }}>
+                        {t('guardian.feeding.load_favorite', '즐겨찾기 불러오기')}
+                      </label>
+                      <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+                        {favorites.map((fav) => (
+                          <div key={fav.id} style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
+                            <button
+                              className="btn btn-secondary btn-sm"
+                              style={{ fontSize: 11, padding: '2px 8px' }}
+                              onClick={() => loadFavorite(fav)}
+                            >
+                              {fav.name}
+                            </button>
+                            <button
+                              style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)', fontSize: 12, padding: 0 }}
+                              onClick={() => void handleDeleteFavorite(fav.id)}
+                              title={t('guardian.feeding.delete_favorite', '삭제')}
+                            >
+                              &times;
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
                   {mixedRows.map((row, idx) => {
                     const rowCal = calcCalories(row.pet_feed_id, row.amount_g);
                     return (
@@ -287,7 +394,13 @@ export default function FeedingLogModal({
                           >
                             <option value="">{t('common.select', 'Select')}</option>
                             {petFeeds.map((f) => (
-                              <option key={f.id} value={f.id}>{feedLabel(f)}</option>
+                              <option
+                                key={f.id}
+                                value={f.id}
+                                disabled={f.id !== row.pet_feed_id && selectedFeedIds.has(f.id)}
+                              >
+                                {feedLabel(f)}
+                              </option>
                             ))}
                           </select>
                         </div>
@@ -317,9 +430,57 @@ export default function FeedingLogModal({
                       </div>
                     );
                   })}
-                  <button className="btn btn-secondary btn-sm" onClick={addRow} style={{ fontSize: 12 }}>
-                    + {t('guardian.feeding.add_feed_row', '사료 추가')}
-                  </button>
+
+                  <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
+                    <button
+                      className="btn btn-secondary btn-sm"
+                      onClick={addRow}
+                      style={{ fontSize: 12 }}
+                      disabled={mixedRows.length >= petFeeds.length}
+                    >
+                      + {t('guardian.feeding.add_feed_row', '사료 추가')}
+                    </button>
+
+                    {/* Save favorite button — show when 2+ valid rows */}
+                    {validMixedRowCount >= 2 && !showSaveFav && (
+                      <button
+                        className="btn btn-secondary btn-sm"
+                        onClick={() => setShowSaveFav(true)}
+                        style={{ fontSize: 12 }}
+                      >
+                        {t('guardian.feeding.save_favorite', '즐겨찾기 저장')}
+                      </button>
+                    )}
+                  </div>
+
+                  {/* Save favorite form */}
+                  {showSaveFav && (
+                    <div style={{ marginTop: 8, display: 'flex', gap: 6, alignItems: 'center' }}>
+                      <input
+                        className="form-input"
+                        style={{ flex: 1, fontSize: 12 }}
+                        type="text"
+                        value={saveFavName}
+                        onChange={(e) => setSaveFavName(e.target.value)}
+                        placeholder={t('guardian.feeding.favorite_name_placeholder', '예: 방울이 아침 식단')}
+                      />
+                      <button
+                        className="btn btn-primary btn-sm"
+                        style={{ fontSize: 12 }}
+                        disabled={!saveFavName.trim()}
+                        onClick={() => void handleSaveFavorite()}
+                      >
+                        {t('guardian.feeding.save', '저장')}
+                      </button>
+                      <button
+                        className="btn btn-secondary btn-sm"
+                        style={{ fontSize: 12 }}
+                        onClick={() => { setShowSaveFav(false); setSaveFavName(''); }}
+                      >
+                        {t('common.cancel', 'Cancel')}
+                      </button>
+                    </div>
+                  )}
 
                   {/* Total nutrition summary */}
                   {mixedSummary && mixedSummary.totalG > 0 && (
