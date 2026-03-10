@@ -28,6 +28,7 @@ type Country = {
 type MasterItem = {
   id: string;
   key: string;
+  parent_id?: string | null;
   display_label?: string | null;
   ko_name?: string | null;
   ko?: string | null;
@@ -301,6 +302,34 @@ async function api<T>(path: string, init: RequestInit = {}, token?: string): Pro
   return json.data;
 }
 
+async function loadGroupedMasterItems(
+  groupPath: string,
+  itemPath: string,
+  paramName: string,
+  lang: Lang,
+): Promise<MasterItem[]> {
+  const groups = await api<MasterItem[]>(`/api/v1/master/${groupPath}?lang=${encodeURIComponent(lang)}`);
+  if (groups.length === 0) return [];
+  const rows = await Promise.all(
+    groups.map((group) =>
+      api<MasterItem[]>(
+        `/api/v1/master/${itemPath}?${paramName}=${encodeURIComponent(group.id)}&lang=${encodeURIComponent(lang)}`,
+      ).catch(() => []),
+    ),
+  );
+  return rows.flat();
+}
+
+async function loadMasterItems(key: string, lang: Lang): Promise<MasterItem[]> {
+  if (key === 'allergy_type') {
+    return loadGroupedMasterItems('allergy-groups', 'allergies', 'group_id', lang);
+  }
+  if (key === 'disease_type') {
+    return loadGroupedMasterItems('disease-groups', 'diseases', 'group_id', lang);
+  }
+  return api<MasterItem[]>(`/api/v1/master/items?category_key=${encodeURIComponent(key)}&lang=${encodeURIComponent(lang)}`);
+}
+
 function normalizeLang(value: string | null | undefined): Lang {
   const raw = String(value || '').toLowerCase().replace('-', '_');
   if ((SUPPORTED_LANGS as readonly string[]).includes(raw)) return raw as Lang;
@@ -445,11 +474,11 @@ export default function App() {
   async function loadAll() {
     if (!token) return;
     setLoading(true);
-    setMessage('');
-    try {
-      const categoryList = Object.values(CATEGORY_KEYS);
-      const masterPromises = categoryList.map((key) =>
-        api<MasterItem[]>(`/api/v1/master/items?category_key=${encodeURIComponent(key)}&lang=${encodeURIComponent(activeLocale)}`)
+      setMessage('');
+      try {
+        const categoryList = Object.values(CATEGORY_KEYS);
+        const masterPromises = categoryList.map((key) =>
+        loadMasterItems(key, activeLocale)
           .then((rows) => [key, rows] as const)
           .catch(() => [key, []] as const),
       );
