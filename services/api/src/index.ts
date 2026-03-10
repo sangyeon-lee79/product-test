@@ -25,8 +25,9 @@ export default {
       let response: Response;
       try {
         response = await dispatch(request, env, url);
-      } catch {
-        response = err('Internal Server Error', 500, 'internal_error');
+      } catch (e) {
+        const detail = e instanceof Error ? e.message : String(e);
+        response = err(`Internal Server Error: ${detail}`, 500, 'internal_error');
       }
 
       // 4. CORS 헤더 부착

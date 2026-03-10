@@ -113,7 +113,7 @@ function asJsonArray(raw: unknown): string[] {
   return raw.filter((value): value is string => typeof value === 'string').map((value) => value.trim()).filter(Boolean);
 }
 
-async function derivePasswordHash(password: string, salt: Uint8Array, iterations = 120000): Promise<string> {
+async function derivePasswordHash(password: string, salt: Uint8Array, iterations = 10000): Promise<string> {
   const baseKey = await crypto.subtle.importKey(
     'raw',
     new TextEncoder().encode(password),
@@ -132,7 +132,7 @@ async function derivePasswordHash(password: string, salt: Uint8Array, iterations
 async function hashPassword(password: string): Promise<string> {
   const salt = crypto.getRandomValues(new Uint8Array(16));
   const digest = await derivePasswordHash(password, salt);
-  return `pbkdf2$120000$${btoa(String.fromCharCode(...salt))}$${digest}`;
+  return `pbkdf2$10000$${btoa(String.fromCharCode(...salt))}$${digest}`;
 }
 
 async function verifyPassword(password: string, stored: string): Promise<boolean> {
@@ -160,12 +160,16 @@ async function passwordLogin(request: Request, env: Env): Promise<Response> {
     'SELECT id, role, password_hash, status FROM users WHERE email = ?'
   ).bind(email).first<UserRow>();
 
-  if (email === DEFAULT_SAMPLE_ACCOUNTS.guardian.email) {
-    user = await ensureDefaultSampleAccount(env, DEFAULT_SAMPLE_ACCOUNTS.guardian, user);
-  } else if (email === DEFAULT_SAMPLE_ACCOUNTS.provider.email) {
-    user = await ensureDefaultSampleAccount(env, DEFAULT_SAMPLE_ACCOUNTS.provider, user);
-  } else if (email === DEFAULT_SAMPLE_ACCOUNTS.admin.email) {
-    user = await ensureDefaultSampleAccount(env, DEFAULT_SAMPLE_ACCOUNTS.admin, user);
+  try {
+    if (email === DEFAULT_SAMPLE_ACCOUNTS.guardian.email) {
+      user = await ensureDefaultSampleAccount(env, DEFAULT_SAMPLE_ACCOUNTS.guardian, user);
+    } else if (email === DEFAULT_SAMPLE_ACCOUNTS.provider.email) {
+      user = await ensureDefaultSampleAccount(env, DEFAULT_SAMPLE_ACCOUNTS.provider, user);
+    } else if (email === DEFAULT_SAMPLE_ACCOUNTS.admin.email) {
+      user = await ensureDefaultSampleAccount(env, DEFAULT_SAMPLE_ACCOUNTS.admin, user);
+    }
+  } catch {
+    // sample account bootstrap failed — fall through to normal auth
   }
 
   if (!user?.id || !user.password_hash) return err('invalid email or password', 401);
@@ -417,15 +421,19 @@ async function testLogin(request: Request, env: Env): Promise<Response> {
     'SELECT id, role FROM users WHERE email = ?'
   ).bind(email).first<{ id: string; role: string }>();
 
-  if (email === DEFAULT_SAMPLE_ACCOUNTS.guardian.email) {
-    const normalized = await ensureDefaultSampleAccount(env, DEFAULT_SAMPLE_ACCOUNTS.guardian);
-    user = normalized ? { id: normalized.id, role: normalized.role } : null;
-  } else if (email === DEFAULT_SAMPLE_ACCOUNTS.provider.email) {
-    const normalized = await ensureDefaultSampleAccount(env, DEFAULT_SAMPLE_ACCOUNTS.provider);
-    user = normalized ? { id: normalized.id, role: normalized.role } : null;
-  } else if (email === DEFAULT_SAMPLE_ACCOUNTS.admin.email) {
-    const normalized = await ensureDefaultSampleAccount(env, DEFAULT_SAMPLE_ACCOUNTS.admin);
-    user = normalized ? { id: normalized.id, role: normalized.role } : null;
+  try {
+    if (email === DEFAULT_SAMPLE_ACCOUNTS.guardian.email) {
+      const normalized = await ensureDefaultSampleAccount(env, DEFAULT_SAMPLE_ACCOUNTS.guardian);
+      user = normalized ? { id: normalized.id, role: normalized.role } : null;
+    } else if (email === DEFAULT_SAMPLE_ACCOUNTS.provider.email) {
+      const normalized = await ensureDefaultSampleAccount(env, DEFAULT_SAMPLE_ACCOUNTS.provider);
+      user = normalized ? { id: normalized.id, role: normalized.role } : null;
+    } else if (email === DEFAULT_SAMPLE_ACCOUNTS.admin.email) {
+      const normalized = await ensureDefaultSampleAccount(env, DEFAULT_SAMPLE_ACCOUNTS.admin);
+      user = normalized ? { id: normalized.id, role: normalized.role } : null;
+    }
+  } catch {
+    // sample account bootstrap failed — fall through to normal lookup
   }
   if (!user) return err('account not found. please signup first', 404);
 
