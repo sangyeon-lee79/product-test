@@ -43,6 +43,20 @@ function normalizePrivateKey(raw: string): string {
   return raw.replace(/\\n/g, '\n').trim();
 }
 
+function parseServiceAccountJson(raw: string): { email: string; privateKey: string } | null {
+  const text = raw.trim();
+  if (!text) return null;
+  try {
+    const parsed = JSON.parse(text) as { client_email?: string; private_key?: string };
+    const email = String(parsed.client_email || '').trim();
+    const privateKey = String(parsed.private_key || '').trim();
+    if (!email || !privateKey) return null;
+    return { email, privateKey };
+  } catch {
+    return null;
+  }
+}
+
 async function issueGoogleTranslateAccessToken(serviceAccountEmail: string, rawPrivateKey: string): Promise<string> {
   const nowSec = Math.floor(Date.now() / 1000);
   const privateKeyPem = normalizePrivateKey(rawPrivateKey);
@@ -222,6 +236,15 @@ async function updateGoogleSettings(request: Request, env: Env, me: JwtPayload):
     body = await request.json() as Record<string, unknown>;
   } catch {
     return err('Invalid JSON body');
+  }
+
+  const parsedServiceAccount = parseServiceAccountJson(String(body.google_translate_service_account_json || ''));
+  if ('google_translate_service_account_json' in body && String(body.google_translate_service_account_json || '').trim() && !parsedServiceAccount) {
+    return err('google translate service account json is invalid');
+  }
+  if (parsedServiceAccount) {
+    body.google_translate_service_account_email = parsedServiceAccount.email;
+    body.google_translate_service_account_private_key = parsedServiceAccount.privateKey;
   }
 
   const timestamp = now();

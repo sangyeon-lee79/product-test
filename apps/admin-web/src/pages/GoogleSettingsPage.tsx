@@ -67,12 +67,14 @@ export default function GoogleSettingsPage() {
     setError('');
     try {
       const data = await api.platformSettings.google.get();
+      const loadedJson = data.settings.google_translate_service_account_json?.value || '';
+      const parsedServiceAccount = parseServiceAccountJson(loadedJson);
       setPlacesKey(data.settings.google_places_api_key?.value || '');
       setOauthClientId(data.settings.google_oauth_client_id?.value || '');
       setRedirectUri(data.settings.google_oauth_redirect_uri?.value || '');
-      setTranslateServiceJson(data.settings.google_translate_service_account_json?.value || '');
-      setTranslateServiceEmail(data.settings.google_translate_service_account_email?.value || '');
-      setTranslatePrivateKey(data.settings.google_translate_service_account_private_key?.value || '');
+      setTranslateServiceJson(loadedJson);
+      setTranslateServiceEmail(parsedServiceAccount?.email || data.settings.google_translate_service_account_email?.value || '');
+      setTranslatePrivateKey(parsedServiceAccount?.privateKey || data.settings.google_translate_service_account_private_key?.value || '');
       setUpdatedAt(
         data.settings.google_translate_service_account_json?.updated_at ||
         data.settings.google_translate_service_account_private_key?.updated_at ||
