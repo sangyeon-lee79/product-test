@@ -17,7 +17,8 @@
 	},
 	"dependencies": {
 		"@neondatabase/serverless": "^1.0.2",
-		"@petfolio/shared": "*"
+		"@petfolio/shared": "*",
+		"pg": "^8.20.0"
 	},
 	"devDependencies": {
 		"@cloudflare/vitest-pool-workers": "^0.12.4",

@@ -1,8 +1,8 @@
-// D1-compatible adapter wrapping @neondatabase/serverless
+// D1-compatible adapter wrapping 'pg' (node-postgres) via Cloudflare Hyperdrive.
 // Provides the same .prepare().bind().all()/.first()/.run() interface as Cloudflare D1
 // so that 452+ existing env.DB.prepare() call sites work without changes.
 
-import { neon } from '@neondatabase/serverless';
+import { Client } from 'pg';
 
 // ─── D1-compatible type definitions ──────────────────────────────────────────
 
@@ -37,7 +37,6 @@ function convertPlaceholders(sql: string): string {
   for (let i = 0; i < sql.length; i++) {
     const ch = sql[i];
 
-    // Track single-quoted string literals to avoid replacing ? inside them
     if (ch === "'" && (i === 0 || sql[i - 1] !== '\\')) {
       inSingleQuote = !inSingleQuote;
       result += ch;
@@ -53,8 +52,6 @@ function convertPlaceholders(sql: string): string {
 // ─── Adapter factory ─────────────────────────────────────────────────────────
 
 export function createDbAdapter(connectionString: string): D1CompatDatabase {
-  const sql = neon(connectionString);
-
   return {
     prepare(query: string): D1CompatStatement {
       const pgQuery = convertPlaceholders(query);
@@ -67,7 +64,17 @@ export function createDbAdapter(connectionString: string): D1CompatDatabase {
         rows_written: 0,
       });
 
-      const exec = (q: string) => sql.query(q, boundValues) as Promise<Record<string, unknown>[]>;
+      const exec = async (q: string) => {
+        const client = new Client(connectionString);
+        await client.connect();
+        try {
+          const result = await client.query(q, boundValues);
+          return result.rows as Record<string, unknown>[];
+        } finally {
+          // Context.waitUntil not needed — Hyperdrive manages the pool
+          client.end().catch(() => {});
+        }
+      };
 
       const bound: D1CompatBoundStatement = {
         async all<T = Record<string, unknown>>(): Promise<D1CompatResult<T>> {
@@ -90,7 +97,6 @@ export function createDbAdapter(connectionString: string): D1CompatDatabase {
           boundValues = values;
           return bound;
         },
-        // Allow calling without bind (e.g., `env.DB.prepare('SELECT 1').first()`)
         all: bound.all,
         first: bound.first,
         run: bound.run,
