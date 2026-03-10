@@ -268,6 +268,14 @@ export const api = {
   master: {
     public: {
       categories: () => request<Array<{ id: string; key: string; sort_order: number; is_active: number }>>('/api/v1/master/categories'),
+      diseaseGroups: (lang?: string) =>
+        request<MasterItem[]>(`/api/v1/master/disease-groups${buildQuery({ lang })}`),
+      diseases: (groupId?: string | null, lang?: string) =>
+        request<MasterItem[]>(`/api/v1/master/diseases${buildQuery({ group_id: groupId, lang })}`),
+      allergyGroups: (lang?: string) =>
+        request<MasterItem[]>(`/api/v1/master/allergy-groups${buildQuery({ lang })}`),
+      allergies: (groupId?: string | null, lang?: string) =>
+        request<MasterItem[]>(`/api/v1/master/allergies${buildQuery({ group_id: groupId, lang })}`),
       items: (
         categoryKey: string,
         parentId?: string | null,

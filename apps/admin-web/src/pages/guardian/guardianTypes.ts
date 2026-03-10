@@ -417,6 +417,32 @@ export function toDatetimeLocal(value?: string | null): string {
 export async function loadCategoryItems(candidates: string[], lang?: Lang): Promise<MasterItem[]> {
   for (const key of candidates) {
     try {
+      const normalizedKey = key.replace(/^master\./, '');
+      if (normalizedKey === 'disease_group') {
+        const rows = await api.master.public.diseaseGroups(lang);
+        if (rows.length > 0) return rows;
+        continue;
+      }
+      if (normalizedKey === 'disease_type') {
+        const groups = await api.master.public.diseaseGroups(lang);
+        if (groups.length === 0) continue;
+        const diseaseRows = await Promise.all(
+          groups.map((group) => api.master.public.diseases(group.id, lang).catch(() => [])),
+        );
+        const rows = diseaseRows.flat();
+        if (rows.length > 0) return rows;
+        continue;
+      }
+      if (normalizedKey === 'allergy_type') {
+        const groups = await api.master.public.allergyGroups(lang);
+        if (groups.length === 0) continue;
+        const allergyRows = await Promise.all(
+          groups.map((group) => api.master.public.allergies(group.id, lang).catch(() => [])),
+        );
+        const rows = allergyRows.flat();
+        if (rows.length > 0) return rows;
+        continue;
+      }
       const rows = await api.master.public.items(key, undefined, lang);
       if (rows.length > 0) return rows;
     } catch {
