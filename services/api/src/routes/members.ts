@@ -48,11 +48,11 @@ async function listMembers(env: Env, me: JwtPayload, url: URL): Promise<Response
     params.push(filters.role);
   }
   if (filters.date_from) {
-    where.push('date(u.created_at) >= date(?)');
+    where.push('u.created_at::date >= ?::date');
     params.push(filters.date_from);
   }
   if (filters.date_to) {
-    where.push('date(u.created_at) <= date(?)');
+    where.push('u.created_at::date <= ?::date');
     params.push(filters.date_to);
   }
 
@@ -145,7 +145,7 @@ async function listMembers(env: Env, me: JwtPayload, url: URL): Promise<Response
   const summary = await env.DB.prepare(
     `SELECT
       COUNT(*) AS total_members,
-      SUM(CASE WHEN date(created_at) >= date('now', '-7 day') THEN 1 ELSE 0 END) AS new_members
+      SUM(CASE WHEN created_at >= CURRENT_DATE - INTERVAL '7 days' THEN 1 ELSE 0 END) AS new_members
      FROM users`
   ).first<{ total_members: number; new_members: number }>();
 
