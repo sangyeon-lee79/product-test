@@ -323,10 +323,10 @@ export async function handleMaster(request: Request, env: Env, url: URL): Promis
         END
       WHERE mi.category_id = ? AND mi.status = 'active'
         AND (? IS NULL OR mi.parent_item_id = ?)
-        AND (? IS NULL OR json_extract(mi.metadata, '$.item_level') = ?)
-        AND (? IS NULL OR json_extract(mi.metadata, '$.business_category_l1_id') = ?)
-        AND (? IS NULL OR json_extract(mi.metadata, '$.pet_type_l1_id') = ?)
-        AND (? IS NULL OR json_extract(mi.metadata, '$.pet_type_l2_id') = ?)
+        AND (? IS NULL OR mi.metadata::jsonb->>'item_level' = ?)
+        AND (? IS NULL OR mi.metadata::jsonb->>'business_category_l1_id' = ?)
+        AND (? IS NULL OR mi.metadata::jsonb->>'pet_type_l1_id' = ?)
+        AND (? IS NULL OR mi.metadata::jsonb->>'pet_type_l2_id' = ?)
       ORDER BY mi.sort_order, mi.code
     `).bind(
       cat.id,

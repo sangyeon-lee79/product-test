@@ -219,7 +219,7 @@ async function listFeeds(request: Request, env: Env, url: URL): Promise<Response
         (SELECT COUNT(*) FROM feed_likes fl WHERE fl.post_id = f.id) as like_count,
         (SELECT COUNT(*) FROM feed_comments fc WHERE fc.post_id = f.id AND fc.status = 'active') as comment_count,
         CASE WHEN f.visibility_scope = 'public' THEN 1 ELSE 0 END as is_public,
-        COALESCE((SELECT json_group_array(fm.media_url) FROM feed_media fm WHERE fm.post_id = f.id ORDER BY fm.sort_order), '[]') as media_urls,
+        COALESCE((SELECT json_agg(fm.media_url ORDER BY fm.sort_order) FROM feed_media fm WHERE fm.post_id = f.id)::text, '[]') as media_urls,
         '[]' as tags,
         'none' as publish_request_status
        FROM feed_posts f
