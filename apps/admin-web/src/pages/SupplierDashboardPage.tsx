@@ -186,7 +186,7 @@ export default function SupplierDashboardPage() {
   }
 
   return (
-    <div style={{ padding: 24, display: 'grid', gap: 20 }}>
+    <div className="provider-page" style={{ padding: 24, display: 'grid', gap: 20 }}>
       <section className="card" style={{ overflow: 'hidden' }}>
         <div className="card-body" style={{ background: 'linear-gradient(135deg, #fff7ed 0%, #ffffff 60%, #fef3c7 100%)' }}>
           <p className="hero-eyebrow">{t('admin.provider.hero.eyebrow')}</p>
@@ -212,14 +212,14 @@ export default function SupplierDashboardPage() {
       {error ? <div className="alert alert-error">{error}</div> : null}
       {message ? <div className="alert alert-success">{message}</div> : null}
 
-      <section style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 12 }}>
+      <section className="provider-stats-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 12 }}>
         <div className="card"><div className="card-body"><div className="text-muted">{t('admin.provider.stats.total')}</div><div style={{ fontSize: 28, fontWeight: 700 }}>{stats.total}</div></div></div>
         <div className="card"><div className="card-body"><div className="text-muted">{t('admin.provider.stats.pending')}</div><div style={{ fontSize: 28, fontWeight: 700 }}>{stats.pending}</div></div></div>
         <div className="card"><div className="card-body"><div className="text-muted">{t('admin.provider.stats.active')}</div><div style={{ fontSize: 28, fontWeight: 700 }}>{stats.active}</div></div></div>
         <div className="card"><div className="card-body"><div className="text-muted">{t('admin.provider.stats.approval')}</div><div style={{ fontSize: 28, fontWeight: 700 }}>{stats.approval}</div></div></div>
       </section>
 
-      <section style={{ display: 'grid', gridTemplateColumns: 'minmax(360px, 1.1fr) minmax(320px, 0.9fr)', gap: 20, alignItems: 'start' }}>
+      <section className="provider-booking-layout" style={{ display: 'grid', gridTemplateColumns: 'minmax(360px, 1.1fr) minmax(320px, 0.9fr)', gap: 20, alignItems: 'start' }}>
         <div className="card">
           <div className="card-header">
             <div className="card-title">{t('admin.provider.list.title')}</div>

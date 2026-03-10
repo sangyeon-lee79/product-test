@@ -1939,6 +1939,94 @@ html[data-theme="dark"] .gm-timeline::before { background: linear-gradient(to bo
 
 /* ── Responsive ─────────────────────────────────────────────── */
 @media (max-width: 900px) {
+  .layout {
+    display: block;
+    min-height: auto;
+  }
+  .sidebar {
+    position: sticky;
+    top: 0;
+    bottom: auto;
+    width: 100%;
+    z-index: 30;
+    max-height: 100vh;
+  }
+  .sidebar-logo {
+    padding: 16px;
+  }
+  .sidebar-nav {
+    display: flex;
+    gap: 12px;
+    overflow-x: auto;
+    padding: 8px 12px 12px;
+    scrollbar-width: thin;
+  }
+  .sidebar-nav > div {
+    min-width: max-content;
+  }
+  .nav-section {
+    padding: 8px 4px 6px;
+  }
+  .sidebar-footer {
+    display: grid;
+    gap: 8px;
+    opacity: 1;
+  }
+  .sidebar-footer .nav-item {
+    justify-content: center;
+    padding: 10px 12px;
+    border: 1px solid #3a342f;
+    border-radius: 999px;
+  }
+  .main {
+    margin-left: 0;
+    min-width: 0;
+  }
+  .brand-strip,
+  .topbar,
+  .content {
+    padding-left: 16px;
+    padding-right: 16px;
+  }
+  .brand-strip {
+    flex-wrap: wrap;
+  }
+  .card-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 12px;
+  }
+  .filters {
+    display: grid;
+    grid-template-columns: 1fr;
+    align-items: stretch;
+  }
+  .filters .form-input,
+  .filters .form-select {
+    width: 100%;
+    min-width: 0;
+  }
+  .form-row.col2,
+  .form-row.col3 {
+    grid-template-columns: 1fr;
+  }
+  .login-page {
+    padding: 20px 16px;
+    align-items: flex-start;
+  }
+  .login-card {
+    width: min(100%, 420px) !important;
+  }
+  .provider-page {
+    padding: 16px !important;
+  }
+  .provider-stats-grid,
+  .provider-booking-layout {
+    grid-template-columns: 1fr !important;
+  }
+  .table-wrap {
+    -webkit-overflow-scrolling: touch;
+  }
   .public-hero h1 { font-size: 32px; }
   .entry-grid { grid-template-columns: 1fr; }
   .sns-card-header { flex-direction: column; }
@@ -1981,6 +2069,12 @@ html[data-theme="dark"] .gm-timeline::before { background: linear-gradient(to bo
 }
 
 @media (max-width: 767px) {
+  .sidebar-nav {
+    gap: 8px;
+  }
+  .sidebar-nav > div {
+    min-width: 180px;
+  }
   .ig-sidebar { display: none; }
   .ig-bottom-tabbar { display: flex; }
   .ig-main { margin-left: 0; padding: 0; padding-bottom: 60px; }
@@ -1993,4 +2087,7 @@ html[data-theme="dark"] .gm-timeline::before { background: linear-gradient(to bo
   .ig-feed-col .ig-story-bar { padding-left: 12px; }
   .ig-feed-tabs { margin: 0 0 8px; }
   .ig-filter-row { padding: 0 12px; }
+  .provider-page {
+    padding: 12px !important;
+  }
 }
