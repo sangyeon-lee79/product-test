@@ -136,6 +136,10 @@ async function testLogin(request: Request, env: Env): Promise<Response> {
       user = await ensureBangulGuardianSample(env);
     }
 
+    if (!user && email === 'provider@petlife.com') {
+      user = await ensureProviderSample(env);
+    }
+
     // Admin 계정은 공개 signup이 없으므로 내부 계정 부트스트랩 허용.
     if (!user && email === 'admin@petlife.com') {
       const id = newId();
@@ -151,6 +155,24 @@ async function testLogin(request: Request, env: Env): Promise<Response> {
 
   const tokens = await issueTokens(user.id, user.role as JwtPayload['role'], env.JWT_SECRET);
   return created({ user_id: user.id, role: user.role, ...tokens });
+}
+
+async function ensureProviderSample(env: Env): Promise<{ id: string; role: string } | null> {
+  const ts = now();
+  const existing = await env.DB.prepare(
+    'SELECT id, role FROM users WHERE email = ?'
+  ).bind('provider@petlife.com').first<{ id: string; role: string }>();
+  const userId = existing?.id || newId();
+
+  if (!existing) {
+    await env.DB.prepare(
+      'INSERT INTO users (id, email, role, created_at, updated_at) VALUES (?, ?, ?, ?, ?)'
+    ).bind(userId, 'provider@petlife.com', 'provider', ts, ts).run();
+  } else if (existing.role !== 'provider') {
+    await env.DB.prepare('UPDATE users SET role = ?, updated_at = ? WHERE id = ?').bind('provider', ts, userId).run();
+  }
+
+  return { id: userId, role: 'provider' };
 }
 
 async function ensureBangulGuardianSample(env: Env): Promise<{ id: string; role: string } | null> {

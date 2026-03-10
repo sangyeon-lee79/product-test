@@ -196,6 +196,7 @@ export interface Booking {
   status: string;
   requested_date?: string | null;
   requested_time?: string | null;
+  notes?: string | null;
   completed_at?: string | null;
   created_at: string;
   updated_at: string;

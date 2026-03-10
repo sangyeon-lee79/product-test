@@ -473,6 +473,21 @@ export const api = {
   },
   bookings: {
     list: () => request<{ bookings: Booking[] }>('/api/v1/bookings'),
+    updateStatus: (bookingId: string, status: 'created' | 'in_progress' | 'service_completed' | 'publish_requested' | 'publish_approved' | 'publish_rejected' | 'cancelled') =>
+      request<{ id: string; status: string }>(`/api/v1/bookings/${bookingId}/status`, {
+        method: 'PUT',
+        body: JSON.stringify({ status }),
+      }),
+    requestCompletion: (bookingId: string, data: {
+      media_urls?: string[];
+      completion_memo?: string | null;
+      business_category_id?: string | null;
+      pet_type_id?: string | null;
+    }) =>
+      request<{ booking_id: string; feed_id: string; status: string }>(`/api/v1/bookings/${bookingId}/completion-request`, {
+        method: 'POST',
+        body: JSON.stringify(data),
+      }),
   },
   petAlbum: {
     list: (params?: {
