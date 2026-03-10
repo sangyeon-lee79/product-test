@@ -68,6 +68,24 @@ const COUNTRY_DEFAULTS: Record<string, { language: string; timezone: string }> =
   TW: { language: 'zh_tw', timezone: 'Asia/Taipei' },
 };
 
+const DEFAULT_SAMPLE_ACCOUNTS = {
+  guardian: {
+    email: 'guardian@petlife.com',
+    password: 'Guardian123!',
+    role: 'guardian' as const,
+  },
+  provider: {
+    email: 'provider@petlife.com',
+    password: 'Provider123!',
+    role: 'provider' as const,
+  },
+  admin: {
+    email: 'admin@petlife.com',
+    password: 'Admin123!',
+    role: 'admin' as const,
+  },
+};
+
 type PasswordLoginBody = {
   email?: string;
   password?: string;
@@ -128,9 +146,22 @@ async function passwordLogin(request: Request, env: Env): Promise<Response> {
   if (!email) return err('email required');
   if (!password) return err('password required');
 
-  const user = await env.DB.prepare(
+  let user = await env.DB.prepare(
     'SELECT id, role, password_hash, status FROM users WHERE email = ?'
   ).bind(email).first<{ id: string; role: string; password_hash: string | null; status: string }>();
+
+  if (!user && email === DEFAULT_SAMPLE_ACCOUNTS.guardian.email) {
+    const sample = await ensureBangulGuardianSample(env);
+    user = sample ? { id: sample.id, role: sample.role, password_hash: await ensureSamplePassword(env, sample.id, DEFAULT_SAMPLE_ACCOUNTS.guardian.password), status: 'active' } : null;
+  }
+  if (!user && email === DEFAULT_SAMPLE_ACCOUNTS.provider.email) {
+    const sample = await ensureProviderSample(env);
+    user = sample ? { id: sample.id, role: sample.role, password_hash: await ensureSamplePassword(env, sample.id, DEFAULT_SAMPLE_ACCOUNTS.provider.password), status: 'active' } : null;
+  }
+  if (!user && email === DEFAULT_SAMPLE_ACCOUNTS.admin.email) {
+    const sample = await ensureAdminSample(env);
+    user = sample ? { id: sample.id, role: sample.role, password_hash: await ensureSamplePassword(env, sample.id, DEFAULT_SAMPLE_ACCOUNTS.admin.password), status: 'active' } : null;
+  }
 
   if (!user?.id || !user.password_hash) return err('invalid email or password', 401);
   if (user.status !== 'active') return err('account is not active', 403);
@@ -309,29 +340,56 @@ async function testLogin(request: Request, env: Env): Promise<Response> {
   ).bind(email).first<{ id: string; role: string }>();
 
   if (!user) {
-    if (email === 'guardian@petlife.com') {
+    if (email === DEFAULT_SAMPLE_ACCOUNTS.guardian.email) {
       user = await ensureBangulGuardianSample(env);
+      if (user) await ensureSamplePassword(env, user.id, DEFAULT_SAMPLE_ACCOUNTS.guardian.password);
     }
 
-    if (!user && email === 'provider@petlife.com') {
+    if (!user && email === DEFAULT_SAMPLE_ACCOUNTS.provider.email) {
       user = await ensureProviderSample(env);
+      if (user) await ensureSamplePassword(env, user.id, DEFAULT_SAMPLE_ACCOUNTS.provider.password);
     }
 
     // Admin 계정은 공개 signup이 없으므로 내부 계정 부트스트랩 허용.
-    if (!user && email === 'admin@petlife.com') {
-      const id = newId();
-      const ts = now();
-      await env.DB.prepare(
-        'INSERT INTO users (id, email, role, created_at, updated_at) VALUES (?, ?, ?, ?, ?)'
-      ).bind(id, email, 'admin', ts, ts).run();
-      user = { id, role: 'admin' };
-    } else {
-      if (!user) return err('account not found. please signup first', 404);
+    if (!user && email === DEFAULT_SAMPLE_ACCOUNTS.admin.email) {
+      user = await ensureAdminSample(env);
+      if (user) await ensureSamplePassword(env, user.id, DEFAULT_SAMPLE_ACCOUNTS.admin.password);
     }
+    if (!user) return err('account not found. please signup first', 404);
   }
 
   const tokens = await issueTokens(user.id, user.role as JwtPayload['role'], env.JWT_SECRET);
   return created({ user_id: user.id, role: user.role, ...tokens });
+}
+
+async function ensureSamplePassword(env: Env, userId: string, password: string): Promise<string> {
+  const existing = await env.DB.prepare(
+    'SELECT password_hash FROM users WHERE id = ?'
+  ).bind(userId).first<{ password_hash: string | null }>();
+  if (existing?.password_hash) return existing.password_hash;
+  const passwordHash = await hashPassword(password);
+  await env.DB.prepare(
+    'UPDATE users SET password_hash = ?, updated_at = ? WHERE id = ?'
+  ).bind(passwordHash, now(), userId).run();
+  return passwordHash;
+}
+
+async function ensureAdminSample(env: Env): Promise<{ id: string; role: string } | null> {
+  const ts = now();
+  const existing = await env.DB.prepare(
+    'SELECT id, role FROM users WHERE email = ?'
+  ).bind(DEFAULT_SAMPLE_ACCOUNTS.admin.email).first<{ id: string; role: string }>();
+  const userId = existing?.id || newId();
+
+  if (!existing) {
+    await env.DB.prepare(
+      'INSERT INTO users (id, email, role, created_at, updated_at) VALUES (?, ?, ?, ?, ?)'
+    ).bind(userId, DEFAULT_SAMPLE_ACCOUNTS.admin.email, 'admin', ts, ts).run();
+  } else if (existing.role !== 'admin') {
+    await env.DB.prepare('UPDATE users SET role = ?, updated_at = ? WHERE id = ?').bind('admin', ts, userId).run();
+  }
+
+  return { id: userId, role: 'admin' };
 }
 
 async function ensureProviderSample(env: Env): Promise<{ id: string; role: string } | null> {
