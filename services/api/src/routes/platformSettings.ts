@@ -2,10 +2,16 @@ import type { Env, JwtPayload } from '../types';
 import { err, newId, now, ok } from '../types';
 import { requireAuth, requireRole } from '../middleware/auth';
 
-const GOOGLE_SETTING_KEYS = [
+const GOOGLE_PUBLIC_SETTING_KEYS = [
   'google_places_api_key',
   'google_oauth_client_id',
   'google_oauth_redirect_uri',
+] as const;
+
+const GOOGLE_ADMIN_SETTING_KEYS = [
+  ...GOOGLE_PUBLIC_SETTING_KEYS,
+  'google_translate_service_account_email',
+  'google_translate_service_account_private_key',
 ] as const;
 
 async function listGoogleSettings(env: Env, me: JwtPayload): Promise<Response> {
@@ -15,12 +21,18 @@ async function listGoogleSettings(env: Env, me: JwtPayload): Promise<Response> {
   const rows = await env.DB.prepare(
     `SELECT setting_key, setting_value, updated_at
      FROM platform_settings
-     WHERE setting_key IN ('google_places_api_key', 'google_oauth_client_id', 'google_oauth_redirect_uri')
+     WHERE setting_key IN (
+       'google_places_api_key',
+       'google_oauth_client_id',
+       'google_oauth_redirect_uri',
+       'google_translate_service_account_email',
+       'google_translate_service_account_private_key'
+     )
      ORDER BY setting_key`
   ).all<Record<string, unknown>>();
 
   const mapped = Object.fromEntries(
-    GOOGLE_SETTING_KEYS.map((key) => [key, { value: '', updated_at: null }]),
+    GOOGLE_ADMIN_SETTING_KEYS.map((key) => [key, { value: '', updated_at: null }]),
   ) as Record<string, { value: string; updated_at: string | null }>;
 
   for (const row of rows.results || []) {
@@ -31,6 +43,29 @@ async function listGoogleSettings(env: Env, me: JwtPayload): Promise<Response> {
   }
 
   return ok({ settings: mapped });
+}
+
+async function listPublicGoogleSettings(env: Env): Promise<Response> {
+  const rows = await env.DB.prepare(
+    `SELECT setting_key, setting_value
+     FROM platform_settings
+     WHERE setting_key IN ('google_places_api_key', 'google_oauth_client_id', 'google_oauth_redirect_uri')
+     ORDER BY setting_key`
+  ).all<Record<string, unknown>>();
+
+  const mapped = Object.fromEntries(
+    GOOGLE_PUBLIC_SETTING_KEYS.map((key) => [key, '']),
+  ) as Record<string, string>;
+
+  for (const row of rows.results || []) {
+    mapped[String(row.setting_key)] = String(row.setting_value || '');
+  }
+
+  return ok({
+    google_places_api_key: mapped.google_places_api_key,
+    google_oauth_client_id: mapped.google_oauth_client_id,
+    google_oauth_redirect_uri: mapped.google_oauth_redirect_uri,
+  });
 }
 
 async function updateGoogleSettings(request: Request, env: Env, me: JwtPayload): Promise<Response> {
@@ -45,7 +80,7 @@ async function updateGoogleSettings(request: Request, env: Env, me: JwtPayload):
   }
 
   const timestamp = now();
-  for (const key of GOOGLE_SETTING_KEYS) {
+  for (const key of GOOGLE_ADMIN_SETTING_KEYS) {
     if (!(key in body)) continue;
     await env.DB.prepare(
       `INSERT INTO platform_settings (id, setting_key, setting_value, updated_by_user_id, created_at, updated_at)
@@ -61,6 +96,10 @@ async function updateGoogleSettings(request: Request, env: Env, me: JwtPayload):
 }
 
 export async function handlePlatformSettings(request: Request, env: Env, url: URL): Promise<Response> {
+  if (url.pathname === '/api/v1/google/config' && request.method === 'GET') {
+    return listPublicGoogleSettings(env);
+  }
+
   const auth = await requireAuth(request, env);
   if (auth instanceof Response) return auth;
   const me = auth as JwtPayload;

@@ -45,6 +45,29 @@ interface TranslationMemoryRow {
 
 let googleTokenCache: { email: string; token: string; expiresAt: number } | null = null;
 
+async function loadGoogleTranslateServiceAccount(env: Env): Promise<{ email: string; privateKey: string }> {
+  const envEmail = env.GOOGLE_TRANSLATE_SERVICE_ACCOUNT_EMAIL?.trim();
+  const envPrivateKey = env.GOOGLE_TRANSLATE_SERVICE_ACCOUNT_PRIVATE_KEY?.trim();
+  if (envEmail && envPrivateKey) {
+    return { email: envEmail, privateKey: envPrivateKey };
+  }
+
+  const rows = await env.DB.prepare(
+    `SELECT setting_key, setting_value
+     FROM platform_settings
+     WHERE setting_key IN ('google_translate_service_account_email', 'google_translate_service_account_private_key')`
+  ).all<{ setting_key: string; setting_value: string | null }>();
+
+  const mapped = Object.fromEntries(
+    (rows.results || []).map((row) => [row.setting_key, String(row.setting_value || '').trim()]),
+  ) as Record<string, string>;
+
+  return {
+    email: mapped.google_translate_service_account_email || '',
+    privateKey: mapped.google_translate_service_account_private_key || '',
+  };
+}
+
 function toInt(value: string | undefined, fallback: number): number {
   const parsed = Number.parseInt(String(value ?? ''), 10);
   return Number.isFinite(parsed) && parsed > 0 ? parsed : fallback;
@@ -196,8 +219,9 @@ async function upsertTranslationMemory(env: Env, sourceKo: string, translations:
 }
 
 async function getGoogleAccessToken(env: Env): Promise<string> {
-  const serviceAccountEmail = env.GOOGLE_TRANSLATE_SERVICE_ACCOUNT_EMAIL?.trim();
-  const rawPrivateKey = env.GOOGLE_TRANSLATE_SERVICE_ACCOUNT_PRIVATE_KEY?.trim();
+  const serviceAccount = await loadGoogleTranslateServiceAccount(env);
+  const serviceAccountEmail = serviceAccount.email;
+  const rawPrivateKey = serviceAccount.privateKey;
   if (!serviceAccountEmail || !rawPrivateKey) {
     throw new Error('Google service account credentials are not configured');
   }

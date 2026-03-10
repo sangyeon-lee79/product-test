@@ -96,6 +96,11 @@ async function dispatch(request: Request, env: Env, url: URL): Promise<Response>
     return handleAds(request, env, url);
   }
 
+  if (path === '/api/v1/google/config') {
+    const { handlePlatformSettings } = await import('./routes/platformSettings');
+    return handlePlatformSettings(request, env, url);
+  }
+
   // ─── 인증 필요 엔드포인트 ──────────────────────────────────────────
   // S5: 인증
   if (path.startsWith('/api/v1/auth')) {

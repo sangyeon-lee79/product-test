@@ -10,12 +10,262 @@ import { hasColumn } from '../helpers/sqlHelpers';
 
 // ─────────────────────────────────────────────────────────────────────────────
 
+const GOOGLE_ISSUERS = new Set(['accounts.google.com', 'https://accounts.google.com']);
+const GOOGLE_JWKS_URL = 'https://www.googleapis.com/oauth2/v3/certs';
+
+type GoogleOAuthBody = {
+  provider?: string;
+  id_token?: string;
+};
+
+type GoogleTokenHeader = {
+  alg?: string;
+  kid?: string;
+};
+
+type GoogleTokenPayload = {
+  aud?: string | string[];
+  iss?: string;
+  sub?: string;
+  email?: string;
+  email_verified?: boolean | string;
+  name?: string;
+  picture?: string;
+  given_name?: string;
+  family_name?: string;
+  exp?: number;
+  iat?: number;
+};
+
+type GoogleJwk = JsonWebKey & {
+  kid?: string;
+  alg?: string;
+  use?: string;
+};
+
+type GoogleCertCache = {
+  expiresAt: number;
+  keys: GoogleJwk[];
+};
+
+let googleCertCache: GoogleCertCache | null = null;
+
+function decodeBase64Url(input: string): string {
+  let normalized = input.replace(/-/g, '+').replace(/_/g, '/');
+  while (normalized.length % 4 !== 0) normalized += '=';
+  return atob(normalized);
+}
+
+function parseJsonPart<T>(value: string): T {
+  return JSON.parse(decodeBase64Url(value)) as T;
+}
+
+async function getGoogleCerts(): Promise<GoogleJwk[]> {
+  if (googleCertCache && googleCertCache.expiresAt > Date.now()) {
+    return googleCertCache.keys;
+  }
+
+  const response = await fetch(GOOGLE_JWKS_URL);
+  const cacheControl = response.headers.get('cache-control') || '';
+  const maxAgeMatch = cacheControl.match(/max-age=(\d+)/);
+  const maxAgeSec = maxAgeMatch ? Number.parseInt(maxAgeMatch[1], 10) : 300;
+  const json = await response.json() as { keys?: GoogleJwk[] };
+
+  if (!response.ok || !Array.isArray(json.keys) || json.keys.length === 0) {
+    throw new Error('Failed to fetch Google signing keys');
+  }
+
+  googleCertCache = {
+    keys: json.keys,
+    expiresAt: Date.now() + (Number.isFinite(maxAgeSec) ? maxAgeSec : 300) * 1000,
+  };
+  return json.keys;
+}
+
+async function verifyGoogleIdToken(idToken: string, audience: string): Promise<GoogleTokenPayload> {
+  const parts = idToken.split('.');
+  if (parts.length !== 3) throw new Error('Invalid Google ID token');
+
+  const [headerB64, payloadB64, signatureB64] = parts;
+  const header = parseJsonPart<GoogleTokenHeader>(headerB64);
+  const payload = parseJsonPart<GoogleTokenPayload>(payloadB64);
+  if (header.alg !== 'RS256' || !header.kid) throw new Error('Unsupported Google ID token');
+
+  const signingKey = (await getGoogleCerts()).find((key) => key.kid === header.kid);
+  if (!signingKey) throw new Error('Google signing key not found');
+
+  const cryptoKey = await crypto.subtle.importKey(
+    'jwk',
+    signingKey,
+    { name: 'RSASSA-PKCS1-v1_5', hash: 'SHA-256' },
+    false,
+    ['verify'],
+  );
+
+  const encoder = new TextEncoder();
+  const data = encoder.encode(`${headerB64}.${payloadB64}`);
+  const signature = Uint8Array.from(decodeBase64Url(signatureB64), (char) => char.charCodeAt(0));
+  const valid = await crypto.subtle.verify('RSASSA-PKCS1-v1_5', cryptoKey, signature, data);
+  if (!valid) throw new Error('Invalid Google ID token signature');
+
+  const nowSec = Math.floor(Date.now() / 1000);
+  if (!payload.exp || payload.exp <= nowSec) throw new Error('Google ID token expired');
+  if (!payload.iat || payload.iat > nowSec + 60) throw new Error('Invalid Google ID token issued-at');
+  if (!payload.iss || !GOOGLE_ISSUERS.has(payload.iss)) throw new Error('Invalid Google ID token issuer');
+
+  const audiences = Array.isArray(payload.aud) ? payload.aud : [payload.aud];
+  if (!audiences.includes(audience)) throw new Error('Google ID token audience mismatch');
+  if (!payload.sub) throw new Error('Google account id missing');
+  if (!payload.email) throw new Error('Google account email missing');
+  if (!(payload.email_verified === true || payload.email_verified === 'true')) {
+    throw new Error('Google account email is not verified');
+  }
+
+  return payload;
+}
+
+async function findUserByGoogleIdentity(
+  env: Env,
+  email: string,
+  googleSub: string,
+): Promise<{ id: string; role: string; status: string | null } | null> {
+  const byOauth = await env.DB.prepare(
+    `SELECT id, role, status
+     FROM users
+     WHERE oauth_provider = 'google' AND oauth_id = ?
+     LIMIT 1`
+  ).bind(googleSub).first<{ id: string; role: string; status: string | null }>();
+  if (byOauth?.id) return byOauth;
+
+  return env.DB.prepare(
+    'SELECT id, role, status FROM users WHERE email = ? LIMIT 1'
+  ).bind(email).first<{ id: string; role: string; status: string | null }>();
+}
+
+async function ensureOAuthProfile(
+  env: Env,
+  userId: string,
+  email: string,
+  displayName: string,
+  pictureUrl: string | null,
+): Promise<void> {
+  const ts = now();
+  const existingProfile = await env.DB.prepare(
+    'SELECT id FROM user_profiles WHERE user_id = ?'
+  ).bind(userId).first<{ id: string }>();
+
+  if (existingProfile?.id) {
+    await env.DB.prepare(
+      `UPDATE user_profiles
+       SET display_name = COALESCE(NULLIF(display_name, ''), ?),
+           avatar_url = COALESCE(NULLIF(avatar_url, ''), ?),
+           updated_at = ?
+       WHERE user_id = ?`
+    ).bind(displayName || email, pictureUrl, ts, userId).run();
+  } else {
+    await env.DB.prepare(
+      `INSERT INTO user_profiles (
+        id, user_id, handle, display_name, avatar_url, bio, bio_translations,
+        country_id, language, timezone, interests, created_at, updated_at
+      ) VALUES (?, ?, NULL, ?, ?, NULL, '{}', NULL, 'ko', 'Asia/Seoul', '[]', ?, ?)`
+    ).bind(newId(), userId, displayName || email, pictureUrl, ts, ts).run();
+  }
+
+  const existingAccount = await env.DB.prepare(
+    'SELECT id FROM user_account_details WHERE user_id = ?'
+  ).bind(userId).first<{ id: string }>();
+
+  if (!existingAccount?.id) {
+    await env.DB.prepare(
+      `INSERT INTO user_account_details (
+        id, user_id, full_name, nickname, phone, address_line, address_place_id,
+        address_lat, address_lng, region_text, preferred_language, has_pets, pet_count,
+        interested_pet_types, notifications_booking, notifications_health, marketing_opt_in,
+        terms_agreed_at, public_profile, public_id, created_at, updated_at
+      ) VALUES (?, ?, ?, NULL, NULL, NULL, NULL, NULL, NULL, NULL, 'ko', false, 0, '[]', true, true, false, NULL, false, NULL, ?, ?)`
+    ).bind(newId(), userId, displayName || email, ts, ts).run();
+  }
+}
+
+async function upsertGoogleUser(
+  env: Env,
+  googleUser: GoogleTokenPayload,
+): Promise<{ id: string; role: JwtPayload['role']; email: string }> {
+  const email = String(googleUser.email || '').trim().toLowerCase();
+  const displayName = String(googleUser.name || googleUser.given_name || email).trim();
+  const pictureUrl = googleUser.picture ? String(googleUser.picture).trim() : null;
+  const googleSub = String(googleUser.sub || '').trim();
+  const ts = now();
+
+  const existing = await findUserByGoogleIdentity(env, email, googleSub);
+  const role = (existing?.role || 'guardian') as JwtPayload['role'];
+
+  if (existing?.id) {
+    await env.DB.prepare(
+      `UPDATE users
+       SET email = ?, oauth_provider = 'google', oauth_id = ?, status = 'active', updated_at = ?
+       WHERE id = ?`
+    ).bind(email, googleSub, ts, existing.id).run();
+    await ensureOAuthProfile(env, existing.id, email, displayName, pictureUrl);
+    return { id: existing.id, role, email };
+  }
+
+  const userId = newId();
+  await env.DB.prepare(
+    `INSERT INTO users (id, email, password_hash, role, oauth_provider, oauth_id, status, created_at, updated_at)
+     VALUES (?, ?, NULL, 'guardian', 'google', ?, 'active', ?, ?)`
+  ).bind(userId, email, googleSub, ts, ts).run();
+
+  await ensureOAuthProfile(env, userId, email, displayName, pictureUrl);
+  return { id: userId, role: 'guardian', email };
+}
+
+async function googleOAuthLogin(request: Request, env: Env): Promise<Response> {
+  let body: GoogleOAuthBody;
+  try {
+    body = await request.json() as GoogleOAuthBody;
+  } catch {
+    return err('Invalid JSON body');
+  }
+
+  if (body.provider !== 'google') return err('unsupported oauth provider', 400);
+  const idToken = String(body.id_token || '').trim();
+  if (!idToken) return err('id_token required');
+
+  const clientIdRow = await env.DB.prepare(
+    `SELECT setting_value
+     FROM platform_settings
+     WHERE setting_key = 'google_oauth_client_id'
+     LIMIT 1`
+  ).first<{ setting_value: string | null }>();
+  const clientId = String(clientIdRow?.setting_value || '').trim();
+  if (!clientId) return err('google oauth client id is not configured', 503);
+
+  let googleUser: GoogleTokenPayload;
+  try {
+    googleUser = await verifyGoogleIdToken(idToken, clientId);
+  } catch (verifyError) {
+    return err(verifyError instanceof Error ? verifyError.message : 'invalid google id token', 401, 'invalid_google_token');
+  }
+
+  const user = await upsertGoogleUser(env, googleUser);
+  const tokens = await issueTokens(user.id, user.role, env.JWT_SECRET);
+  return created({
+    user_id: user.id,
+    role: user.role,
+    email: user.email,
+    provider: 'google',
+    ...tokens,
+  });
+}
+
 export async function handleAuth(request: Request, env: Env, url: URL): Promise<Response> {
   const sub = url.pathname.replace('/api/v1/auth', '');
 
   if (sub === '/login' && request.method === 'POST') return passwordLogin(request, env);
   if (sub === '/test-login' && request.method === 'POST') return testLogin(request, env);
   if (sub === '/signup' && request.method === 'POST') return signup(request, env);
+  if (sub === '/oauth' && request.method === 'POST') return googleOAuthLogin(request, env);
   if (sub === '/refresh' && request.method === 'POST') return refreshToken(request, env);
 
   return err('Not found', 404);

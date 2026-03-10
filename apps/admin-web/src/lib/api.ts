@@ -13,7 +13,7 @@ export type {
   FeedType, FeedManufacturer, FeedBrand, FeedModel,
   PetFeed, FeedNutrition, FeedingLog, FeedingMixFavorite,
   FeedRegistrationRequest,
-  PetLog, GlucoseAlert, MemberSummary, MemberRecord, GoogleSettingItem,
+  PetLog, GlucoseAlert, MemberSummary, MemberRecord, GoogleSettingItem, PublicGoogleConfig, OAuthLoginResponse,
 } from '../types/api';
 import type {
   I18nRow, MasterCategory, MasterItem, Country, Currency,
@@ -27,7 +27,7 @@ import type {
   FeedType, FeedManufacturer, FeedBrand, FeedModel,
   PetFeed, FeedNutrition, FeedingLog, FeedingMixFavorite,
   FeedRegistrationRequest,
-  PetLog, GlucoseAlert, MemberSummary, MemberRecord, GoogleSettingItem,
+  PetLog, GlucoseAlert, MemberSummary, MemberRecord, GoogleSettingItem, PublicGoogleConfig, OAuthLoginResponse,
 } from '../types/api';
 
 const API_BASE = getApiBase();
@@ -153,6 +153,11 @@ export const api = {
   login: (email: string, password: string) =>
     request<{ user_id: string; role: string; access_token: string; refresh_token: string }>
       ('/api/v1/auth/login', { method: 'POST', body: JSON.stringify({ email, password }) }),
+  oauthLogin: (provider: 'google', idToken: string) =>
+    request<OAuthLoginResponse>('/api/v1/auth/oauth', {
+      method: 'POST',
+      body: JSON.stringify({ provider, id_token: idToken }),
+    }),
   signup: (payload: { email: string; role: string; display_name: string; country_code: string; language?: string; timezone?: string }) =>
     request<{
       user_id: string;
@@ -657,6 +662,8 @@ export const api = {
       }),
   },
   platformSettings: {
+    googlePublicConfig: () =>
+      request<PublicGoogleConfig>('/api/v1/google/config'),
     google: {
       get: () =>
         request<{ settings: Record<string, GoogleSettingItem> }>('/api/v1/admin/settings/google'),
@@ -664,6 +671,8 @@ export const api = {
         google_places_api_key?: string;
         google_oauth_client_id?: string;
         google_oauth_redirect_uri?: string;
+        google_translate_service_account_email?: string;
+        google_translate_service_account_private_key?: string;
       }) =>
         request<{ updated: boolean; updated_at: string }>('/api/v1/admin/settings/google', {
           method: 'PUT',

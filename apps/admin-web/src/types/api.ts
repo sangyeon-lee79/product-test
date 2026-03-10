@@ -243,6 +243,22 @@ export interface GoogleSettingItem {
   updated_at: string | null;
 }
 
+export interface PublicGoogleConfig {
+  google_places_api_key: string;
+  google_oauth_client_id: string;
+  google_oauth_redirect_uri: string;
+}
+
+export interface OAuthLoginResponse {
+  user_id: string;
+  role: string;
+  email: string;
+  provider: string;
+  access_token: string;
+  refresh_token: string;
+  expires_in: number;
+}
+
 export interface FeedPost {
   id: string;
   feed_type: string;

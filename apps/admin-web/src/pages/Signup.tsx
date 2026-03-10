@@ -1,8 +1,9 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { api, setTokens, type MasterItem } from '../lib/api';
 import { getApiBase } from '../lib/apiBase';
 import { getRoleHomePath, storeRole } from '../lib/auth';
+import { ensureGooglePlacesScript } from '../lib/google';
 import { LANG_LABELS, SUPPORTED_LANGS, useI18n, useT } from '../lib/i18n';
 
 type CountryRow = {
@@ -24,6 +25,9 @@ export default function Signup() {
   const [nickname, setNickname] = useState('');
   const [phone, setPhone] = useState('');
   const [addressLine, setAddressLine] = useState('');
+  const [addressPlaceId, setAddressPlaceId] = useState('');
+  const [addressLat, setAddressLat] = useState<number | undefined>(undefined);
+  const [addressLng, setAddressLng] = useState<number | undefined>(undefined);
   const [countryCode, setCountryCode] = useState('KR');
   const [preferredLanguage, setPreferredLanguage] = useState(lang);
   const [countries, setCountries] = useState<CountryRow[]>([]);
@@ -50,6 +54,7 @@ export default function Signup() {
   const [providerCertifications, setProviderCertifications] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const addressInputRef = useRef<HTMLInputElement | null>(null);
 
   function uiErrorMessage(err: unknown, fallback: string): string {
     if (err instanceof Error) {
@@ -180,6 +185,45 @@ export default function Signup() {
     };
   }, [providerL1Id, providerPetTypeL1Id, providerPetTypeL2Id, lang]);
 
+  useEffect(() => {
+    let cancelled = false;
+    let listener: { remove: () => void } | null = null;
+
+    async function setupPlaces() {
+      if (!addressInputRef.current) return;
+      try {
+        await ensureGooglePlacesScript();
+        if (cancelled || !addressInputRef.current) return;
+        const AutocompleteCtor = window.google?.maps?.places?.Autocomplete;
+        if (!AutocompleteCtor) return;
+
+        const autocomplete = new AutocompleteCtor(addressInputRef.current, {
+          fields: ['formatted_address', 'geometry', 'place_id'],
+          types: ['address'],
+        });
+
+        listener = autocomplete.addListener('place_changed', () => {
+          const place = autocomplete.getPlace();
+          const formatted = place.formatted_address || addressInputRef.current?.value || '';
+          setAddressLine(formatted);
+          setAddressPlaceId(place.place_id || '');
+          const lat = place.geometry?.location?.lat();
+          const lng = place.geometry?.location?.lng();
+          setAddressLat(typeof lat === 'number' ? lat : undefined);
+          setAddressLng(typeof lng === 'number' ? lng : undefined);
+        });
+      } catch {
+        // Fallback to manual address input when Google Places is not configured.
+      }
+    }
+
+    void setupPlaces();
+    return () => {
+      cancelled = true;
+      listener?.remove();
+    };
+  }, []);
+
   const selectedCountry = useMemo(
     () => countries.find(c => c.code === countryCode),
     [countries, countryCode],
@@ -205,6 +249,9 @@ export default function Signup() {
         nickname,
         phone,
         address_line: addressLine,
+        address_place_id: addressPlaceId || undefined,
+        address_lat: addressLat,
+        address_lng: addressLng,
         country_code: countryCode,
         language: preferredLanguage,
         has_pets: hasPets,
@@ -225,6 +272,9 @@ export default function Signup() {
           operating_hours: providerOperatingHours || null,
           certifications: providerCertifications.split(',').map(v => v.trim()).filter(Boolean),
           address_line: addressLine || null,
+          address_place_id: addressPlaceId || null,
+          address_lat: addressLat ?? null,
+          address_lng: addressLng ?? null,
         } : undefined,
       });
 
@@ -298,7 +348,18 @@ export default function Signup() {
               </div>
               <div className="form-group">
                 <label className="form-label">{t('public.signup.address', '주소')}</label>
-                <input className="form-input" value={addressLine} onChange={e => setAddressLine(e.target.value)} placeholder="Google Places 연동 준비용 주소 입력" />
+                <input
+                  ref={addressInputRef}
+                  className="form-input"
+                  value={addressLine}
+                  onChange={e => {
+                    setAddressLine(e.target.value);
+                    setAddressPlaceId('');
+                    setAddressLat(undefined);
+                    setAddressLng(undefined);
+                  }}
+                  placeholder="주소를 입력하거나 Google 추천에서 선택"
+                />
               </div>
             </div>
 
