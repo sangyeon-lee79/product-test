@@ -75,24 +75,18 @@ export async function handleFeedCatalog(request: Request, env: Env, url: URL): P
         )`;
         binds.push(typeItemId);
       }
+      where += ` AND EXISTS (
+        SELECT 1
+        FROM feed_models fm
+        WHERE fm.manufacturer_id = mfr.id
+          AND fm.status = 'active'`;
       if (typeItemId) {
-        where += ` AND (
-          EXISTS (
-            SELECT 1
-            FROM feed_manufacturer_type_map mtm
-            WHERE mtm.manufacturer_id = mfr.id
-              AND mtm.type_item_id = ?
-          )
-          OR EXISTS (
-            SELECT 1
-            FROM feed_models fm
-            WHERE fm.manufacturer_id = mfr.id
-              AND fm.feed_type_item_id = ?
-              AND fm.status = 'active'
-          )
-        )`;
-        binds.push(typeItemId, typeItemId);
+        where += `
+          AND fm.feed_type_item_id = ?`;
+        binds.push(typeItemId);
       }
+      where += `
+      )`;
       const rows = await env.DB.prepare(
         `SELECT mfr.*,
                 ${modelCountExpr} AS model_count,
@@ -125,6 +119,22 @@ export async function handleFeedCatalog(request: Request, env: Env, url: URL): P
         )`;
         binds.push(typeItemId);
       }
+      if (manufacturerId) {
+        modelCountExpr = modelCountExpr.replace(
+          'WHERE fm.brand_id = b.id',
+          `WHERE fm.brand_id = b.id
+            AND (
+              fm.manufacturer_id = ?
+              OR EXISTS (
+                SELECT 1
+                FROM feed_brand_manufacturer_map bmm2
+                WHERE bmm2.brand_id = b.id
+                  AND bmm2.manufacturer_id = ?
+              )
+            )`,
+        );
+        binds.push(manufacturerId, manufacturerId);
+      }
       let q = `SELECT b.*,
                       ${modelCountExpr} AS model_count,
                       m.name_ko AS mfr_name_ko,
@@ -134,9 +144,25 @@ export async function handleFeedCatalog(request: Request, env: Env, url: URL): P
                JOIN feed_manufacturers m ON m.id = b.manufacturer_id
                LEFT JOIN i18n_translations tr_mfr ON tr_mfr.key = m.name_key
                LEFT JOIN i18n_translations tr_brand ON tr_brand.key = b.name_key
-               WHERE b.status = 'active'`;
+               WHERE b.status = 'active'
+                 AND EXISTS (
+                   SELECT 1
+                   FROM feed_models fm
+                   WHERE fm.brand_id = b.id
+                     AND fm.status = 'active'`;
       if (manufacturerId) {
-        q += ` AND (
+        q += `
+                     AND (
+                       fm.manufacturer_id = ?
+                       OR EXISTS (
+                         SELECT 1
+                         FROM feed_brand_manufacturer_map bmm2
+                         WHERE bmm2.brand_id = b.id
+                           AND bmm2.manufacturer_id = ?
+                       )
+                     )
+                 )
+                 AND (
           b.manufacturer_id = ?
           OR EXISTS (
             SELECT 1
@@ -145,7 +171,35 @@ export async function handleFeedCatalog(request: Request, env: Env, url: URL): P
               AND bmm.manufacturer_id = ?
           )
         )`;
-        binds.push(manufacturerId, manufacturerId);
+        binds.push(manufacturerId, manufacturerId, manufacturerId, manufacturerId);
+      } else {
+        q += `
+                 )`;
+      }
+      if (typeItemId) {
+        q += ` AND EXISTS (
+          SELECT 1
+          FROM feed_models fm_type
+          WHERE fm_type.brand_id = b.id
+            AND fm_type.status = 'active'
+            AND fm_type.feed_type_item_id = ?`;
+        if (manufacturerId) {
+          q += `
+            AND (
+              fm_type.manufacturer_id = ?
+              OR EXISTS (
+                SELECT 1
+                FROM feed_brand_manufacturer_map bmm3
+                WHERE bmm3.brand_id = b.id
+                  AND bmm3.manufacturer_id = ?
+              )
+            )`;
+          binds.push(typeItemId, manufacturerId, manufacturerId);
+        } else {
+          binds.push(typeItemId);
+        }
+        q += `
+        )`;
       }
       q += ' ORDER BY b.name_en';
       const rows = await env.DB.prepare(q).bind(...binds).all();

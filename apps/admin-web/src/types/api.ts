@@ -456,7 +456,7 @@ export interface PetFeed {
   start_date?: string | null;
   end_date?: string | null;
   notes?: string | null;
-  is_primary: number;
+  is_primary: number | boolean;
   status: string;
   model_name?: string | null;
   model_code?: string | null;

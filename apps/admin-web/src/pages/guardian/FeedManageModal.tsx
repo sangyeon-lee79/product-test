@@ -264,18 +264,30 @@ export default function FeedManageModal({
   );
 
   const mfrOptions = useMemo(
-    () => manufacturers.filter((r) => r.status === 'active').map((r) => ({
-      id: r.id, key: r.key,
-      label: (r.display_label || '').trim() || (lang === 'ko' ? (r.name_ko || r.name_en || r.key) : (r.name_en || r.name_ko || r.key)),
-    })),
+    () => manufacturers
+      .filter((r) => r.status === 'active' && (r.model_count ?? 0) > 0)
+      .map((r) => {
+        const baseLabel = (r.display_label || '').trim() || (lang === 'ko' ? (r.name_ko || r.name_en || r.key) : (r.name_en || r.name_ko || r.key));
+        return {
+          id: r.id,
+          key: r.key,
+          label: `${baseLabel} (${r.model_count ?? 0})`,
+        };
+      }),
     [manufacturers, lang],
   );
 
   const brandOptions = useMemo(
-    () => brands.filter((r) => r.status === 'active').map((r) => ({
-      id: r.id, key: r.name_en || r.name_ko || r.id,
-      label: lang === 'ko' ? (r.name_ko || r.name_en || r.id) : (r.name_en || r.name_ko || r.id),
-    })),
+    () => brands
+      .filter((r) => r.status === 'active' && (r.model_count ?? 0) > 0)
+      .map((r) => {
+        const baseLabel = (r.display_label || '').trim() || (lang === 'ko' ? (r.name_ko || r.name_en || r.id) : (r.name_en || r.name_ko || r.id));
+        return {
+          id: r.id,
+          key: r.name_en || r.name_ko || r.id,
+          label: `${baseLabel} (${r.model_count ?? 0})`,
+        };
+      }),
     [brands, lang],
   );
 

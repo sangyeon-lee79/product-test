@@ -121,10 +121,10 @@ export async function handlePetFeeds(request: Request, env: Env, url: URL): Prom
         if (!model) return err('Feed model not found', 404, 'not_found');
       }
 
-      const isPrimary = body.is_primary ? 1 : 0;
+      const isPrimary = body.is_primary === true;
       if (isPrimary) {
         await env.DB.prepare(
-          `UPDATE pet_feeds SET is_primary = 0, updated_at = ? WHERE pet_id = ? AND is_primary = 1`
+          `UPDATE pet_feeds SET is_primary = false, updated_at = ? WHERE pet_id = ? AND is_primary = true`
         ).bind(now(), petId).run();
       }
 
@@ -165,7 +165,7 @@ export async function handlePetFeeds(request: Request, env: Env, url: URL): Prom
 
       if (body.is_primary) {
         await env.DB.prepare(
-          `UPDATE pet_feeds SET is_primary = 0, updated_at = ? WHERE pet_id = ? AND is_primary = 1 AND id != ?`
+          `UPDATE pet_feeds SET is_primary = false, updated_at = ? WHERE pet_id = ? AND is_primary = true AND id != ?`
         ).bind(now(), petId, feedId).run();
       }
 
@@ -179,7 +179,7 @@ export async function handlePetFeeds(request: Request, env: Env, url: URL): Prom
       if ('start_date' in body) { sets.push('start_date = ?'); vals.push(body.start_date ?? null); }
       if ('end_date' in body) { sets.push('end_date = ?'); vals.push(body.end_date ?? null); }
       if ('notes' in body) { sets.push('notes = ?'); vals.push(body.notes ?? null); }
-      if ('is_primary' in body) { sets.push('is_primary = ?'); vals.push(body.is_primary ? 1 : 0); }
+      if ('is_primary' in body) { sets.push('is_primary = ?'); vals.push(body.is_primary === true); }
       vals.push(feedId, petId);
       await env.DB.prepare(`UPDATE pet_feeds SET ${sets.join(', ')} WHERE id = ? AND pet_id = ?`).bind(...vals).run();
       return ok({ id: feedId, updated: true });
