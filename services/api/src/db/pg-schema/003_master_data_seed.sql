@@ -1,6 +1,6 @@
 -- =============================================================================
 -- Petfolio — Master Data Seed (migrated from Cloudflare D1)
--- Generated: 2026-03-10T12:35:33.686Z
+-- Generated: 2026-03-10T13:49:43.120Z
 -- =============================================================================
 -- All statements use ON CONFLICT DO NOTHING for idempotency.
 -- Apply after 001_init.sql + 002_seed.sql
@@ -20,7 +20,7 @@ VALUES
   ('mc-life-stage', 'life_stage', NULL, NULL, NULL, 105, 'active', '2026-03-07 02:02:50', '2026-03-07 02:02:50'),
   ('mc-body-size', 'body_size', NULL, NULL, NULL, 106, 'active', '2026-03-07 02:02:50', '2026-03-07 02:02:50'),
   ('mc-pet-color', 'pet_color', NULL, NULL, NULL, 107, 'active', '2026-03-07 02:02:50', '2026-03-07 02:02:50'),
-  ('mc-allergy-type', 'allergy_type', NULL, NULL, NULL, 108, 'active', '2026-03-07 02:02:50', '2026-03-07 07:42:49'),
+  ('mc-allergy-type', 'allergy_type', NULL, NULL, NULL, 108, 'inactive', '2026-03-07 02:02:50', '2026-03-07 07:42:49'),
   ('mc-disease-type', 'disease_type', NULL, NULL, NULL, 109, 'active', '2026-03-07 02:02:50', '2026-03-07 09:40:33'),
   ('mc-symptom-type', 'symptom_type', NULL, NULL, NULL, 110, 'active', '2026-03-07 02:02:50', '2026-03-07 02:02:50'),
   ('mc-vaccination-type', 'vaccination_type', NULL, NULL, NULL, 111, 'active', '2026-03-07 02:02:50', '2026-03-07 02:02:50'),
@@ -41,7 +41,7 @@ VALUES
   ('mc-disease-measurement-context', 'disease_measurement_context', NULL, NULL, NULL, 127, 'active', '2026-03-07 03:16:19', '2026-03-07 03:16:19'),
   ('mc-disease-judgement-rule-type', 'disease_judgement_rule_type', NULL, NULL, NULL, 128, 'active', '2026-03-07 03:16:19', '2026-03-07 03:16:19'),
   ('mc-diet-subtype', 'diet_subtype', NULL, NULL, NULL, 129, 'active', '2026-03-07 03:16:19', '2026-03-08 07:47:28'),
-  ('mc-allergy-group', 'allergy_group', NULL, NULL, NULL, 130, 'active', '2026-03-07 03:16:19', '2026-03-07 07:42:49'),
+  ('mc-allergy-group', 'allergy_group', NULL, NULL, NULL, 130, 'inactive', '2026-03-07 03:16:19', '2026-03-07 07:42:49'),
   ('mc-log-type', 'log_type', NULL, NULL, NULL, 200, 'active', '2026-03-07 13:05:39', '2026-03-07 13:05:39'),
   ('mc-diet-feed-type', 'diet_feed_type', NULL, NULL, NULL, 131, 'active', '2026-03-08 07:30:48', '2026-03-08 07:47:28'),
   ('mc-metric', 'metric', NULL, NULL, NULL, 210, 'active', '2026-03-09 14:38:26', '2026-03-09 14:38:26'),
@@ -99,7 +99,7 @@ VALUES
 ON CONFLICT DO NOTHING;
 
 -- ---------------------------------------------------------------------------
--- master_items (762 rows)
+-- master_items (771 rows)
 -- ---------------------------------------------------------------------------
 INSERT INTO master_items (id, category_id, parent_item_id, code, name, description, sort_order, status, metadata, created_at, updated_at, device_type_id)
 VALUES
@@ -139,12 +139,12 @@ VALUES
   ('mi-allergy-dairy', 'mc-allergy-type', NULL, 'dairy', NULL, NULL, 6, 'active', '{}', '2026-03-07 02:02:50', '2026-03-07 02:02:50', NULL),
   ('mi-allergy-seafood', 'mc-allergy-type', NULL, 'seafood', NULL, NULL, 7, 'active', '{}', '2026-03-07 02:02:50', '2026-03-07 02:02:50', NULL),
   ('mi-allergy-none', 'mc-allergy-type', NULL, 'none', NULL, NULL, 8, 'active', '{}', '2026-03-07 02:02:50', '2026-03-07 02:02:50', NULL),
-  ('mi-dtype-diabetes', 'mc-disease-type', 'mi-dg-endocrine', 'diabetes', NULL, NULL, 1, 'active', '{}', '2026-03-07 02:02:50', '2026-03-07T11:07:14.334Z', NULL),
-  ('mi-dtype-arthritis', 'mc-disease-type', 'mi-dg-musculoskeletal-disease', 'arthritis', NULL, NULL, 2, 'active', '{}', '2026-03-07 02:02:50', '2026-03-07 02:02:50', NULL),
-  ('mi-dtype-heart', 'mc-disease-type', 'mi-dg-cardiovascular-disease', 'heart_disease', NULL, NULL, 3, 'active', '{}', '2026-03-07 02:02:50', '2026-03-07 02:02:50', NULL),
-  ('mi-dtype-kidney', 'mc-disease-type', 'mi-dg-kidney-disease', 'kidney_disease', NULL, NULL, 4, 'active', '{}', '2026-03-07 02:02:50', '2026-03-07 02:02:50', NULL),
-  ('mi-dtype-skin', 'mc-disease-type', 'mi-dg-skin-disease', 'skin_disease', NULL, NULL, 5, 'active', '{}', '2026-03-07 02:02:50', '2026-03-07 02:02:50', NULL),
-  ('mi-dtype-none', 'mc-disease-type', 'mi-dg-endocrine', 'none', NULL, NULL, 6, 'inactive', '{}', '2026-03-07 02:02:50', '2026-03-07 02:02:50', NULL),
+  ('mi-dtype-diabetes', 'mc-disease-type', NULL, 'diabetes', NULL, NULL, 1, 'active', '{}', '2026-03-07 02:02:50', '2026-03-07T11:07:14.334Z', NULL),
+  ('mi-dtype-arthritis', 'mc-disease-type', NULL, 'arthritis', NULL, NULL, 2, 'active', '{}', '2026-03-07 02:02:50', '2026-03-07 02:02:50', NULL),
+  ('mi-dtype-heart', 'mc-disease-type', NULL, 'heart_disease', NULL, NULL, 3, 'active', '{}', '2026-03-07 02:02:50', '2026-03-07 02:02:50', NULL),
+  ('mi-dtype-kidney', 'mc-disease-type', NULL, 'kidney_disease', NULL, NULL, 4, 'active', '{}', '2026-03-07 02:02:50', '2026-03-07 02:02:50', NULL),
+  ('mi-dtype-skin', 'mc-disease-type', NULL, 'skin_disease', NULL, NULL, 5, 'active', '{}', '2026-03-07 02:02:50', '2026-03-07 02:02:50', NULL),
+  ('mi-dtype-none', 'mc-disease-type', NULL, 'none', NULL, NULL, 6, 'active', '{}', '2026-03-07 02:02:50', '2026-03-07 02:02:50', NULL),
   ('mi-stype-vomiting', 'mc-symptom-type', NULL, 'vomiting', NULL, NULL, 1, 'active', '{}', '2026-03-07 02:02:50', '2026-03-07 02:02:50', NULL),
   ('mi-stype-diarrhea', 'mc-symptom-type', NULL, 'diarrhea', NULL, NULL, 2, 'active', '{}', '2026-03-07 02:02:50', '2026-03-07 02:02:50', NULL),
   ('mi-stype-cough', 'mc-symptom-type', NULL, 'cough', NULL, NULL, 3, 'active', '{}', '2026-03-07 02:02:50', '2026-03-07 02:02:50', NULL),
@@ -278,6 +278,15 @@ VALUES
   ('mi-business-petshop', 'mc-business-category', NULL, 'pet_shop', NULL, NULL, 3, 'active', '{"item_level":"l1"}', '2026-03-10 02:10:08', '2026-03-10 02:10:08', NULL),
   ('mi-business-hotel', 'mc-business-category', NULL, 'pet_hotel', NULL, NULL, 4, 'active', '{"item_level":"l1"}', '2026-03-10 02:10:08', '2026-03-10 02:10:08', NULL),
   ('mi-business-training', 'mc-business-category', NULL, 'training', NULL, NULL, 5, 'active', '{"item_level":"l1"}', '2026-03-10 02:10:08', '2026-03-10 02:10:08', NULL),
+  ('mi-vac-dhppl', 'mc-vaccination-type', NULL, 'dhppl', NULL, NULL, 2, 'active', '{"pet_type":"dog","vaccine_class":"core"}', '2026-03-10 12:00:00', '2026-03-10 12:00:00', NULL),
+  ('mi-vac-leptospirosis', 'mc-vaccination-type', NULL, 'leptospirosis', NULL, NULL, 3, 'active', '{"pet_type":"dog","vaccine_class":"core"}', '2026-03-10 12:00:00', '2026-03-10 12:00:00', NULL),
+  ('mi-vac-canine-influenza', 'mc-vaccination-type', NULL, 'canine_influenza', NULL, NULL, 10, 'active', '{"pet_type":"dog","vaccine_class":"non_core"}', '2026-03-10 12:00:00', '2026-03-10 12:00:00', NULL),
+  ('mi-vac-lyme', 'mc-vaccination-type', NULL, 'lyme', NULL, NULL, 11, 'active', '{"pet_type":"dog","vaccine_class":"non_core"}', '2026-03-10 12:00:00', '2026-03-10 12:00:00', NULL),
+  ('mi-vac-canine-coronavirus', 'mc-vaccination-type', NULL, 'canine_coronavirus', NULL, NULL, 12, 'active', '{"pet_type":"dog","vaccine_class":"non_core"}', '2026-03-10 12:00:00', '2026-03-10 12:00:00', NULL),
+  ('mi-vac-felv', 'mc-vaccination-type', NULL, 'felv', NULL, NULL, 20, 'active', '{"pet_type":"cat","vaccine_class":"non_core"}', '2026-03-10 12:00:00', '2026-03-10 12:00:00', NULL),
+  ('mi-vac-fip', 'mc-vaccination-type', NULL, 'fip', NULL, NULL, 21, 'active', '{"pet_type":"cat","vaccine_class":"non_core"}', '2026-03-10 12:00:00', '2026-03-10 12:00:00', NULL),
+  ('mi-vac-chlamydia', 'mc-vaccination-type', NULL, 'chlamydia', NULL, NULL, 22, 'active', '{"pet_type":"cat","vaccine_class":"non_core"}', '2026-03-10 12:00:00', '2026-03-10 12:00:00', NULL),
+  ('mi-vac-heartworm', 'mc-vaccination-type', NULL, 'heartworm', NULL, NULL, 30, 'active', '{"pet_type":"both","vaccine_class":"preventive"}', '2026-03-10 12:00:00', '2026-03-10 12:00:00', NULL),
   ('mi-breed-pomeranian', 'mc-pet-type', 'mi-ptype-dog', 'pomeranian', NULL, NULL, 1, 'active', '{"pet_type_keys":["dog"]}', '2026-03-07 02:02:50', '2026-03-07 08:05:40', NULL),
   ('mi-breed-poodle', 'mc-pet-type', 'mi-ptype-dog', 'poodle', NULL, NULL, 2, 'active', '{"pet_type_keys":["dog"]}', '2026-03-07 02:02:50', '2026-03-07 08:05:40', NULL),
   ('mi-breed-golden', 'mc-pet-type', 'mi-ptype-dog', 'golden_retriever', NULL, NULL, 3, 'active', '{"pet_type_keys":["dog"]}', '2026-03-07 02:02:50', '2026-03-07 08:05:40', NULL),
@@ -305,7 +314,11 @@ VALUES
   ('mi-breed-ksh', 'mc-pet-type', 'mi-ptype-cat', 'korean_shorthair', NULL, NULL, 4, 'active', '{"pet_type_keys":["cat"]}', '2026-03-07 02:02:50', '2026-03-07 07:51:42', NULL),
   ('mi-breed-rblue', 'mc-pet-type', 'mi-ptype-cat', 'russian_blue', NULL, NULL, 5, 'active', '{"pet_type_keys":["cat"]}', '2026-03-07 02:02:50', '2026-03-07 08:05:40', NULL),
   ('mi-breed-persian', 'mc-pet-type', 'mi-ptype-cat', 'persian', NULL, NULL, 6, 'active', '{"pet_type_keys":["cat"]}', '2026-03-07 02:02:50', '2026-03-07 08:05:40', NULL),
-  ('mi-breed-cat-british-shorthair', 'mc-pet-type', 'mi-ptype-cat', 'british_shorthair', NULL, NULL, 4, 'active', '{}', '2026-03-07 06:39:43', '2026-03-07 08:05:40', NULL),
+  ('mi-breed-cat-british-shorthair', 'mc-pet-type', 'mi-ptype-cat', 'british_shorthair', NULL, NULL, 4, 'active', '{}', '2026-03-07 06:39:43', '2026-03-07 08:05:40', NULL)
+ON CONFLICT DO NOTHING;
+
+INSERT INTO master_items (id, category_id, parent_item_id, code, name, description, sort_order, status, metadata, created_at, updated_at, device_type_id)
+VALUES
   ('mi-breed-cat-scottish-fold', 'mc-pet-type', 'mi-ptype-cat', 'scottish_fold', NULL, NULL, 5, 'active', '{}', '2026-03-07 06:39:43', '2026-03-07 08:05:40', NULL),
   ('mi-breed-cat-munchkin', 'mc-pet-type', 'mi-ptype-cat', 'munchkin', NULL, NULL, 6, 'active', '{}', '2026-03-07 06:39:43', '2026-03-07 07:51:42', NULL),
   ('mi-breed-cat-siamese', 'mc-pet-type', 'mi-ptype-cat', 'siamese', NULL, NULL, 7, 'active', '{}', '2026-03-07 06:39:43', '2026-03-07 08:05:40', NULL),
@@ -314,11 +327,7 @@ VALUES
   ('mi-breed-cat-ragdoll', 'mc-pet-type', 'mi-ptype-cat', 'ragdoll', NULL, NULL, 10, 'active', '{}', '2026-03-07 06:39:43', '2026-03-07 08:05:40', NULL),
   ('mi-breed-cat-sphynx', 'mc-pet-type', 'mi-ptype-cat', 'sphynx', NULL, NULL, 11, 'active', '{}', '2026-03-07 06:39:43', '2026-03-07 08:05:40', NULL),
   ('mi-breed-cat-mixed', 'mc-pet-type', 'mi-ptype-cat', 'mixed_cat', NULL, NULL, 12, 'active', '{}', '2026-03-07 06:39:43', '2026-03-07 07:51:42', NULL),
-  ('mi-breed-cat-other', 'mc-pet-type', 'mi-ptype-cat', 'cat_other', NULL, NULL, 13, 'active', '{}', '2026-03-07 06:39:43', '2026-03-07 07:51:42', NULL)
-ON CONFLICT DO NOTHING;
-
-INSERT INTO master_items (id, category_id, parent_item_id, code, name, description, sort_order, status, metadata, created_at, updated_at, device_type_id)
-VALUES
+  ('mi-breed-cat-other', 'mc-pet-type', 'mi-ptype-cat', 'cat_other', NULL, NULL, 13, 'active', '{}', '2026-03-07 06:39:43', '2026-03-07 07:51:42', NULL),
   ('mi-breed-cat-maine-coon', 'mc-pet-type', 'mi-ptype-cat', 'maine_coon', NULL, NULL, 3, 'active', '{}', '2026-03-07 08:05:40', '2026-03-07 08:05:40', NULL),
   ('mi-breed-cat-american-shorthair', 'mc-pet-type', 'mi-ptype-cat', 'american_shorthair', NULL, NULL, 10, 'active', '{}', '2026-03-07 08:05:40', '2026-03-07 08:05:40', NULL),
   ('mi-breed-cat-abyssinian', 'mc-pet-type', 'mi-ptype-cat', 'abyssinian', NULL, NULL, 12, 'active', '{}', '2026-03-07 08:05:40', '2026-03-07 08:05:40', NULL),
@@ -359,7 +368,11 @@ VALUES
   ('mi-breed-reptile-leopard-gecko', 'mc-pet-type', 'mi-ptype-reptile', 'leopard_gecko', NULL, NULL, 2, 'active', '{}', '2026-03-07 08:05:40', '2026-03-07 08:05:40', NULL),
   ('mi-breed-reptile-crested-gecko', 'mc-pet-type', 'mi-ptype-reptile', 'crested_gecko', NULL, NULL, 3, 'active', '{}', '2026-03-07 08:05:40', '2026-03-07 08:05:40', NULL),
   ('mi-breed-reptile-ball-python', 'mc-pet-type', 'mi-ptype-reptile', 'ball_python', NULL, NULL, 4, 'active', '{}', '2026-03-07 08:05:40', '2026-03-07 08:05:40', NULL),
-  ('mi-breed-reptile-corn-snake', 'mc-pet-type', 'mi-ptype-reptile', 'corn_snake', NULL, NULL, 5, 'active', '{}', '2026-03-07 08:05:40', '2026-03-07 08:05:40', NULL),
+  ('mi-breed-reptile-corn-snake', 'mc-pet-type', 'mi-ptype-reptile', 'corn_snake', NULL, NULL, 5, 'active', '{}', '2026-03-07 08:05:40', '2026-03-07 08:05:40', NULL)
+ON CONFLICT DO NOTHING;
+
+INSERT INTO master_items (id, category_id, parent_item_id, code, name, description, sort_order, status, metadata, created_at, updated_at, device_type_id)
+VALUES
   ('mi-breed-reptile-king-snake', 'mc-pet-type', 'mi-ptype-reptile', 'king_snake', NULL, NULL, 6, 'active', '{}', '2026-03-07 08:05:40', '2026-03-07 08:05:40', NULL),
   ('mi-breed-reptile-red-eared-slider', 'mc-pet-type', 'mi-ptype-reptile', 'red_eared_slider', NULL, NULL, 9, 'active', '{}', '2026-03-07 08:05:40', '2026-03-07 08:05:40', NULL),
   ('mi-breed-other-hamster', 'mc-pet-type', 'mi-ptype-other', 'hamster', NULL, NULL, 1, 'active', '{}', '2026-03-07 08:05:40', '2026-03-07 08:05:40', NULL),
@@ -368,11 +381,7 @@ VALUES
   ('mi-breed-other-hedgehog', 'mc-pet-type', 'mi-ptype-other', 'hedgehog', NULL, NULL, 4, 'active', '{}', '2026-03-07 08:05:40', '2026-03-07 08:05:40', NULL),
   ('mi-breed-other-sugar-glider', 'mc-pet-type', 'mi-ptype-other', 'sugar_glider', NULL, NULL, 5, 'active', '{}', '2026-03-07 08:05:40', '2026-03-07 08:05:40', NULL),
   ('mi-breed-other-chinchilla', 'mc-pet-type', 'mi-ptype-other', 'chinchilla', NULL, NULL, 6, 'active', '{}', '2026-03-07 08:05:40', '2026-03-07 08:05:40', NULL),
-  ('mi-device-glucose-meter', 'mc-disease-device-type', 'mi-dtype-diabetes', 'glucose_meter', NULL, NULL, 1, 'active', '{}', '2026-03-07 03:16:19', '2026-03-07 03:16:19', 'dt-glucose-meter')
-ON CONFLICT DO NOTHING;
-
-INSERT INTO master_items (id, category_id, parent_item_id, code, name, description, sort_order, status, metadata, created_at, updated_at, device_type_id)
-VALUES
+  ('mi-device-glucose-meter', 'mc-disease-device-type', 'mi-dtype-diabetes', 'glucose_meter', NULL, NULL, 1, 'active', '{}', '2026-03-07 03:16:19', '2026-03-07 03:16:19', 'dt-glucose-meter'),
   ('mi-device-glucose-strip', 'mc-disease-device-type', 'mi-dtype-diabetes', 'glucose_strip', NULL, NULL, 2, 'active', '{}', '2026-03-07 03:16:19', '2026-03-07 03:16:19', NULL),
   ('mi-device-insulin-pen', 'mc-disease-device-type', 'mi-dtype-diabetes', 'insulin_pen', NULL, NULL, 3, 'active', '{}', '2026-03-07 03:16:19', '2026-03-07 03:16:19', 'dt-insulin-pen'),
   ('mi-device-insulin-syringe', 'mc-disease-device-type', 'mi-dtype-diabetes', 'insulin_syringe', NULL, NULL, 4, 'active', '{}', '2026-03-07 03:16:19', '2026-03-07 03:16:19', NULL),
@@ -413,7 +422,11 @@ VALUES
   ('mi-diet-sub-raw-balanced-diet', 'mc-diet-subtype', 'mi-diet-raw', 'raw_balanced_diet', NULL, NULL, 42, 'active', '{}', '2026-03-07 08:13:32', '2026-03-07 08:13:32', NULL),
   ('mi-diet-sub-raw-frozen-food', 'mc-diet-subtype', 'mi-diet-raw', 'raw_frozen_food', NULL, NULL, 43, 'active', '{}', '2026-03-07 08:13:32', '2026-03-07 08:13:32', NULL),
   ('mi-dm-ketone', 'mc-disease-measurement-type', 'mi-dg-endocrine', 'ketone', NULL, NULL, 3, 'active', '{}', '2026-03-07 06:51:16', '2026-03-07 06:51:16', NULL),
-  ('mi-allergy-duck', 'mc-allergy-type', 'mi-allergy-group-protein', 'duck', NULL, NULL, 3, 'active', '{}', '2026-03-07 03:16:19', '2026-03-07 03:16:19', NULL),
+  ('mi-allergy-duck', 'mc-allergy-type', 'mi-allergy-group-protein', 'duck', NULL, NULL, 3, 'active', '{}', '2026-03-07 03:16:19', '2026-03-07 03:16:19', NULL)
+ON CONFLICT DO NOTHING;
+
+INSERT INTO master_items (id, category_id, parent_item_id, code, name, description, sort_order, status, metadata, created_at, updated_at, device_type_id)
+VALUES
   ('mi-allergy-salmon', 'mc-allergy-type', 'mi-allergy-group-protein', 'salmon', NULL, NULL, 4, 'active', '{}', '2026-03-07 03:16:19', '2026-03-07 03:16:19', NULL),
   ('mi-allergy-wheat', 'mc-allergy-type', 'mi-allergy-group-grain', 'wheat', NULL, NULL, 10, 'active', '{}', '2026-03-07 03:16:19', '2026-03-07 03:16:19', NULL),
   ('mi-allergy-corn', 'mc-allergy-type', 'mi-allergy-group-grain', 'corn', NULL, NULL, 11, 'active', '{}', '2026-03-07 03:16:19', '2026-03-07 03:16:19', NULL),
@@ -422,11 +435,7 @@ VALUES
   ('mi-allergy-cheese', 'mc-allergy-type', 'mi-allergy-group-dairy', 'cheese', NULL, NULL, 21, 'active', '{}', '2026-03-07 03:16:19', '2026-03-07 03:16:19', NULL),
   ('mi-diet-sub-freeze-dried-meat', 'mc-diet-subtype', 'mi-diet-freeze-dried-food', 'freeze_dried_meat', NULL, NULL, 30, 'active', '{}', '2026-03-07 08:13:32', '2026-03-07 08:13:32', NULL),
   ('mi-diet-sub-freeze-dried-complete', 'mc-diet-subtype', 'mi-diet-freeze-dried-food', 'freeze_dried_complete', NULL, NULL, 31, 'active', '{}', '2026-03-07 08:13:32', '2026-03-07 08:13:32', NULL),
-  ('mi-diet-sub-freeze-dried-snack', 'mc-diet-subtype', 'mi-diet-freeze-dried-food', 'freeze_dried_snack', NULL, NULL, 32, 'active', '{}', '2026-03-07 08:13:32', '2026-03-07 08:13:32', NULL)
-ON CONFLICT DO NOTHING;
-
-INSERT INTO master_items (id, category_id, parent_item_id, code, name, description, sort_order, status, metadata, created_at, updated_at, device_type_id)
-VALUES
+  ('mi-diet-sub-freeze-dried-snack', 'mc-diet-subtype', 'mi-diet-freeze-dried-food', 'freeze_dried_snack', NULL, NULL, 32, 'active', '{}', '2026-03-07 08:13:32', '2026-03-07 08:13:32', NULL),
   ('mi-diet-sub-kidney-diet', 'mc-diet-subtype', 'mi-diet-prescription-food', 'kidney_diet', NULL, NULL, 50, 'active', '{}', '2026-03-07 08:13:32', '2026-03-07 08:13:32', NULL),
   ('mi-diet-sub-diabetes-diet', 'mc-diet-subtype', 'mi-diet-prescription-food', 'diabetes_diet', NULL, NULL, 51, 'active', '{}', '2026-03-07 08:13:32', '2026-03-07 08:13:32', NULL),
   ('mi-diet-sub-gastrointestinal-diet', 'mc-diet-subtype', 'mi-diet-prescription-food', 'gastrointestinal_diet', NULL, NULL, 52, 'active', '{}', '2026-03-07 08:13:32', '2026-03-07 08:13:32', NULL),
@@ -467,7 +476,11 @@ VALUES
   ('mi-dt-cystitis', 'mc-disease-type', 'mi-dg-urinary-disease', 'cystitis', NULL, NULL, 501, 'active', '{}', '2026-03-07 09:40:33', '2026-03-07 09:40:33', NULL),
   ('mi-dt-urinary-stone', 'mc-disease-type', 'mi-dg-urinary-disease', 'urinary_stone', NULL, NULL, 502, 'active', '{}', '2026-03-07 09:40:33', '2026-03-07 09:40:33', NULL),
   ('mi-dt-urinary-infection', 'mc-disease-type', 'mi-dg-urinary-disease', 'urinary_infection', NULL, NULL, 503, 'active', '{}', '2026-03-07 09:40:33', '2026-03-07 09:40:33', NULL),
-  ('mi-dt-incontinence', 'mc-disease-type', 'mi-dg-urinary-disease', 'incontinence', NULL, NULL, 504, 'active', '{}', '2026-03-07 09:40:33', '2026-03-07 09:40:33', NULL),
+  ('mi-dt-incontinence', 'mc-disease-type', 'mi-dg-urinary-disease', 'incontinence', NULL, NULL, 504, 'active', '{}', '2026-03-07 09:40:33', '2026-03-07 09:40:33', NULL)
+ON CONFLICT DO NOTHING;
+
+INSERT INTO master_items (id, category_id, parent_item_id, code, name, description, sort_order, status, metadata, created_at, updated_at, device_type_id)
+VALUES
   ('mi-dt-kidney-failure', 'mc-disease-type', 'mi-dg-kidney-disease', 'kidney_failure', NULL, NULL, 601, 'active', '{}', '2026-03-07 09:40:33', '2026-03-07 09:40:33', NULL),
   ('mi-dt-chronic-kidney-disease', 'mc-disease-type', 'mi-dg-kidney-disease', 'chronic_kidney_disease', NULL, NULL, 602, 'active', '{}', '2026-03-07 09:40:33', '2026-03-07 09:40:33', NULL),
   ('mi-dt-acute-kidney-injury', 'mc-disease-type', 'mi-dg-kidney-disease', 'acute_kidney_injury', NULL, NULL, 603, 'active', '{}', '2026-03-07 09:40:33', '2026-03-07 09:40:33', NULL),
@@ -476,11 +489,7 @@ VALUES
   ('mi-dt-hepatitis', 'mc-disease-type', 'mi-dg-liver-disease', 'hepatitis', NULL, NULL, 701, 'active', '{}', '2026-03-07 09:40:33', '2026-03-07 09:40:33', NULL),
   ('mi-dt-liver-failure', 'mc-disease-type', 'mi-dg-liver-disease', 'liver_failure', NULL, NULL, 702, 'active', '{}', '2026-03-07 09:40:33', '2026-03-07 09:40:33', NULL),
   ('mi-dt-fatty-liver', 'mc-disease-type', 'mi-dg-liver-disease', 'fatty_liver', NULL, NULL, 703, 'active', '{}', '2026-03-07 09:40:33', '2026-03-07 09:40:33', NULL),
-  ('mi-dt-cholangitis', 'mc-disease-type', 'mi-dg-liver-disease', 'cholangitis', NULL, NULL, 704, 'active', '{}', '2026-03-07 09:40:33', '2026-03-07 09:40:33', NULL)
-ON CONFLICT DO NOTHING;
-
-INSERT INTO master_items (id, category_id, parent_item_id, code, name, description, sort_order, status, metadata, created_at, updated_at, device_type_id)
-VALUES
+  ('mi-dt-cholangitis', 'mc-disease-type', 'mi-dg-liver-disease', 'cholangitis', NULL, NULL, 704, 'active', '{}', '2026-03-07 09:40:33', '2026-03-07 09:40:33', NULL),
   ('mi-dt-gallbladder-mucocele', 'mc-disease-type', 'mi-dg-liver-disease', 'gallbladder_mucocele', NULL, NULL, 705, 'active', '{}', '2026-03-07 09:40:33', '2026-03-07 09:40:33', NULL),
   ('mi-dt-dermatitis', 'mc-disease-type', 'mi-dg-skin-disease', 'dermatitis', NULL, NULL, 801, 'active', '{}', '2026-03-07 09:40:33', '2026-03-07 09:40:33', NULL),
   ('mi-dt-atopic-dermatitis', 'mc-disease-type', 'mi-dg-skin-disease', 'atopic_dermatitis', NULL, NULL, 802, 'active', '{}', '2026-03-07 09:40:33', '2026-03-07 09:40:33', NULL),
@@ -521,7 +530,11 @@ VALUES
   ('mi-dt-intestinal-parasites', 'mc-disease-type', 'mi-dg-parasitic-disease', 'intestinal_parasites', NULL, NULL, 1604, 'active', '{}', '2026-03-07 09:40:33', '2026-03-07 09:40:33', NULL),
   ('mi-dt-obesity', 'mc-disease-type', 'mi-dg-metabolic-disease', 'obesity', NULL, NULL, 1701, 'active', '{}', '2026-03-07 09:40:33', '2026-03-07 09:40:33', NULL),
   ('mi-dt-hyperlipidemia', 'mc-disease-type', 'mi-dg-metabolic-disease', 'hyperlipidemia', NULL, NULL, 1702, 'active', '{}', '2026-03-07 09:40:33', '2026-03-07 09:40:33', NULL),
-  ('mi-dt-ketoacidosis', 'mc-disease-type', 'mi-dg-metabolic-disease', 'ketoacidosis', NULL, NULL, 1703, 'active', '{}', '2026-03-07 09:40:33', '2026-03-07 09:40:33', NULL),
+  ('mi-dt-ketoacidosis', 'mc-disease-type', 'mi-dg-metabolic-disease', 'ketoacidosis', NULL, NULL, 1703, 'active', '{}', '2026-03-07 09:40:33', '2026-03-07 09:40:33', NULL)
+ON CONFLICT DO NOTHING;
+
+INSERT INTO master_items (id, category_id, parent_item_id, code, name, description, sort_order, status, metadata, created_at, updated_at, device_type_id)
+VALUES
   ('mi-dt-pyometra', 'mc-disease-type', 'mi-dg-reproductive-disease', 'pyometra', NULL, NULL, 1801, 'active', '{}', '2026-03-07 09:40:33', '2026-03-07 09:40:33', NULL),
   ('mi-dt-mastitis', 'mc-disease-type', 'mi-dg-reproductive-disease', 'mastitis', NULL, NULL, 1802, 'active', '{}', '2026-03-07 09:40:33', '2026-03-07 09:40:33', NULL),
   ('mi-dt-prostatitis', 'mc-disease-type', 'mi-dg-reproductive-disease', 'prostatitis', NULL, NULL, 1803, 'active', '{}', '2026-03-07 09:40:33', '2026-03-07 09:40:33', NULL),
@@ -530,11 +543,7 @@ VALUES
   ('mi-dt-congenital-deafness', 'mc-disease-type', 'mi-dg-genetic-disease', 'congenital_deafness', NULL, NULL, 1903, 'active', '{}', '2026-03-07 09:40:33', '2026-03-07 09:40:33', NULL),
   ('mi-dt-lymphoma', 'mc-disease-type', 'mi-dg-cancer-disease', 'lymphoma', NULL, NULL, 2001, 'active', '{}', '2026-03-07 09:40:33', '2026-03-07 09:40:33', NULL),
   ('mi-dt-mast-cell-tumor', 'mc-disease-type', 'mi-dg-cancer-disease', 'mast_cell_tumor', NULL, NULL, 2002, 'active', '{}', '2026-03-07 09:40:33', '2026-03-07 09:40:33', NULL),
-  ('mi-dt-melanoma', 'mc-disease-type', 'mi-dg-cancer-disease', 'melanoma', NULL, NULL, 2003, 'active', '{}', '2026-03-07 09:40:33', '2026-03-07 09:40:33', NULL)
-ON CONFLICT DO NOTHING;
-
-INSERT INTO master_items (id, category_id, parent_item_id, code, name, description, sort_order, status, metadata, created_at, updated_at, device_type_id)
-VALUES
+  ('mi-dt-melanoma', 'mc-disease-type', 'mi-dg-cancer-disease', 'melanoma', NULL, NULL, 2003, 'active', '{}', '2026-03-07 09:40:33', '2026-03-07 09:40:33', NULL),
   ('mi-dt-osteosarcoma', 'mc-disease-type', 'mi-dg-cancer-disease', 'osteosarcoma', NULL, NULL, 2004, 'active', '{}', '2026-03-07 09:40:33', '2026-03-07 09:40:33', NULL),
   ('mi-dt-separation-anxiety', 'mc-disease-type', 'mi-dg-behavioral-disease', 'separation_anxiety', NULL, NULL, 2101, 'active', '{}', '2026-03-07 09:40:33', '2026-03-07 09:40:33', NULL),
   ('mi-dt-compulsive-disorder', 'mc-disease-type', 'mi-dg-behavioral-disease', 'compulsive_disorder', NULL, NULL, 2102, 'active', '{}', '2026-03-07 09:40:33', '2026-03-07 09:40:33', NULL),
@@ -575,7 +584,11 @@ VALUES
   ('mi-diet-feed-pate-food-core', 'mc-diet-feed-type', 'mi-diet-sub-pate-food', 'pate_food_core', NULL, NULL, 231, 'active', '{}', '2026-03-08 07:47:28', '2026-03-08 07:47:28', NULL),
   ('mi-diet-feed-gravy-food-core', 'mc-diet-feed-type', 'mi-diet-sub-gravy-food', 'gravy_food_core', NULL, NULL, 241, 'active', '{}', '2026-03-08 07:47:28', '2026-03-08 07:47:28', NULL),
   ('mi-diet-feed-raw-meat-core', 'mc-diet-feed-type', 'mi-diet-sub-raw-meat', 'raw_meat_core', NULL, NULL, 401, 'active', '{}', '2026-03-08 07:47:28', '2026-03-08 07:47:28', NULL),
-  ('mi-diet-feed-raw-food-core', 'mc-diet-feed-type', 'mi-diet-sub-raw-meat', 'raw_food_core', NULL, NULL, 9003, 'active', '{}', '2026-03-08 15:09:30', '2026-03-08 15:09:30', NULL),
+  ('mi-diet-feed-raw-food-core', 'mc-diet-feed-type', 'mi-diet-sub-raw-meat', 'raw_food_core', NULL, NULL, 9003, 'active', '{}', '2026-03-08 15:09:30', '2026-03-08 15:09:30', NULL)
+ON CONFLICT DO NOTHING;
+
+INSERT INTO master_items (id, category_id, parent_item_id, code, name, description, sort_order, status, metadata, created_at, updated_at, device_type_id)
+VALUES
   ('mi-diet-feed-raw-pancreatic-diet-core', 'mc-diet-feed-type', 'mi-diet-sub-raw-pancreatic-diet', 'raw_pancreatic_diet_core', NULL, NULL, 411, 'active', '{}', '2026-03-08 07:47:28', '2026-03-08 07:47:28', NULL),
   ('mi-diet-feed-raw-balanced-diet-core', 'mc-diet-feed-type', 'mi-diet-sub-raw-balanced-diet', 'raw_balanced_diet_core', NULL, NULL, 421, 'active', '{}', '2026-03-08 07:47:28', '2026-03-08 07:47:28', NULL),
   ('mi-diet-feed-raw-frozen-food-core', 'mc-diet-feed-type', 'mi-diet-sub-raw-frozen-food', 'raw_frozen_food_core', NULL, NULL, 431, 'active', '{}', '2026-03-08 07:47:28', '2026-03-08 07:47:28', NULL),
@@ -584,11 +597,7 @@ VALUES
   ('mi-diet-feed-freeze-dried-snack-core', 'mc-diet-feed-type', 'mi-diet-sub-freeze-dried-snack', 'freeze_dried_snack_core', NULL, NULL, 321, 'active', '{}', '2026-03-08 07:47:28', '2026-03-08 07:47:28', NULL),
   ('mi-diet-feed-kidney-low-phosphorus-formula', 'mc-diet-feed-type', 'mi-diet-sub-kidney-diet', 'kidney_low_phosphorus_formula', NULL, NULL, 51, 'active', '{}', '2026-03-08 07:30:48', '2026-03-08 07:30:48', NULL),
   ('mi-diet-feed-prescription-diet-core', 'mc-diet-feed-type', 'mi-diet-sub-kidney-diet', 'prescription_diet_core', NULL, NULL, 9006, 'active', '{}', '2026-03-08 15:09:30', '2026-03-08 15:09:30', NULL),
-  ('mi-diet-feed-diabetes-low-carb-formula', 'mc-diet-feed-type', 'mi-diet-sub-diabetes-diet', 'diabetes_low_carb_formula', NULL, NULL, 50, 'active', '{}', '2026-03-08 07:30:48', '2026-03-08 07:30:48', NULL)
-ON CONFLICT DO NOTHING;
-
-INSERT INTO master_items (id, category_id, parent_item_id, code, name, description, sort_order, status, metadata, created_at, updated_at, device_type_id)
-VALUES
+  ('mi-diet-feed-diabetes-low-carb-formula', 'mc-diet-feed-type', 'mi-diet-sub-diabetes-diet', 'diabetes_low_carb_formula', NULL, NULL, 50, 'active', '{}', '2026-03-08 07:30:48', '2026-03-08 07:30:48', NULL),
   ('mi-diet-feed-gastrointestinal-diet-core', 'mc-diet-feed-type', 'mi-diet-sub-gastrointestinal-diet', 'gastrointestinal_diet_core', NULL, NULL, 521, 'active', '{}', '2026-03-08 07:47:28', '2026-03-08 07:47:28', NULL),
   ('mi-diet-feed-urinary-diet-core', 'mc-diet-feed-type', 'mi-diet-sub-urinary-diet', 'urinary_diet_core', NULL, NULL, 531, 'active', '{}', '2026-03-08 07:47:28', '2026-03-08 07:47:28', NULL),
   ('mi-diet-feed-hypoallergenic-hydrolyzed-formula', 'mc-diet-feed-type', 'mi-diet-sub-allergy-diet', 'hypoallergenic_hydrolyzed_formula', NULL, NULL, 60, 'active', '{}', '2026-03-08 07:30:48', '2026-03-08 07:30:48', NULL),
@@ -629,7 +638,11 @@ VALUES
   ('mi-svc-hospital-dog-golden-hip-screening', 'mc-business-category', 'mi-business-doctor', 'hospital_dog_golden_hip_screening', NULL, NULL, 30801, 'active', '{"item_level":"l3","business_category_l1_id":"mi-business-hospital","pet_type_l1_id":"mi-ptype-dog","pet_type_l2_id":"mi-breed-golden"}', '2026-03-10 12:00:00', '2026-03-10 12:00:00', NULL),
   ('mi-svc-hospital-dog-golden-cancer-screening', 'mc-business-category', 'mi-business-doctor', 'hospital_dog_golden_cancer_screening', NULL, NULL, 30802, 'active', '{"item_level":"l3","business_category_l1_id":"mi-business-hospital","pet_type_l1_id":"mi-ptype-dog","pet_type_l2_id":"mi-breed-golden"}', '2026-03-10 12:00:00', '2026-03-10 12:00:00', NULL),
   ('mi-svc-hospital-dog-golden-allergy-treatment', 'mc-business-category', 'mi-business-doctor', 'hospital_dog_golden_allergy_treatment', NULL, NULL, 30803, 'active', '{"item_level":"l3","business_category_l1_id":"mi-business-hospital","pet_type_l1_id":"mi-ptype-dog","pet_type_l2_id":"mi-breed-golden"}', '2026-03-10 12:00:00', '2026-03-10 12:00:00', NULL),
-  ('mi-svc-hospital-dog-labrador-hip-screening', 'mc-business-category', 'mi-business-doctor', 'hospital_dog_labrador_hip_screening', NULL, NULL, 30901, 'active', '{"item_level":"l3","business_category_l1_id":"mi-business-hospital","pet_type_l1_id":"mi-ptype-dog","pet_type_l2_id":"mi-breed-dog-labrador"}', '2026-03-10 12:00:00', '2026-03-10 12:00:00', NULL),
+  ('mi-svc-hospital-dog-labrador-hip-screening', 'mc-business-category', 'mi-business-doctor', 'hospital_dog_labrador_hip_screening', NULL, NULL, 30901, 'active', '{"item_level":"l3","business_category_l1_id":"mi-business-hospital","pet_type_l1_id":"mi-ptype-dog","pet_type_l2_id":"mi-breed-dog-labrador"}', '2026-03-10 12:00:00', '2026-03-10 12:00:00', NULL)
+ON CONFLICT DO NOTHING;
+
+INSERT INTO master_items (id, category_id, parent_item_id, code, name, description, sort_order, status, metadata, created_at, updated_at, device_type_id)
+VALUES
   ('mi-svc-hospital-dog-labrador-obesity-mgmt', 'mc-business-category', 'mi-business-doctor', 'hospital_dog_labrador_obesity_mgmt', NULL, NULL, 30902, 'active', '{"item_level":"l3","business_category_l1_id":"mi-business-hospital","pet_type_l1_id":"mi-ptype-dog","pet_type_l2_id":"mi-breed-dog-labrador"}', '2026-03-10 12:00:00', '2026-03-10 12:00:00', NULL),
   ('mi-svc-hospital-dog-labrador-eye-care', 'mc-business-category', 'mi-business-doctor', 'hospital_dog_labrador_eye_care', NULL, NULL, 30903, 'active', '{"item_level":"l3","business_category_l1_id":"mi-business-hospital","pet_type_l1_id":"mi-ptype-dog","pet_type_l2_id":"mi-breed-dog-labrador"}', '2026-03-10 12:00:00', '2026-03-10 12:00:00', NULL),
   ('mi-svc-hospital-dog-welsh-corgi-hip-screening', 'mc-business-category', 'mi-business-doctor', 'hospital_dog_welsh_corgi_hip_screening', NULL, NULL, 31001, 'active', '{"item_level":"l3","business_category_l1_id":"mi-business-hospital","pet_type_l1_id":"mi-ptype-dog","pet_type_l2_id":"mi-breed-dog-welsh-corgi"}', '2026-03-10 12:00:00', '2026-03-10 12:00:00', NULL),
@@ -638,11 +651,7 @@ VALUES
   ('mi-svc-hospital-dog-corgi-hip-screening', 'mc-business-category', 'mi-business-doctor', 'hospital_dog_corgi_hip_screening', NULL, NULL, 31101, 'active', '{"item_level":"l3","business_category_l1_id":"mi-business-hospital","pet_type_l1_id":"mi-ptype-dog","pet_type_l2_id":"mi-breed-dog-corgi"}', '2026-03-10 12:00:00', '2026-03-10 12:00:00', NULL),
   ('mi-svc-hospital-dog-corgi-spinal-screening', 'mc-business-category', 'mi-business-doctor', 'hospital_dog_corgi_spinal_screening', NULL, NULL, 31102, 'active', '{"item_level":"l3","business_category_l1_id":"mi-business-hospital","pet_type_l1_id":"mi-ptype-dog","pet_type_l2_id":"mi-breed-dog-corgi"}', '2026-03-10 12:00:00', '2026-03-10 12:00:00', NULL),
   ('mi-svc-hospital-dog-corgi-obesity-mgmt', 'mc-business-category', 'mi-business-doctor', 'hospital_dog_corgi_obesity_mgmt', NULL, NULL, 31103, 'active', '{"item_level":"l3","business_category_l1_id":"mi-business-hospital","pet_type_l1_id":"mi-ptype-dog","pet_type_l2_id":"mi-breed-dog-corgi"}', '2026-03-10 12:00:00', '2026-03-10 12:00:00', NULL),
-  ('mi-svc-hospital-dog-french-bulldog-brachy-airway', 'mc-business-category', 'mi-business-doctor', 'hospital_dog_french_bulldog_brachy_airway', NULL, NULL, 31201, 'active', '{"item_level":"l3","business_category_l1_id":"mi-business-hospital","pet_type_l1_id":"mi-ptype-dog","pet_type_l2_id":"mi-breed-dog-french-bulldog"}', '2026-03-10 12:00:00', '2026-03-10 12:00:00', NULL)
-ON CONFLICT DO NOTHING;
-
-INSERT INTO master_items (id, category_id, parent_item_id, code, name, description, sort_order, status, metadata, created_at, updated_at, device_type_id)
-VALUES
+  ('mi-svc-hospital-dog-french-bulldog-brachy-airway', 'mc-business-category', 'mi-business-doctor', 'hospital_dog_french_bulldog_brachy_airway', NULL, NULL, 31201, 'active', '{"item_level":"l3","business_category_l1_id":"mi-business-hospital","pet_type_l1_id":"mi-ptype-dog","pet_type_l2_id":"mi-breed-dog-french-bulldog"}', '2026-03-10 12:00:00', '2026-03-10 12:00:00', NULL),
   ('mi-svc-hospital-dog-french-bulldog-skin-fold-care', 'mc-business-category', 'mi-business-doctor', 'hospital_dog_french_bulldog_skin_fold_care', NULL, NULL, 31202, 'active', '{"item_level":"l3","business_category_l1_id":"mi-business-hospital","pet_type_l1_id":"mi-ptype-dog","pet_type_l2_id":"mi-breed-dog-french-bulldog"}', '2026-03-10 12:00:00', '2026-03-10 12:00:00', NULL),
   ('mi-svc-hospital-dog-french-bulldog-spinal-screening', 'mc-business-category', 'mi-business-doctor', 'hospital_dog_french_bulldog_spinal_screening', NULL, NULL, 31203, 'active', '{"item_level":"l3","business_category_l1_id":"mi-business-hospital","pet_type_l1_id":"mi-ptype-dog","pet_type_l2_id":"mi-breed-dog-french-bulldog"}', '2026-03-10 12:00:00', '2026-03-10 12:00:00', NULL),
   ('mi-svc-hospital-dog-bulldog-brachy-airway', 'mc-business-category', 'mi-business-doctor', 'hospital_dog_bulldog_brachy_airway', NULL, NULL, 31301, 'active', '{"item_level":"l3","business_category_l1_id":"mi-business-hospital","pet_type_l1_id":"mi-ptype-dog","pet_type_l2_id":"mi-breed-dog-bulldog"}', '2026-03-10 12:00:00', '2026-03-10 12:00:00', NULL),
@@ -683,7 +692,11 @@ VALUES
   ('mi-svc-hospital-cat-rblue-kidney-check', 'mc-business-category', 'mi-business-doctor', 'hospital_cat_rblue_kidney_check', NULL, NULL, 40201, 'active', '{"item_level":"l3","business_category_l1_id":"mi-business-hospital","pet_type_l1_id":"mi-ptype-cat","pet_type_l2_id":"mi-breed-rblue"}', '2026-03-10 12:00:00', '2026-03-10 12:00:00', NULL),
   ('mi-svc-hospital-cat-rblue-urinary-care', 'mc-business-category', 'mi-business-doctor', 'hospital_cat_rblue_urinary_care', NULL, NULL, 40202, 'active', '{"item_level":"l3","business_category_l1_id":"mi-business-hospital","pet_type_l1_id":"mi-ptype-cat","pet_type_l2_id":"mi-breed-rblue"}', '2026-03-10 12:00:00', '2026-03-10 12:00:00', NULL),
   ('mi-svc-hospital-cat-persian-eye-care', 'mc-business-category', 'mi-business-doctor', 'hospital_cat_persian_eye_care', NULL, NULL, 40301, 'active', '{"item_level":"l3","business_category_l1_id":"mi-business-hospital","pet_type_l1_id":"mi-ptype-cat","pet_type_l2_id":"mi-breed-persian"}', '2026-03-10 12:00:00', '2026-03-10 12:00:00', NULL),
-  ('mi-svc-hospital-cat-persian-respiratory-check', 'mc-business-category', 'mi-business-doctor', 'hospital_cat_persian_respiratory_check', NULL, NULL, 40302, 'active', '{"item_level":"l3","business_category_l1_id":"mi-business-hospital","pet_type_l1_id":"mi-ptype-cat","pet_type_l2_id":"mi-breed-persian"}', '2026-03-10 12:00:00', '2026-03-10 12:00:00', NULL),
+  ('mi-svc-hospital-cat-persian-respiratory-check', 'mc-business-category', 'mi-business-doctor', 'hospital_cat_persian_respiratory_check', NULL, NULL, 40302, 'active', '{"item_level":"l3","business_category_l1_id":"mi-business-hospital","pet_type_l1_id":"mi-ptype-cat","pet_type_l2_id":"mi-breed-persian"}', '2026-03-10 12:00:00', '2026-03-10 12:00:00', NULL)
+ON CONFLICT DO NOTHING;
+
+INSERT INTO master_items (id, category_id, parent_item_id, code, name, description, sort_order, status, metadata, created_at, updated_at, device_type_id)
+VALUES
   ('mi-svc-hospital-cat-persian-kidney-check', 'mc-business-category', 'mi-business-doctor', 'hospital_cat_persian_kidney_check', NULL, NULL, 40303, 'active', '{"item_level":"l3","business_category_l1_id":"mi-business-hospital","pet_type_l1_id":"mi-ptype-cat","pet_type_l2_id":"mi-breed-persian"}', '2026-03-10 12:00:00', '2026-03-10 12:00:00', NULL),
   ('mi-svc-hospital-cat-british-sh-cardiac-screening', 'mc-business-category', 'mi-business-doctor', 'hospital_cat_british_sh_cardiac_screening', NULL, NULL, 40401, 'active', '{"item_level":"l3","business_category_l1_id":"mi-business-hospital","pet_type_l1_id":"mi-ptype-cat","pet_type_l2_id":"mi-breed-cat-british-shorthair"}', '2026-03-10 12:00:00', '2026-03-10 12:00:00', NULL),
   ('mi-svc-hospital-cat-british-sh-kidney-check', 'mc-business-category', 'mi-business-doctor', 'hospital_cat_british_sh_kidney_check', NULL, NULL, 40402, 'active', '{"item_level":"l3","business_category_l1_id":"mi-business-hospital","pet_type_l1_id":"mi-ptype-cat","pet_type_l2_id":"mi-breed-cat-british-shorthair"}', '2026-03-10 12:00:00', '2026-03-10 12:00:00', NULL),
@@ -692,11 +705,7 @@ VALUES
   ('mi-svc-hospital-cat-munchkin-spinal-screening', 'mc-business-category', 'mi-business-doctor', 'hospital_cat_munchkin_spinal_screening', NULL, NULL, 40601, 'active', '{"item_level":"l3","business_category_l1_id":"mi-business-hospital","pet_type_l1_id":"mi-ptype-cat","pet_type_l2_id":"mi-breed-cat-munchkin"}', '2026-03-10 12:00:00', '2026-03-10 12:00:00', NULL),
   ('mi-svc-hospital-cat-munchkin-joint-care', 'mc-business-category', 'mi-business-doctor', 'hospital_cat_munchkin_joint_care', NULL, NULL, 40602, 'active', '{"item_level":"l3","business_category_l1_id":"mi-business-hospital","pet_type_l1_id":"mi-ptype-cat","pet_type_l2_id":"mi-breed-cat-munchkin"}', '2026-03-10 12:00:00', '2026-03-10 12:00:00', NULL),
   ('mi-svc-hospital-cat-siamese-dental-care', 'mc-business-category', 'mi-business-doctor', 'hospital_cat_siamese_dental_care', NULL, NULL, 40701, 'active', '{"item_level":"l3","business_category_l1_id":"mi-business-hospital","pet_type_l1_id":"mi-ptype-cat","pet_type_l2_id":"mi-breed-cat-siamese"}', '2026-03-10 12:00:00', '2026-03-10 12:00:00', NULL),
-  ('mi-svc-hospital-cat-siamese-respiratory-check', 'mc-business-category', 'mi-business-doctor', 'hospital_cat_siamese_respiratory_check', NULL, NULL, 40702, 'active', '{"item_level":"l3","business_category_l1_id":"mi-business-hospital","pet_type_l1_id":"mi-ptype-cat","pet_type_l2_id":"mi-breed-cat-siamese"}', '2026-03-10 12:00:00', '2026-03-10 12:00:00', NULL)
-ON CONFLICT DO NOTHING;
-
-INSERT INTO master_items (id, category_id, parent_item_id, code, name, description, sort_order, status, metadata, created_at, updated_at, device_type_id)
-VALUES
+  ('mi-svc-hospital-cat-siamese-respiratory-check', 'mc-business-category', 'mi-business-doctor', 'hospital_cat_siamese_respiratory_check', NULL, NULL, 40702, 'active', '{"item_level":"l3","business_category_l1_id":"mi-business-hospital","pet_type_l1_id":"mi-ptype-cat","pet_type_l2_id":"mi-breed-cat-siamese"}', '2026-03-10 12:00:00', '2026-03-10 12:00:00', NULL),
   ('mi-svc-hospital-cat-siamese-eye-care', 'mc-business-category', 'mi-business-doctor', 'hospital_cat_siamese_eye_care', NULL, NULL, 40703, 'active', '{"item_level":"l3","business_category_l1_id":"mi-business-hospital","pet_type_l1_id":"mi-ptype-cat","pet_type_l2_id":"mi-breed-cat-siamese"}', '2026-03-10 12:00:00', '2026-03-10 12:00:00', NULL),
   ('mi-svc-hospital-cat-norwegian-forest-cardiac-screening', 'mc-business-category', 'mi-business-doctor', 'hospital_cat_norwegian_forest_cardiac_screening', NULL, NULL, 40801, 'active', '{"item_level":"l3","business_category_l1_id":"mi-business-hospital","pet_type_l1_id":"mi-ptype-cat","pet_type_l2_id":"mi-breed-cat-norwegian-forest"}', '2026-03-10 12:00:00', '2026-03-10 12:00:00', NULL),
   ('mi-svc-hospital-cat-norwegian-forest-kidney-check', 'mc-business-category', 'mi-business-doctor', 'hospital_cat_norwegian_forest_kidney_check', NULL, NULL, 40802, 'active', '{"item_level":"l3","business_category_l1_id":"mi-business-hospital","pet_type_l1_id":"mi-ptype-cat","pet_type_l2_id":"mi-breed-cat-norwegian-forest"}', '2026-03-10 12:00:00', '2026-03-10 12:00:00', NULL),
@@ -737,7 +746,11 @@ VALUES
   ('mi-svc-grooming-dog-bichon-frise-short-trim', 'mc-business-category', 'mi-business-groomer', 'grooming_dog_bichon_frise_short_trim', NULL, NULL, 10303, 'active', '{"item_level":"l3","business_category_l1_id":"mi-business-grooming","pet_type_l1_id":"mi-ptype-dog","pet_type_l2_id":"mi-breed-dog-bichon-frise"}', '2026-03-10 12:00:00', '2026-03-10 12:00:00', NULL),
   ('mi-svc-grooming-dog-shih-tzu-puppy-cut', 'mc-business-category', 'mi-business-groomer', 'grooming_dog_shih_tzu_puppy_cut', NULL, NULL, 10401, 'active', '{"item_level":"l3","business_category_l1_id":"mi-business-grooming","pet_type_l1_id":"mi-ptype-dog","pet_type_l2_id":"mi-breed-dog-shih-tzu"}', '2026-03-10 12:00:00', '2026-03-10 12:00:00', NULL),
   ('mi-svc-grooming-dog-shih-tzu-teddy-bear-cut', 'mc-business-category', 'mi-business-groomer', 'grooming_dog_shih_tzu_teddy_bear_cut', NULL, NULL, 10402, 'active', '{"item_level":"l3","business_category_l1_id":"mi-business-grooming","pet_type_l1_id":"mi-ptype-dog","pet_type_l2_id":"mi-breed-dog-shih-tzu"}', '2026-03-10 12:00:00', '2026-03-10 12:00:00', NULL),
-  ('mi-svc-grooming-dog-shih-tzu-top-knot-cut', 'mc-business-category', 'mi-business-groomer', 'grooming_dog_shih_tzu_top_knot_cut', NULL, NULL, 10403, 'active', '{"item_level":"l3","business_category_l1_id":"mi-business-grooming","pet_type_l1_id":"mi-ptype-dog","pet_type_l2_id":"mi-breed-dog-shih-tzu"}', '2026-03-10 12:00:00', '2026-03-10 12:00:00', NULL),
+  ('mi-svc-grooming-dog-shih-tzu-top-knot-cut', 'mc-business-category', 'mi-business-groomer', 'grooming_dog_shih_tzu_top_knot_cut', NULL, NULL, 10403, 'active', '{"item_level":"l3","business_category_l1_id":"mi-business-grooming","pet_type_l1_id":"mi-ptype-dog","pet_type_l2_id":"mi-breed-dog-shih-tzu"}', '2026-03-10 12:00:00', '2026-03-10 12:00:00', NULL)
+ON CONFLICT DO NOTHING;
+
+INSERT INTO master_items (id, category_id, parent_item_id, code, name, description, sort_order, status, metadata, created_at, updated_at, device_type_id)
+VALUES
   ('mi-svc-grooming-dog-yorkshire-terrier-puppy-cut', 'mc-business-category', 'mi-business-groomer', 'grooming_dog_yorkshire_terrier_puppy_cut', NULL, NULL, 10501, 'active', '{"item_level":"l3","business_category_l1_id":"mi-business-grooming","pet_type_l1_id":"mi-ptype-dog","pet_type_l2_id":"mi-breed-dog-yorkshire-terrier"}', '2026-03-10 12:00:00', '2026-03-10 12:00:00', NULL),
   ('mi-svc-grooming-dog-yorkshire-terrier-top-knot-cut', 'mc-business-category', 'mi-business-groomer', 'grooming_dog_yorkshire_terrier_top_knot_cut', NULL, NULL, 10502, 'active', '{"item_level":"l3","business_category_l1_id":"mi-business-grooming","pet_type_l1_id":"mi-ptype-dog","pet_type_l2_id":"mi-breed-dog-yorkshire-terrier"}', '2026-03-10 12:00:00', '2026-03-10 12:00:00', NULL),
   ('mi-svc-grooming-dog-yorkshire-terrier-show-cut', 'mc-business-category', 'mi-business-groomer', 'grooming_dog_yorkshire_terrier_show_cut', NULL, NULL, 10503, 'active', '{"item_level":"l3","business_category_l1_id":"mi-business-grooming","pet_type_l1_id":"mi-ptype-dog","pet_type_l2_id":"mi-breed-dog-yorkshire-terrier"}', '2026-03-10 12:00:00', '2026-03-10 12:00:00', NULL),
@@ -746,11 +759,7 @@ VALUES
   ('mi-svc-grooming-dog-pomeranian-fox-cut', 'mc-business-category', 'mi-business-groomer', 'grooming_dog_pomeranian_fox_cut', NULL, NULL, 10603, 'active', '{"item_level":"l3","business_category_l1_id":"mi-business-grooming","pet_type_l1_id":"mi-ptype-dog","pet_type_l2_id":"mi-breed-pomeranian"}', '2026-03-10 12:00:00', '2026-03-10 12:00:00', NULL),
   ('mi-svc-grooming-dog-pomeranian-puppy-cut', 'mc-business-category', 'mi-business-groomer', 'grooming_dog_pomeranian_puppy_cut', NULL, NULL, 10604, 'active', '{"item_level":"l3","business_category_l1_id":"mi-business-grooming","pet_type_l1_id":"mi-ptype-dog","pet_type_l2_id":"mi-breed-pomeranian"}', '2026-03-10 12:00:00', '2026-03-10 12:00:00', NULL),
   ('mi-svc-grooming-dog-chihuahua-bath-and-brush', 'mc-business-category', 'mi-business-groomer', 'grooming_dog_chihuahua_bath_and_brush', NULL, NULL, 10701, 'active', '{"item_level":"l3","business_category_l1_id":"mi-business-grooming","pet_type_l1_id":"mi-ptype-dog","pet_type_l2_id":"mi-breed-dog-chihuahua"}', '2026-03-10 12:00:00', '2026-03-10 12:00:00', NULL),
-  ('mi-svc-grooming-dog-chihuahua-puppy-cut', 'mc-business-category', 'mi-business-groomer', 'grooming_dog_chihuahua_puppy_cut', NULL, NULL, 10702, 'active', '{"item_level":"l3","business_category_l1_id":"mi-business-grooming","pet_type_l1_id":"mi-ptype-dog","pet_type_l2_id":"mi-breed-dog-chihuahua"}', '2026-03-10 12:00:00', '2026-03-10 12:00:00', NULL)
-ON CONFLICT DO NOTHING;
-
-INSERT INTO master_items (id, category_id, parent_item_id, code, name, description, sort_order, status, metadata, created_at, updated_at, device_type_id)
-VALUES
+  ('mi-svc-grooming-dog-chihuahua-puppy-cut', 'mc-business-category', 'mi-business-groomer', 'grooming_dog_chihuahua_puppy_cut', NULL, NULL, 10702, 'active', '{"item_level":"l3","business_category_l1_id":"mi-business-grooming","pet_type_l1_id":"mi-ptype-dog","pet_type_l2_id":"mi-breed-dog-chihuahua"}', '2026-03-10 12:00:00', '2026-03-10 12:00:00', NULL),
   ('mi-svc-grooming-dog-chihuahua-short-trim', 'mc-business-category', 'mi-business-groomer', 'grooming_dog_chihuahua_short_trim', NULL, NULL, 10703, 'active', '{"item_level":"l3","business_category_l1_id":"mi-business-grooming","pet_type_l1_id":"mi-ptype-dog","pet_type_l2_id":"mi-breed-dog-chihuahua"}', '2026-03-10 12:00:00', '2026-03-10 12:00:00', NULL),
   ('mi-svc-grooming-dog-golden-breed-standard', 'mc-business-category', 'mi-business-groomer', 'grooming_dog_golden_breed_standard', NULL, NULL, 10801, 'active', '{"item_level":"l3","business_category_l1_id":"mi-business-grooming","pet_type_l1_id":"mi-ptype-dog","pet_type_l2_id":"mi-breed-golden"}', '2026-03-10 12:00:00', '2026-03-10 12:00:00', NULL),
   ('mi-svc-grooming-dog-golden-summer-trim', 'mc-business-category', 'mi-business-groomer', 'grooming_dog_golden_summer_trim', NULL, NULL, 10802, 'active', '{"item_level":"l3","business_category_l1_id":"mi-business-grooming","pet_type_l1_id":"mi-ptype-dog","pet_type_l2_id":"mi-breed-golden"}', '2026-03-10 12:00:00', '2026-03-10 12:00:00', NULL),
@@ -791,7 +800,11 @@ VALUES
   ('mi-svc-grooming-dog-husky-line-trim', 'mc-business-category', 'mi-business-groomer', 'grooming_dog_husky_line_trim', NULL, NULL, 11902, 'active', '{"item_level":"l3","business_category_l1_id":"mi-business-grooming","pet_type_l1_id":"mi-ptype-dog","pet_type_l2_id":"mi-breed-dog-husky"}', '2026-03-10 12:00:00', '2026-03-10 12:00:00', NULL),
   ('mi-svc-grooming-dog-husky-sanitary-trim', 'mc-business-category', 'mi-business-groomer', 'grooming_dog_husky_sanitary_trim', NULL, NULL, 11903, 'active', '{"item_level":"l3","business_category_l1_id":"mi-business-grooming","pet_type_l1_id":"mi-ptype-dog","pet_type_l2_id":"mi-breed-dog-husky"}', '2026-03-10 12:00:00', '2026-03-10 12:00:00', NULL),
   ('mi-svc-grooming-dog-samoyed-bath-and-deshed', 'mc-business-category', 'mi-business-groomer', 'grooming_dog_samoyed_bath_and_deshed', NULL, NULL, 12001, 'active', '{"item_level":"l3","business_category_l1_id":"mi-business-grooming","pet_type_l1_id":"mi-ptype-dog","pet_type_l2_id":"mi-breed-dog-samoyed"}', '2026-03-10 12:00:00', '2026-03-10 12:00:00', NULL),
-  ('mi-svc-grooming-dog-samoyed-line-trim', 'mc-business-category', 'mi-business-groomer', 'grooming_dog_samoyed_line_trim', NULL, NULL, 12002, 'active', '{"item_level":"l3","business_category_l1_id":"mi-business-grooming","pet_type_l1_id":"mi-ptype-dog","pet_type_l2_id":"mi-breed-dog-samoyed"}', '2026-03-10 12:00:00', '2026-03-10 12:00:00', NULL),
+  ('mi-svc-grooming-dog-samoyed-line-trim', 'mc-business-category', 'mi-business-groomer', 'grooming_dog_samoyed_line_trim', NULL, NULL, 12002, 'active', '{"item_level":"l3","business_category_l1_id":"mi-business-grooming","pet_type_l1_id":"mi-ptype-dog","pet_type_l2_id":"mi-breed-dog-samoyed"}', '2026-03-10 12:00:00', '2026-03-10 12:00:00', NULL)
+ON CONFLICT DO NOTHING;
+
+INSERT INTO master_items (id, category_id, parent_item_id, code, name, description, sort_order, status, metadata, created_at, updated_at, device_type_id)
+VALUES
   ('mi-svc-grooming-dog-samoyed-teddy-bear-cut', 'mc-business-category', 'mi-business-groomer', 'grooming_dog_samoyed_teddy_bear_cut', NULL, NULL, 12003, 'active', '{"item_level":"l3","business_category_l1_id":"mi-business-grooming","pet_type_l1_id":"mi-ptype-dog","pet_type_l2_id":"mi-breed-dog-samoyed"}', '2026-03-10 12:00:00', '2026-03-10 12:00:00', NULL),
   ('mi-svc-grooming-dog-akita-bath-and-deshed', 'mc-business-category', 'mi-business-groomer', 'grooming_dog_akita_bath_and_deshed', NULL, NULL, 12101, 'active', '{"item_level":"l3","business_category_l1_id":"mi-business-grooming","pet_type_l1_id":"mi-ptype-dog","pet_type_l2_id":"mi-breed-dog-akita"}', '2026-03-10 12:00:00', '2026-03-10 12:00:00', NULL),
   ('mi-svc-grooming-dog-akita-line-trim', 'mc-business-category', 'mi-business-groomer', 'grooming_dog_akita_line_trim', NULL, NULL, 12102, 'active', '{"item_level":"l3","business_category_l1_id":"mi-business-grooming","pet_type_l1_id":"mi-ptype-dog","pet_type_l2_id":"mi-breed-dog-akita"}', '2026-03-10 12:00:00', '2026-03-10 12:00:00', NULL),
@@ -800,11 +813,7 @@ VALUES
   ('mi-svc-grooming-dog-chow-chow-lion-cut', 'mc-business-category', 'mi-business-groomer', 'grooming_dog_chow_chow_lion_cut', NULL, NULL, 12202, 'active', '{"item_level":"l3","business_category_l1_id":"mi-business-grooming","pet_type_l1_id":"mi-ptype-dog","pet_type_l2_id":"mi-breed-dog-chow-chow"}', '2026-03-10 12:00:00', '2026-03-10 12:00:00', NULL),
   ('mi-svc-grooming-dog-chow-chow-bath-and-deshed', 'mc-business-category', 'mi-business-groomer', 'grooming_dog_chow_chow_bath_and_deshed', NULL, NULL, 12203, 'active', '{"item_level":"l3","business_category_l1_id":"mi-business-grooming","pet_type_l1_id":"mi-ptype-dog","pet_type_l2_id":"mi-breed-dog-chow-chow"}', '2026-03-10 12:00:00', '2026-03-10 12:00:00', NULL),
   ('mi-svc-grooming-dog-mixed-dog-puppy-cut', 'mc-business-category', 'mi-business-groomer', 'grooming_dog_mixed_dog_puppy_cut', NULL, NULL, 12301, 'active', '{"item_level":"l3","business_category_l1_id":"mi-business-grooming","pet_type_l1_id":"mi-ptype-dog","pet_type_l2_id":"mi-breed-dog-mixed"}', '2026-03-10 12:00:00', '2026-03-10 12:00:00', NULL),
-  ('mi-svc-grooming-dog-mixed-dog-short-trim', 'mc-business-category', 'mi-business-groomer', 'grooming_dog_mixed_dog_short_trim', NULL, NULL, 12302, 'active', '{"item_level":"l3","business_category_l1_id":"mi-business-grooming","pet_type_l1_id":"mi-ptype-dog","pet_type_l2_id":"mi-breed-dog-mixed"}', '2026-03-10 12:00:00', '2026-03-10 12:00:00', NULL)
-ON CONFLICT DO NOTHING;
-
-INSERT INTO master_items (id, category_id, parent_item_id, code, name, description, sort_order, status, metadata, created_at, updated_at, device_type_id)
-VALUES
+  ('mi-svc-grooming-dog-mixed-dog-short-trim', 'mc-business-category', 'mi-business-groomer', 'grooming_dog_mixed_dog_short_trim', NULL, NULL, 12302, 'active', '{"item_level":"l3","business_category_l1_id":"mi-business-grooming","pet_type_l1_id":"mi-ptype-dog","pet_type_l2_id":"mi-breed-dog-mixed"}', '2026-03-10 12:00:00', '2026-03-10 12:00:00', NULL),
   ('mi-svc-grooming-dog-mixed-dog-summer-cut', 'mc-business-category', 'mi-business-groomer', 'grooming_dog_mixed_dog_summer_cut', NULL, NULL, 12303, 'active', '{"item_level":"l3","business_category_l1_id":"mi-business-grooming","pet_type_l1_id":"mi-ptype-dog","pet_type_l2_id":"mi-breed-dog-mixed"}', '2026-03-10 12:00:00', '2026-03-10 12:00:00', NULL),
   ('mi-svc-grooming-dog-other-dog-puppy-cut', 'mc-business-category', 'mi-business-groomer', 'grooming_dog_other_dog_puppy_cut', NULL, NULL, 12401, 'active', '{"item_level":"l3","business_category_l1_id":"mi-business-grooming","pet_type_l1_id":"mi-ptype-dog","pet_type_l2_id":"mi-breed-dog-other"}', '2026-03-10 12:00:00', '2026-03-10 12:00:00', NULL),
   ('mi-svc-grooming-dog-other-dog-short-trim', 'mc-business-category', 'mi-business-groomer', 'grooming_dog_other_dog_short_trim', NULL, NULL, 12402, 'active', '{"item_level":"l3","business_category_l1_id":"mi-business-grooming","pet_type_l1_id":"mi-ptype-dog","pet_type_l2_id":"mi-breed-dog-other"}', '2026-03-10 12:00:00', '2026-03-10 12:00:00', NULL),
@@ -845,7 +854,11 @@ VALUES
   ('mi-svc-grooming-cat-maine-coon-comb-cut', 'mc-business-category', 'mi-business-groomer', 'grooming_cat_maine_coon_comb_cut', NULL, NULL, 21202, 'active', '{"item_level":"l3","business_category_l1_id":"mi-business-grooming","pet_type_l1_id":"mi-ptype-cat","pet_type_l2_id":"mi-breed-cat-maine-coon"}', '2026-03-10 12:00:00', '2026-03-10 12:00:00', NULL),
   ('mi-svc-grooming-cat-maine-coon-belly-trim', 'mc-business-category', 'mi-business-groomer', 'grooming_cat_maine_coon_belly_trim', NULL, NULL, 21203, 'active', '{"item_level":"l3","business_category_l1_id":"mi-business-grooming","pet_type_l1_id":"mi-ptype-cat","pet_type_l2_id":"mi-breed-cat-maine-coon"}', '2026-03-10 12:00:00', '2026-03-10 12:00:00', NULL),
   ('mi-svc-grooming-cat-american-sh-bath-and-brush', 'mc-business-category', 'mi-business-groomer', 'grooming_cat_american_sh_bath_and_brush', NULL, NULL, 21301, 'active', '{"item_level":"l3","business_category_l1_id":"mi-business-grooming","pet_type_l1_id":"mi-ptype-cat","pet_type_l2_id":"mi-breed-cat-american-shorthair"}', '2026-03-10 12:00:00', '2026-03-10 12:00:00', NULL),
-  ('mi-svc-grooming-cat-american-sh-sanitary-trim', 'mc-business-category', 'mi-business-groomer', 'grooming_cat_american_sh_sanitary_trim', NULL, NULL, 21302, 'active', '{"item_level":"l3","business_category_l1_id":"mi-business-grooming","pet_type_l1_id":"mi-ptype-cat","pet_type_l2_id":"mi-breed-cat-american-shorthair"}', '2026-03-10 12:00:00', '2026-03-10 12:00:00', NULL),
+  ('mi-svc-grooming-cat-american-sh-sanitary-trim', 'mc-business-category', 'mi-business-groomer', 'grooming_cat_american_sh_sanitary_trim', NULL, NULL, 21302, 'active', '{"item_level":"l3","business_category_l1_id":"mi-business-grooming","pet_type_l1_id":"mi-ptype-cat","pet_type_l2_id":"mi-breed-cat-american-shorthair"}', '2026-03-10 12:00:00', '2026-03-10 12:00:00', NULL)
+ON CONFLICT DO NOTHING;
+
+INSERT INTO master_items (id, category_id, parent_item_id, code, name, description, sort_order, status, metadata, created_at, updated_at, device_type_id)
+VALUES
   ('mi-svc-grooming-cat-american-sh-short-trim', 'mc-business-category', 'mi-business-groomer', 'grooming_cat_american_sh_short_trim', NULL, NULL, 21303, 'active', '{"item_level":"l3","business_category_l1_id":"mi-business-grooming","pet_type_l1_id":"mi-ptype-cat","pet_type_l2_id":"mi-breed-cat-american-shorthair"}', '2026-03-10 12:00:00', '2026-03-10 12:00:00', NULL),
   ('mi-svc-grooming-cat-abyssinian-bath-and-brush', 'mc-business-category', 'mi-business-groomer', 'grooming_cat_abyssinian_bath_and_brush', NULL, NULL, 21401, 'active', '{"item_level":"l3","business_category_l1_id":"mi-business-grooming","pet_type_l1_id":"mi-ptype-cat","pet_type_l2_id":"mi-breed-cat-abyssinian"}', '2026-03-10 12:00:00', '2026-03-10 12:00:00', NULL),
   ('mi-svc-grooming-cat-abyssinian-short-trim', 'mc-business-category', 'mi-business-groomer', 'grooming_cat_abyssinian_short_trim', NULL, NULL, 21402, 'active', '{"item_level":"l3","business_category_l1_id":"mi-business-grooming","pet_type_l1_id":"mi-ptype-cat","pet_type_l2_id":"mi-breed-cat-abyssinian"}', '2026-03-10 12:00:00', '2026-03-10 12:00:00', NULL),
@@ -854,11 +867,7 @@ VALUES
   ('mi-svc-grooming-cat-birman-lion-cut', 'mc-business-category', 'mi-business-groomer', 'grooming_cat_birman_lion_cut', NULL, NULL, 21503, 'active', '{"item_level":"l3","business_category_l1_id":"mi-business-grooming","pet_type_l1_id":"mi-ptype-cat","pet_type_l2_id":"mi-breed-cat-birman"}', '2026-03-10 12:00:00', '2026-03-10 12:00:00', NULL),
   ('mi-svc-grooming-cat-burmese-bath-and-brush', 'mc-business-category', 'mi-business-groomer', 'grooming_cat_burmese_bath_and_brush', NULL, NULL, 21601, 'active', '{"item_level":"l3","business_category_l1_id":"mi-business-grooming","pet_type_l1_id":"mi-ptype-cat","pet_type_l2_id":"mi-breed-cat-burmese"}', '2026-03-10 12:00:00', '2026-03-10 12:00:00', NULL),
   ('mi-svc-grooming-cat-burmese-short-trim', 'mc-business-category', 'mi-business-groomer', 'grooming_cat_burmese_short_trim', NULL, NULL, 21602, 'active', '{"item_level":"l3","business_category_l1_id":"mi-business-grooming","pet_type_l1_id":"mi-ptype-cat","pet_type_l2_id":"mi-breed-cat-burmese"}', '2026-03-10 12:00:00', '2026-03-10 12:00:00', NULL),
-  ('mi-svc-grooming-cat-oriental-sh-bath-and-brush', 'mc-business-category', 'mi-business-groomer', 'grooming_cat_oriental_sh_bath_and_brush', NULL, NULL, 21701, 'active', '{"item_level":"l3","business_category_l1_id":"mi-business-grooming","pet_type_l1_id":"mi-ptype-cat","pet_type_l2_id":"mi-breed-cat-oriental-shorthair"}', '2026-03-10 12:00:00', '2026-03-10 12:00:00', NULL)
-ON CONFLICT DO NOTHING;
-
-INSERT INTO master_items (id, category_id, parent_item_id, code, name, description, sort_order, status, metadata, created_at, updated_at, device_type_id)
-VALUES
+  ('mi-svc-grooming-cat-oriental-sh-bath-and-brush', 'mc-business-category', 'mi-business-groomer', 'grooming_cat_oriental_sh_bath_and_brush', NULL, NULL, 21701, 'active', '{"item_level":"l3","business_category_l1_id":"mi-business-grooming","pet_type_l1_id":"mi-ptype-cat","pet_type_l2_id":"mi-breed-cat-oriental-shorthair"}', '2026-03-10 12:00:00', '2026-03-10 12:00:00', NULL),
   ('mi-svc-grooming-cat-oriental-sh-short-trim', 'mc-business-category', 'mi-business-groomer', 'grooming_cat_oriental_sh_short_trim', NULL, NULL, 21702, 'active', '{"item_level":"l3","business_category_l1_id":"mi-business-grooming","pet_type_l1_id":"mi-ptype-cat","pet_type_l2_id":"mi-breed-cat-oriental-shorthair"}', '2026-03-10 12:00:00', '2026-03-10 12:00:00', NULL),
   ('mi-svc-grooming-cat-mixed-cat-lion-cut', 'mc-business-category', 'mi-business-groomer', 'grooming_cat_mixed_cat_lion_cut', NULL, NULL, 21801, 'active', '{"item_level":"l3","business_category_l1_id":"mi-business-grooming","pet_type_l1_id":"mi-ptype-cat","pet_type_l2_id":"mi-breed-cat-mixed"}', '2026-03-10 12:00:00', '2026-03-10 12:00:00', NULL),
   ('mi-svc-grooming-cat-mixed-cat-sanitary-trim', 'mc-business-category', 'mi-business-groomer', 'grooming_cat_mixed_cat_sanitary_trim', NULL, NULL, 21802, 'active', '{"item_level":"l3","business_category_l1_id":"mi-business-grooming","pet_type_l1_id":"mi-ptype-cat","pet_type_l2_id":"mi-breed-cat-mixed"}', '2026-03-10 12:00:00', '2026-03-10 12:00:00', NULL),
@@ -899,7 +908,11 @@ VALUES
   ('mi-svc-training-dog-beagle-scent-work', 'mc-business-category', 'mi-business-trainer', 'training_dog_beagle_scent_work', NULL, NULL, 51501, 'active', '{"item_level":"l3","business_category_l1_id":"mi-business-training","pet_type_l1_id":"mi-ptype-dog","pet_type_l2_id":"mi-breed-dog-beagle"}', '2026-03-10 12:00:00', '2026-03-10 12:00:00', NULL),
   ('mi-svc-training-dog-beagle-recall-training', 'mc-business-category', 'mi-business-trainer', 'training_dog_beagle_recall_training', NULL, NULL, 51502, 'active', '{"item_level":"l3","business_category_l1_id":"mi-business-training","pet_type_l1_id":"mi-ptype-dog","pet_type_l2_id":"mi-breed-dog-beagle"}', '2026-03-10 12:00:00', '2026-03-10 12:00:00', NULL),
   ('mi-svc-training-dog-schnauzer-basic-obedience', 'mc-business-category', 'mi-business-trainer', 'training_dog_schnauzer_basic_obedience', NULL, NULL, 51601, 'active', '{"item_level":"l3","business_category_l1_id":"mi-business-training","pet_type_l1_id":"mi-ptype-dog","pet_type_l2_id":"mi-breed-dog-schnauzer"}', '2026-03-10 12:00:00', '2026-03-10 12:00:00', NULL),
-  ('mi-svc-training-dog-schnauzer-agility', 'mc-business-category', 'mi-business-trainer', 'training_dog_schnauzer_agility', NULL, NULL, 51602, 'active', '{"item_level":"l3","business_category_l1_id":"mi-business-training","pet_type_l1_id":"mi-ptype-dog","pet_type_l2_id":"mi-breed-dog-schnauzer"}', '2026-03-10 12:00:00', '2026-03-10 12:00:00', NULL),
+  ('mi-svc-training-dog-schnauzer-agility', 'mc-business-category', 'mi-business-trainer', 'training_dog_schnauzer_agility', NULL, NULL, 51602, 'active', '{"item_level":"l3","business_category_l1_id":"mi-business-training","pet_type_l1_id":"mi-ptype-dog","pet_type_l2_id":"mi-breed-dog-schnauzer"}', '2026-03-10 12:00:00', '2026-03-10 12:00:00', NULL)
+ON CONFLICT DO NOTHING;
+
+INSERT INTO master_items (id, category_id, parent_item_id, code, name, description, sort_order, status, metadata, created_at, updated_at, device_type_id)
+VALUES
   ('mi-svc-training-dog-jindo-recall-training', 'mc-business-category', 'mi-business-trainer', 'training_dog_jindo_recall_training', NULL, NULL, 51701, 'active', '{"item_level":"l3","business_category_l1_id":"mi-business-training","pet_type_l1_id":"mi-ptype-dog","pet_type_l2_id":"mi-breed-dog-jindo"}', '2026-03-10 12:00:00', '2026-03-10 12:00:00', NULL),
   ('mi-svc-training-dog-jindo-socialization', 'mc-business-category', 'mi-business-trainer', 'training_dog_jindo_socialization', NULL, NULL, 51702, 'active', '{"item_level":"l3","business_category_l1_id":"mi-business-training","pet_type_l1_id":"mi-ptype-dog","pet_type_l2_id":"mi-breed-dog-jindo"}', '2026-03-10 12:00:00', '2026-03-10 12:00:00', NULL),
   ('mi-svc-training-dog-jindo-behavior-mod', 'mc-business-category', 'mi-business-trainer', 'training_dog_jindo_behavior_mod', NULL, NULL, 51703, 'active', '{"item_level":"l3","business_category_l1_id":"mi-business-training","pet_type_l1_id":"mi-ptype-dog","pet_type_l2_id":"mi-breed-dog-jindo"}', '2026-03-10 12:00:00', '2026-03-10 12:00:00', NULL),
@@ -908,11 +921,7 @@ VALUES
   ('mi-svc-training-dog-husky-recall-training', 'mc-business-category', 'mi-business-trainer', 'training_dog_husky_recall_training', NULL, NULL, 51901, 'active', '{"item_level":"l3","business_category_l1_id":"mi-business-training","pet_type_l1_id":"mi-ptype-dog","pet_type_l2_id":"mi-breed-dog-husky"}', '2026-03-10 12:00:00', '2026-03-10 12:00:00', NULL),
   ('mi-svc-training-dog-husky-mushing', 'mc-business-category', 'mi-business-trainer', 'training_dog_husky_mushing', NULL, NULL, 51902, 'active', '{"item_level":"l3","business_category_l1_id":"mi-business-training","pet_type_l1_id":"mi-ptype-dog","pet_type_l2_id":"mi-breed-dog-husky"}', '2026-03-10 12:00:00', '2026-03-10 12:00:00', NULL),
   ('mi-svc-training-dog-samoyed-basic-obedience', 'mc-business-category', 'mi-business-trainer', 'training_dog_samoyed_basic_obedience', NULL, NULL, 52001, 'active', '{"item_level":"l3","business_category_l1_id":"mi-business-training","pet_type_l1_id":"mi-ptype-dog","pet_type_l2_id":"mi-breed-dog-samoyed"}', '2026-03-10 12:00:00', '2026-03-10 12:00:00', NULL),
-  ('mi-svc-training-dog-samoyed-socialization', 'mc-business-category', 'mi-business-trainer', 'training_dog_samoyed_socialization', NULL, NULL, 52002, 'active', '{"item_level":"l3","business_category_l1_id":"mi-business-training","pet_type_l1_id":"mi-ptype-dog","pet_type_l2_id":"mi-breed-dog-samoyed"}', '2026-03-10 12:00:00', '2026-03-10 12:00:00', NULL)
-ON CONFLICT DO NOTHING;
-
-INSERT INTO master_items (id, category_id, parent_item_id, code, name, description, sort_order, status, metadata, created_at, updated_at, device_type_id)
-VALUES
+  ('mi-svc-training-dog-samoyed-socialization', 'mc-business-category', 'mi-business-trainer', 'training_dog_samoyed_socialization', NULL, NULL, 52002, 'active', '{"item_level":"l3","business_category_l1_id":"mi-business-training","pet_type_l1_id":"mi-ptype-dog","pet_type_l2_id":"mi-breed-dog-samoyed"}', '2026-03-10 12:00:00', '2026-03-10 12:00:00', NULL),
   ('mi-svc-training-dog-akita-basic-obedience', 'mc-business-category', 'mi-business-trainer', 'training_dog_akita_basic_obedience', NULL, NULL, 52101, 'active', '{"item_level":"l3","business_category_l1_id":"mi-business-training","pet_type_l1_id":"mi-ptype-dog","pet_type_l2_id":"mi-breed-dog-akita"}', '2026-03-10 12:00:00', '2026-03-10 12:00:00', NULL),
   ('mi-svc-training-dog-akita-protection', 'mc-business-category', 'mi-business-trainer', 'training_dog_akita_protection', NULL, NULL, 52102, 'active', '{"item_level":"l3","business_category_l1_id":"mi-business-training","pet_type_l1_id":"mi-ptype-dog","pet_type_l2_id":"mi-breed-dog-akita"}', '2026-03-10 12:00:00', '2026-03-10 12:00:00', NULL),
   ('mi-svc-training-dog-chow-chow-socialization', 'mc-business-category', 'mi-business-trainer', 'training_dog_chow_chow_socialization', NULL, NULL, 52201, 'active', '{"item_level":"l3","business_category_l1_id":"mi-business-training","pet_type_l1_id":"mi-ptype-dog","pet_type_l2_id":"mi-breed-dog-chow-chow"}', '2026-03-10 12:00:00', '2026-03-10 12:00:00', NULL),
@@ -1328,7 +1337,7 @@ VALUES
 ON CONFLICT DO NOTHING;
 
 -- ---------------------------------------------------------------------------
--- i18n_translations (1535 rows)
+-- i18n_translations (1544 rows)
 -- ---------------------------------------------------------------------------
 INSERT INTO i18n_translations (id, key, page, ko, en, ja, zh_cn, zh_tw, es, fr, de, pt, vi, th, id_lang, ar, is_active, created_at, updated_at)
 VALUES
@@ -2453,15 +2462,15 @@ VALUES
   ('i18n_flog_edit', 'guardian.feeding.edit', 'guardian', '수정', 'Edit', '編集', '编辑', '編輯', 'Editar', 'Modifier', 'Bearbeiten', 'Editar', 'Sửa', 'แก้ไข', 'Edit', 'تعديل', true, '2026-03-09 15:08:12', '2026-03-09 15:08:12'),
   ('i18n_flog_del', 'guardian.feeding.delete_confirm', 'guardian', '삭제하시겠습니까?', 'Delete this record?', 'この記録を削除しますか？', '确定删除此记录？', '確定刪除此記錄？', '¿Eliminar este registro?', 'Supprimer cet enregistrement ?', 'Diesen Eintrag löschen?', 'Excluir este registro?', 'Xóa bản ghi này?', 'ลบบันทึกนี้?', 'Hapus catatan ini?', 'حذف هذا السجل؟', true, '2026-03-09 15:08:12', '2026-03-09 15:08:12'),
   ('i18n_flog_no_logs', 'guardian.feeding.no_logs', 'guardian', '급여 기록이 없습니다', 'No feeding logs yet', 'まだ給餌記録がありません', '暂无喂食记录', '尚無餵食記錄', 'Aún no hay registros', 'Aucun enregistrement pour le moment', 'Noch keine Einträge', 'Nenhum registro ainda', 'Chưa có nhật ký nào', 'ยังไม่มีบันทึก', 'Belum ada log', 'لا توجد سجلات بعد', true, '2026-03-09 15:08:12', '2026-03-09 15:08:12'),
-  ('7792c750e6a2e65095fa22f2ba864d1c', 'guardian.feeding.mixed_feed', 'guardian', '혼합급여', 'Mixed Feed', '混合給餌', '混合喂食', '混合餵食', 'Alimentación mixta', 'Alimentation mixte', 'Mischfütterung', 'Alimentação mista', 'Cho ăn hỗn hợp', 'อาหารผสม', 'Pakan campuran', 'تغذية مختلطة', true, '2026-03-10 00:20:24', '2026-03-10 00:20:24'),
-  ('3a60df885bae5cd8e7985b66e9586504', 'guardian.feeding.add_feed_row', 'guardian', '사료 추가', 'Add Feed', '飼料追加', '添加饲料', '添加飼料', 'Añadir pienso', 'Ajouter aliment', 'Futter hinzufügen', 'Adicionar ração', 'Thêm thức ăn', 'เพิ่มอาหาร', 'Tambah pakan', 'إضافة علف', true, '2026-03-10 00:20:24', '2026-03-10 00:20:24'),
-  ('036be97e1f1cc6ff16d0d5be0ee99ffe', 'guardian.feeding.remove_feed_row', 'guardian', '사료 삭제', 'Remove Feed', '飼料削除', '删除饲料', '刪除飼料', 'Eliminar pienso', 'Supprimer aliment', 'Futter entfernen', 'Remover ração', 'Xóa thức ăn', 'ลบอาหาร', 'Hapus pakan', 'حذف علف', true, '2026-03-10 00:20:24', '2026-03-10 00:20:24'),
-  ('1bd9e905d78dfe9a92b9dc04d8e3398e', 'guardian.feeding.ratio', 'guardian', '비율 (%)', 'Ratio (%)', '割合 (%)', '比例 (%)', '比例 (%)', 'Proporción (%)', 'Proportion (%)', 'Anteil (%)', 'Proporção (%)', 'Tỷ lệ (%)', 'สัดส่วน (%)', 'Rasio (%)', 'نسبة (%)', true, '2026-03-10 00:20:24', '2026-03-10 00:20:24'),
-  ('2be913db02eca649734fe7aed869bf7f', 'guardian.feeding.total_amount', 'guardian', '총 급여량', 'Total Amount', '合計給餌量', '总喂食量', '總餵食量', 'Cantidad total', 'Quantité totale', 'Gesamtmenge', 'Quantidade total', 'Tổng lượng', 'ปริมาณรวม', 'Total jumlah', 'الكمية الإجمالية', true, '2026-03-10 00:20:24', '2026-03-10 00:20:24'),
-  ('250f07eaee9a38a446a16d20adf05df5', 'guardian.feeding.total_calories', 'guardian', '총 칼로리', 'Total Calories', '合計カロリー', '总卡路里', '總卡路里', 'Calorías totales', 'Calories totales', 'Gesamtkalorien', 'Calorias totais', 'Tổng calo', 'แคลอรี่รวม', 'Total kalori', 'إجمالي السعرات', true, '2026-03-10 00:20:24', '2026-03-10 00:20:24'),
-  ('cd16dccec1d75629945b873c300fc1bb', 'nutrition.total', 'guardian', '총 영양 합계', 'Total Nutrition', '合計栄養', '总营养合计', '總營養合計', 'Nutrición total', 'Nutrition totale', 'Gesamternährung', 'Nutrição total', 'Tổng dinh dưỡng', 'โภชนาการรวม', 'Total nutrisi', 'إجمالي التغذية', true, '2026-03-10 00:20:24', '2026-03-10 00:20:24'),
-  ('38df064214a5ce4b97cf82f74894963c', 'guardian.feeding.single_mode', 'guardian', '단일 사료', 'Single Feed', '単一飼料', '单一饲料', '單一飼料', 'Pienso único', 'Aliment unique', 'Einzelfutter', 'Ração única', 'Một loại', 'อาหารชนิดเดียว', 'Pakan tunggal', 'علف واحد', true, '2026-03-10 00:20:24', '2026-03-10 00:20:24'),
-  ('83005e149ed5b230f1cb6953d733b273', 'guardian.feeding.per_row_cal', 'guardian', '칼로리', 'Cal', 'カロリー', '卡路里', '卡路里', 'Cal', 'Cal', 'Kal', 'Cal', 'Cal', 'แคล', 'Kal', 'سعر', true, '2026-03-10 00:20:24', '2026-03-10 00:20:24')
+  ('faa6ae12af80c06b9325fe8dc6f60441', 'guardian.feeding.mixed_feed', 'guardian', '혼합급여', 'Mixed Feed', '混合給餌', '混合喂食', '混合餵食', 'Alimentación mixta', 'Alimentation mixte', 'Mischfütterung', 'Alimentação mista', 'Cho ăn hỗn hợp', 'อาหารผสม', 'Pakan campuran', 'تغذية مختلطة', true, '2026-03-10 00:20:24', '2026-03-10 00:20:24'),
+  ('12b95e779d55158ead198c3afeec65cc', 'guardian.feeding.add_feed_row', 'guardian', '사료 추가', 'Add Feed', '飼料追加', '添加饲料', '添加飼料', 'Añadir pienso', 'Ajouter aliment', 'Futter hinzufügen', 'Adicionar ração', 'Thêm thức ăn', 'เพิ่มอาหาร', 'Tambah pakan', 'إضافة علف', true, '2026-03-10 00:20:24', '2026-03-10 00:20:24'),
+  ('478129851c58afde89fa06cc27aa59a1', 'guardian.feeding.remove_feed_row', 'guardian', '사료 삭제', 'Remove Feed', '飼料削除', '删除饲料', '刪除飼料', 'Eliminar pienso', 'Supprimer aliment', 'Futter entfernen', 'Remover ração', 'Xóa thức ăn', 'ลบอาหาร', 'Hapus pakan', 'حذف علف', true, '2026-03-10 00:20:24', '2026-03-10 00:20:24'),
+  ('c9ca98ad6a8064527911c8d33f589592', 'guardian.feeding.ratio', 'guardian', '비율 (%)', 'Ratio (%)', '割合 (%)', '比例 (%)', '比例 (%)', 'Proporción (%)', 'Proportion (%)', 'Anteil (%)', 'Proporção (%)', 'Tỷ lệ (%)', 'สัดส่วน (%)', 'Rasio (%)', 'نسبة (%)', true, '2026-03-10 00:20:24', '2026-03-10 00:20:24'),
+  ('07e24ff1197227542646c073237c9ce2', 'guardian.feeding.total_amount', 'guardian', '총 급여량', 'Total Amount', '合計給餌量', '总喂食量', '總餵食量', 'Cantidad total', 'Quantité totale', 'Gesamtmenge', 'Quantidade total', 'Tổng lượng', 'ปริมาณรวม', 'Total jumlah', 'الكمية الإجمالية', true, '2026-03-10 00:20:24', '2026-03-10 00:20:24'),
+  ('76e41c1bcf475bfc73fbb312aa6f96f2', 'guardian.feeding.total_calories', 'guardian', '총 칼로리', 'Total Calories', '合計カロリー', '总卡路里', '總卡路里', 'Calorías totales', 'Calories totales', 'Gesamtkalorien', 'Calorias totais', 'Tổng calo', 'แคลอรี่รวม', 'Total kalori', 'إجمالي السعرات', true, '2026-03-10 00:20:24', '2026-03-10 00:20:24'),
+  ('666e99da90bc8dd27bffa63aa8ad3aae', 'nutrition.total', 'guardian', '총 영양 합계', 'Total Nutrition', '合計栄養', '总营养合计', '總營養合計', 'Nutrición total', 'Nutrition totale', 'Gesamternährung', 'Nutrição total', 'Tổng dinh dưỡng', 'โภชนาการรวม', 'Total nutrisi', 'إجمالي التغذية', true, '2026-03-10 00:20:24', '2026-03-10 00:20:24'),
+  ('56ed1efc0f1101914f12b09fae1a000c', 'guardian.feeding.single_mode', 'guardian', '단일 사료', 'Single Feed', '単一飼料', '单一饲料', '單一飼料', 'Pienso único', 'Aliment unique', 'Einzelfutter', 'Ração única', 'Một loại', 'อาหารชนิดเดียว', 'Pakan tunggal', 'علف واحد', true, '2026-03-10 00:20:24', '2026-03-10 00:20:24'),
+  ('956307dfb00d9803c92a5d5a0ef9bf67', 'guardian.feeding.per_row_cal', 'guardian', '칼로리', 'Cal', 'カロリー', '卡路里', '卡路里', 'Cal', 'Cal', 'Kal', 'Cal', 'Cal', 'แคล', 'Kal', 'سعر', true, '2026-03-10 00:20:24', '2026-03-10 00:20:24')
 ON CONFLICT DO NOTHING;
 
 INSERT INTO i18n_translations (id, key, page, ko, en, ja, zh_cn, zh_tw, es, fr, de, pt, vi, th, id_lang, ar, is_active, created_at, updated_at)
@@ -2986,7 +2995,16 @@ VALUES
   ('afd71d9f2916aa0043aa7607f4367404', 'master.business_category.training_dog_mixed_dog_basic_obedience', 'master', '기본 복종 훈련', 'Basic Obedience', '基本服従訓練', 'Basic Obedience', 'Basic Obedience', 'Basic Obedience', 'Basic Obedience', 'Basic Obedience', 'Basic Obedience', 'Basic Obedience', 'Basic Obedience', 'Basic Obedience', 'Basic Obedience', true, '2026-03-10 12:00:00', '2026-03-10 12:00:00'),
   ('8bb96236344a7a3d1f69983376db4868', 'master.business_category.training_dog_mixed_dog_socialization', 'master', '사회화 훈련', 'Socialization', '社会化トレーニング', 'Socialization', 'Socialization', 'Socialization', 'Socialization', 'Socialization', 'Socialization', 'Socialization', 'Socialization', 'Socialization', 'Socialization', true, '2026-03-10 12:00:00', '2026-03-10 12:00:00'),
   ('19bdd0423fe90e4483e50506ea9e79d1', 'master.business_category.training_dog_other_dog_basic_obedience', 'master', '기본 복종 훈련', 'Basic Obedience', '基本服従訓練', 'Basic Obedience', 'Basic Obedience', 'Basic Obedience', 'Basic Obedience', 'Basic Obedience', 'Basic Obedience', 'Basic Obedience', 'Basic Obedience', 'Basic Obedience', 'Basic Obedience', true, '2026-03-10 12:00:00', '2026-03-10 12:00:00'),
-  ('9513700a2fe33554a808e634a965f779', 'master.business_category.training_dog_other_dog_socialization', 'master', '사회화 훈련', 'Socialization', '社会化トレーニング', 'Socialization', 'Socialization', 'Socialization', 'Socialization', 'Socialization', 'Socialization', 'Socialization', 'Socialization', 'Socialization', 'Socialization', true, '2026-03-10 12:00:00', '2026-03-10 12:00:00')
+  ('9513700a2fe33554a808e634a965f779', 'master.business_category.training_dog_other_dog_socialization', 'master', '사회화 훈련', 'Socialization', '社会化トレーニング', 'Socialization', 'Socialization', 'Socialization', 'Socialization', 'Socialization', 'Socialization', 'Socialization', 'Socialization', 'Socialization', 'Socialization', true, '2026-03-10 12:00:00', '2026-03-10 12:00:00'),
+  ('042ac694c71211d4ab822f16435dc9b3', 'master.vaccination_type.dhppl', 'master', 'DHPPL (종합백신5종)', 'DHPPL (5-in-1)', 'DHPPL（5種混合）', 'DHPPL（五联疫苗）', 'DHPPL（五合一）', 'DHPPL (5 en 1)', 'DHPPL (5 en 1)', 'DHPPL (5-fach)', 'DHPPL (5 em 1)', 'DHPPL (5 trong 1)', 'DHPPL (5 รวม)', 'DHPPL (5 dalam 1)', 'DHPPL (5 في 1)', true, '2026-03-10 12:00:00', '2026-03-10 12:00:00'),
+  ('86caf1f10986e14272f60b5241547ef6', 'master.vaccination_type.leptospirosis', 'master', '렙토스피라', 'Leptospirosis', 'レプトスピラ', '钩端螺旋体病', '鉤端螺旋體病', 'Leptospirosis', 'Leptospirose', 'Leptospirose', 'Leptospirose', 'Leptospirosis', 'เลปโตสไปโรซิส', 'Leptospirosis', 'داء البريميات', true, '2026-03-10 12:00:00', '2026-03-10 12:00:00'),
+  ('61073cda5edda8d7a87439cd7138dbbb', 'master.vaccination_type.canine_influenza', 'master', '개 인플루엔자 (CIV)', 'Canine Influenza (CIV)', '犬インフルエンザ (CIV)', '犬流感 (CIV)', '犬流感 (CIV)', 'Influenza Canina (CIV)', 'Grippe Canine (CIV)', 'Hundeinfluenza (CIV)', 'Influenza Canina (CIV)', 'Cúm chó (CIV)', 'ไข้หวัดสุนัข (CIV)', 'Influenza Anjing (CIV)', 'إنفلونزا الكلاب (CIV)', true, '2026-03-10 12:00:00', '2026-03-10 12:00:00'),
+  ('e84deae48b584142c4be0e566735f5c1', 'master.vaccination_type.lyme', 'master', '라임병', 'Lyme Disease', 'ライム病', '莱姆病', '萊姆病', 'Enfermedad de Lyme', 'Maladie de Lyme', 'Lyme-Borreliose', 'Doença de Lyme', 'Bệnh Lyme', 'โรคไลม์', 'Penyakit Lyme', 'داء لايم', true, '2026-03-10 12:00:00', '2026-03-10 12:00:00'),
+  ('480de871f0de45ef60a19d65da1fade1', 'master.vaccination_type.canine_coronavirus', 'master', '개 코로나바이러스 (CCV)', 'Canine Coronavirus (CCV)', '犬コロナウイルス (CCV)', '犬冠状病毒 (CCV)', '犬冠狀病毒 (CCV)', 'Coronavirus Canino (CCV)', 'Coronavirus Canin (CCV)', 'Canines Coronavirus (CCV)', 'Coronavírus Canino (CCV)', 'Coronavirus ở chó (CCV)', 'ไวรัสโคโรนาสุนัข (CCV)', 'Coronavirus Anjing (CCV)', 'فيروس كورونا الكلاب (CCV)', true, '2026-03-10 12:00:00', '2026-03-10 12:00:00'),
+  ('cdb4bd6f19664697519bafb8afaed476', 'master.vaccination_type.felv', 'master', '고양이 백혈병 (FeLV)', 'Feline Leukemia (FeLV)', '猫白血病 (FeLV)', '猫白血病 (FeLV)', '貓白血病 (FeLV)', 'Leucemia Felina (FeLV)', 'Leucémie Féline (FeLV)', 'Feline Leukämie (FeLV)', 'Leucemia Felina (FeLV)', 'Bệnh bạch cầu mèo (FeLV)', 'มะเร็งเม็ดเลือดขาวแมว (FeLV)', 'Leukemia Kucing (FeLV)', 'سرطان الدم القططي (FeLV)', true, '2026-03-10 12:00:00', '2026-03-10 12:00:00'),
+  ('13301a6a720c5a4bebe37e7f10c9d3ab', 'master.vaccination_type.fip', 'master', '고양이 전염성 복막염 (FIP)', 'Feline Infectious Peritonitis (FIP)', '猫伝染性腹膜炎 (FIP)', '猫传染性腹膜炎 (FIP)', '貓傳染性腹膜炎 (FIP)', 'Peritonitis Infecciosa Felina (FIP)', 'Péritonite Infectieuse Féline (FIP)', 'Feline Infektiöse Peritonitis (FIP)', 'Peritonite Infecciosa Felina (FIP)', 'Viêm phúc mạc truyền nhiễm mèo (FIP)', 'โรคเยื่อบุช่องท้องอักเสบแมว (FIP)', 'Peritonitis Infeksius Kucing (FIP)', 'التهاب الصفاق المعدي القططي (FIP)', true, '2026-03-10 12:00:00', '2026-03-10 12:00:00'),
+  ('85caf29df95129e278440be635656dc7', 'master.vaccination_type.chlamydia', 'master', '클라미디아', 'Chlamydia', 'クラミジア', '衣原体', '披衣菌', 'Clamidia', 'Chlamydia', 'Chlamydien', 'Clamídia', 'Chlamydia', 'คลาไมเดีย', 'Klamidia', 'الكلاميديا', true, '2026-03-10 12:00:00', '2026-03-10 12:00:00'),
+  ('2418d21d825d827d7dce0bf23ab1f3be', 'master.vaccination_type.heartworm', 'master', '심장사상충 예방', 'Heartworm Prevention', 'フィラリア予防', '心丝虫预防', '心絲蟲預防', 'Prevención de Dirofilaria', 'Prévention du Ver du Cœur', 'Herzwurmprophylaxe', 'Prevenção de Dirofilária', 'Phòng giun tim', 'ป้องกันพยาธิหนอนหัวใจ', 'Pencegahan Cacing Jantung', 'الوقاية من الديدان القلبية', true, '2026-03-10 12:00:00', '2026-03-10 12:00:00')
 ON CONFLICT DO NOTHING;
 
 -- ---------------------------------------------------------------------------
@@ -3012,4 +3030,4 @@ ON CONFLICT DO NOTHING;
 
 COMMIT;
 
--- Total: 2612 rows across 34 tables
+-- Total: 2630 rows across 34 tables
