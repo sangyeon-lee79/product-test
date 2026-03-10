@@ -12,7 +12,7 @@ export type {
   DeviceType, DeviceManufacturer, DeviceBrand, DeviceModel, MeasurementUnit, GuardianDevice,
   FeedType, FeedManufacturer, FeedBrand, FeedModel,
   PetFeed, FeedNutrition, FeedingLog, FeedingMixFavorite,
-  PetLog, GlucoseAlert,
+  PetLog, GlucoseAlert, MemberSummary, MemberRecord, GoogleSettingItem,
 } from '../types/api';
 import type {
   I18nRow, MasterCategory, MasterItem, Country, Currency,
@@ -25,7 +25,7 @@ import type {
   DeviceType, DeviceManufacturer, DeviceBrand, DeviceModel, MeasurementUnit, GuardianDevice,
   FeedType, FeedManufacturer, FeedBrand, FeedModel,
   PetFeed, FeedNutrition, FeedingLog, FeedingMixFavorite,
-  PetLog, GlucoseAlert,
+  PetLog, GlucoseAlert, MemberSummary, MemberRecord, GoogleSettingItem,
 } from '../types/api';
 
 const API_BASE = getApiBase();
@@ -148,6 +148,9 @@ export const api = {
   testLogin: (email: string) =>
     request<{ user_id: string; role: string; access_token: string; refresh_token: string }>
       ('/api/v1/auth/test-login', { method: 'POST', body: JSON.stringify({ email }) }),
+  login: (email: string, password: string) =>
+    request<{ user_id: string; role: string; access_token: string; refresh_token: string }>
+      ('/api/v1/auth/login', { method: 'POST', body: JSON.stringify({ email, password }) }),
   signup: (payload: { email: string; role: string; display_name: string; country_code: string; language?: string; timezone?: string }) =>
     request<{
       user_id: string;
@@ -161,6 +164,70 @@ export const api = {
         profile_created: boolean;
       };
     }>('/api/v1/auth/signup', { method: 'POST', body: JSON.stringify(payload) }),
+  signupV2: (payload: {
+    email: string;
+    password: string;
+    display_name: string;
+    nickname?: string;
+    phone?: string;
+    address_line?: string;
+    address_place_id?: string;
+    address_lat?: number;
+    address_lng?: number;
+    country_code: string;
+    language?: string;
+    timezone?: string;
+    has_pets?: boolean;
+    pet_count?: number;
+    interested_pet_types?: string[];
+    notifications_booking?: boolean;
+    notifications_health?: boolean;
+    marketing_opt_in?: boolean;
+    terms_agreed?: boolean;
+    public_profile?: boolean;
+    public_id?: string;
+    role_application?: {
+      requested_role?: 'provider';
+      business_category_l1_id?: string | null;
+      business_category_l2_id?: string | null;
+      business_registration_no?: string | null;
+      operating_hours?: string | null;
+      certifications?: string[];
+      supported_pet_types?: string[];
+      address_line?: string | null;
+      address_place_id?: string | null;
+      address_lat?: number | null;
+      address_lng?: number | null;
+    };
+  }) =>
+    request<{
+      user_id: string;
+      role: string;
+      access_token: string;
+      refresh_token: string;
+      onboarding: {
+        country_code: string;
+        default_language: string;
+        default_currency_code: string | null;
+        profile_created: boolean;
+      };
+    }>('/api/v1/auth/signup', { method: 'POST', body: JSON.stringify(payload) }),
+  applyRole: (payload: {
+    requested_role: 'provider';
+    business_category_l1_id: string;
+    business_category_l2_id?: string | null;
+    business_registration_no?: string | null;
+    operating_hours?: string | null;
+    certifications?: string[];
+    supported_pet_types?: string[];
+    address_line?: string | null;
+    address_place_id?: string | null;
+    address_lat?: number | null;
+    address_lng?: number | null;
+  }) => request<{ id: string; status: string }>('/api/v1/account/role-applications', {
+    method: 'POST',
+    body: JSON.stringify(payload),
+  }),
 
   // Health
   health: () => request<{ status: string; environment: string; version?: string; timestamp?: string; services: Record<string, string> }>('/api/v1/health'),
@@ -532,6 +599,48 @@ export const api = {
       request<Currency>('/api/v1/admin/currencies', { method: 'POST', body: JSON.stringify(data) }),
     update: (id: string, data: Partial<Currency>) =>
       request<Currency>(`/api/v1/admin/currencies/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
+  },
+  members: {
+    list: (params?: { q?: string; role?: string; date_from?: string; date_to?: string }) =>
+      request<{ summary: MemberSummary; members: MemberRecord[] }>(`/api/v1/admin/members${buildQuery(params || {})}`),
+    update: (memberId: string, data: {
+      role?: 'guardian' | 'provider' | 'admin';
+      full_name?: string | null;
+      nickname?: string | null;
+      phone?: string | null;
+      address_line?: string | null;
+      region_text?: string | null;
+      preferred_language?: string | null;
+      business_category_l1_id?: string | null;
+      business_category_l2_id?: string | null;
+      business_registration_no?: string | null;
+      operating_hours?: string | null;
+      certifications?: string[];
+      provider_approval_status?: string;
+    }) => request<{ updated: boolean; member_id: string }>(`/api/v1/admin/members/${memberId}`, {
+      method: 'PUT',
+      body: JSON.stringify(data),
+    }),
+    decideRoleApplication: (applicationId: string, action: 'approve' | 'reject') =>
+      request<{ id: string; status: string }>(`/api/v1/admin/role-applications/${applicationId}/decision`, {
+        method: 'POST',
+        body: JSON.stringify({ action }),
+      }),
+  },
+  platformSettings: {
+    google: {
+      get: () =>
+        request<{ settings: Record<string, GoogleSettingItem> }>('/api/v1/admin/settings/google'),
+      update: (data: {
+        google_places_api_key?: string;
+        google_oauth_client_id?: string;
+        google_oauth_redirect_uri?: string;
+      }) =>
+        request<{ updated: boolean; updated_at: string }>('/api/v1/admin/settings/google', {
+          method: 'PUT',
+          body: JSON.stringify(data),
+        }),
+    },
   },
   devices: {
     types: {

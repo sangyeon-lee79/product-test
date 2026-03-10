@@ -12,6 +12,7 @@ import { requireAuth, issueTokens } from '../middleware/auth';
 export async function handleAuth(request: Request, env: Env, url: URL): Promise<Response> {
   const sub = url.pathname.replace('/api/v1/auth', '');
 
+  if (sub === '/login' && request.method === 'POST') return passwordLogin(request, env);
   if (sub === '/test-login' && request.method === 'POST') return testLogin(request, env);
   if (sub === '/signup' && request.method === 'POST') return signup(request, env);
   if (sub === '/refresh' && request.method === 'POST') return refreshToken(request, env);
@@ -21,11 +22,39 @@ export async function handleAuth(request: Request, env: Env, url: URL): Promise<
 
 type SignupBody = {
   email: string;
-  role?: string;
+  password?: string;
   display_name?: string;
+  nickname?: string;
+  phone?: string;
+  address_line?: string;
+  address_place_id?: string;
+  address_lat?: number;
+  address_lng?: number;
   country_code?: string;
   language?: string;
   timezone?: string;
+  has_pets?: boolean;
+  pet_count?: number;
+  interested_pet_types?: string[];
+  notifications_booking?: boolean;
+  notifications_health?: boolean;
+  marketing_opt_in?: boolean;
+  terms_agreed?: boolean;
+  public_profile?: boolean;
+  public_id?: string;
+  role_application?: {
+    requested_role?: string;
+    business_category_l1_id?: string | null;
+    business_category_l2_id?: string | null;
+    business_registration_no?: string | null;
+    operating_hours?: string | null;
+    certifications?: string[] | null;
+    supported_pet_types?: string[] | null;
+    address_line?: string | null;
+    address_place_id?: string | null;
+    address_lat?: number | null;
+    address_lng?: number | null;
+  };
 };
 
 const COUNTRY_DEFAULTS: Record<string, { language: string; timezone: string }> = {
@@ -39,12 +68,76 @@ const COUNTRY_DEFAULTS: Record<string, { language: string; timezone: string }> =
   TW: { language: 'zh_tw', timezone: 'Asia/Taipei' },
 };
 
-function normalizeSignupRole(raw?: string): JwtPayload['role'] {
-  const role = (raw || 'guardian').toLowerCase();
+type PasswordLoginBody = {
+  email?: string;
+  password?: string;
+};
+
+function normalizeRequestedRole(raw?: string): JwtPayload['role'] {
+  const role = (raw || 'provider').toLowerCase();
   if (role === 'supplier') return 'provider';
-  if (role === 'general') return 'guardian';
-  if (role === 'provider' || role === 'admin' || role === 'guardian') return role;
-  return 'guardian';
+  if (role === 'provider' || role === 'guardian' || role === 'admin') return role;
+  return 'provider';
+}
+
+function asJsonArray(raw: unknown): string[] {
+  if (!Array.isArray(raw)) return [];
+  return raw.filter((value): value is string => typeof value === 'string').map((value) => value.trim()).filter(Boolean);
+}
+
+async function derivePasswordHash(password: string, salt: Uint8Array, iterations = 120000): Promise<string> {
+  const baseKey = await crypto.subtle.importKey(
+    'raw',
+    new TextEncoder().encode(password),
+    { name: 'PBKDF2' },
+    false,
+    ['deriveBits'],
+  );
+  const bits = await crypto.subtle.deriveBits(
+    { name: 'PBKDF2', hash: 'SHA-256', salt, iterations },
+    baseKey,
+    256,
+  );
+  return btoa(String.fromCharCode(...new Uint8Array(bits)));
+}
+
+async function hashPassword(password: string): Promise<string> {
+  const salt = crypto.getRandomValues(new Uint8Array(16));
+  const digest = await derivePasswordHash(password, salt);
+  return `pbkdf2$120000$${btoa(String.fromCharCode(...salt))}$${digest}`;
+}
+
+async function verifyPassword(password: string, stored: string): Promise<boolean> {
+  const [scheme, iterationRaw, saltB64, expected] = stored.split('$');
+  if (scheme !== 'pbkdf2' || !iterationRaw || !saltB64 || !expected) return false;
+  const salt = Uint8Array.from(atob(saltB64), (char) => char.charCodeAt(0));
+  const digest = await derivePasswordHash(password, salt, Number(iterationRaw));
+  return digest === expected;
+}
+
+async function passwordLogin(request: Request, env: Env): Promise<Response> {
+  let body: PasswordLoginBody;
+  try {
+    body = await request.json() as PasswordLoginBody;
+  } catch {
+    return err('Invalid JSON body');
+  }
+
+  const email = (body.email || '').trim().toLowerCase();
+  const password = String(body.password || '');
+  if (!email) return err('email required');
+  if (!password) return err('password required');
+
+  const user = await env.DB.prepare(
+    'SELECT id, role, password_hash, status FROM users WHERE email = ?'
+  ).bind(email).first<{ id: string; role: string; password_hash: string | null; status: string }>();
+
+  if (!user?.id || !user.password_hash) return err('invalid email or password', 401);
+  if (user.status !== 'active') return err('account is not active', 403);
+  if (!await verifyPassword(password, user.password_hash)) return err('invalid email or password', 401);
+
+  const tokens = await issueTokens(user.id, user.role as JwtPayload['role'], env.JWT_SECRET);
+  return created({ user_id: user.id, role: user.role, ...tokens });
 }
 
 async function signup(request: Request, env: Env): Promise<Response> {
@@ -56,15 +149,21 @@ async function signup(request: Request, env: Env): Promise<Response> {
   }
 
   const email = (body.email || '').trim().toLowerCase();
+  const password = String(body.password || '');
   const displayName = (body.display_name || '').trim();
   const countryCode = (body.country_code || '').trim().toUpperCase();
-  const role = normalizeSignupRole(body.role);
+  const nickname = (body.nickname || '').trim();
+  const phone = (body.phone || '').trim();
+  const addressLine = (body.address_line || '').trim();
+  const addressPlaceId = (body.address_place_id || '').trim();
+  const publicId = (body.public_id || '').trim();
+  const role = 'guardian';
 
   if (!email) return err('email required');
   if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return err('invalid email');
+  if (!password || password.length < 8) return err('password must be at least 8 characters');
   if (!displayName) return err('display_name required');
   if (!countryCode || !/^[A-Z]{2}$/.test(countryCode)) return err('country_code must be ISO 3166-1 alpha-2');
-  if (role === 'admin') return err('admin signup is not allowed', 403);
 
   const existing = await env.DB.prepare(
     'SELECT id FROM users WHERE email = ?'
@@ -88,19 +187,97 @@ async function signup(request: Request, env: Env): Promise<Response> {
   const language = (body.language || defaults.language || 'en').trim();
   const timezone = (body.timezone || defaults.timezone || 'UTC').trim();
   const ts = now();
+  const passwordHash = await hashPassword(password);
 
   const userId = newId();
   await env.DB.prepare(
-    'INSERT INTO users (id, email, role, created_at, updated_at) VALUES (?, ?, ?, ?, ?)'
-  ).bind(userId, email, role, ts, ts).run();
+    'INSERT INTO users (id, email, password_hash, role, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?)'
+  ).bind(userId, email, passwordHash, role, ts, ts).run();
 
-  if (role === 'guardian') {
+  await env.DB.prepare(
+    `INSERT INTO user_profiles (
+      id, user_id, handle, display_name, avatar_url, bio, bio_translations,
+      country_id, language, timezone, interests, created_at, updated_at
+    ) VALUES (?, ?, NULL, ?, NULL, NULL, '{}', ?, ?, ?, '[]', ?, ?)`
+  ).bind(newId(), userId, displayName, country.country_id, language, timezone, ts, ts).run();
+
+  await env.DB.prepare(
+    `INSERT INTO user_account_details (
+      id, user_id, full_name, nickname, phone,
+      address_line, address_place_id, address_lat, address_lng, region_text,
+      preferred_language, has_pets, pet_count, interested_pet_types,
+      notifications_booking, notifications_health, marketing_opt_in,
+      terms_agreed_at, public_profile, public_id, created_at, updated_at
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+  ).bind(
+    newId(),
+    userId,
+    displayName,
+    nickname || null,
+    phone || null,
+    addressLine || null,
+    addressPlaceId || null,
+    body.address_lat ?? null,
+    body.address_lng ?? null,
+    countryCode,
+    language,
+    body.has_pets ? 1 : 0,
+    Math.max(0, Number(body.pet_count || 0)),
+    JSON.stringify(asJsonArray(body.interested_pet_types)),
+    body.notifications_booking === false ? 0 : 1,
+    body.notifications_health === false ? 0 : 1,
+    body.marketing_opt_in ? 1 : 0,
+    body.terms_agreed ? ts : null,
+    body.public_profile ? 1 : 0,
+    publicId || null,
+    ts,
+    ts,
+  ).run();
+
+  if (body.role_application && normalizeRequestedRole(body.role_application.requested_role) === 'provider') {
+    const applicationId = newId();
     await env.DB.prepare(
-      `INSERT INTO user_profiles (
-        id, user_id, handle, display_name, avatar_url, bio, bio_translations,
-        country_id, language, timezone, interests, created_at, updated_at
-      ) VALUES (?, ?, NULL, ?, NULL, NULL, '{}', ?, ?, ?, '[]', ?, ?)`
-    ).bind(newId(), userId, displayName, country.country_id, language, timezone, ts, ts).run();
+      `INSERT INTO role_applications (
+        id, user_id, requested_role, business_category_l1_id, business_category_l2_id,
+        status, requested_at, created_at, updated_at
+      ) VALUES (?, ?, 'provider', ?, ?, 'pending', ?, ?, ?)`
+    ).bind(
+      applicationId,
+      userId,
+      body.role_application.business_category_l1_id ?? null,
+      body.role_application.business_category_l2_id ?? null,
+      ts,
+      ts,
+      ts,
+    ).run();
+
+    await env.DB.prepare(
+      `INSERT OR REPLACE INTO provider_profiles (
+        id, user_id, business_category_l1_id, business_category_l2_id,
+        business_registration_no, operating_hours, supported_pet_types, certifications,
+        address_line, address_place_id, address_lat, address_lng,
+        approval_status, created_at, updated_at
+      ) VALUES (
+        COALESCE((SELECT id FROM provider_profiles WHERE user_id = ?), ?),
+        ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending', ?, ?
+      )`
+    ).bind(
+      userId,
+      newId(),
+      userId,
+      body.role_application.business_category_l1_id ?? null,
+      body.role_application.business_category_l2_id ?? null,
+      body.role_application.business_registration_no ?? null,
+      body.role_application.operating_hours ?? null,
+      JSON.stringify(asJsonArray(body.role_application.supported_pet_types)),
+      JSON.stringify(asJsonArray(body.role_application.certifications)),
+      (body.role_application.address_line ?? addressLine) || null,
+      (body.role_application.address_place_id ?? addressPlaceId) || null,
+      body.role_application.address_lat ?? body.address_lat ?? null,
+      body.role_application.address_lng ?? body.address_lng ?? null,
+      ts,
+      ts,
+    ).run();
   }
 
   const tokens = await issueTokens(userId, role, env.JWT_SECRET);
@@ -112,7 +289,7 @@ async function signup(request: Request, env: Env): Promise<Response> {
       country_code: country.country_code,
       default_language: language,
       default_currency_code: country.default_currency_code,
-      profile_created: role === 'guardian',
+      profile_created: true,
     },
   });
 }

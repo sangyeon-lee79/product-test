@@ -14,6 +14,8 @@ import FeedPage from './pages/FeedPage';
 import GuardianMainPage from './pages/GuardianMainPage';
 import SupplierDashboardPage from './pages/SupplierDashboardPage';
 import ExplorePage from './pages/ExplorePage';
+import MembersPage from './pages/MembersPage';
+import GoogleSettingsPage from './pages/GoogleSettingsPage';
 import './index.css';
 
 function AuthRoute() {
@@ -66,6 +68,8 @@ export default function App() {
                 <Route path="countries" element={<CountriesPage />} />
                 <Route path="devices" element={<DevicePage />} />
                 <Route path="feeds" element={<FeedPage />} />
+                <Route path="members" element={<MembersPage />} />
+                <Route path="google" element={<GoogleSettingsPage />} />
                 <Route path="*" element={<Navigate to="/admin" replace />} />
               </Route>
             </Route>

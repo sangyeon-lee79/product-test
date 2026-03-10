@@ -202,6 +202,41 @@ export interface Booking {
   updated_at: string;
 }
 
+export interface MemberSummary {
+  total_members: number;
+  new_members: number;
+}
+
+export interface MemberRecord {
+  id: string;
+  email: string;
+  role: 'guardian' | 'provider' | 'admin';
+  status: string;
+  created_at: string;
+  full_name?: string | null;
+  nickname?: string | null;
+  phone?: string | null;
+  address_line?: string | null;
+  region_text?: string | null;
+  preferred_language?: string | null;
+  business_category_l1_id?: string | null;
+  business_category_l2_id?: string | null;
+  business_registration_no?: string | null;
+  operating_hours?: string | null;
+  certifications?: string[] | string;
+  provider_approval_status?: string | null;
+  role_application_id?: string | null;
+  role_application_status?: string | null;
+  requested_role?: string | null;
+  business_l1_label?: string | null;
+  business_l2_label?: string | null;
+}
+
+export interface GoogleSettingItem {
+  value: string;
+  updated_at: string | null;
+}
+
 export interface FeedPost {
   id: string;
   feed_type: string;

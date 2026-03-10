@@ -142,6 +142,11 @@ async function dispatch(request: Request, env: Env, url: URL): Promise<Response>
     return handlePetAlbum(request, env, url);
   }
 
+  if (path.startsWith('/api/v1/account')) {
+    const { handleMembers } = await import('./routes/members');
+    return handleMembers(request, env, url);
+  }
+
   // Device Management (public)
   if (path.startsWith('/api/v1/devices')) {
     const { handleDevices } = await import('./routes/devices');
@@ -186,6 +191,14 @@ async function dispatchAdmin(request: Request, env: Env, url: URL, path: string)
   if (path.startsWith('/api/v1/admin/ads')) {
     const { handleAds } = await import('./routes/ads');
     return handleAds(request, env, url);
+  }
+  if (path.startsWith('/api/v1/admin/members') || path.startsWith('/api/v1/admin/role-applications')) {
+    const { handleMembers } = await import('./routes/members');
+    return handleMembers(request, env, url);
+  }
+  if (path.startsWith('/api/v1/admin/settings/google')) {
+    const { handlePlatformSettings } = await import('./routes/platformSettings');
+    return handlePlatformSettings(request, env, url);
   }
   return err('Not Found', 404, 'not_found');
 }

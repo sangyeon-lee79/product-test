@@ -1,5 +1,5 @@
 import 'dart:convert';
-
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 
@@ -982,7 +982,14 @@ class ApiClient {
 
   final String baseUrl;
 
-  static String _defaultBaseUrl() => 'http://localhost:8787';
+  static String _defaultBaseUrl() {
+    const envBase = String.fromEnvironment('API_BASE_URL');
+    if (envBase.isNotEmpty) return envBase;
+    if (kIsWeb) return 'http://localhost:8787';
+    if (defaultTargetPlatform == TargetPlatform.android) return 'http://10.0.2.2:8787';
+    if (defaultTargetPlatform == TargetPlatform.iOS || defaultTargetPlatform == TargetPlatform.macOS) return 'http://127.0.0.1:8787';
+    return 'http://localhost:8787';
+  }
 
   Future<String> testLogin(String email) async {
     final data = await _request('POST', '/api/v1/auth/test-login', body: {'email': email});
