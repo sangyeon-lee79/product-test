@@ -60,14 +60,21 @@ export async function handleFeedRequests(request: Request, env: Env, url: URL): 
       if (!req) return err('Not found', 404, 'not_found');
       if (req.status !== 'pending') return err('Already processed', 400, 'already_processed');
 
+      // Parse optional override body from admin
+      const overrideBody = await request.json<{
+        manufacturer_id?: string; brand_id?: string; feed_type_item_id?: string;
+      }>().catch(() => ({} as Record<string, string | undefined>));
+
       const feedName = String(req.feed_name || '');
       const manufacturerName = String(req.manufacturer_name || '').trim();
       const brandName = String(req.brand_name || '').trim();
-      const feedTypeItemId = String(req.feed_type_item_id || '').trim() || null;
+      const feedTypeItemId = (overrideBody.feed_type_item_id || String(req.feed_type_item_id || '')).trim() || null;
 
-      // 1. Find or create manufacturer
+      // 1. Use override manufacturer_id or find/create
       let manufacturerId: string | null = null;
-      if (manufacturerName) {
+      if (overrideBody.manufacturer_id) {
+        manufacturerId = overrideBody.manufacturer_id;
+      } else if (manufacturerName) {
         const existing = await env.DB.prepare(
           `SELECT id FROM feed_manufacturers WHERE name_ko LIKE ? AND status = 'active' LIMIT 1`
         ).bind(`%${manufacturerName}%`).first<{ id: string }>();
@@ -84,15 +91,18 @@ export async function handleFeedRequests(request: Request, env: Env, url: URL): 
           await upsertI18n(env, mfrNameKey, normalizedTranslations(undefined, manufacturerName, manufacturerName), 'feed');
           if (await hasTable(env, 'feed_manufacturer_type_map') && feedTypeItemId) {
             await env.DB.prepare(
-              `INSERT OR IGNORE INTO feed_manufacturer_type_map (manufacturer_id, type_item_id) VALUES (?, ?)`
+              `INSERT INTO feed_manufacturer_type_map (manufacturer_id, type_item_id) VALUES (?, ?)
+               ON CONFLICT DO NOTHING`
             ).bind(manufacturerId, feedTypeItemId).run();
           }
         }
       }
 
-      // 2. Find or create brand
+      // 2. Use override brand_id or find/create
       let brandId: string | null = null;
-      if (brandName && manufacturerId) {
+      if (overrideBody.brand_id) {
+        brandId = overrideBody.brand_id;
+      } else if (brandName && manufacturerId) {
         const existing = await env.DB.prepare(
           `SELECT id FROM feed_brands WHERE name_ko LIKE ? AND manufacturer_id = ? AND status = 'active' LIMIT 1`
         ).bind(`%${brandName}%`, manufacturerId).first<{ id: string }>();
@@ -120,17 +130,27 @@ export async function handleFeedRequests(request: Request, env: Env, url: URL): 
       ).bind(modelId, feedTypeItemId, manufacturerId, brandId, modelNameKey, feedName, now(), now()).run();
       await upsertI18n(env, modelNameKey, normalizedTranslations(undefined, feedName, feedName), 'feed');
 
-      // 4. Create nutrition if provided
-      if (req.calories_per_100g || req.protein_pct || req.fat_pct || req.fiber_pct || req.moisture_pct) {
+      // 4. Create nutrition if any field provided
+      const hasNutr = [
+        req.calories_per_100g, req.protein_pct, req.fat_pct, req.fiber_pct, req.moisture_pct,
+        req.ash_pct, req.calcium_pct, req.phosphorus_pct, req.omega3_pct, req.omega6_pct,
+        req.carbohydrate_pct, req.serving_size_g,
+      ].some((v) => v != null && v !== 0);
+      if (hasNutr) {
         if (await hasTable(env, 'feed_nutrition')) {
           const nutrId = newId();
           await env.DB.prepare(
-            `INSERT INTO feed_nutrition (id, feed_model_id, calories_per_100g, protein_pct, fat_pct, fiber_pct, moisture_pct, status, created_at, updated_at)
-             VALUES (?, ?, ?, ?, ?, ?, ?, 'active', ?, ?)`
+            `INSERT INTO feed_nutrition (id, feed_model_id, calories_per_100g, protein_pct, fat_pct, fiber_pct, moisture_pct,
+             ash_pct, calcium_pct, phosphorus_pct, omega3_pct, omega6_pct, carbohydrate_pct, serving_size_g, ingredients_text,
+             status, created_at, updated_at)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'active', ?, ?)`
           ).bind(
             nutrId, modelId,
             req.calories_per_100g ?? null, req.protein_pct ?? null,
             req.fat_pct ?? null, req.fiber_pct ?? null, req.moisture_pct ?? null,
+            req.ash_pct ?? null, req.calcium_pct ?? null, req.phosphorus_pct ?? null,
+            req.omega3_pct ?? null, req.omega6_pct ?? null, req.carbohydrate_pct ?? null,
+            req.serving_size_g ?? null, req.ingredients_text ?? null,
             now(), now()
           ).run();
         }
@@ -195,6 +215,9 @@ export async function handleFeedRequests(request: Request, env: Env, url: URL): 
       manufacturer_name?: string; brand_name?: string;
       calories_per_100g?: number; protein_pct?: number; fat_pct?: number;
       fiber_pct?: number; moisture_pct?: number;
+      ash_pct?: number; calcium_pct?: number; phosphorus_pct?: number;
+      omega3_pct?: number; omega6_pct?: number; carbohydrate_pct?: number;
+      serving_size_g?: number; ingredients_text?: string;
       reference_url?: string; memo?: string;
     }>();
     const feedName = (body.feed_name || '').trim();
@@ -205,13 +228,18 @@ export async function handleFeedRequests(request: Request, env: Env, url: URL): 
       `INSERT INTO feed_registration_requests
        (id, requester_user_id, pet_id, feed_name, feed_type_item_id, manufacturer_name, brand_name,
         calories_per_100g, protein_pct, fat_pct, fiber_pct, moisture_pct,
+        ash_pct, calcium_pct, phosphorus_pct, omega3_pct, omega6_pct, carbohydrate_pct,
+        serving_size_g, ingredients_text,
         reference_url, memo, status, created_at, updated_at)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending', ?, ?)`
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending', ?, ?)`
     ).bind(
       id, jwt.sub, body.pet_id || null, feedName,
       body.feed_type_item_id || null, body.manufacturer_name || null, body.brand_name || null,
       body.calories_per_100g ?? null, body.protein_pct ?? null,
       body.fat_pct ?? null, body.fiber_pct ?? null, body.moisture_pct ?? null,
+      body.ash_pct ?? null, body.calcium_pct ?? null, body.phosphorus_pct ?? null,
+      body.omega3_pct ?? null, body.omega6_pct ?? null, body.carbohydrate_pct ?? null,
+      body.serving_size_g ?? null, body.ingredients_text || null,
       body.reference_url || null, body.memo || null,
       ts, ts
     ).run();

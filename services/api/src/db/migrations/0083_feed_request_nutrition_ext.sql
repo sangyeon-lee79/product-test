@@ -1,0 +1,9 @@
+-- Extend feed_registration_requests with additional nutrition fields
+ALTER TABLE feed_registration_requests ADD COLUMN ash_pct REAL;
+ALTER TABLE feed_registration_requests ADD COLUMN calcium_pct REAL;
+ALTER TABLE feed_registration_requests ADD COLUMN phosphorus_pct REAL;
+ALTER TABLE feed_registration_requests ADD COLUMN omega3_pct REAL;
+ALTER TABLE feed_registration_requests ADD COLUMN omega6_pct REAL;
+ALTER TABLE feed_registration_requests ADD COLUMN carbohydrate_pct REAL;
+ALTER TABLE feed_registration_requests ADD COLUMN serving_size_g REAL;
+ALTER TABLE feed_registration_requests ADD COLUMN ingredients_text TEXT;

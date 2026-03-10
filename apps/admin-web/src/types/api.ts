@@ -586,6 +586,14 @@ export interface FeedRegistrationRequest {
   fat_pct?: number | null;
   fiber_pct?: number | null;
   moisture_pct?: number | null;
+  ash_pct?: number | null;
+  calcium_pct?: number | null;
+  phosphorus_pct?: number | null;
+  omega3_pct?: number | null;
+  omega6_pct?: number | null;
+  carbohydrate_pct?: number | null;
+  serving_size_g?: number | null;
+  ingredients_text?: string | null;
   reference_url?: string | null;
   memo?: string | null;
   status: string;

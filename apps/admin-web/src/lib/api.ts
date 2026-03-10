@@ -795,7 +795,16 @@ export const api = {
   },
 
   feedRequests: {
-    create: (data: { feed_name: string; pet_id?: string; feed_type_item_id?: string; manufacturer_name?: string; brand_name?: string; calories_per_100g?: number; protein_pct?: number; fat_pct?: number; fiber_pct?: number; moisture_pct?: number; reference_url?: string; memo?: string }) =>
+    create: (data: {
+      feed_name: string; pet_id?: string; feed_type_item_id?: string;
+      manufacturer_name?: string; brand_name?: string;
+      calories_per_100g?: number; protein_pct?: number; fat_pct?: number;
+      fiber_pct?: number; moisture_pct?: number;
+      ash_pct?: number; calcium_pct?: number; phosphorus_pct?: number;
+      omega3_pct?: number; omega6_pct?: number; carbohydrate_pct?: number;
+      serving_size_g?: number; ingredients_text?: string;
+      reference_url?: string; memo?: string;
+    }) =>
       request<FeedRegistrationRequest>('/api/v1/feed-requests', { method: 'POST', body: JSON.stringify(data) }),
     list: () =>
       request<FeedRegistrationRequest[]>('/api/v1/feed-requests'),
@@ -804,8 +813,8 @@ export const api = {
         request<FeedRegistrationRequest[]>(`/api/v1/admin/feed-requests${buildQuery({ status: params?.status })}`),
       get: (id: string) =>
         request<FeedRegistrationRequest>(`/api/v1/admin/feed-requests/${id}`),
-      approve: (id: string) =>
-        request<FeedRegistrationRequest>(`/api/v1/admin/feed-requests/${id}/approve`, { method: 'POST' }),
+      approve: (id: string, data?: { manufacturer_id?: string; brand_id?: string; feed_type_item_id?: string }) =>
+        request<FeedRegistrationRequest>(`/api/v1/admin/feed-requests/${id}/approve`, { method: 'POST', body: JSON.stringify(data || {}) }),
       reject: (id: string, data: { review_note?: string }) =>
         request<FeedRegistrationRequest>(`/api/v1/admin/feed-requests/${id}/reject`, { method: 'POST', body: JSON.stringify(data) }),
     },

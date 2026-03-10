@@ -23,6 +23,16 @@ export default function FeedPage() {
   const [showRejectForm, setShowRejectForm] = useState(false);
   const [requestProcessing, setRequestProcessing] = useState(false);
 
+  // Review state for admin approval overrides
+  type ReviewDecision = 'ok' | 'existing';
+  const [reviewMfr, setReviewMfr] = useState<{ decision: ReviewDecision; existingId: string }>({ decision: 'ok', existingId: '' });
+  const [reviewBrand, setReviewBrand] = useState<{ decision: ReviewDecision; existingId: string }>({ decision: 'ok', existingId: '' });
+  const [reviewFeedType, setReviewFeedType] = useState(''); // override feed_type_item_id
+  // Dropdown data for requests tab
+  const [reqMfrs, setReqMfrs] = useState<FeedManufacturer[]>([]);
+  const [reqBrands, setReqBrands] = useState<FeedBrand[]>([]);
+  const [reqFeedTypes, setReqFeedTypes] = useState<FeedType[]>([]);
+
   const pendingCount = requests.filter((r) => r.status === 'pending').length;
 
   const loadRequests = useCallback(async (status?: string) => {
@@ -35,8 +45,16 @@ export default function FeedPage() {
   }, []);
 
   useEffect(() => {
-    if (pageTab === 'requests') void loadRequests(requestFilter || undefined);
-  }, [pageTab, requestFilter, loadRequests]);
+    if (pageTab === 'requests') {
+      void loadRequests(requestFilter || undefined);
+      // Load dropdown data for review
+      void (async () => {
+        try { setReqMfrs(await api.feedCatalog.public.manufacturers()); } catch { /* ignore */ }
+        try { setReqBrands(await api.feedCatalog.public.brands()); } catch { /* ignore */ }
+        try { setReqFeedTypes(await api.feedCatalog.public.types(lang)); } catch { /* ignore */ }
+      })();
+    }
+  }, [pageTab, requestFilter, loadRequests, lang]);
 
   // Load pending count on mount
   useEffect(() => {
@@ -48,14 +66,27 @@ export default function FeedPage() {
     })();
   }, []);
 
+  function resetReviewState() {
+    setReviewMfr({ decision: 'ok', existingId: '' });
+    setReviewBrand({ decision: 'ok', existingId: '' });
+    setReviewFeedType('');
+    setShowRejectForm(false);
+    setRejectNote('');
+  }
+
   async function handleApprove(id: string) {
     if (!confirm(t('admin.feed.approve_confirm', 'Register this feed to the catalog?'))) return;
     setRequestProcessing(true);
     try {
-      await api.feedRequests.admin.approve(id);
+      const overrides: { manufacturer_id?: string; brand_id?: string; feed_type_item_id?: string } = {};
+      if (reviewMfr.decision === 'existing' && reviewMfr.existingId) overrides.manufacturer_id = reviewMfr.existingId;
+      if (reviewBrand.decision === 'existing' && reviewBrand.existingId) overrides.brand_id = reviewBrand.existingId;
+      if (reviewFeedType) overrides.feed_type_item_id = reviewFeedType;
+      await api.feedRequests.admin.approve(id, Object.keys(overrides).length ? overrides : undefined);
       flash(t('admin.feed.approved_success', 'Approved and registered to catalog.'));
       void loadRequests(requestFilter || undefined);
       setSelectedRequest(null);
+      resetReviewState();
     } catch (e) {
       setError(String(e));
     } finally {
@@ -519,7 +550,7 @@ export default function FeedPage() {
                     </thead>
                     <tbody>
                       {filteredRequests.map((r) => (
-                        <tr key={r.id} onClick={() => { setSelectedRequest(r); setShowRejectForm(false); setRejectNote(''); }} style={{ borderBottom: '1px solid var(--border)', cursor: 'pointer', background: selectedRequest?.id === r.id ? 'var(--primary-light, #fffbeb)' : 'transparent' }}>
+                        <tr key={r.id} onClick={() => { setSelectedRequest(r); resetReviewState(); }} style={{ borderBottom: '1px solid var(--border)', cursor: 'pointer', background: selectedRequest?.id === r.id ? 'var(--primary-light, #fffbeb)' : 'transparent' }}>
                           <td style={{ padding: '8px 6px' }}>{r.requester_email || r.requester_user_id.slice(0, 8)}</td>
                           <td style={{ padding: '8px 6px', fontWeight: 600 }}>{r.feed_name}</td>
                           <td style={{ padding: '8px 6px' }}>{r.manufacturer_name || '—'}</td>
@@ -542,58 +573,188 @@ export default function FeedPage() {
               {selectedRequest && (
                 <div style={{ border: '1px solid var(--border)', borderRadius: 12, padding: 16 }}>
                   <h4 style={{ margin: '0 0 12px', fontSize: 16 }}>{selectedRequest.feed_name}</h4>
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px 16px', fontSize: 13 }}>
+                  <div style={{ fontSize: 13, display: 'flex', flexDirection: 'column', gap: 6 }}>
                     <div><strong>{t('admin.feed.requester', 'Requester')}:</strong> {selectedRequest.requester_email || selectedRequest.requester_user_id.slice(0, 8)}</div>
                     <div><strong>{t('admin.feed.request_date', 'Date')}:</strong> {selectedRequest.created_at?.slice(0, 10)}</div>
-                    {selectedRequest.manufacturer_name && <div><strong>{t('guardian.feed.request_manufacturer', 'Manufacturer')}:</strong> {selectedRequest.manufacturer_name}</div>}
-                    {selectedRequest.brand_name && <div><strong>{t('guardian.feed.request_brand', 'Brand')}:</strong> {selectedRequest.brand_name}</div>}
-                    {selectedRequest.calories_per_100g != null && <div><strong>kcal/100g:</strong> {selectedRequest.calories_per_100g}</div>}
-                    {selectedRequest.protein_pct != null && <div><strong>Protein:</strong> {selectedRequest.protein_pct}%</div>}
-                    {selectedRequest.fat_pct != null && <div><strong>Fat:</strong> {selectedRequest.fat_pct}%</div>}
-                    {selectedRequest.fiber_pct != null && <div><strong>Fiber:</strong> {selectedRequest.fiber_pct}%</div>}
-                    {selectedRequest.moisture_pct != null && <div><strong>Moisture:</strong> {selectedRequest.moisture_pct}%</div>}
                   </div>
-                  {selectedRequest.reference_url && (
-                    <div style={{ marginTop: 8, fontSize: 13 }}>
-                      <strong>{t('guardian.feed.request_url', 'URL')}:</strong>{' '}
-                      <a href={selectedRequest.reference_url} target="_blank" rel="noopener noreferrer" style={{ color: 'var(--primary)' }}>{selectedRequest.reference_url}</a>
-                    </div>
-                  )}
-                  {selectedRequest.memo && (
-                    <div style={{ marginTop: 8, fontSize: 13 }}><strong>{t('guardian.feed.request_memo', 'Memo')}:</strong> {selectedRequest.memo}</div>
-                  )}
-                  {selectedRequest.review_note && (
-                    <div style={{ marginTop: 8, fontSize: 13, fontStyle: 'italic', color: 'var(--text-secondary)' }}>
-                      <strong>{t('admin.feed.reject_reason', 'Rejection Reason')}:</strong> {selectedRequest.review_note}
-                    </div>
-                  )}
-                  {selectedRequest.status === 'pending' && (
-                    <div style={{ display: 'flex', gap: 8, marginTop: 16, flexWrap: 'wrap' }}>
-                      <button className="btn btn-primary btn-sm" disabled={requestProcessing} onClick={() => void handleApprove(selectedRequest.id)}>
-                        {t('admin.feed.approve', 'Approve')}
-                      </button>
-                      {!showRejectForm ? (
-                        <button className="btn btn-danger btn-sm" onClick={() => setShowRejectForm(true)}>
-                          {t('admin.feed.reject', 'Reject')}
-                        </button>
-                      ) : (
-                        <div style={{ flex: '1 1 100%' }}>
-                          <textarea
-                            className="form-input"
-                            rows={2}
-                            placeholder={t('admin.feed.reject_reason', 'Rejection Reason')}
-                            value={rejectNote}
-                            onChange={(e) => setRejectNote(e.target.value)}
-                            style={{ marginBottom: 8, fontSize: 13 }}
-                          />
-                          <div style={{ display: 'flex', gap: 6 }}>
-                            <button className="btn btn-danger btn-sm" disabled={requestProcessing} onClick={() => void handleReject(selectedRequest.id)}>
-                              {t('admin.feed.reject', 'Reject')}
-                            </button>
-                            <button className="btn btn-sm" onClick={() => { setShowRejectForm(false); setRejectNote(''); }}>
-                              {t('common.cancel', 'Cancel')}
-                            </button>
+
+                  {/* ── Per-field Review (pending only) ── */}
+                  {selectedRequest.status === 'pending' ? (
+                    <div style={{ marginTop: 12, display: 'flex', flexDirection: 'column', gap: 10, fontSize: 13 }}>
+                      {/* Manufacturer review */}
+                      <div style={{ padding: '8px 10px', background: 'var(--bg)', borderRadius: 6, border: '1px solid var(--border)' }}>
+                        <div style={{ fontWeight: 600, marginBottom: 4 }}>{t('guardian.feed.request_manufacturer', 'Manufacturer')}</div>
+                        <div style={{ marginBottom: 6, color: 'var(--text-secondary)' }}>{selectedRequest.manufacturer_name || '—'}</div>
+                        <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', alignItems: 'center' }}>
+                          <label style={{ display: 'flex', alignItems: 'center', gap: 4, cursor: 'pointer' }}>
+                            <input type="radio" name="review-mfr" checked={reviewMfr.decision === 'ok'} onChange={() => setReviewMfr({ decision: 'ok', existingId: '' })} />
+                            {t('admin.feed.review_ok', 'OK (create new)')}
+                          </label>
+                          <label style={{ display: 'flex', alignItems: 'center', gap: 4, cursor: 'pointer' }}>
+                            <input type="radio" name="review-mfr" checked={reviewMfr.decision === 'existing'} onChange={() => setReviewMfr({ decision: 'existing', existingId: '' })} />
+                            {t('admin.feed.review_use_existing', 'Use existing')}
+                          </label>
+                        </div>
+                        {reviewMfr.decision === 'existing' && (
+                          <select className="form-select" style={{ marginTop: 6, fontSize: 12 }} value={reviewMfr.existingId}
+                            onChange={(e) => setReviewMfr((p) => ({ ...p, existingId: e.target.value }))}>
+                            <option value="">{t('common.select', 'Select')}</option>
+                            {reqMfrs.filter((m) => m.status === 'active').map((m) => (
+                              <option key={m.id} value={m.id}>{itemLabel(m)}</option>
+                            ))}
+                          </select>
+                        )}
+                      </div>
+
+                      {/* Brand review */}
+                      <div style={{ padding: '8px 10px', background: 'var(--bg)', borderRadius: 6, border: '1px solid var(--border)' }}>
+                        <div style={{ fontWeight: 600, marginBottom: 4 }}>{t('guardian.feed.request_brand', 'Brand')}</div>
+                        <div style={{ marginBottom: 6, color: 'var(--text-secondary)' }}>{selectedRequest.brand_name || '—'}</div>
+                        <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', alignItems: 'center' }}>
+                          <label style={{ display: 'flex', alignItems: 'center', gap: 4, cursor: 'pointer' }}>
+                            <input type="radio" name="review-brand" checked={reviewBrand.decision === 'ok'} onChange={() => setReviewBrand({ decision: 'ok', existingId: '' })} />
+                            {t('admin.feed.review_ok', 'OK (create new)')}
+                          </label>
+                          <label style={{ display: 'flex', alignItems: 'center', gap: 4, cursor: 'pointer' }}>
+                            <input type="radio" name="review-brand" checked={reviewBrand.decision === 'existing'} onChange={() => setReviewBrand({ decision: 'existing', existingId: '' })} />
+                            {t('admin.feed.review_use_existing', 'Use existing')}
+                          </label>
+                        </div>
+                        {reviewBrand.decision === 'existing' && (
+                          <select className="form-select" style={{ marginTop: 6, fontSize: 12 }} value={reviewBrand.existingId}
+                            onChange={(e) => setReviewBrand((p) => ({ ...p, existingId: e.target.value }))}>
+                            <option value="">{t('common.select', 'Select')}</option>
+                            {reqBrands.filter((b) => b.status === 'active').map((b) => (
+                              <option key={b.id} value={b.id}>{b.name_ko || b.name_en || b.id}</option>
+                            ))}
+                          </select>
+                        )}
+                      </div>
+
+                      {/* Feed Type review */}
+                      <div style={{ padding: '8px 10px', background: 'var(--bg)', borderRadius: 6, border: '1px solid var(--border)' }}>
+                        <div style={{ fontWeight: 600, marginBottom: 4 }}>{t('guardian.feed.request_type', 'Feed Type')}</div>
+                        <div style={{ marginBottom: 6, color: 'var(--text-secondary)' }}>
+                          {selectedRequest.feed_type_item_id
+                            ? reqFeedTypes.find((ft) => ft.id === selectedRequest.feed_type_item_id)?.display_label || selectedRequest.feed_type_item_id
+                            : '—'}
+                        </div>
+                        <select className="form-select" style={{ fontSize: 12 }} value={reviewFeedType}
+                          onChange={(e) => setReviewFeedType(e.target.value)}>
+                          <option value="">{t('admin.feed.review_keep_original', 'Keep original')}</option>
+                          {reqFeedTypes.map((ft) => (
+                            <option key={ft.id} value={ft.id}>{ft.display_label || ft.key}</option>
+                          ))}
+                        </select>
+                      </div>
+
+                      {/* Feed Name (read-only) */}
+                      <div style={{ padding: '8px 10px', background: 'var(--bg)', borderRadius: 6, border: '1px solid var(--border)' }}>
+                        <div style={{ fontWeight: 600, marginBottom: 4 }}>{t('guardian.feed.request_name', 'Feed Name')}</div>
+                        <div>{selectedRequest.feed_name}</div>
+                      </div>
+
+                      {/* Nutrition info (read-only, all 13 fields) */}
+                      <div style={{ padding: '8px 10px', background: 'var(--bg)', borderRadius: 6, border: '1px solid var(--border)' }}>
+                        <div style={{ fontWeight: 600, marginBottom: 6 }}>{t('nutrition.title', 'Nutrition Info')}</div>
+                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '4px 12px', fontSize: 12, color: 'var(--text-secondary)' }}>
+                          {selectedRequest.calories_per_100g != null && <span>{t('nutrition.calories', 'Calories')}: {selectedRequest.calories_per_100g} kcal</span>}
+                          {selectedRequest.protein_pct != null && <span>{t('nutrition.protein', 'Protein')}: {selectedRequest.protein_pct}%</span>}
+                          {selectedRequest.fat_pct != null && <span>{t('nutrition.fat', 'Fat')}: {selectedRequest.fat_pct}%</span>}
+                          {selectedRequest.fiber_pct != null && <span>{t('nutrition.fiber', 'Fiber')}: {selectedRequest.fiber_pct}%</span>}
+                          {selectedRequest.moisture_pct != null && <span>{t('nutrition.moisture', 'Moisture')}: {selectedRequest.moisture_pct}%</span>}
+                          {selectedRequest.ash_pct != null && <span>{t('nutrition.ash', 'Ash')}: {selectedRequest.ash_pct}%</span>}
+                          {selectedRequest.calcium_pct != null && <span>{t('nutrition.calcium', 'Calcium')}: {selectedRequest.calcium_pct}%</span>}
+                          {selectedRequest.phosphorus_pct != null && <span>{t('nutrition.phosphorus', 'Phosphorus')}: {selectedRequest.phosphorus_pct}%</span>}
+                          {selectedRequest.omega3_pct != null && <span>{t('nutrition.omega3', 'Omega-3')}: {selectedRequest.omega3_pct}%</span>}
+                          {selectedRequest.omega6_pct != null && <span>{t('nutrition.omega6', 'Omega-6')}: {selectedRequest.omega6_pct}%</span>}
+                          {selectedRequest.carbohydrate_pct != null && <span>{t('nutrition.carbohydrate', 'Carbohydrate')}: {selectedRequest.carbohydrate_pct}%</span>}
+                          {selectedRequest.serving_size_g != null && <span>{t('nutrition.serving_size', 'Serving Size')}: {selectedRequest.serving_size_g}g</span>}
+                        </div>
+                        {selectedRequest.ingredients_text && (
+                          <div style={{ marginTop: 6, fontSize: 11, color: 'var(--text-muted)' }}>
+                            <span style={{ fontWeight: 600 }}>{t('nutrition.ingredients', 'Ingredients')}: </span>{selectedRequest.ingredients_text}
                           </div>
+                        )}
+                      </div>
+
+                      {selectedRequest.reference_url && (
+                        <div style={{ fontSize: 13 }}>
+                          <strong>{t('guardian.feed.request_url', 'URL')}:</strong>{' '}
+                          <a href={selectedRequest.reference_url} target="_blank" rel="noopener noreferrer" style={{ color: 'var(--primary)' }}>{selectedRequest.reference_url}</a>
+                        </div>
+                      )}
+                      {selectedRequest.memo && (
+                        <div style={{ fontSize: 13 }}><strong>{t('guardian.feed.request_memo', 'Memo')}:</strong> {selectedRequest.memo}</div>
+                      )}
+
+                      {/* Action buttons */}
+                      <div style={{ display: 'flex', gap: 8, marginTop: 8, flexWrap: 'wrap' }}>
+                        <button className="btn btn-primary btn-sm" disabled={requestProcessing} onClick={() => void handleApprove(selectedRequest.id)}>
+                          {t('admin.feed.final_approve', 'Final Approve')}
+                        </button>
+                        {!showRejectForm ? (
+                          <button className="btn btn-danger btn-sm" onClick={() => setShowRejectForm(true)}>
+                            {t('admin.feed.reject', 'Reject')}
+                          </button>
+                        ) : (
+                          <div style={{ flex: '1 1 100%' }}>
+                            <textarea
+                              className="form-input"
+                              rows={2}
+                              placeholder={t('admin.feed.reject_reason', 'Rejection Reason')}
+                              value={rejectNote}
+                              onChange={(e) => setRejectNote(e.target.value)}
+                              style={{ marginBottom: 8, fontSize: 13 }}
+                            />
+                            <div style={{ display: 'flex', gap: 6 }}>
+                              <button className="btn btn-danger btn-sm" disabled={requestProcessing} onClick={() => void handleReject(selectedRequest.id)}>
+                                {t('admin.feed.reject', 'Reject')}
+                              </button>
+                              <button className="btn btn-sm" onClick={() => { setShowRejectForm(false); setRejectNote(''); }}>
+                                {t('common.cancel', 'Cancel')}
+                              </button>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  ) : (
+                    /* Non-pending: read-only detail */
+                    <div style={{ marginTop: 12, fontSize: 13, display: 'flex', flexDirection: 'column', gap: 4 }}>
+                      {selectedRequest.manufacturer_name && <div><strong>{t('guardian.feed.request_manufacturer', 'Manufacturer')}:</strong> {selectedRequest.manufacturer_name}</div>}
+                      {selectedRequest.brand_name && <div><strong>{t('guardian.feed.request_brand', 'Brand')}:</strong> {selectedRequest.brand_name}</div>}
+                      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '4px 12px', fontSize: 12, color: 'var(--text-secondary)', marginTop: 4 }}>
+                        {selectedRequest.calories_per_100g != null && <span>{t('nutrition.calories', 'Calories')}: {selectedRequest.calories_per_100g} kcal</span>}
+                        {selectedRequest.protein_pct != null && <span>{t('nutrition.protein', 'Protein')}: {selectedRequest.protein_pct}%</span>}
+                        {selectedRequest.fat_pct != null && <span>{t('nutrition.fat', 'Fat')}: {selectedRequest.fat_pct}%</span>}
+                        {selectedRequest.fiber_pct != null && <span>{t('nutrition.fiber', 'Fiber')}: {selectedRequest.fiber_pct}%</span>}
+                        {selectedRequest.moisture_pct != null && <span>{t('nutrition.moisture', 'Moisture')}: {selectedRequest.moisture_pct}%</span>}
+                        {selectedRequest.ash_pct != null && <span>{t('nutrition.ash', 'Ash')}: {selectedRequest.ash_pct}%</span>}
+                        {selectedRequest.calcium_pct != null && <span>{t('nutrition.calcium', 'Calcium')}: {selectedRequest.calcium_pct}%</span>}
+                        {selectedRequest.phosphorus_pct != null && <span>{t('nutrition.phosphorus', 'Phosphorus')}: {selectedRequest.phosphorus_pct}%</span>}
+                        {selectedRequest.omega3_pct != null && <span>{t('nutrition.omega3', 'Omega-3')}: {selectedRequest.omega3_pct}%</span>}
+                        {selectedRequest.omega6_pct != null && <span>{t('nutrition.omega6', 'Omega-6')}: {selectedRequest.omega6_pct}%</span>}
+                        {selectedRequest.carbohydrate_pct != null && <span>{t('nutrition.carbohydrate', 'Carbohydrate')}: {selectedRequest.carbohydrate_pct}%</span>}
+                        {selectedRequest.serving_size_g != null && <span>{t('nutrition.serving_size', 'Serving Size')}: {selectedRequest.serving_size_g}g</span>}
+                      </div>
+                      {selectedRequest.ingredients_text && (
+                        <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 4 }}>
+                          <span style={{ fontWeight: 600 }}>{t('nutrition.ingredients', 'Ingredients')}: </span>{selectedRequest.ingredients_text}
+                        </div>
+                      )}
+                      {selectedRequest.reference_url && (
+                        <div style={{ marginTop: 4 }}>
+                          <strong>{t('guardian.feed.request_url', 'URL')}:</strong>{' '}
+                          <a href={selectedRequest.reference_url} target="_blank" rel="noopener noreferrer" style={{ color: 'var(--primary)' }}>{selectedRequest.reference_url}</a>
+                        </div>
+                      )}
+                      {selectedRequest.memo && (
+                        <div style={{ marginTop: 4 }}><strong>{t('guardian.feed.request_memo', 'Memo')}:</strong> {selectedRequest.memo}</div>
+                      )}
+                      {selectedRequest.review_note && (
+                        <div style={{ marginTop: 4, fontStyle: 'italic', color: 'var(--text-secondary)' }}>
+                          <strong>{t('admin.feed.reject_reason', 'Rejection Reason')}:</strong> {selectedRequest.review_note}
                         </div>
                       )}
                     </div>
