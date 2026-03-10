@@ -112,43 +112,9 @@ function escapeValue(val, colName) {
   return `'${escaped}'`;
 }
 
-// ON CONFLICT 키 매핑
-const CONFLICT_KEYS = {
-  'master_categories': 'code',
-  'master_items': 'category_id, code',
-  'i18n_translations': 'key',
-  'device_types': 'id',
-  'device_manufacturers': 'id',
-  'device_brands': 'id',
-  'device_models': 'id',
-  'measurement_units': 'id',
-  'measurement_ranges': 'id',
-  'countries': 'id',
-  'currencies': 'id',
-  'country_currency_map': 'id',
-  'disease_symptom_map': 'id',
-  'symptom_metric_map': 'id',
-  'metric_unit_map': 'id',
-  'metric_logtype_map': 'id',
-  'disease_judgement_rules': 'id',
-  'device_manufacturer_type_map': 'id',
-  'device_brand_manufacturer_map': 'id',
-  'device_model_brand_map': 'id',
-  'feed_manufacturers': 'id',
-  'feed_brands': 'id',
-  'feed_models': 'id',
-  'feed_manufacturer_type_map': 'id',
-  'feed_brand_manufacturer_map': 'id',
-  'feed_model_brand_map': 'id',
-  'feed_nutrient_types': 'id',
-  'feed_nutrition': 'id',
-  'feed_nutrition_units': 'id',
-  'feed_nutrition_basis_types': 'id',
-  'feed_model_nutrients': 'id',
-  'platform_settings': 'setting_key',
-  'ad_config': 'id',
-  'ad_slots': 'id',
-};
+// Use bare ON CONFLICT DO NOTHING (no column spec) for all tables.
+// This catches conflicts on ANY unique constraint (PK, UNIQUE columns, etc.)
+// and is safe even if the Neon DB schema doesn't have all expected constraints.
 
 // Topological sort for self-referencing tables
 function topoSort(rows, idCol, parentCol) {
@@ -235,8 +201,6 @@ function generateSQL() {
 
     // 컬럼 목록 (첫 번째 row 기준)
     const columns = Object.keys(rows[0]);
-    const conflictKey = CONFLICT_KEYS[table] || 'id';
-
     // 배치 INSERT (50행씩)
     const batchSize = 50;
     for (let i = 0; i < rows.length; i += batchSize) {
@@ -251,7 +215,7 @@ function generateSQL() {
       });
 
       lines.push(valueParts.join(',\n'));
-      lines.push(`ON CONFLICT (${conflictKey}) DO NOTHING;`);
+      lines.push('ON CONFLICT DO NOTHING;');
       lines.push('');
     }
 

@@ -1,6 +1,6 @@
 -- =============================================================================
 -- Petfolio — Master Data Seed (migrated from Cloudflare D1)
--- Generated: 2026-03-10T12:28:48.360Z
+-- Generated: 2026-03-10T12:35:33.686Z
 -- =============================================================================
 -- All statements use ON CONFLICT DO NOTHING for idempotency.
 -- Apply after 001_init.sql + 002_seed.sql
@@ -47,7 +47,7 @@ VALUES
   ('mc-metric', 'metric', NULL, NULL, NULL, 210, 'active', '2026-03-09 14:38:26', '2026-03-09 14:38:26'),
   ('mc-unit', 'unit', NULL, NULL, NULL, 211, 'active', '2026-03-09 14:38:26', '2026-03-09 14:38:26'),
   ('mc-business-category', 'business_category', NULL, NULL, NULL, 230, 'active', '2026-03-10 02:10:08', '2026-03-10 02:10:08')
-ON CONFLICT (code) DO NOTHING;
+ON CONFLICT DO NOTHING;
 
 -- ---------------------------------------------------------------------------
 -- device_types (5 rows)
@@ -59,7 +59,7 @@ VALUES
   ('dt-insulin-pen', 'insulin_pen', '인슐린 펜', 'Insulin Pen', 'active', 3, '2026-03-07 12:37:20', '2026-03-07 12:37:20'),
   ('dt-pet-scale', 'pet_scale', '반려동물 체중계', 'Pet Scale', 'active', 4, '2026-03-07 12:37:20', '2026-03-07 12:37:20'),
   ('dt-heart-rate', 'heart_rate_monitor', '심박수 모니터', 'Heart Rate Monitor', 'active', 5, '2026-03-07 12:37:20', '2026-03-07 12:37:20')
-ON CONFLICT (key) DO NOTHING;
+ON CONFLICT DO NOTHING;
 
 -- ---------------------------------------------------------------------------
 -- currencies (10 rows)
@@ -76,7 +76,7 @@ VALUES
   ('cur-thb', 'THB', '฿', 'currency.thb', 2, true, '2026-03-08 10:33:08'),
   ('cur-idr', 'IDR', 'Rp', 'currency.idr', 0, true, '2026-03-08 10:33:08'),
   ('cur-sar', 'SAR', '﷼', 'currency.sar', 2, true, '2026-03-08 10:33:08')
-ON CONFLICT (id) DO NOTHING;
+ON CONFLICT DO NOTHING;
 
 -- ---------------------------------------------------------------------------
 -- countries (13 rows)
@@ -96,7 +96,7 @@ VALUES
   ('country-th', 'TH', 'country.th', true, 110, '2026-03-08 10:33:08'),
   ('country-id', 'ID', 'country.id', true, 120, '2026-03-08 10:33:08'),
   ('country-sa', 'SA', 'country.sa', true, 130, '2026-03-08 10:33:08')
-ON CONFLICT (id) DO NOTHING;
+ON CONFLICT DO NOTHING;
 
 -- ---------------------------------------------------------------------------
 -- master_items (762 rows)
@@ -153,7 +153,7 @@ VALUES
   ('mi-stype-appetite-loss', 'mc-symptom-type', NULL, 'loss_of_appetite', NULL, NULL, 6, 'active', '{}', '2026-03-07 02:02:50', '2026-03-07 02:02:50', NULL),
   ('mi-vac-rabies', 'mc-vaccination-type', NULL, 'rabies', NULL, NULL, 1, 'active', '{}', '2026-03-07 02:02:50', '2026-03-07 02:02:50', NULL),
   ('mi-vac-dhpp', 'mc-vaccination-type', NULL, 'dhpp', NULL, NULL, 2, 'active', '{}', '2026-03-07 02:02:50', '2026-03-07 02:02:50', NULL)
-ON CONFLICT (category_id, code) DO NOTHING;
+ON CONFLICT DO NOTHING;
 
 INSERT INTO master_items (id, category_id, parent_item_id, code, name, description, sort_order, status, metadata, created_at, updated_at, device_type_id)
 VALUES
@@ -207,7 +207,7 @@ VALUES
   ('mi-context-pre-meal', 'mc-disease-measurement-context', NULL, 'pre_meal', NULL, NULL, 1, 'active', '{}', '2026-03-07 03:16:19', '2026-03-07 03:16:19', NULL),
   ('mi-context-post-1h', 'mc-disease-measurement-context', NULL, 'post_meal_1h', NULL, NULL, 2, 'active', '{}', '2026-03-07 03:16:19', '2026-03-07 03:16:19', NULL),
   ('mi-context-post-2h', 'mc-disease-measurement-context', NULL, 'post_meal_2h', NULL, NULL, 3, 'active', '{}', '2026-03-07 03:16:19', '2026-03-07 03:16:19', NULL)
-ON CONFLICT (category_id, code) DO NOTHING;
+ON CONFLICT DO NOTHING;
 
 INSERT INTO master_items (id, category_id, parent_item_id, code, name, description, sort_order, status, metadata, created_at, updated_at, device_type_id)
 VALUES
@@ -261,7 +261,7 @@ VALUES
   ('mi-metric-food-weight', 'mc-metric', NULL, 'food_weight', NULL, NULL, 4, 'active', '{}', '2026-03-09 14:38:26', '2026-03-09 14:38:26', NULL),
   ('mi-metric-water-intake', 'mc-metric', NULL, 'water_intake', NULL, NULL, 5, 'active', '{}', '2026-03-09 14:38:26', '2026-03-09 14:38:26', NULL),
   ('mi-metric-duration', 'mc-metric', NULL, 'duration', NULL, NULL, 6, 'active', '{}', '2026-03-09 14:38:26', '2026-03-09 14:38:26', NULL)
-ON CONFLICT (category_id, code) DO NOTHING;
+ON CONFLICT DO NOTHING;
 
 INSERT INTO master_items (id, category_id, parent_item_id, code, name, description, sort_order, status, metadata, created_at, updated_at, device_type_id)
 VALUES
@@ -315,7 +315,7 @@ VALUES
   ('mi-breed-cat-sphynx', 'mc-pet-type', 'mi-ptype-cat', 'sphynx', NULL, NULL, 11, 'active', '{}', '2026-03-07 06:39:43', '2026-03-07 08:05:40', NULL),
   ('mi-breed-cat-mixed', 'mc-pet-type', 'mi-ptype-cat', 'mixed_cat', NULL, NULL, 12, 'active', '{}', '2026-03-07 06:39:43', '2026-03-07 07:51:42', NULL),
   ('mi-breed-cat-other', 'mc-pet-type', 'mi-ptype-cat', 'cat_other', NULL, NULL, 13, 'active', '{}', '2026-03-07 06:39:43', '2026-03-07 07:51:42', NULL)
-ON CONFLICT (category_id, code) DO NOTHING;
+ON CONFLICT DO NOTHING;
 
 INSERT INTO master_items (id, category_id, parent_item_id, code, name, description, sort_order, status, metadata, created_at, updated_at, device_type_id)
 VALUES
@@ -369,7 +369,7 @@ VALUES
   ('mi-breed-other-sugar-glider', 'mc-pet-type', 'mi-ptype-other', 'sugar_glider', NULL, NULL, 5, 'active', '{}', '2026-03-07 08:05:40', '2026-03-07 08:05:40', NULL),
   ('mi-breed-other-chinchilla', 'mc-pet-type', 'mi-ptype-other', 'chinchilla', NULL, NULL, 6, 'active', '{}', '2026-03-07 08:05:40', '2026-03-07 08:05:40', NULL),
   ('mi-device-glucose-meter', 'mc-disease-device-type', 'mi-dtype-diabetes', 'glucose_meter', NULL, NULL, 1, 'active', '{}', '2026-03-07 03:16:19', '2026-03-07 03:16:19', 'dt-glucose-meter')
-ON CONFLICT (category_id, code) DO NOTHING;
+ON CONFLICT DO NOTHING;
 
 INSERT INTO master_items (id, category_id, parent_item_id, code, name, description, sort_order, status, metadata, created_at, updated_at, device_type_id)
 VALUES
@@ -423,7 +423,7 @@ VALUES
   ('mi-diet-sub-freeze-dried-meat', 'mc-diet-subtype', 'mi-diet-freeze-dried-food', 'freeze_dried_meat', NULL, NULL, 30, 'active', '{}', '2026-03-07 08:13:32', '2026-03-07 08:13:32', NULL),
   ('mi-diet-sub-freeze-dried-complete', 'mc-diet-subtype', 'mi-diet-freeze-dried-food', 'freeze_dried_complete', NULL, NULL, 31, 'active', '{}', '2026-03-07 08:13:32', '2026-03-07 08:13:32', NULL),
   ('mi-diet-sub-freeze-dried-snack', 'mc-diet-subtype', 'mi-diet-freeze-dried-food', 'freeze_dried_snack', NULL, NULL, 32, 'active', '{}', '2026-03-07 08:13:32', '2026-03-07 08:13:32', NULL)
-ON CONFLICT (category_id, code) DO NOTHING;
+ON CONFLICT DO NOTHING;
 
 INSERT INTO master_items (id, category_id, parent_item_id, code, name, description, sort_order, status, metadata, created_at, updated_at, device_type_id)
 VALUES
@@ -477,7 +477,7 @@ VALUES
   ('mi-dt-liver-failure', 'mc-disease-type', 'mi-dg-liver-disease', 'liver_failure', NULL, NULL, 702, 'active', '{}', '2026-03-07 09:40:33', '2026-03-07 09:40:33', NULL),
   ('mi-dt-fatty-liver', 'mc-disease-type', 'mi-dg-liver-disease', 'fatty_liver', NULL, NULL, 703, 'active', '{}', '2026-03-07 09:40:33', '2026-03-07 09:40:33', NULL),
   ('mi-dt-cholangitis', 'mc-disease-type', 'mi-dg-liver-disease', 'cholangitis', NULL, NULL, 704, 'active', '{}', '2026-03-07 09:40:33', '2026-03-07 09:40:33', NULL)
-ON CONFLICT (category_id, code) DO NOTHING;
+ON CONFLICT DO NOTHING;
 
 INSERT INTO master_items (id, category_id, parent_item_id, code, name, description, sort_order, status, metadata, created_at, updated_at, device_type_id)
 VALUES
@@ -531,7 +531,7 @@ VALUES
   ('mi-dt-lymphoma', 'mc-disease-type', 'mi-dg-cancer-disease', 'lymphoma', NULL, NULL, 2001, 'active', '{}', '2026-03-07 09:40:33', '2026-03-07 09:40:33', NULL),
   ('mi-dt-mast-cell-tumor', 'mc-disease-type', 'mi-dg-cancer-disease', 'mast_cell_tumor', NULL, NULL, 2002, 'active', '{}', '2026-03-07 09:40:33', '2026-03-07 09:40:33', NULL),
   ('mi-dt-melanoma', 'mc-disease-type', 'mi-dg-cancer-disease', 'melanoma', NULL, NULL, 2003, 'active', '{}', '2026-03-07 09:40:33', '2026-03-07 09:40:33', NULL)
-ON CONFLICT (category_id, code) DO NOTHING;
+ON CONFLICT DO NOTHING;
 
 INSERT INTO master_items (id, category_id, parent_item_id, code, name, description, sort_order, status, metadata, created_at, updated_at, device_type_id)
 VALUES
@@ -585,7 +585,7 @@ VALUES
   ('mi-diet-feed-kidney-low-phosphorus-formula', 'mc-diet-feed-type', 'mi-diet-sub-kidney-diet', 'kidney_low_phosphorus_formula', NULL, NULL, 51, 'active', '{}', '2026-03-08 07:30:48', '2026-03-08 07:30:48', NULL),
   ('mi-diet-feed-prescription-diet-core', 'mc-diet-feed-type', 'mi-diet-sub-kidney-diet', 'prescription_diet_core', NULL, NULL, 9006, 'active', '{}', '2026-03-08 15:09:30', '2026-03-08 15:09:30', NULL),
   ('mi-diet-feed-diabetes-low-carb-formula', 'mc-diet-feed-type', 'mi-diet-sub-diabetes-diet', 'diabetes_low_carb_formula', NULL, NULL, 50, 'active', '{}', '2026-03-08 07:30:48', '2026-03-08 07:30:48', NULL)
-ON CONFLICT (category_id, code) DO NOTHING;
+ON CONFLICT DO NOTHING;
 
 INSERT INTO master_items (id, category_id, parent_item_id, code, name, description, sort_order, status, metadata, created_at, updated_at, device_type_id)
 VALUES
@@ -639,7 +639,7 @@ VALUES
   ('mi-svc-hospital-dog-corgi-spinal-screening', 'mc-business-category', 'mi-business-doctor', 'hospital_dog_corgi_spinal_screening', NULL, NULL, 31102, 'active', '{"item_level":"l3","business_category_l1_id":"mi-business-hospital","pet_type_l1_id":"mi-ptype-dog","pet_type_l2_id":"mi-breed-dog-corgi"}', '2026-03-10 12:00:00', '2026-03-10 12:00:00', NULL),
   ('mi-svc-hospital-dog-corgi-obesity-mgmt', 'mc-business-category', 'mi-business-doctor', 'hospital_dog_corgi_obesity_mgmt', NULL, NULL, 31103, 'active', '{"item_level":"l3","business_category_l1_id":"mi-business-hospital","pet_type_l1_id":"mi-ptype-dog","pet_type_l2_id":"mi-breed-dog-corgi"}', '2026-03-10 12:00:00', '2026-03-10 12:00:00', NULL),
   ('mi-svc-hospital-dog-french-bulldog-brachy-airway', 'mc-business-category', 'mi-business-doctor', 'hospital_dog_french_bulldog_brachy_airway', NULL, NULL, 31201, 'active', '{"item_level":"l3","business_category_l1_id":"mi-business-hospital","pet_type_l1_id":"mi-ptype-dog","pet_type_l2_id":"mi-breed-dog-french-bulldog"}', '2026-03-10 12:00:00', '2026-03-10 12:00:00', NULL)
-ON CONFLICT (category_id, code) DO NOTHING;
+ON CONFLICT DO NOTHING;
 
 INSERT INTO master_items (id, category_id, parent_item_id, code, name, description, sort_order, status, metadata, created_at, updated_at, device_type_id)
 VALUES
@@ -693,7 +693,7 @@ VALUES
   ('mi-svc-hospital-cat-munchkin-joint-care', 'mc-business-category', 'mi-business-doctor', 'hospital_cat_munchkin_joint_care', NULL, NULL, 40602, 'active', '{"item_level":"l3","business_category_l1_id":"mi-business-hospital","pet_type_l1_id":"mi-ptype-cat","pet_type_l2_id":"mi-breed-cat-munchkin"}', '2026-03-10 12:00:00', '2026-03-10 12:00:00', NULL),
   ('mi-svc-hospital-cat-siamese-dental-care', 'mc-business-category', 'mi-business-doctor', 'hospital_cat_siamese_dental_care', NULL, NULL, 40701, 'active', '{"item_level":"l3","business_category_l1_id":"mi-business-hospital","pet_type_l1_id":"mi-ptype-cat","pet_type_l2_id":"mi-breed-cat-siamese"}', '2026-03-10 12:00:00', '2026-03-10 12:00:00', NULL),
   ('mi-svc-hospital-cat-siamese-respiratory-check', 'mc-business-category', 'mi-business-doctor', 'hospital_cat_siamese_respiratory_check', NULL, NULL, 40702, 'active', '{"item_level":"l3","business_category_l1_id":"mi-business-hospital","pet_type_l1_id":"mi-ptype-cat","pet_type_l2_id":"mi-breed-cat-siamese"}', '2026-03-10 12:00:00', '2026-03-10 12:00:00', NULL)
-ON CONFLICT (category_id, code) DO NOTHING;
+ON CONFLICT DO NOTHING;
 
 INSERT INTO master_items (id, category_id, parent_item_id, code, name, description, sort_order, status, metadata, created_at, updated_at, device_type_id)
 VALUES
@@ -747,7 +747,7 @@ VALUES
   ('mi-svc-grooming-dog-pomeranian-puppy-cut', 'mc-business-category', 'mi-business-groomer', 'grooming_dog_pomeranian_puppy_cut', NULL, NULL, 10604, 'active', '{"item_level":"l3","business_category_l1_id":"mi-business-grooming","pet_type_l1_id":"mi-ptype-dog","pet_type_l2_id":"mi-breed-pomeranian"}', '2026-03-10 12:00:00', '2026-03-10 12:00:00', NULL),
   ('mi-svc-grooming-dog-chihuahua-bath-and-brush', 'mc-business-category', 'mi-business-groomer', 'grooming_dog_chihuahua_bath_and_brush', NULL, NULL, 10701, 'active', '{"item_level":"l3","business_category_l1_id":"mi-business-grooming","pet_type_l1_id":"mi-ptype-dog","pet_type_l2_id":"mi-breed-dog-chihuahua"}', '2026-03-10 12:00:00', '2026-03-10 12:00:00', NULL),
   ('mi-svc-grooming-dog-chihuahua-puppy-cut', 'mc-business-category', 'mi-business-groomer', 'grooming_dog_chihuahua_puppy_cut', NULL, NULL, 10702, 'active', '{"item_level":"l3","business_category_l1_id":"mi-business-grooming","pet_type_l1_id":"mi-ptype-dog","pet_type_l2_id":"mi-breed-dog-chihuahua"}', '2026-03-10 12:00:00', '2026-03-10 12:00:00', NULL)
-ON CONFLICT (category_id, code) DO NOTHING;
+ON CONFLICT DO NOTHING;
 
 INSERT INTO master_items (id, category_id, parent_item_id, code, name, description, sort_order, status, metadata, created_at, updated_at, device_type_id)
 VALUES
@@ -801,7 +801,7 @@ VALUES
   ('mi-svc-grooming-dog-chow-chow-bath-and-deshed', 'mc-business-category', 'mi-business-groomer', 'grooming_dog_chow_chow_bath_and_deshed', NULL, NULL, 12203, 'active', '{"item_level":"l3","business_category_l1_id":"mi-business-grooming","pet_type_l1_id":"mi-ptype-dog","pet_type_l2_id":"mi-breed-dog-chow-chow"}', '2026-03-10 12:00:00', '2026-03-10 12:00:00', NULL),
   ('mi-svc-grooming-dog-mixed-dog-puppy-cut', 'mc-business-category', 'mi-business-groomer', 'grooming_dog_mixed_dog_puppy_cut', NULL, NULL, 12301, 'active', '{"item_level":"l3","business_category_l1_id":"mi-business-grooming","pet_type_l1_id":"mi-ptype-dog","pet_type_l2_id":"mi-breed-dog-mixed"}', '2026-03-10 12:00:00', '2026-03-10 12:00:00', NULL),
   ('mi-svc-grooming-dog-mixed-dog-short-trim', 'mc-business-category', 'mi-business-groomer', 'grooming_dog_mixed_dog_short_trim', NULL, NULL, 12302, 'active', '{"item_level":"l3","business_category_l1_id":"mi-business-grooming","pet_type_l1_id":"mi-ptype-dog","pet_type_l2_id":"mi-breed-dog-mixed"}', '2026-03-10 12:00:00', '2026-03-10 12:00:00', NULL)
-ON CONFLICT (category_id, code) DO NOTHING;
+ON CONFLICT DO NOTHING;
 
 INSERT INTO master_items (id, category_id, parent_item_id, code, name, description, sort_order, status, metadata, created_at, updated_at, device_type_id)
 VALUES
@@ -855,7 +855,7 @@ VALUES
   ('mi-svc-grooming-cat-burmese-bath-and-brush', 'mc-business-category', 'mi-business-groomer', 'grooming_cat_burmese_bath_and_brush', NULL, NULL, 21601, 'active', '{"item_level":"l3","business_category_l1_id":"mi-business-grooming","pet_type_l1_id":"mi-ptype-cat","pet_type_l2_id":"mi-breed-cat-burmese"}', '2026-03-10 12:00:00', '2026-03-10 12:00:00', NULL),
   ('mi-svc-grooming-cat-burmese-short-trim', 'mc-business-category', 'mi-business-groomer', 'grooming_cat_burmese_short_trim', NULL, NULL, 21602, 'active', '{"item_level":"l3","business_category_l1_id":"mi-business-grooming","pet_type_l1_id":"mi-ptype-cat","pet_type_l2_id":"mi-breed-cat-burmese"}', '2026-03-10 12:00:00', '2026-03-10 12:00:00', NULL),
   ('mi-svc-grooming-cat-oriental-sh-bath-and-brush', 'mc-business-category', 'mi-business-groomer', 'grooming_cat_oriental_sh_bath_and_brush', NULL, NULL, 21701, 'active', '{"item_level":"l3","business_category_l1_id":"mi-business-grooming","pet_type_l1_id":"mi-ptype-cat","pet_type_l2_id":"mi-breed-cat-oriental-shorthair"}', '2026-03-10 12:00:00', '2026-03-10 12:00:00', NULL)
-ON CONFLICT (category_id, code) DO NOTHING;
+ON CONFLICT DO NOTHING;
 
 INSERT INTO master_items (id, category_id, parent_item_id, code, name, description, sort_order, status, metadata, created_at, updated_at, device_type_id)
 VALUES
@@ -909,7 +909,7 @@ VALUES
   ('mi-svc-training-dog-husky-mushing', 'mc-business-category', 'mi-business-trainer', 'training_dog_husky_mushing', NULL, NULL, 51902, 'active', '{"item_level":"l3","business_category_l1_id":"mi-business-training","pet_type_l1_id":"mi-ptype-dog","pet_type_l2_id":"mi-breed-dog-husky"}', '2026-03-10 12:00:00', '2026-03-10 12:00:00', NULL),
   ('mi-svc-training-dog-samoyed-basic-obedience', 'mc-business-category', 'mi-business-trainer', 'training_dog_samoyed_basic_obedience', NULL, NULL, 52001, 'active', '{"item_level":"l3","business_category_l1_id":"mi-business-training","pet_type_l1_id":"mi-ptype-dog","pet_type_l2_id":"mi-breed-dog-samoyed"}', '2026-03-10 12:00:00', '2026-03-10 12:00:00', NULL),
   ('mi-svc-training-dog-samoyed-socialization', 'mc-business-category', 'mi-business-trainer', 'training_dog_samoyed_socialization', NULL, NULL, 52002, 'active', '{"item_level":"l3","business_category_l1_id":"mi-business-training","pet_type_l1_id":"mi-ptype-dog","pet_type_l2_id":"mi-breed-dog-samoyed"}', '2026-03-10 12:00:00', '2026-03-10 12:00:00', NULL)
-ON CONFLICT (category_id, code) DO NOTHING;
+ON CONFLICT DO NOTHING;
 
 INSERT INTO master_items (id, category_id, parent_item_id, code, name, description, sort_order, status, metadata, created_at, updated_at, device_type_id)
 VALUES
@@ -925,7 +925,7 @@ VALUES
   ('mi-dctx-after-meal', 'mc-disease-measurement-context', 'mi-dm-blood-glucose', 'after_meal', NULL, NULL, 3, 'active', '{}', '2026-03-07 06:51:16', '2026-03-07 06:51:16', NULL),
   ('mi-dctx-bedtime', 'mc-disease-measurement-context', 'mi-dm-blood-glucose', 'bedtime', NULL, NULL, 4, 'active', '{}', '2026-03-07 06:51:16', '2026-03-07 06:51:16', NULL),
   ('mi-dctx-random', 'mc-disease-measurement-context', 'mi-dm-blood-glucose', 'random', NULL, NULL, 5, 'active', '{}', '2026-03-07 06:51:16', '2026-03-07 06:51:16', NULL)
-ON CONFLICT (category_id, code) DO NOTHING;
+ON CONFLICT DO NOTHING;
 
 -- SKIP: disease_symptom_map (0 rows)
 
@@ -951,7 +951,7 @@ VALUES
   ('mu-ml', 'ml', 'Milliliter', 'ml', 'active', 9, '2026-03-07 12:37:20', '2026-03-07 12:37:20'),
   ('mu-kcal', 'kcal', 'Kilocalorie', 'kcal', 'active', 10, '2026-03-07 12:37:20', '2026-03-07 12:37:20'),
   ('mu-min', 'min', 'Minute', 'min', 'active', 11, '2026-03-07 12:37:20', '2026-03-07 12:37:20')
-ON CONFLICT (id) DO NOTHING;
+ON CONFLICT DO NOTHING;
 
 -- SKIP: measurement_ranges (0 rows)
 
@@ -970,7 +970,7 @@ VALUES
   ('rule-diabetes-postmeal-warning', 'mi-dtype-diabetes', 'mi-measure-glucose-value', 'mi-context-post-1h', NULL, 181, 250, 'mi-unit-mgdl', 'warning', '주의', 8, 'seed guideline', 'active', '2026-03-07 03:16:19', '2026-03-07 03:16:19'),
   ('rule-diabetes-postmeal-danger', 'mi-dtype-diabetes', 'mi-measure-glucose-value', 'mi-context-post-1h', NULL, 251, 300, 'mi-unit-mgdl', 'danger', '위험', 9, 'seed guideline', 'active', '2026-03-07 03:16:19', '2026-03-07 03:16:19'),
   ('rule-diabetes-postmeal-critical', 'mi-dtype-diabetes', 'mi-measure-glucose-value', 'mi-context-post-1h', NULL, 301, NULL, 'mi-unit-mgdl', 'critical', '매우 위험', 10, 'seed guideline', 'active', '2026-03-07 03:16:19', '2026-03-07 03:16:19')
-ON CONFLICT (id) DO NOTHING;
+ON CONFLICT DO NOTHING;
 
 -- ---------------------------------------------------------------------------
 -- country_currency_map (13 rows)
@@ -990,7 +990,7 @@ VALUES
   ('ccm-th-thb', 'country-th', 'cur-thb', true),
   ('ccm-id-idr', 'country-id', 'cur-idr', true),
   ('ccm-sa-sar', 'country-sa', 'cur-sar', true)
-ON CONFLICT (id) DO NOTHING;
+ON CONFLICT DO NOTHING;
 
 -- ---------------------------------------------------------------------------
 -- device_manufacturers (4 rows)
@@ -1001,7 +1001,7 @@ VALUES
   ('dm-roche', 'roche', 'Roche', 'Roche', 'CH', 'active', 2, '2026-03-07 12:37:20', '2026-03-07 12:37:20', 'device.manufacturer.roche'),
   ('dm-lifescan', 'lifescan', 'LifeScan', 'LifeScan', 'US', 'active', 3, '2026-03-07 12:37:20', '2026-03-07 12:37:20', 'device.manufacturer.lifescan'),
   ('dm-omron', 'omron', 'Omron', 'Omron', 'JP', 'active', 4, '2026-03-07 12:37:20', '2026-03-07 12:37:20', 'device.manufacturer.omron')
-ON CONFLICT (id) DO NOTHING;
+ON CONFLICT DO NOTHING;
 
 -- ---------------------------------------------------------------------------
 -- device_brands (4 rows)
@@ -1012,7 +1012,7 @@ VALUES
   ('db-accu-chek', 'dm-roche', 'Accu-Chek', 'Accu-Chek', 'active', '2026-03-07 12:37:20', '2026-03-07 12:37:20', 'device.brand.db-accu-chek'),
   ('db-onetouch', 'dm-lifescan', 'OneTouch', 'OneTouch', 'active', '2026-03-07 12:37:20', '2026-03-07 12:37:20', 'device.brand.db-onetouch'),
   ('db-omron', 'dm-omron', 'Omron', 'Omron', 'active', '2026-03-07 12:37:20', '2026-03-07 12:37:20', 'device.brand.db-omron')
-ON CONFLICT (id) DO NOTHING;
+ON CONFLICT DO NOTHING;
 
 -- ---------------------------------------------------------------------------
 -- device_models (6 rows)
@@ -1025,7 +1025,7 @@ VALUES
   ('mod-accuchek-active', 'dt-glucose-meter', 'dm-roche', 'db-accu-chek', 'Accu-Chek Active', 'ACA', 'Roche Accu-Chek Active blood glucose meter', 'active', '2026-03-07 12:37:20', '2026-03-07 12:37:20', 'mi-device-glucose-meter', 'device.model.mod-accuchek-active'),
   ('mod-onetouch-ultra', 'dt-glucose-meter', 'dm-lifescan', 'db-onetouch', 'OneTouch Ultra', 'OTU', 'LifeScan OneTouch Ultra blood glucose meter', 'active', '2026-03-07 12:37:20', '2026-03-07 12:37:20', 'mi-device-glucose-meter', 'device.model.mod-onetouch-ultra'),
   ('mod-onetouch-select', 'dt-glucose-meter', 'dm-lifescan', 'db-onetouch', 'OneTouch Select Plus', 'OTSP', 'LifeScan OneTouch Select Plus blood glucose meter', 'active', '2026-03-07 12:37:20', '2026-03-07 12:37:20', 'mi-device-glucose-meter', 'device.model.mod-onetouch-select')
-ON CONFLICT (id) DO NOTHING;
+ON CONFLICT DO NOTHING;
 
 -- ---------------------------------------------------------------------------
 -- device_manufacturer_type_map (3 rows)
@@ -1035,7 +1035,7 @@ VALUES
   ('066c917fc6d7276bf3e3fb6dc14674d7', 'dm-abbott', 'mi-ddev-cgm', '2026-03-08 10:33:08'),
   ('57d1cead2b45d0f9c66e7ee82de6b6e8', 'dm-roche', 'mi-device-glucose-meter', '2026-03-08 10:33:08'),
   ('da3d1b82ccad30d15b6b59cc863bf5fc', 'dm-lifescan', 'mi-device-glucose-meter', '2026-03-08 10:33:08')
-ON CONFLICT (id) DO NOTHING;
+ON CONFLICT DO NOTHING;
 
 -- ---------------------------------------------------------------------------
 -- device_brand_manufacturer_map (4 rows)
@@ -1046,7 +1046,7 @@ VALUES
   ('34e6817afda2a895331bd492a8547a64', 'db-accu-chek', 'dm-roche', '2026-03-08 10:33:08'),
   ('7011c1612bf48dbc0a056179dd8f1490', 'db-onetouch', 'dm-lifescan', '2026-03-08 10:33:08'),
   ('bc4f9ec20bbaebe9a715cc6064e1d636', 'db-omron', 'dm-omron', '2026-03-08 10:33:08')
-ON CONFLICT (id) DO NOTHING;
+ON CONFLICT DO NOTHING;
 
 -- ---------------------------------------------------------------------------
 -- device_model_brand_map (6 rows)
@@ -1059,7 +1059,7 @@ VALUES
   ('34973754e43e363e351dc75ffb310a30', 'mod-accuchek-active', 'db-accu-chek', '2026-03-08 10:33:08'),
   ('7fbfdf002a09fe298c49656903f7f55f', 'mod-onetouch-ultra', 'db-onetouch', '2026-03-08 10:33:08'),
   ('64c8d4a90921a066ea8283826fd1362d', 'mod-onetouch-select', 'db-onetouch', '2026-03-08 10:33:08')
-ON CONFLICT (id) DO NOTHING;
+ON CONFLICT DO NOTHING;
 
 -- ---------------------------------------------------------------------------
 -- feed_manufacturers (6 rows)
@@ -1072,7 +1072,7 @@ VALUES
   ('224c123f93ff25abf697f97af88dae1b', 'orijen', 'feed.manufacturer.orijen', '오리젠', 'Orijen', 'CA', 'active', 3, '2026-03-08 15:09:30', '2026-03-08 15:09:30'),
   ('4e1bb9529767fd6d485fe1f56ebcde24', 'acana', 'feed.manufacturer.acana', '아카나', 'Acana', 'CA', 'active', 4, '2026-03-08 15:09:30', '2026-03-08 15:09:30'),
   ('5147d84c6992d4248142d3bc8e74a571', 'ray_n_yvonne', 'feed.manufacturer.ray_n_yvonne', '레이앤이본', 'Ray & Yvonne', 'KR', 'active', 5, '2026-03-08 15:09:30', '2026-03-08 15:09:30')
-ON CONFLICT (id) DO NOTHING;
+ON CONFLICT DO NOTHING;
 
 -- ---------------------------------------------------------------------------
 -- feed_brands (11 rows)
@@ -1090,7 +1090,7 @@ VALUES
   ('b5248fc836d32e4644a06a6554b575b6', '5147d84c6992d4248142d3bc8e74a571', 'feed.brand.ray_yvonne_raw_line', '레이앤이본 생식', 'Ray & Yvonne Raw', 'active', '2026-03-08 15:09:30', '2026-03-08 15:09:30'),
   ('42eea7073831e65e3c339450ebd82699', '5147d84c6992d4248142d3bc8e74a571', 'feed.brand.ray_yvonne_cooked_line', '레이앤이본 조리식', 'Ray & Yvonne Cooked', 'active', '2026-03-08 15:09:30', '2026-03-08 15:09:30'),
   ('f1edff7fb2746e10ee737e0c6d441c15', '5147d84c6992d4248142d3bc8e74a571', 'feed.brand.ray_yvonne_management_line', '레이앤이본 관리식', 'Ray & Yvonne Care', 'active', '2026-03-08 15:09:30', '2026-03-08 15:09:30')
-ON CONFLICT (id) DO NOTHING;
+ON CONFLICT DO NOTHING;
 
 -- ---------------------------------------------------------------------------
 -- feed_models (26 rows)
@@ -1123,7 +1123,7 @@ VALUES
   ('bd085857f00fa01d0fa5231c38abfce9', 'mi-diet-feed-wet-food-core', '5147d84c6992d4248142d3bc8e74a571', '42eea7073831e65e3c339450ebd82699', 'feed.model.ray_yvonne_beef_cooked_12p', '레이앤이본 소고기 요리 12P', '', '{"package_weight_value":12,"package_weight_unit":"pack","life_stage_key":"adult","species_key":"dog"}', 'active', '2026-03-08 15:09:30', '2026-03-08 15:40:24'),
   ('98639042eadd07384d21afa17b8ecf3b', 'mi-diet-feed-prescription-diet-core', '5147d84c6992d4248142d3bc8e74a571', 'f1edff7fb2746e10ee737e0c6d441c15', 'feed.model.ray_yvonne_chicken_renal_care_12p', '레이앤이본 닭고기 신장관리식 12P', '', '{"package_weight_value":12,"package_weight_unit":"pack","life_stage_key":"adult","species_key":"dog"}', 'active', '2026-03-08 15:09:30', '2026-03-08 15:40:24'),
   ('017675d248027257bfcb8943d1626f0d', 'mi-diet-feed-prescription-diet-core', '5147d84c6992d4248142d3bc8e74a571', 'f1edff7fb2746e10ee737e0c6d441c15', 'feed.model.ray_yvonne_chicken_pancreas_care_12p', '레이앤이본 닭고기 췌장관리식 12P', '', '{"package_weight_value":12,"package_weight_unit":"pack","life_stage_key":"adult","species_key":"dog"}', 'active', '2026-03-08 15:09:30', '2026-03-08 15:40:24')
-ON CONFLICT (id) DO NOTHING;
+ON CONFLICT DO NOTHING;
 
 -- ---------------------------------------------------------------------------
 -- feed_manufacturer_type_map (18 rows)
@@ -1148,7 +1148,7 @@ VALUES
   ('5ccceade873b247522a046b642f812a2', '5147d84c6992d4248142d3bc8e74a571', 'mi-diet-feed-snack-treat-core', '2026-03-08 15:09:30'),
   ('04ac488005d7611013e5bed2e6194c7a', 'bc434154-7b94-45c9-8e60-181f669c4188', 'mi-diet-feed-puppy-small-breed-formula', '2026-03-08 15:27:47'),
   ('e3a0310da769611b5b0249565de9eded', '5147d84c6992d4248142d3bc8e74a571', 'mi-diet-feed-raw-frozen-food-core', '2026-03-08 15:33:09')
-ON CONFLICT (id) DO NOTHING;
+ON CONFLICT DO NOTHING;
 
 -- ---------------------------------------------------------------------------
 -- feed_brand_manufacturer_map (11 rows)
@@ -1166,7 +1166,7 @@ VALUES
   ('ce1f461b1543aff9d93ee5adc53d10aa', 'b5248fc836d32e4644a06a6554b575b6', '5147d84c6992d4248142d3bc8e74a571', '2026-03-08 15:09:30'),
   ('7ee8a3f0b00313ae110cc48c7c95140f', '42eea7073831e65e3c339450ebd82699', '5147d84c6992d4248142d3bc8e74a571', '2026-03-08 15:09:30'),
   ('dce205453c62ee53f44dd13f53b82749', 'f1edff7fb2746e10ee737e0c6d441c15', '5147d84c6992d4248142d3bc8e74a571', '2026-03-08 15:09:30')
-ON CONFLICT (id) DO NOTHING;
+ON CONFLICT DO NOTHING;
 
 -- ---------------------------------------------------------------------------
 -- feed_model_brand_map (26 rows)
@@ -1199,7 +1199,7 @@ VALUES
   ('9aa4ab0a5213bfbe355508bceb2663b1', 'bd085857f00fa01d0fa5231c38abfce9', '42eea7073831e65e3c339450ebd82699', '2026-03-08 15:09:30'),
   ('7fece7a710cf189d9b676301f8e256cd', '98639042eadd07384d21afa17b8ecf3b', 'f1edff7fb2746e10ee737e0c6d441c15', '2026-03-08 15:09:30'),
   ('4a9150dd508541355f7a66e82af90ca1', '017675d248027257bfcb8943d1626f0d', 'f1edff7fb2746e10ee737e0c6d441c15', '2026-03-08 15:09:30')
-ON CONFLICT (id) DO NOTHING;
+ON CONFLICT DO NOTHING;
 
 -- ---------------------------------------------------------------------------
 -- feed_nutrient_types (19 rows)
@@ -1225,7 +1225,7 @@ VALUES
   ('9f824f0b6d5abaa54937bcacbb9adc9d', 'epa_dha', 'feed.nutrient.epa_dha', 'EPA+DHA', 'EPA + DHA', 'active', 17, '2026-03-08 15:09:30', '2026-03-08 15:09:30'),
   ('a97eeedd3ab777d14bb0ef94e03a776e', 'epa', 'feed.nutrient.epa', 'EPA', 'EPA', 'active', 18, '2026-03-08 15:09:30', '2026-03-08 15:09:30'),
   ('ace5f657471a0e268f286107391f1450', 'dha', 'feed.nutrient.dha', 'DHA', 'DHA', 'active', 19, '2026-03-08 15:09:30', '2026-03-08 15:09:30')
-ON CONFLICT (id) DO NOTHING;
+ON CONFLICT DO NOTHING;
 
 -- ---------------------------------------------------------------------------
 -- feed_nutrition_units (6 rows)
@@ -1238,7 +1238,7 @@ VALUES
   ('89e93a16947c766b74dc4f47d103a53b', 'mg', 'feed.nutrient.unit.mg', '밀리그램', 'Milligram', 'mg', 'active', 4, '2026-03-08 15:09:30', '2026-03-08 15:09:30'),
   ('4b6e800d2412865967e8447538085eea', 'ug', 'feed.nutrient.unit.ug', '마이크로그램', 'Microgram', 'ug', 'active', 5, '2026-03-08 15:09:30', '2026-03-08 15:09:30'),
   ('3bba0d230138487583fb19125ea7515e', 'iu', 'feed.nutrient.unit.iu', '국제단위', 'International Unit', 'IU', 'active', 6, '2026-03-08 15:09:30', '2026-03-08 15:09:30')
-ON CONFLICT (id) DO NOTHING;
+ON CONFLICT DO NOTHING;
 
 -- ---------------------------------------------------------------------------
 -- feed_nutrition_basis_types (4 rows)
@@ -1249,7 +1249,7 @@ VALUES
   ('0b3cf5055e84cec3397bdb8e235ca8d3', 'dry_matter', 'feed.nutrient.basis.dry_matter', '건물기준', 'Dry Matter', 'active', 2, '2026-03-08 15:09:30', '2026-03-08 15:09:30'),
   ('252379b3ffe6ee729d4f9143d507fc47', 'per_100g', 'feed.nutrient.basis.per_100g', '100g당', 'Per 100g', 'active', 3, '2026-03-08 15:09:30', '2026-03-08 15:09:30'),
   ('d60101e0251f3f0fd36d482c1f0c3a15', 'per_serving', 'feed.nutrient.basis.per_serving', '1회급여당', 'Per Serving', 'active', 4, '2026-03-08 15:09:30', '2026-03-08 15:09:30')
-ON CONFLICT (id) DO NOTHING;
+ON CONFLICT DO NOTHING;
 
 -- ---------------------------------------------------------------------------
 -- feed_nutrition (25 rows)
@@ -1281,7 +1281,7 @@ VALUES
   ('6ca5e8a082b125934a841159bde518e6', 'bd085857f00fa01d0fa5231c38abfce9', 140, 15, 8, 1, 65, 2, 0.4, 0.3, 0.1, 0.5, 9, 200, 'Beef, brown rice, sweet potato, carrot, egg', 'Estimated — Korean cooked beef', 'active', '2026-03-10 00:20:23', '2026-03-10 00:20:23'),
   ('d95af3c7298bbfd2ec722fb5cc76d111', '98639042eadd07384d21afa17b8ecf3b', 110, 12, 6, 0.5, 70, 2, 0.3, 0.2, 0.1, 0.4, 9.5, 200, 'Chicken breast, egg white, white rice, pumpkin', 'Estimated — renal care', 'active', '2026-03-10 00:20:23', '2026-03-10 00:20:23'),
   ('d134d4e84db7b85fb10ab70a3b8bdba4', '017675d248027257bfcb8943d1626f0d', 105, 14, 4, 0.5, 72, 2, 0.3, 0.25, 0.1, 0.35, 7.5, 200, 'Chicken breast, white rice, sweet potato, broccoli', 'Estimated — pancreas care low fat', 'active', '2026-03-10 00:20:23', '2026-03-10 00:20:23')
-ON CONFLICT (id) DO NOTHING;
+ON CONFLICT DO NOTHING;
 
 -- ---------------------------------------------------------------------------
 -- feed_model_nutrients (37 rows)
@@ -1325,7 +1325,7 @@ VALUES
   ('9341f1283ab1c0a7196730f3bd961e7f', '4789fd0fd1d5e6eb4a6186840d61dc34', 'ace5f657471a0e268f286107391f1450', '0bbd56a20aab906acb504143bbc5f286', 0.6, '88c0645262e7edb0ff6d48fa1faf920d', 'official', '2026-03-08 15:09:30', '2026-03-08 15:09:30'),
   ('0c14c6780761319eae33a4a1802f8c15', '4789fd0fd1d5e6eb4a6186840d61dc34', '8c95556a707d8f58e17257c839314847', '0bbd56a20aab906acb504143bbc5f286', 1.4, '88c0645262e7edb0ff6d48fa1faf920d', 'official', '2026-03-08 15:09:30', '2026-03-08 15:09:30'),
   ('b1f1d34b196f4cf23408fd6f8a71676b', '4789fd0fd1d5e6eb4a6186840d61dc34', '4dad29342a3764986aa3ed39460c9637', '0bbd56a20aab906acb504143bbc5f286', 1, '88c0645262e7edb0ff6d48fa1faf920d', 'official', '2026-03-08 15:09:30', '2026-03-08 15:09:30')
-ON CONFLICT (id) DO NOTHING;
+ON CONFLICT DO NOTHING;
 
 -- ---------------------------------------------------------------------------
 -- i18n_translations (1535 rows)
@@ -1382,7 +1382,7 @@ VALUES
   ('4183b6f8d76708f3612747df5eb9cadf', 'admin.i18n.add_btn', 'admin.i18n', '+ 번역 키 추가', '+ Add Key', '+ 翻訳キー追加', '+ 添加翻译键', '+ 新增翻譯鍵', '+ Agregar clave', '+ Ajouter une clé', '+ Schlüssel hinzufügen', '+ Adicionar chave', '+ Thêm khóa dịch', '+ เพิ่มคีย์แปล', '+ Tambah key', '+ إضافة مفتاح', true, '2026-03-07 02:02:25', '2026-03-07 02:03:16'),
   ('6033cc94c3092e1fd42bde5e66b1b9b2', 'admin.i18n.search_prefix', 'admin.i18n', '키 접두사 검색', 'Search by prefix', 'プレフィックス検索', '按前缀搜索', '依前綴搜尋', 'Buscar por prefijo', 'Rechercher par préfixe', 'Nach Präfix suchen', 'Buscar por prefixo', 'Tìm theo tiền tố', 'ค้นหาตามคำนำหน้า', 'Cari berdasarkan prefiks', 'بحث حسب البادئة', true, '2026-03-07 02:02:25', '2026-03-07 02:03:16'),
   ('c2b3d38b8109ae5c2df00875e1a27ded', 'admin.i18n.active_only', 'admin.i18n', '활성만 보기', 'Active only', '有効のみ', '仅显示启用', '僅顯示啟用', 'Solo activos', 'Actifs uniquement', 'Nur aktiv', 'Somente ativos', 'Chỉ hiển thị đang hoạt động', 'แสดงเฉพาะที่เปิดใช้งาน', 'Hanya aktif', 'النشط فقط', true, '2026-03-07 02:02:25', '2026-03-07 02:03:16')
-ON CONFLICT (key) DO NOTHING;
+ON CONFLICT DO NOTHING;
 
 INSERT INTO i18n_translations (id, key, page, ko, en, ja, zh_cn, zh_tw, es, fr, de, pt, vi, th, id_lang, ar, is_active, created_at, updated_at)
 VALUES
@@ -1436,7 +1436,7 @@ VALUES
   ('dbdb1e1b08cbc2b31026ee76148f7a31', 'admin.disease_maps.success_remove_symptom', 'admin.disease_maps', '증상 연결 해제', 'Symptom unlinked.', '症状の連結を解除しました。', '已取消症状关联。', '已解除症狀連結。', 'Síntoma desvinculado.', 'Symptôme dissocié.', 'Symptom getrennt.', 'Sintoma desvinculado.', 'Đã gỡ liên kết triệu chứng.', 'ยกเลิกเชื่อมโยงอาการแล้ว', 'Tautan gejala dilepas.', 'تم إلغاء ربط العرض.', true, '2026-03-07 02:02:25', '2026-03-07 02:03:16'),
   ('2b13b9caf8afb30354ebefab9b504fc1', 'admin.disease_maps.success_add_metric', 'admin.disease_maps', '수치 연결 완료', 'Metric linked.', '수치 연결 완료', '수치 연결 완료', '수치 연결 완료', '수치 연결 완료', '수치 연결 완료', '수치 연결 완료', '수치 연결 완료', '수치 연결 완료', '수치 연결 완료', '수치 연결 완료', '수치 연결 완료', true, '2026-03-07 02:02:25', '2026-03-07 02:03:16'),
   ('654316cfb2b7f06a58fd512cade6563d', 'admin.disease_maps.success_remove_metric', 'admin.disease_maps', '수치 연결 해제', 'Metric unlinked.', '수치 연결 해제', '수치 연결 해제', '수치 연결 해제', '수치 연결 해제', '수치 연결 해제', '수치 연결 해제', '수치 연결 해제', '수치 연결 해제', '수치 연결 해제', '수치 연결 해제', '수치 연결 해제', true, '2026-03-07 02:02:25', '2026-03-07 02:03:16')
-ON CONFLICT (key) DO NOTHING;
+ON CONFLICT DO NOTHING;
 
 INSERT INTO i18n_translations (id, key, page, ko, en, ja, zh_cn, zh_tw, es, fr, de, pt, vi, th, id_lang, ar, is_active, created_at, updated_at)
 VALUES
@@ -1490,7 +1490,7 @@ VALUES
   ('i10-cat-011', 'master.vaccination_type', 'master', '예방접종', 'Vaccination', '予防接種', '疫苗接种', '疫苗接種', 'Vacunación', '예방접종', 'Impfung', 'Vacinação', 'Tiêm chủng', 'การฉีดวัคซีน', 'Vaksinasi', 'التطعيم', true, '2026-03-07 02:02:50', '2026-03-07 12:07:34'),
   ('i10-cat-012', 'master.medication_status', 'master', '복용 약물 상태', 'Medication Status', '服薬状態', '用药状态', '用藥狀態', 'Estado de medicación', 'Statut médicamenteux', 'Medikationsstatus', 'Status de medicação', 'Tình trạng dùng thuốc', 'สถานะการใช้ยา', 'Status pengobatan', 'حالة الدواء', true, '2026-03-07 02:02:50', '2026-03-07 12:07:34'),
   ('i10-cat-013', 'master.weight_unit', 'master', '체중 단위', 'Weight Unit', '体重単位', '体重单位', '體重單位', 'Unidad de peso', 'Unité de poids', 'Gewichtseinheit', 'Unidade de peso', 'Đơn vị cân nặng', 'หน่วยน้ำหนัก', 'Satuan berat', 'وحدة الوزن', true, '2026-03-07 02:02:50', '2026-03-07 12:07:34')
-ON CONFLICT (key) DO NOTHING;
+ON CONFLICT DO NOTHING;
 
 INSERT INTO i18n_translations (id, key, page, ko, en, ja, zh_cn, zh_tw, es, fr, de, pt, vi, th, id_lang, ar, is_active, created_at, updated_at)
 VALUES
@@ -1544,7 +1544,7 @@ VALUES
   ('i10-item-039', 'master.health_condition_level.needs_care', 'master', '관리 필요', 'Needs Care', '要ケア', '需护理', '需護理', 'Necesita cuidado', 'Nécessite des soins', 'Pflegebedürftig', 'Precisa de cuidados', 'Cần chăm sóc', 'ต้องดูแล', 'Perlu perawatan', 'يحتاج رعاية', true, '2026-03-07 02:02:50', '2026-03-07 12:07:34'),
   ('i10-item-040', 'master.health_condition_level.chronic_condition', 'master', '만성 질환', 'Chronic Condition', '慢性疾患', '慢性病', '慢性病', 'Condición crónica', 'Affection chronique', 'Chronische Erkrankung', 'Condição crônica', 'Bệnh mạn tính', 'ภาวะเรื้อรัง', 'Kondisi kronis', 'حالة مزمنة', true, '2026-03-07 02:02:50', '2026-03-07 12:07:34'),
   ('0966cddf74c28502fc5e14ddf4124423', 'master.activity_level.high', 'master', '높음', 'High', '高い', '高', '高', 'Alto', 'Élevé', 'Hoch', 'Alto', 'Cao', 'สูง', 'Tinggi', 'مرتفع', true, '2026-03-07 02:02:55', '2026-03-07 12:07:34')
-ON CONFLICT (key) DO NOTHING;
+ON CONFLICT DO NOTHING;
 
 INSERT INTO i18n_translations (id, key, page, ko, en, ja, zh_cn, zh_tw, es, fr, de, pt, vi, th, id_lang, ar, is_active, created_at, updated_at)
 VALUES
@@ -1598,7 +1598,7 @@ VALUES
   ('8343d589aa8ff45076f9c1fe0fc72d3d', 'master.symptom_type.loss_of_appetite', 'master', '식욕 부진', 'Loss of Appetite', '食欲不振', '食欲不振', '食慾不振', 'Pérdida de apetito', 'Perte d''appétit', 'Appetitlosigkeit', 'Perda de apetite', 'Chán ăn', 'เบื่ออาหาร', 'Kehilangan nafsu makan', 'فقدان الشهية', true, '2026-03-07 02:02:55', '2026-03-07 12:07:34'),
   ('5e6407b713736352431e4a1fc022388c', 'master.symptom_type.vomiting', 'master', '구토', 'Vomiting', '嘔吐', '呕吐', '嘔吐', 'Vómito', 'Vomissement', 'Erbrechen', 'Vômito', 'Nôn mửa', 'อาเจียน', 'Muntah', 'قيء', true, '2026-03-07 02:02:55', '2026-03-07 12:07:34'),
   ('3ba9eff65c9e26a7d1230187b7e14b52', 'master.symptom_type.weight_loss', 'master', '체중 감소', 'Weight Loss', '体重減少', '体重下降', '體重下降', 'Pérdida de peso', 'Perte de poids', 'Gewichtsverlust', 'Perda de peso', 'Sụt cân', 'น้ำหนักลด', 'Penurunan berat badan', 'فقدان الوزن', true, '2026-03-07 02:02:55', '2026-03-07 12:07:34')
-ON CONFLICT (key) DO NOTHING;
+ON CONFLICT DO NOTHING;
 
 INSERT INTO i18n_translations (id, key, page, ko, en, ja, zh_cn, zh_tw, es, fr, de, pt, vi, th, id_lang, ar, is_active, created_at, updated_at)
 VALUES
@@ -1652,7 +1652,7 @@ VALUES
   ('06e65bd859b6e2fd61995994a67133ef', 'guardian.feed.type.health_update', 'guardian', '건강 업데이트', 'Health Update', '健康アップデート', '健康更新', '健康更新', 'Actualización de salud', 'Mise à jour santé', 'Gesundheitsupdate', 'Atualização de saúde', 'Cập nhật sức khỏe', 'อัปเดตสุขภาพ', 'Pembaruan kesehatan', 'تحديث صحي', true, '2026-03-07 02:03:31', '2026-03-07 02:03:31'),
   ('272762cf9d64e202b34c1a524d20fd76', 'guardian.feed.type.pet_milestone', 'guardian', '반려동물 마일스톤', 'Pet Milestone', 'ペットのマイルストーン', '宠物里程碑', '寵物里程碑', 'Hito de mascota', 'Jalon de l''animal', 'Haustier-Meilenstein', 'Marco do pet', 'Cột mốc thú cưng', 'เหตุการณ์สำคัญของสัตว์เลี้ยง', 'Tonggak hewan peliharaan', 'إنجاز الحيوان الأليف', true, '2026-03-07 02:03:31', '2026-03-07 02:03:31'),
   ('c4983ae730e6e6f9c2f51188c476748e', 'guardian.feed.type.supplier_story', 'guardian', '공급자 스토리', 'Supplier Story', 'サプライヤーストーリー', '供应商故事', '供應商故事', 'Historia del proveedor', 'Histoire du fournisseur', 'Anbieter-Story', 'História do fornecedor', 'Câu chuyện nhà cung cấp', 'เรื่องราวผู้ให้บริการ', 'Cerita pemasok', 'قصة المورّد', true, '2026-03-07 02:03:31', '2026-03-07 02:03:31')
-ON CONFLICT (key) DO NOTHING;
+ON CONFLICT DO NOTHING;
 
 INSERT INTO i18n_translations (id, key, page, ko, en, ja, zh_cn, zh_tw, es, fr, de, pt, vi, th, id_lang, ar, is_active, created_at, updated_at)
 VALUES
@@ -1706,7 +1706,7 @@ VALUES
   ('i25-cat-007', 'master.allergy_group', 'master', '알러지그룹', 'Allergy Group', 'アレルギー群', '过敏组', '過敏群組', 'Grupo de alergia', 'Groupe d''allergies', 'Allergiegruppe', 'Grupo de alergia', 'Nhóm dị ứng', 'กลุ่มภูมิแพ้', 'Kelompok alergi', 'مجموعة الحساسية', true, '2026-03-07 03:56:36', '2026-03-07 12:07:34'),
   ('i26-gallery-001', 'guardian.pet.gallery.add_photo.open', 'guardian', '사진 추가', 'Add Photo', '写真を追加', '添加照片', '新增照片', 'Agregar foto', 'Ajouter une photo', 'Foto hinzufügen', 'Adicionar foto', 'Thêm ảnh', 'เพิ่มรูปภาพ', 'Tambah foto', 'إضافة صورة', true, '2026-03-07 04:09:56', '2026-03-07 04:09:56'),
   ('i26-gallery-002', 'guardian.pet.gallery.add_photo.title', 'guardian', '사진 추가', 'Add Photo', '写真を追加', '添加照片', '新增照片', 'Agregar foto', 'Ajouter une photo', 'Foto hinzufügen', 'Adicionar foto', 'Thêm ảnh', 'เพิ่มรูปภาพ', 'Tambah foto', 'إضافة صورة', true, '2026-03-07 04:09:56', '2026-03-07 04:09:56')
-ON CONFLICT (key) DO NOTHING;
+ON CONFLICT DO NOTHING;
 
 INSERT INTO i18n_translations (id, key, page, ko, en, ja, zh_cn, zh_tw, es, fr, de, pt, vi, th, id_lang, ar, is_active, created_at, updated_at)
 VALUES
@@ -1760,7 +1760,7 @@ VALUES
   ('9025bdc7bfef58a17d93db5764a45265', 'master.pet_type.british_shorthair', 'master', '브리티시 쇼트헤어', 'British Shorthair', 'British Shorthair', 'British Shorthair', 'British Shorthair', 'British Shorthair', 'British Shorthair', 'British Shorthair', 'British Shorthair', 'British Shorthair', 'British Shorthair', 'British Shorthair', 'British Shorthair', true, '2026-03-07 06:39:43', '2026-03-07 12:07:34'),
   ('67a661b08555fffd28563bba788d85e7', 'master.pet_type.scottish_fold', 'master', '스코티시 폴드', 'Scottish Fold', 'Scottish Fold', 'Scottish Fold', 'Scottish Fold', 'Scottish Fold', 'Scottish Fold', 'Scottish Fold', 'Scottish Fold', 'Scottish Fold', 'Scottish Fold', 'Scottish Fold', 'Scottish Fold', true, '2026-03-07 06:39:43', '2026-03-07 12:07:34'),
   ('da17332aa8eb3b5ae9f8002d486960a7', 'master.pet_type.munchkin', 'master', '먼치킨', 'Munchkin', 'Munchkin', 'Munchkin', 'Munchkin', 'Munchkin', 'Munchkin', 'Munchkin', 'Munchkin', 'Munchkin', 'Munchkin', 'Munchkin', 'Munchkin', true, '2026-03-07 06:39:43', '2026-03-07 12:07:34')
-ON CONFLICT (key) DO NOTHING;
+ON CONFLICT DO NOTHING;
 
 INSERT INTO i18n_translations (id, key, page, ko, en, ja, zh_cn, zh_tw, es, fr, de, pt, vi, th, id_lang, ar, is_active, created_at, updated_at)
 VALUES
@@ -1814,7 +1814,7 @@ VALUES
   ('i31-010', 'master.disease_device_type.libre_sensor', 'master', '리브레 센서', 'Libre Sensor', 'リブレセンサー', 'Libre传感器', 'Libre感測器', 'Sensor Libre', 'Capteur Libre', 'Libre-Sensor', 'Sensor Libre', 'Cảm biến Libre', 'เซนเซอร์ Libre', 'Sensor Libre', 'مستشعر Libre', true, '2026-03-07 07:33:54', '2026-03-07 12:07:34'),
   ('95e88b636334d70830b4496cfc48efb3', 'master.diet_subtype.puppy_dry_food', 'master', '퍼피 건식사료', 'Puppy Dry Food', '子犬用ドライフード', '幼犬干粮', '幼犬乾糧', 'Puppy Dry Food', 'Puppy Dry Food', 'Puppy Dry Food', 'Puppy Dry Food', 'Thuc an kho cho cho con', 'Puppy Dry Food', 'Puppy Dry Food', 'Puppy Dry Food', true, '2026-03-07 08:01:05', '2026-03-07 12:07:34'),
   ('f0c7ca052f90ede0900d231384aba929', 'master.diet_subtype.adult_dry_food', 'master', '어덜트 건식사료', 'Adult Dry Food', '成犬用ドライフード', '成犬干粮', '成犬乾糧', 'Adult Dry Food', 'Adult Dry Food', 'Adult Dry Food', 'Adult Dry Food', 'Thuc an kho cho cho truong thanh', 'Adult Dry Food', 'Adult Dry Food', 'Adult Dry Food', true, '2026-03-07 08:01:05', '2026-03-07 12:07:34')
-ON CONFLICT (key) DO NOTHING;
+ON CONFLICT DO NOTHING;
 
 INSERT INTO i18n_translations (id, key, page, ko, en, ja, zh_cn, zh_tw, es, fr, de, pt, vi, th, id_lang, ar, is_active, created_at, updated_at)
 VALUES
@@ -1868,7 +1868,7 @@ VALUES
   ('29d9cf8bff61c97c2c7e3a64857ed301', 'master.diet_subtype.weight_control_dry', 'master', '체중관리 건식사료', 'Weight Control Dry Food', 'Weight Control Dry Food', 'Weight Control Dry Food', 'Weight Control Dry Food', 'Weight Control Dry Food', 'Weight Control Dry Food', 'Weight Control Dry Food', 'Weight Control Dry Food', 'Weight Control Dry Food', 'Weight Control Dry Food', 'Weight Control Dry Food', 'Weight Control Dry Food', true, '2026-03-07 08:13:32', '2026-03-07 12:07:34'),
   ('508f0781b15f39b7f295c7ec37b172b6', 'master.diet_subtype.grain_free_dry', 'master', '그레인프리 건식사료', 'Grain-free Dry Food', 'Grain-free Dry Food', 'Grain-free Dry Food', 'Grain-free Dry Food', 'Grain-free Dry Food', 'Grain-free Dry Food', 'Grain-free Dry Food', 'Grain-free Dry Food', 'Grain-free Dry Food', 'Grain-free Dry Food', 'Grain-free Dry Food', 'Grain-free Dry Food', true, '2026-03-07 08:13:32', '2026-03-07 12:07:34'),
   ('c79ee2ab30c12ef96c187114aae09658', 'master.diet_subtype.hypoallergenic_dry', 'master', '저알러지 건식사료', 'Hypoallergenic Dry Food', 'Hypoallergenic Dry Food', 'Hypoallergenic Dry Food', 'Hypoallergenic Dry Food', 'Hypoallergenic Dry Food', 'Hypoallergenic Dry Food', 'Hypoallergenic Dry Food', 'Hypoallergenic Dry Food', 'Hypoallergenic Dry Food', 'Hypoallergenic Dry Food', 'Hypoallergenic Dry Food', 'Hypoallergenic Dry Food', true, '2026-03-07 08:13:32', '2026-03-07 12:07:34')
-ON CONFLICT (key) DO NOTHING;
+ON CONFLICT DO NOTHING;
 
 INSERT INTO i18n_translations (id, key, page, ko, en, ja, zh_cn, zh_tw, es, fr, de, pt, vi, th, id_lang, ar, is_active, created_at, updated_at)
 VALUES
@@ -1922,7 +1922,7 @@ VALUES
   ('0c162ea1dad2d573912460016c7ffb1d', 'master.disease_group.liver_disease', 'master', '간 질환', 'Liver Disease', 'Liver Disease', 'Liver Disease', 'Liver Disease', 'Liver Disease', 'Liver Disease', 'Liver Disease', 'Liver Disease', 'Liver Disease', 'Liver Disease', 'Liver Disease', 'Liver Disease', true, '2026-03-07 09:40:33', '2026-03-07 12:07:34'),
   ('de7ac5417163fb74b8b2fd761b40616b', 'master.disease_group.metabolic_disease', 'master', '대사 질환', 'Metabolic Disease', 'Metabolic Disease', 'Metabolic Disease', 'Metabolic Disease', 'Metabolic Disease', 'Metabolic Disease', 'Metabolic Disease', 'Metabolic Disease', 'Metabolic Disease', 'Metabolic Disease', 'Metabolic Disease', 'Metabolic Disease', true, '2026-03-07 09:40:33', '2026-03-07 12:07:34'),
   ('218c63614b389bc5757e42a691fb9b8f', 'master.disease_group.musculoskeletal', 'master', 'musculoskeletal', 'musculoskeletal', 'musculoskeletal', 'musculoskeletal', 'musculoskeletal', 'musculoskeletal', 'musculoskeletal', 'musculoskeletal', 'musculoskeletal', 'musculoskeletal', 'musculoskeletal', 'musculoskeletal', 'musculoskeletal', true, '2026-03-07 09:40:33', '2026-03-07 12:07:34')
-ON CONFLICT (key) DO NOTHING;
+ON CONFLICT DO NOTHING;
 
 INSERT INTO i18n_translations (id, key, page, ko, en, ja, zh_cn, zh_tw, es, fr, de, pt, vi, th, id_lang, ar, is_active, created_at, updated_at)
 VALUES
@@ -1976,7 +1976,7 @@ VALUES
   ('8a8683fb34417acc5b17cb0c64f35bb1', 'master.disease_type.gastroenteritis', 'master', '위장염', 'Gastroenteritis', 'Gastroenteritis', 'Gastroenteritis', 'Gastroenteritis', 'Gastroenteritis', 'Gastroenteritis', 'Gastroenteritis', 'Gastroenteritis', 'Gastroenteritis', 'Gastroenteritis', 'Gastroenteritis', 'Gastroenteritis', true, '2026-03-07 09:40:33', '2026-03-07 12:07:34'),
   ('1551fa9b3c23d1715f720cbf2a224dfc', 'master.disease_type.gingivitis', 'master', '치은염', 'Gingivitis', 'Gingivitis', 'Gingivitis', 'Gingivitis', 'Gingivitis', 'Gingivitis', 'Gingivitis', 'Gingivitis', 'Gingivitis', 'Gingivitis', 'Gingivitis', 'Gingivitis', true, '2026-03-07 09:40:33', '2026-03-07 12:07:34'),
   ('8cdb779bfd2ae08de28e6a3bab7414e4', 'master.disease_type.glaucoma', 'master', '녹내장', 'Glaucoma', 'Glaucoma', 'Glaucoma', 'Glaucoma', 'Glaucoma', 'Glaucoma', 'Glaucoma', 'Glaucoma', 'Glaucoma', 'Glaucoma', 'Glaucoma', 'Glaucoma', true, '2026-03-07 09:40:33', '2026-03-07 12:07:34')
-ON CONFLICT (key) DO NOTHING;
+ON CONFLICT DO NOTHING;
 
 INSERT INTO i18n_translations (id, key, page, ko, en, ja, zh_cn, zh_tw, es, fr, de, pt, vi, th, id_lang, ar, is_active, created_at, updated_at)
 VALUES
@@ -2030,7 +2030,7 @@ VALUES
   ('d7e1b3d4c422d18d59a58224e78a1e78', 'master.disease_type.pyometra', 'master', '자궁축농증', 'Pyometra', 'Pyometra', 'Pyometra', 'Pyometra', 'Pyometra', 'Pyometra', 'Pyometra', 'Pyometra', 'Pyometra', 'Pyometra', 'Pyometra', 'Pyometra', true, '2026-03-07 09:40:33', '2026-03-07 12:07:34'),
   ('3b358a4c45bcfac17f976e500609beee', 'master.disease_type.respiratory_infection', 'master', '호흡기 감염', 'Respiratory Infection', 'Respiratory Infection', 'Respiratory Infection', 'Respiratory Infection', 'Respiratory Infection', 'Respiratory Infection', 'Respiratory Infection', 'Respiratory Infection', 'Respiratory Infection', 'Respiratory Infection', 'Respiratory Infection', 'Respiratory Infection', true, '2026-03-07 09:40:33', '2026-03-07 12:07:34'),
   ('c580951e974893f098c98017f997c9aa', 'master.disease_type.rhinitis', 'master', '비염', 'Rhinitis', 'Rhinitis', 'Rhinitis', 'Rhinitis', 'Rhinitis', 'Rhinitis', 'Rhinitis', 'Rhinitis', 'Rhinitis', 'Rhinitis', 'Rhinitis', 'Rhinitis', true, '2026-03-07 09:40:33', '2026-03-07 12:07:34')
-ON CONFLICT (key) DO NOTHING;
+ON CONFLICT DO NOTHING;
 
 INSERT INTO i18n_translations (id, key, page, ko, en, ja, zh_cn, zh_tw, es, fr, de, pt, vi, th, id_lang, ar, is_active, created_at, updated_at)
 VALUES
@@ -2084,7 +2084,7 @@ VALUES
   ('ui-admin-m-028', 'admin.master.inactive', 'admin', '비활성', 'Inactive', 'Inactive', 'Inactive', 'Inactive', 'Inactive', 'Inactive', 'Inactive', 'Inactive', 'Inactive', 'Inactive', 'Inactive', 'Inactive', true, '2026-03-07 11:41:18', '2026-03-07 12:07:34'),
   ('ui-admin-m-030', 'admin.master.empty_cat', 'admin', '카테고리를 선택하세요.', 'Select a category.', 'Select a category.', 'Select a category.', 'Select a category.', 'Select a category.', 'Select a category.', 'Select a category.', 'Select a category.', 'Select a category.', 'Select a category.', 'Select a category.', 'Select a category.', true, '2026-03-07 11:41:18', '2026-03-07 12:07:34'),
   ('ui-admin-m-031', 'admin.master.empty_item', 'admin', '아이템이 없습니다.', 'No items.', 'No items.', 'No items.', 'No items.', 'No items.', 'No items.', 'No items.', 'No items.', 'No items.', 'No items.', 'No items.', 'No items.', true, '2026-03-07 11:41:18', '2026-03-07 12:07:34')
-ON CONFLICT (key) DO NOTHING;
+ON CONFLICT DO NOTHING;
 
 INSERT INTO i18n_translations (id, key, page, ko, en, ja, zh_cn, zh_tw, es, fr, de, pt, vi, th, id_lang, ar, is_active, created_at, updated_at)
 VALUES
@@ -2138,7 +2138,7 @@ VALUES
   ('i46-lt-insulin', 'master.log_type.insulin_log', 'master', '인슐린 기록', 'Insulin Log', 'インスリン記録', '胰岛素记录', '胰島素記錄', 'Registro de insulina', 'Journal d''insuline', 'Insulinprotokoll', 'Registro de insulina', 'Nhật ký insulin', 'บันทึกอินซูลิน', 'Log insulin', 'سجل الأنسولين', true, '2026-03-07 13:05:39', '2026-03-07 13:05:39'),
   ('i46-lt-meal', 'master.log_type.meal_log', 'master', '식사 기록', 'Meal Log', '食事記録', '饮食记录', '飲食記錄', 'Registro de comida', 'Journal alimentaire', 'Mahlzeitenprotokoll', 'Registro de refeição', 'Nhật ký bữa ăn', 'บันทึกมื้ออาหาร', 'Log makan', 'سجل الوجبات', true, '2026-03-07 13:05:39', '2026-03-07 13:05:39'),
   ('i46-lt-weight', 'master.log_type.weight_log', 'master', '체중 기록', 'Weight Log', '体重記録', '体重记录', '體重記錄', 'Registro de peso', 'Journal de poids', 'Gewichtsprotokoll', 'Registro de peso', 'Nhật ký cân nặng', 'บันทึกน้ำหนัก', 'Log berat badan', 'سجل الوزن', true, '2026-03-07 13:05:39', '2026-03-07 13:05:39')
-ON CONFLICT (key) DO NOTHING;
+ON CONFLICT DO NOTHING;
 
 INSERT INTO i18n_translations (id, key, page, ko, en, ja, zh_cn, zh_tw, es, fr, de, pt, vi, th, id_lang, ar, is_active, created_at, updated_at)
 VALUES
@@ -2192,7 +2192,7 @@ VALUES
   ('1784c7985193ea250fa60db831e2c7eb', 'master.diet_feed_type.senior_joint_care_formula', 'master', '시니어 관절 케어 포뮬라', 'Senior Joint-care Formula', 'Senior Joint-care Formula', 'Senior Joint-care Formula', 'Senior Joint-care Formula', 'Senior Joint-care Formula', 'Senior Joint-care Formula', 'Senior Joint-care Formula', 'Senior Joint-care Formula', 'Senior Joint-care Formula', 'Senior Joint-care Formula', 'Senior Joint-care Formula', 'Senior Joint-care Formula', true, '2026-03-08 07:30:48', '2026-03-08 07:30:48'),
   ('9a34ce4f505982d67dd94fd255e09534', 'master.diet_feed_type.grain_free_salmon_formula', 'master', '그레인프리 연어 포뮬라', 'Grain-free Salmon Formula', 'Grain-free Salmon Formula', 'Grain-free Salmon Formula', 'Grain-free Salmon Formula', 'Grain-free Salmon Formula', 'Grain-free Salmon Formula', 'Grain-free Salmon Formula', 'Grain-free Salmon Formula', 'Grain-free Salmon Formula', 'Grain-free Salmon Formula', 'Grain-free Salmon Formula', 'Grain-free Salmon Formula', true, '2026-03-08 07:30:48', '2026-03-08 07:30:48'),
   ('0a0cf1dbf388e58102972d52a58595a8', 'master.diet_feed_type.canned_pate_formula', 'master', '캔 파테 포뮬라', 'Canned Pate Formula', 'Canned Pate Formula', 'Canned Pate Formula', 'Canned Pate Formula', 'Canned Pate Formula', 'Canned Pate Formula', 'Canned Pate Formula', 'Canned Pate Formula', 'Canned Pate Formula', 'Canned Pate Formula', 'Canned Pate Formula', 'Canned Pate Formula', true, '2026-03-08 07:30:48', '2026-03-08 07:30:48')
-ON CONFLICT (key) DO NOTHING;
+ON CONFLICT DO NOTHING;
 
 INSERT INTO i18n_translations (id, key, page, ko, en, ja, zh_cn, zh_tw, es, fr, de, pt, vi, th, id_lang, ar, is_active, created_at, updated_at)
 VALUES
@@ -2246,7 +2246,7 @@ VALUES
   ('fafbf26c672ec4251a43911594c4b109', 'admin.feed.select_type', 'admin', '사료유형을 먼저 선택하세요.', 'Select a feed type first.', '先に飼料タイプを選択してください。', '请先选择饲料类型。', '請先選擇飼料類型。', 'Seleccione primero un tipo de alimento.', 'Sélectionnez d’abord un type d’aliment.', 'Wählen Sie zuerst einen Futtertyp aus.', 'Selecione primeiro um tipo de ração.', 'Vui lòng chọn loại thức ăn trước.', 'กรุณาเลือกประเภทอาหารก่อน', 'Pilih tipe pakan terlebih dahulu.', 'اختر نوع العلف أولاً.', true, '2026-03-08 08:03:41', '2026-03-08 08:03:41'),
   ('0dd8d4f278058a6952e3ef6ddbe4111d', 'admin.feed.type', 'admin', '사료유형', 'Feed Type', '飼料タイプ', '饲料类型', '飼料類型', 'Tipo de Alimento', 'Type d’aliment', 'Futtertyp', 'Tipo de Ração', 'Loại thức ăn', 'ประเภทอาหาร', 'Jenis Pakan', 'نوع العلف', true, '2026-03-08 08:03:41', '2026-03-08 08:03:41'),
   ('634209dcf1751a05caaaa1660d7a915c', 'admin.feed.manufacturer', 'admin', '제조사', 'Manufacturer', 'メーカー', '制造商', '製造商', 'Fabricante', 'Fabricant', 'Hersteller', 'Fabricante', 'Nhà sản xuất', 'ผู้ผลิต', 'Produsen', 'المصنّع', true, '2026-03-08 08:03:41', '2026-03-08 08:03:41')
-ON CONFLICT (key) DO NOTHING;
+ON CONFLICT DO NOTHING;
 
 INSERT INTO i18n_translations (id, key, page, ko, en, ja, zh_cn, zh_tw, es, fr, de, pt, vi, th, id_lang, ar, is_active, created_at, updated_at)
 VALUES
@@ -2300,7 +2300,7 @@ VALUES
   ('306bdf1281b1cd78953d8b4cfb7631f4', 'feed.brand.royal_canin_veterinary_diet_line', 'feed', '베터리너리 다이어트', 'Veterinary Diet', 'Veterinary Diet', 'Veterinary Diet', 'Veterinary Diet', 'Veterinary Diet', 'Veterinary Diet', 'Veterinary Diet', 'Veterinary Diet', 'Veterinary Diet', 'Veterinary Diet', 'Veterinary Diet', 'Veterinary Diet', true, '2026-03-08 15:09:30', '2026-03-08 15:09:30'),
   ('5ae6a59529724b51ce471a91711ac79b', 'feed.brand.hills_science_diet_line', 'feed', '사이언스 다이어트', 'Science Diet', 'Science Diet', 'Science Diet', 'Science Diet', 'Science Diet', 'Science Diet', 'Science Diet', 'Science Diet', 'Science Diet', 'Science Diet', 'Science Diet', 'Science Diet', true, '2026-03-08 15:09:30', '2026-03-08 15:09:30'),
   ('7ba6d32c8573c5abf293f829647d005c', 'feed.brand.hills_prescription_diet_line', 'feed', '프리스크립션 다이어트', 'Prescription Diet', 'Prescription Diet', 'Prescription Diet', 'Prescription Diet', 'Prescription Diet', 'Prescription Diet', 'Prescription Diet', 'Prescription Diet', 'Prescription Diet', 'Prescription Diet', 'Prescription Diet', 'Prescription Diet', true, '2026-03-08 15:09:30', '2026-03-08 15:09:30')
-ON CONFLICT (key) DO NOTHING;
+ON CONFLICT DO NOTHING;
 
 INSERT INTO i18n_translations (id, key, page, ko, en, ja, zh_cn, zh_tw, es, fr, de, pt, vi, th, id_lang, ar, is_active, created_at, updated_at)
 VALUES
@@ -2354,7 +2354,7 @@ VALUES
   ('393a5ce0f6672b828a349def528b90b1', 'feed.nutrient.epa', 'feed', 'EPA', 'EPA', 'EPA', 'EPA', 'EPA', 'EPA', 'EPA', 'EPA', 'EPA', 'EPA', 'EPA', 'EPA', 'EPA', true, '2026-03-08 15:09:30', '2026-03-08 15:09:30'),
   ('3c649776deaf799cc0fbdfec8410796e', 'feed.nutrient.dha', 'feed', 'DHA', 'DHA', 'DHA', 'DHA', 'DHA', 'DHA', 'DHA', 'DHA', 'DHA', 'DHA', 'DHA', 'DHA', 'DHA', true, '2026-03-08 15:09:30', '2026-03-08 15:09:30'),
   ('57447f0d5ec502426bbf057cfbd4df7f', 'feed.nutrient.unit.kcal', 'feed', '킬로칼로리', 'Kilocalorie', 'Kilocalorie', 'Kilocalorie', 'Kilocalorie', 'Kilocalorie', 'Kilocalorie', 'Kilocalorie', 'Kilocalorie', 'Kilocalorie', 'Kilocalorie', 'Kilocalorie', 'Kilocalorie', true, '2026-03-08 15:09:30', '2026-03-08 15:09:30')
-ON CONFLICT (key) DO NOTHING;
+ON CONFLICT DO NOTHING;
 
 INSERT INTO i18n_translations (id, key, page, ko, en, ja, zh_cn, zh_tw, es, fr, de, pt, vi, th, id_lang, ar, is_active, created_at, updated_at)
 VALUES
@@ -2408,7 +2408,7 @@ VALUES
   ('i18n_nutr_fat', 'nutrition.fat', 'feed', '지방 (%)', 'Fat (%)', '脂肪(%)', '脂肪(%)', '脂肪(%)', 'Grasa (%)', 'Matières grasses (%)', 'Fett (%)', 'Gordura (%)', 'Chất béo (%)', 'ไขมัน (%)', 'Lemak (%)', 'دهون (%)', true, '2026-03-09 12:57:57', '2026-03-09 12:57:57'),
   ('i18n_nutr_fiber', 'nutrition.fiber', 'feed', '식이섬유 (%)', 'Fiber (%)', '食物繊維(%)', '纤维(%)', '纖維(%)', 'Fibra (%)', 'Fibres (%)', 'Ballaststoffe (%)', 'Fibra (%)', 'Chất xơ (%)', 'เส้นใย (%)', 'Serat (%)', 'ألياف (%)', true, '2026-03-09 12:57:57', '2026-03-09 12:57:57'),
   ('i18n_nutr_moisture', 'nutrition.moisture', 'feed', '수분 (%)', 'Moisture (%)', '水分(%)', '水分(%)', '水分(%)', 'Humedad (%)', 'Humidité (%)', 'Feuchtigkeit (%)', 'Umidade (%)', 'Độ ẩm (%)', 'ความชื้น (%)', 'Kelembapan (%)', 'رطوبة (%)', true, '2026-03-09 12:57:57', '2026-03-09 12:57:57')
-ON CONFLICT (key) DO NOTHING;
+ON CONFLICT DO NOTHING;
 
 INSERT INTO i18n_translations (id, key, page, ko, en, ja, zh_cn, zh_tw, es, fr, de, pt, vi, th, id_lang, ar, is_active, created_at, updated_at)
 VALUES
@@ -2453,16 +2453,16 @@ VALUES
   ('i18n_flog_edit', 'guardian.feeding.edit', 'guardian', '수정', 'Edit', '編集', '编辑', '編輯', 'Editar', 'Modifier', 'Bearbeiten', 'Editar', 'Sửa', 'แก้ไข', 'Edit', 'تعديل', true, '2026-03-09 15:08:12', '2026-03-09 15:08:12'),
   ('i18n_flog_del', 'guardian.feeding.delete_confirm', 'guardian', '삭제하시겠습니까?', 'Delete this record?', 'この記録を削除しますか？', '确定删除此记录？', '確定刪除此記錄？', '¿Eliminar este registro?', 'Supprimer cet enregistrement ?', 'Diesen Eintrag löschen?', 'Excluir este registro?', 'Xóa bản ghi này?', 'ลบบันทึกนี้?', 'Hapus catatan ini?', 'حذف هذا السجل؟', true, '2026-03-09 15:08:12', '2026-03-09 15:08:12'),
   ('i18n_flog_no_logs', 'guardian.feeding.no_logs', 'guardian', '급여 기록이 없습니다', 'No feeding logs yet', 'まだ給餌記録がありません', '暂无喂食记录', '尚無餵食記錄', 'Aún no hay registros', 'Aucun enregistrement pour le moment', 'Noch keine Einträge', 'Nenhum registro ainda', 'Chưa có nhật ký nào', 'ยังไม่มีบันทึก', 'Belum ada log', 'لا توجد سجلات بعد', true, '2026-03-09 15:08:12', '2026-03-09 15:08:12'),
-  ('0d5fc1855340fece2c38c7c7ad75adaf', 'guardian.feeding.mixed_feed', 'guardian', '혼합급여', 'Mixed Feed', '混合給餌', '混合喂食', '混合餵食', 'Alimentación mixta', 'Alimentation mixte', 'Mischfütterung', 'Alimentação mista', 'Cho ăn hỗn hợp', 'อาหารผสม', 'Pakan campuran', 'تغذية مختلطة', true, '2026-03-10 00:20:24', '2026-03-10 00:20:24'),
-  ('71fd8a11eae383a6fa0a737a7c61e271', 'guardian.feeding.add_feed_row', 'guardian', '사료 추가', 'Add Feed', '飼料追加', '添加饲料', '添加飼料', 'Añadir pienso', 'Ajouter aliment', 'Futter hinzufügen', 'Adicionar ração', 'Thêm thức ăn', 'เพิ่มอาหาร', 'Tambah pakan', 'إضافة علف', true, '2026-03-10 00:20:24', '2026-03-10 00:20:24'),
-  ('c738d6d26b6b4a2e0d7d72d272cd455f', 'guardian.feeding.remove_feed_row', 'guardian', '사료 삭제', 'Remove Feed', '飼料削除', '删除饲料', '刪除飼料', 'Eliminar pienso', 'Supprimer aliment', 'Futter entfernen', 'Remover ração', 'Xóa thức ăn', 'ลบอาหาร', 'Hapus pakan', 'حذف علف', true, '2026-03-10 00:20:24', '2026-03-10 00:20:24'),
-  ('337a84bf83c773c2395d73c067fc0ecf', 'guardian.feeding.ratio', 'guardian', '비율 (%)', 'Ratio (%)', '割合 (%)', '比例 (%)', '比例 (%)', 'Proporción (%)', 'Proportion (%)', 'Anteil (%)', 'Proporção (%)', 'Tỷ lệ (%)', 'สัดส่วน (%)', 'Rasio (%)', 'نسبة (%)', true, '2026-03-10 00:20:24', '2026-03-10 00:20:24'),
-  ('38f7e1a08fe2577921a588e6bfed72c5', 'guardian.feeding.total_amount', 'guardian', '총 급여량', 'Total Amount', '合計給餌量', '总喂食量', '總餵食量', 'Cantidad total', 'Quantité totale', 'Gesamtmenge', 'Quantidade total', 'Tổng lượng', 'ปริมาณรวม', 'Total jumlah', 'الكمية الإجمالية', true, '2026-03-10 00:20:24', '2026-03-10 00:20:24'),
-  ('ca4f6bd99cf2a906eca6e86587175d9a', 'guardian.feeding.total_calories', 'guardian', '총 칼로리', 'Total Calories', '合計カロリー', '总卡路里', '總卡路里', 'Calorías totales', 'Calories totales', 'Gesamtkalorien', 'Calorias totais', 'Tổng calo', 'แคลอรี่รวม', 'Total kalori', 'إجمالي السعرات', true, '2026-03-10 00:20:24', '2026-03-10 00:20:24'),
-  ('dd50f414c97efc442cdc26717fb0d7c6', 'nutrition.total', 'guardian', '총 영양 합계', 'Total Nutrition', '合計栄養', '总营养合计', '總營養合計', 'Nutrición total', 'Nutrition totale', 'Gesamternährung', 'Nutrição total', 'Tổng dinh dưỡng', 'โภชนาการรวม', 'Total nutrisi', 'إجمالي التغذية', true, '2026-03-10 00:20:24', '2026-03-10 00:20:24'),
-  ('01262f9314229af892a30dc4f8d531ea', 'guardian.feeding.single_mode', 'guardian', '단일 사료', 'Single Feed', '単一飼料', '单一饲料', '單一飼料', 'Pienso único', 'Aliment unique', 'Einzelfutter', 'Ração única', 'Một loại', 'อาหารชนิดเดียว', 'Pakan tunggal', 'علف واحد', true, '2026-03-10 00:20:24', '2026-03-10 00:20:24'),
-  ('5a44b977d41e82653fd136648026e7eb', 'guardian.feeding.per_row_cal', 'guardian', '칼로리', 'Cal', 'カロリー', '卡路里', '卡路里', 'Cal', 'Cal', 'Kal', 'Cal', 'Cal', 'แคล', 'Kal', 'سعر', true, '2026-03-10 00:20:24', '2026-03-10 00:20:24')
-ON CONFLICT (key) DO NOTHING;
+  ('7792c750e6a2e65095fa22f2ba864d1c', 'guardian.feeding.mixed_feed', 'guardian', '혼합급여', 'Mixed Feed', '混合給餌', '混合喂食', '混合餵食', 'Alimentación mixta', 'Alimentation mixte', 'Mischfütterung', 'Alimentação mista', 'Cho ăn hỗn hợp', 'อาหารผสม', 'Pakan campuran', 'تغذية مختلطة', true, '2026-03-10 00:20:24', '2026-03-10 00:20:24'),
+  ('3a60df885bae5cd8e7985b66e9586504', 'guardian.feeding.add_feed_row', 'guardian', '사료 추가', 'Add Feed', '飼料追加', '添加饲料', '添加飼料', 'Añadir pienso', 'Ajouter aliment', 'Futter hinzufügen', 'Adicionar ração', 'Thêm thức ăn', 'เพิ่มอาหาร', 'Tambah pakan', 'إضافة علف', true, '2026-03-10 00:20:24', '2026-03-10 00:20:24'),
+  ('036be97e1f1cc6ff16d0d5be0ee99ffe', 'guardian.feeding.remove_feed_row', 'guardian', '사료 삭제', 'Remove Feed', '飼料削除', '删除饲料', '刪除飼料', 'Eliminar pienso', 'Supprimer aliment', 'Futter entfernen', 'Remover ração', 'Xóa thức ăn', 'ลบอาหาร', 'Hapus pakan', 'حذف علف', true, '2026-03-10 00:20:24', '2026-03-10 00:20:24'),
+  ('1bd9e905d78dfe9a92b9dc04d8e3398e', 'guardian.feeding.ratio', 'guardian', '비율 (%)', 'Ratio (%)', '割合 (%)', '比例 (%)', '比例 (%)', 'Proporción (%)', 'Proportion (%)', 'Anteil (%)', 'Proporção (%)', 'Tỷ lệ (%)', 'สัดส่วน (%)', 'Rasio (%)', 'نسبة (%)', true, '2026-03-10 00:20:24', '2026-03-10 00:20:24'),
+  ('2be913db02eca649734fe7aed869bf7f', 'guardian.feeding.total_amount', 'guardian', '총 급여량', 'Total Amount', '合計給餌量', '总喂食量', '總餵食量', 'Cantidad total', 'Quantité totale', 'Gesamtmenge', 'Quantidade total', 'Tổng lượng', 'ปริมาณรวม', 'Total jumlah', 'الكمية الإجمالية', true, '2026-03-10 00:20:24', '2026-03-10 00:20:24'),
+  ('250f07eaee9a38a446a16d20adf05df5', 'guardian.feeding.total_calories', 'guardian', '총 칼로리', 'Total Calories', '合計カロリー', '总卡路里', '總卡路里', 'Calorías totales', 'Calories totales', 'Gesamtkalorien', 'Calorias totais', 'Tổng calo', 'แคลอรี่รวม', 'Total kalori', 'إجمالي السعرات', true, '2026-03-10 00:20:24', '2026-03-10 00:20:24'),
+  ('cd16dccec1d75629945b873c300fc1bb', 'nutrition.total', 'guardian', '총 영양 합계', 'Total Nutrition', '合計栄養', '总营养合计', '總營養合計', 'Nutrición total', 'Nutrition totale', 'Gesamternährung', 'Nutrição total', 'Tổng dinh dưỡng', 'โภชนาการรวม', 'Total nutrisi', 'إجمالي التغذية', true, '2026-03-10 00:20:24', '2026-03-10 00:20:24'),
+  ('38df064214a5ce4b97cf82f74894963c', 'guardian.feeding.single_mode', 'guardian', '단일 사료', 'Single Feed', '単一飼料', '单一饲料', '單一飼料', 'Pienso único', 'Aliment unique', 'Einzelfutter', 'Ração única', 'Một loại', 'อาหารชนิดเดียว', 'Pakan tunggal', 'علف واحد', true, '2026-03-10 00:20:24', '2026-03-10 00:20:24'),
+  ('83005e149ed5b230f1cb6953d733b273', 'guardian.feeding.per_row_cal', 'guardian', '칼로리', 'Cal', 'カロリー', '卡路里', '卡路里', 'Cal', 'Cal', 'Kal', 'Cal', 'Cal', 'แคล', 'Kal', 'سعر', true, '2026-03-10 00:20:24', '2026-03-10 00:20:24')
+ON CONFLICT DO NOTHING;
 
 INSERT INTO i18n_translations (id, key, page, ko, en, ja, zh_cn, zh_tw, es, fr, de, pt, vi, th, id_lang, ar, is_active, created_at, updated_at)
 VALUES
@@ -2516,7 +2516,7 @@ VALUES
   ('i77-041', 'admin.provider.alert.completion_request_failed', 'admin', '완료 공유 요청에 실패했습니다.', 'Failed to request completion sharing.', '完了共有依頼に失敗しました。', '请求完成分享失败。', '請求完成分享失敗。', 'No se pudo solicitar compartir la finalizacion.', 'Echec de la demande de partage de fin de service.', 'Anfrage zur Abschlussfreigabe fehlgeschlagen.', 'Falha ao solicitar compartilhamento da conclusao.', 'Yeu cau chia se hoan tat that bai.', 'ขออนุมัติการแชร์ไม่สำเร็จ', 'Gagal meminta berbagi penyelesaian.', 'فشل طلب مشاركة الإكمال.', true, '2026-03-10 01:37:08', '2026-03-10 01:37:08'),
   ('i77-042', 'admin.provider.booking.status.created', 'admin', '예약 요청', 'Booking Requested', '予約リクエスト', '预约请求', '預約請求', 'Solicitud de reserva', 'Demande de reservation', 'Buchungsanfrage', 'Solicitacao de reserva', 'Yeu cau dat lich', 'คำขอจอง', 'Permintaan booking', 'طلب حجز', true, '2026-03-10 01:37:08', '2026-03-10 01:37:08'),
   ('i77-043', 'admin.provider.booking.status.in_progress', 'admin', '진행 중', 'In Progress', '進行中', '进行中', '進行中', 'En curso', 'En cours', 'In Bearbeitung', 'Em andamento', 'Dang xu ly', 'กำลังดำเนินการ', 'Sedang diproses', 'قيد التنفيذ', true, '2026-03-10 01:37:08', '2026-03-10 01:37:08')
-ON CONFLICT (key) DO NOTHING;
+ON CONFLICT DO NOTHING;
 
 INSERT INTO i18n_translations (id, key, page, ko, en, ja, zh_cn, zh_tw, es, fr, de, pt, vi, th, id_lang, ar, is_active, created_at, updated_at)
 VALUES
@@ -2570,7 +2570,7 @@ VALUES
   ('2b6da87f3015fedef32d2008607cdb64', 'admin.members.success.updated', 'admin.members', '회원 정보가 업데이트되었습니다.', 'Member updated.', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, true, '2026-03-10 01:57:46', '2026-03-10 01:57:46'),
   ('a1e952fabb32989554622f392aa284a2', 'admin.members.success.approved', 'admin.members', 'role 신청을 승인했습니다.', 'Role application approved.', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, true, '2026-03-10 01:57:46', '2026-03-10 01:57:46'),
   ('071d48aa9ee184082c52faaf37f42e12', 'admin.members.success.rejected', 'admin.members', 'role 신청을 거절했습니다.', 'Role application rejected.', NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, NULL, true, '2026-03-10 01:57:46', '2026-03-10 01:57:46')
-ON CONFLICT (key) DO NOTHING;
+ON CONFLICT DO NOTHING;
 
 INSERT INTO i18n_translations (id, key, page, ko, en, ja, zh_cn, zh_tw, es, fr, de, pt, vi, th, id_lang, ar, is_active, created_at, updated_at)
 VALUES
@@ -2624,7 +2624,7 @@ VALUES
   ('6c3f5ac6f8c4b7a29e6349a8f98fcf26', 'master.business_category.pet_shop', 'master', '펫샵', 'Pet Shop', 'ペットショップ', '宠物店', '寵物店', 'Tienda de mascotas', 'Boutique animalerie', 'Zoofachgeschaeft', 'Pet shop', 'Cua hang thu cung', 'ร้านเพ็ทช็อป', 'Toko hewan', 'متجر حيوانات أليفة', true, '2026-03-10 02:10:08', '2026-03-10 02:10:08'),
   ('94ad5c2d45485b8ee516e8bc96488e47', 'master.business_category.pet_hotel', 'master', '펫호텔', 'Pet Hotel', 'ペットホテル', '宠物酒店', '寵物旅館', 'Hotel para mascotas', 'Hotel pour animaux', 'Tierhotel', 'Hotel pet', 'Khach san thu cung', 'โรงแรมสัตว์เลี้ยง', 'Hotel hewan', 'فندق للحيوانات الأليفة', true, '2026-03-10 02:10:08', '2026-03-10 02:10:08'),
   ('90b93d8aa2d1478addab82dafcd05fe3', 'master.business_category.training', 'master', '훈련', 'Training', '訓練', '训练', '訓練', 'Entrenamiento', 'Dressage', 'Training', 'Treinamento', 'Huan luyen', 'ฝึกสอน', 'Pelatihan', 'تدريب', true, '2026-03-10 02:10:08', '2026-03-10 02:10:08')
-ON CONFLICT (key) DO NOTHING;
+ON CONFLICT DO NOTHING;
 
 INSERT INTO i18n_translations (id, key, page, ko, en, ja, zh_cn, zh_tw, es, fr, de, pt, vi, th, id_lang, ar, is_active, created_at, updated_at)
 VALUES
@@ -2678,7 +2678,7 @@ VALUES
   ('a1bdd7abc1d797caf0b26ee11f9c4086', 'master.business_category.grooming_dog_maltese_puppy_cut', 'master', '퍼피 컷', 'Puppy Cut', 'パピーカット', 'Puppy Cut', 'Puppy Cut', 'Puppy Cut', 'Puppy Cut', 'Puppy Cut', 'Puppy Cut', 'Puppy Cut', 'Puppy Cut', 'Puppy Cut', 'Puppy Cut', true, '2026-03-10 12:00:00', '2026-03-10 12:00:00'),
   ('f2634151f2ce1b11e711fd84a18974dd', 'master.business_category.grooming_dog_maltese_top_knot_cut', 'master', '탑노트 컷', 'Top Knot Cut', 'トップノットカット', 'Top Knot Cut', 'Top Knot Cut', 'Top Knot Cut', 'Top Knot Cut', 'Top Knot Cut', 'Top Knot Cut', 'Top Knot Cut', 'Top Knot Cut', 'Top Knot Cut', 'Top Knot Cut', true, '2026-03-10 12:00:00', '2026-03-10 12:00:00'),
   ('4cf45da3f8d06b728b4d9bf07987dd9d', 'master.business_category.grooming_dog_maltese_show_cut', 'master', '쇼 컷', 'Show Cut', 'ショーカット', 'Show Cut', 'Show Cut', 'Show Cut', 'Show Cut', 'Show Cut', 'Show Cut', 'Show Cut', 'Show Cut', 'Show Cut', 'Show Cut', true, '2026-03-10 12:00:00', '2026-03-10 12:00:00')
-ON CONFLICT (key) DO NOTHING;
+ON CONFLICT DO NOTHING;
 
 INSERT INTO i18n_translations (id, key, page, ko, en, ja, zh_cn, zh_tw, es, fr, de, pt, vi, th, id_lang, ar, is_active, created_at, updated_at)
 VALUES
@@ -2732,7 +2732,7 @@ VALUES
   ('209902a53e1f49398bb148747fc7b1f8', 'master.business_category.grooming_dog_jindo_sanitary_trim', 'master', '위생 미용', 'Sanitary Trim', 'サニタリートリム', 'Sanitary Trim', 'Sanitary Trim', 'Sanitary Trim', 'Sanitary Trim', 'Sanitary Trim', 'Sanitary Trim', 'Sanitary Trim', 'Sanitary Trim', 'Sanitary Trim', 'Sanitary Trim', true, '2026-03-10 12:00:00', '2026-03-10 12:00:00'),
   ('20a8a4bbce4eeca64ceee62a760a7ce6', 'master.business_category.grooming_dog_shiba_inu_bath_and_deshed', 'master', '목욕 & 언더코트 제거', 'Bath & Deshed', 'バス＆アンダーコート除去', 'Bath & Deshed', 'Bath & Deshed', 'Bath & Deshed', 'Bath & Deshed', 'Bath & Deshed', 'Bath & Deshed', 'Bath & Deshed', 'Bath & Deshed', 'Bath & Deshed', 'Bath & Deshed', true, '2026-03-10 12:00:00', '2026-03-10 12:00:00'),
   ('54262e94f7e12ce908139ead95d51c74', 'master.business_category.grooming_dog_shiba_inu_summer_trim', 'master', '서머 트리밍', 'Summer Trim', 'サマートリム', 'Summer Trim', 'Summer Trim', 'Summer Trim', 'Summer Trim', 'Summer Trim', 'Summer Trim', 'Summer Trim', 'Summer Trim', 'Summer Trim', 'Summer Trim', true, '2026-03-10 12:00:00', '2026-03-10 12:00:00')
-ON CONFLICT (key) DO NOTHING;
+ON CONFLICT DO NOTHING;
 
 INSERT INTO i18n_translations (id, key, page, ko, en, ja, zh_cn, zh_tw, es, fr, de, pt, vi, th, id_lang, ar, is_active, created_at, updated_at)
 VALUES
@@ -2786,7 +2786,7 @@ VALUES
   ('8456737269b22da38eb70e361c785719', 'master.business_category.grooming_cat_ragdoll_comb_cut', 'master', '콤 컷', 'Comb Cut', 'コームカット', 'Comb Cut', 'Comb Cut', 'Comb Cut', 'Comb Cut', 'Comb Cut', 'Comb Cut', 'Comb Cut', 'Comb Cut', 'Comb Cut', 'Comb Cut', true, '2026-03-10 12:00:00', '2026-03-10 12:00:00'),
   ('c82cbd2387ede5695b0126c2c0244884', 'master.business_category.grooming_cat_ragdoll_sanitary_trim', 'master', '위생 미용', 'Sanitary Trim', 'サニタリートリム', 'Sanitary Trim', 'Sanitary Trim', 'Sanitary Trim', 'Sanitary Trim', 'Sanitary Trim', 'Sanitary Trim', 'Sanitary Trim', 'Sanitary Trim', 'Sanitary Trim', 'Sanitary Trim', true, '2026-03-10 12:00:00', '2026-03-10 12:00:00'),
   ('431364afb4edb1a23497627836ee905f', 'master.business_category.grooming_cat_sphynx_bath_and_skin_care', 'master', '목욕 & 피부 관리', 'Bath & Skin Care', 'バス＆スキンケア', 'Bath & Skin Care', 'Bath & Skin Care', 'Bath & Skin Care', 'Bath & Skin Care', 'Bath & Skin Care', 'Bath & Skin Care', 'Bath & Skin Care', 'Bath & Skin Care', 'Bath & Skin Care', 'Bath & Skin Care', true, '2026-03-10 12:00:00', '2026-03-10 12:00:00')
-ON CONFLICT (key) DO NOTHING;
+ON CONFLICT DO NOTHING;
 
 INSERT INTO i18n_translations (id, key, page, ko, en, ja, zh_cn, zh_tw, es, fr, de, pt, vi, th, id_lang, ar, is_active, created_at, updated_at)
 VALUES
@@ -2840,7 +2840,7 @@ VALUES
   ('ce60c34962da868ccd7a1a9d360fb53e', 'master.business_category.hospital_dog_labrador_obesity_mgmt', 'master', '비만 관리', 'Obesity Management', '肥満管理', 'Obesity Management', 'Obesity Management', 'Obesity Management', 'Obesity Management', 'Obesity Management', 'Obesity Management', 'Obesity Management', 'Obesity Management', 'Obesity Management', 'Obesity Management', true, '2026-03-10 12:00:00', '2026-03-10 12:00:00'),
   ('2bd603946882773c866670b70982cb1c', 'master.business_category.hospital_dog_labrador_eye_care', 'master', '안과 검진', 'Eye Care', '眼科検診', 'Eye Care', 'Eye Care', 'Eye Care', 'Eye Care', 'Eye Care', 'Eye Care', 'Eye Care', 'Eye Care', 'Eye Care', 'Eye Care', true, '2026-03-10 12:00:00', '2026-03-10 12:00:00'),
   ('2a01db20c0c3640299651167855b4c1b', 'master.business_category.hospital_dog_welsh_corgi_hip_screening', 'master', '고관절 검사', 'Hip Dysplasia Screening', '股関節形成不全検査', 'Hip Dysplasia Screening', 'Hip Dysplasia Screening', 'Hip Dysplasia Screening', 'Hip Dysplasia Screening', 'Hip Dysplasia Screening', 'Hip Dysplasia Screening', 'Hip Dysplasia Screening', 'Hip Dysplasia Screening', 'Hip Dysplasia Screening', 'Hip Dysplasia Screening', true, '2026-03-10 12:00:00', '2026-03-10 12:00:00')
-ON CONFLICT (key) DO NOTHING;
+ON CONFLICT DO NOTHING;
 
 INSERT INTO i18n_translations (id, key, page, ko, en, ja, zh_cn, zh_tw, es, fr, de, pt, vi, th, id_lang, ar, is_active, created_at, updated_at)
 VALUES
@@ -2894,7 +2894,7 @@ VALUES
   ('e2736c55f2b19f0cb3f102e5f2d6f8ef', 'master.business_category.hospital_cat_persian_kidney_check', 'master', '신장 검진', 'Kidney Health Check', '腎臓検診', 'Kidney Health Check', 'Kidney Health Check', 'Kidney Health Check', 'Kidney Health Check', 'Kidney Health Check', 'Kidney Health Check', 'Kidney Health Check', 'Kidney Health Check', 'Kidney Health Check', 'Kidney Health Check', true, '2026-03-10 12:00:00', '2026-03-10 12:00:00'),
   ('416a9bc53d00361d043412d539dbd90c', 'master.business_category.hospital_cat_british_sh_cardiac_screening', 'master', '심장 검진', 'Cardiac Screening (HCM)', '心臓検診(HCM)', 'Cardiac Screening (HCM)', 'Cardiac Screening (HCM)', 'Cardiac Screening (HCM)', 'Cardiac Screening (HCM)', 'Cardiac Screening (HCM)', 'Cardiac Screening (HCM)', 'Cardiac Screening (HCM)', 'Cardiac Screening (HCM)', 'Cardiac Screening (HCM)', 'Cardiac Screening (HCM)', true, '2026-03-10 12:00:00', '2026-03-10 12:00:00'),
   ('53d8e1b9c02940aceda1cbd5c4987302', 'master.business_category.hospital_cat_british_sh_kidney_check', 'master', '신장 검진', 'Kidney Health Check', '腎臓検診', 'Kidney Health Check', 'Kidney Health Check', 'Kidney Health Check', 'Kidney Health Check', 'Kidney Health Check', 'Kidney Health Check', 'Kidney Health Check', 'Kidney Health Check', 'Kidney Health Check', 'Kidney Health Check', true, '2026-03-10 12:00:00', '2026-03-10 12:00:00')
-ON CONFLICT (key) DO NOTHING;
+ON CONFLICT DO NOTHING;
 
 INSERT INTO i18n_translations (id, key, page, ko, en, ja, zh_cn, zh_tw, es, fr, de, pt, vi, th, id_lang, ar, is_active, created_at, updated_at)
 VALUES
@@ -2948,7 +2948,7 @@ VALUES
   ('66d0f1dc8a1ce139cdda1ec78b2cb4c9', 'master.business_category.training_dog_chihuahua_behavior_mod', 'master', '행동 교정', 'Behavior Modification', '行動矯正', 'Behavior Modification', 'Behavior Modification', 'Behavior Modification', 'Behavior Modification', 'Behavior Modification', 'Behavior Modification', 'Behavior Modification', 'Behavior Modification', 'Behavior Modification', 'Behavior Modification', true, '2026-03-10 12:00:00', '2026-03-10 12:00:00'),
   ('c731747e8cf4b6032d3978fc0462441b', 'master.business_category.training_dog_golden_retriever_training', 'master', '리트리버 훈련', 'Retriever Training', 'レトリーバートレーニング', 'Retriever Training', 'Retriever Training', 'Retriever Training', 'Retriever Training', 'Retriever Training', 'Retriever Training', 'Retriever Training', 'Retriever Training', 'Retriever Training', 'Retriever Training', true, '2026-03-10 12:00:00', '2026-03-10 12:00:00'),
   ('3de7af3839efb249796c97e58b898e94', 'master.business_category.training_dog_golden_therapy_dog', 'master', '테라피독 훈련', 'Therapy Dog Training', 'セラピードッグ訓練', 'Therapy Dog Training', 'Therapy Dog Training', 'Therapy Dog Training', 'Therapy Dog Training', 'Therapy Dog Training', 'Therapy Dog Training', 'Therapy Dog Training', 'Therapy Dog Training', 'Therapy Dog Training', 'Therapy Dog Training', true, '2026-03-10 12:00:00', '2026-03-10 12:00:00')
-ON CONFLICT (key) DO NOTHING;
+ON CONFLICT DO NOTHING;
 
 INSERT INTO i18n_translations (id, key, page, ko, en, ja, zh_cn, zh_tw, es, fr, de, pt, vi, th, id_lang, ar, is_active, created_at, updated_at)
 VALUES
@@ -2987,7 +2987,7 @@ VALUES
   ('8bb96236344a7a3d1f69983376db4868', 'master.business_category.training_dog_mixed_dog_socialization', 'master', '사회화 훈련', 'Socialization', '社会化トレーニング', 'Socialization', 'Socialization', 'Socialization', 'Socialization', 'Socialization', 'Socialization', 'Socialization', 'Socialization', 'Socialization', 'Socialization', true, '2026-03-10 12:00:00', '2026-03-10 12:00:00'),
   ('19bdd0423fe90e4483e50506ea9e79d1', 'master.business_category.training_dog_other_dog_basic_obedience', 'master', '기본 복종 훈련', 'Basic Obedience', '基本服従訓練', 'Basic Obedience', 'Basic Obedience', 'Basic Obedience', 'Basic Obedience', 'Basic Obedience', 'Basic Obedience', 'Basic Obedience', 'Basic Obedience', 'Basic Obedience', 'Basic Obedience', true, '2026-03-10 12:00:00', '2026-03-10 12:00:00'),
   ('9513700a2fe33554a808e634a965f779', 'master.business_category.training_dog_other_dog_socialization', 'master', '사회화 훈련', 'Socialization', '社会化トレーニング', 'Socialization', 'Socialization', 'Socialization', 'Socialization', 'Socialization', 'Socialization', 'Socialization', 'Socialization', 'Socialization', 'Socialization', true, '2026-03-10 12:00:00', '2026-03-10 12:00:00')
-ON CONFLICT (key) DO NOTHING;
+ON CONFLICT DO NOTHING;
 
 -- ---------------------------------------------------------------------------
 -- platform_settings (3 rows)
@@ -2997,7 +2997,7 @@ VALUES
   ('6a9bdbdd4da3c24bb820f1ef1de43192', 'google_places_api_key', '', 'Google Places API key', NULL, '2026-03-10 01:57:46', '2026-03-10 01:57:46'),
   ('a77da0eaf16b1b8f67ac54d4764214ca', 'google_oauth_client_id', '', 'Google OAuth client id', NULL, '2026-03-10 01:57:46', '2026-03-10 01:57:46'),
   ('df1ca560702a37b0517c939fb6e95302', 'google_oauth_redirect_uri', '', 'Google OAuth redirect uri', NULL, '2026-03-10 01:57:46', '2026-03-10 01:57:46')
-ON CONFLICT (setting_key) DO NOTHING;
+ON CONFLICT DO NOTHING;
 
 -- SKIP: ad_config (0 rows)
 
