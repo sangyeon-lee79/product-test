@@ -7,7 +7,7 @@ export type FeedTab = 'all' | 'friends';
 export type Mode = 'create' | 'edit';
 export type PetProfileTab = 'timeline' | 'health' | 'services' | 'gallery' | 'profile';
 export type WeightRange = '7d' | '15d' | '1m' | '3m' | '6m' | '1y' | 'all';
-export type PetWizardStep = 1 | 2 | 3 | 4 | 5 | 6 | 7;
+export type PetWizardStep = 1 | 2 | 3 | 4 | 5 | 6;
 export type MeasurementWizardStep = 1 | 2; // kept for backwards compat
 
 export type Option = {
@@ -98,9 +98,8 @@ export const PET_WIZARD_STEPS: Array<{ step: PetWizardStep; labelKey: string; fa
   { step: 2, labelKey: 'master.pet_type', fallback: 'Pet Type' },
   { step: 3, labelKey: 'master.pet_gender', fallback: 'Gender' },
   { step: 4, labelKey: 'master.vaccination_type', fallback: 'Vaccination' },
-  { step: 5, labelKey: 'master.disease_group', fallback: 'Disease Group' },
-  { step: 6, labelKey: 'master.temperament_type', fallback: 'Temperament' },
-  { step: 7, labelKey: 'master.coat_length', fallback: 'Coat Length' },
+  { step: 5, labelKey: 'master.temperament_type', fallback: 'Temperament' },
+  { step: 6, labelKey: 'master.coat_length', fallback: 'Coat Length' },
 ];
 
 export const DEFAULT_PET_FORM: PetForm = {

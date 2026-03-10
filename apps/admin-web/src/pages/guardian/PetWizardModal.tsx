@@ -29,18 +29,7 @@ interface Props {
 export default function PetWizardModal({ open, mode, editingPetId, options, t, setError, onClose, onSuccess }: Props) {
   const [petForm, setPetForm] = useState<PetForm>(DEFAULT_PET_FORM);
   const [petWizardStep, setPetWizardStep] = useState<PetWizardStep>(1);
-  const [diseaseRows, setDiseaseRows] = useState<Array<{ groupId: string; diseaseId: string }>>([{ groupId: '', diseaseId: '' }]);
   const [activePet, setActivePet] = useState<Pet | null>(null);
-  const [fetchedDiseaseOptions, setFetchedDiseaseOptions] = useState<Option[]>([]);
-
-  const allDiseaseOptions = useMemo(() => {
-    const merged = new Map<string, Option>();
-    for (const option of [...options.optDisease, ...fetchedDiseaseOptions]) {
-      if (!option.id) continue;
-      merged.set(option.id, option);
-    }
-    return Array.from(merged.values());
-  }, [fetchedDiseaseOptions, options.optDisease]);
 
   const optionLabel = (option: Option | undefined, fallback: string): string => {
     if (!option) return fallback;
@@ -63,9 +52,7 @@ export default function PetWizardModal({ open, mode, editingPetId, options, t, s
     if (mode === 'create') {
       setPetForm(DEFAULT_PET_FORM);
       setPetWizardStep(1);
-      setDiseaseRows([{ groupId: '', diseaseId: '' }]);
       setActivePet(null);
-      setFetchedDiseaseOptions((prev) => (prev.length > 0 ? [] : prev));
       return;
     }
     if (!editingPetId) return;
@@ -73,16 +60,8 @@ export default function PetWizardModal({ open, mode, editingPetId, options, t, s
       try {
         const res = await api.pets.detail(editingPetId);
         const p = res.pet;
-        const diseaseHistoryIds = normalizeMultiStableIds(p.disease_history_ids, allDiseaseOptions);
         setActivePet(p);
         setPetWizardStep(1);
-        const mappedDiseaseRows = normalizeUniqueIds(diseaseHistoryIds)
-          .map((diseaseId) => {
-            const disease = allDiseaseOptions.find((d) => d.id === diseaseId || d.key === diseaseId);
-            return { groupId: disease?.parentId || '', diseaseId };
-          })
-          .filter((row) => row.groupId && row.diseaseId);
-        setDiseaseRows(mappedDiseaseRows.length ? mappedDiseaseRows : [{ groupId: '', diseaseId: '' }]);
         setPetForm({
           name: p.name || '',
           microchip_no: p.microchip_no || '',
@@ -99,7 +78,7 @@ export default function PetWizardModal({ open, mode, editingPetId, options, t, s
           body_size_id: p.body_size_id || '',
           country_id: p.country_id || '',
           allergy_ids: normalizeMultiStableIds(p.allergy_ids, options.optAllergy),
-          disease_history_ids: diseaseHistoryIds,
+          disease_history_ids: normalizeMultiStableIds(p.disease_history_ids, options.optDisease),
           symptom_tag_ids: normalizeMultiStableIds(p.symptom_tag_ids, options.optSymptom),
           vaccination_ids: normalizeMultiStableIds(p.vaccination_ids, options.optVaccination),
           weight_unit_id: p.weight_unit_id || '',
@@ -118,63 +97,7 @@ export default function PetWizardModal({ open, mode, editingPetId, options, t, s
       }
     };
     void run();
-  }, [allDiseaseOptions, editingPetId, mode, open]);
-
-  // Sync disease rows when optDisease or disease_history_ids change while modal is open
-  useEffect(() => {
-    if (!open) return;
-    const normalizedDiseaseIds = normalizeMultiStableIds(petForm.disease_history_ids, allDiseaseOptions);
-    const mapped = normalizedDiseaseIds
-      .map((diseaseId) => {
-        const disease = allDiseaseOptions.find((d) => d.id === diseaseId || d.key === diseaseId);
-        return { groupId: disease?.parentId || '', diseaseId };
-      })
-      .filter((row) => row.groupId && row.diseaseId);
-    setDiseaseRows(mapped.length ? mapped : [{ groupId: '', diseaseId: '' }]);
-  }, [allDiseaseOptions, open, petForm.disease_history_ids]);
-
-  useEffect(() => {
-    if (!open) return;
-    const groupIds = normalizeUniqueIds(
-      diseaseRows
-        .map((row) => normalizeSingleStableId(row.groupId, options.optDiseaseGroup))
-        .filter(Boolean),
-    );
-    if (groupIds.length === 0) return;
-
-    let cancelled = false;
-    const run = async () => {
-      for (const groupId of groupIds) {
-        const alreadyLoaded = options.optDisease.some((item) => item.parentId === groupId)
-          || fetchedDiseaseOptions.some((item) => item.parentId === groupId);
-        if (alreadyLoaded) continue;
-        try {
-          const rows = await api.master.public.items('disease_type', groupId);
-          if (cancelled || rows.length === 0) continue;
-          setFetchedDiseaseOptions((prev) => {
-            const merged = new Map(prev.map((item) => [item.id, item]));
-            for (const row of rows) {
-              merged.set(row.id, {
-                id: row.id,
-                key: row.key,
-                label: (row.display_label || row.ko_name || row.en || row.key || '').trim(),
-                i18nKey: `master.disease_type.${row.key}`,
-                parentId: row.parent_id,
-                metadata: {},
-              });
-            }
-            return Array.from(merged.values());
-          });
-        } catch {
-          // Keep the current option set when the fallback request fails.
-        }
-      }
-    };
-    void run();
-    return () => {
-      cancelled = true;
-    };
-  }, [diseaseRows, fetchedDiseaseOptions, open, options.optDisease, options.optDiseaseGroup]);
+  }, [editingPetId, mode, open, options.optDisease]);
 
   const breedOptionsFiltered = useMemo(() => {
     if (!petForm.pet_type_id) return options.optBreed;
@@ -200,19 +123,13 @@ export default function PetWizardModal({ open, mode, editingPetId, options, t, s
       return `${t('master.vaccination_type', '예방접종')} - ${vaccinationLabel} - ${dash}`;
     }
     if (petWizardStep === 5) {
-      const diseaseLabel = petForm.disease_history_ids.length
-        ? `${labelOf(allDiseaseOptions, petForm.disease_history_ids[0], dash)}${petForm.disease_history_ids.length > 1 ? ` +${petForm.disease_history_ids.length - 1}` : ''}`
-        : dash;
-      return `${t('master.disease_group', '질병군')} - ${labelOf(options.optDiseaseGroup, diseaseRows.find((row) => row.groupId)?.groupId || '', dash)} - ${diseaseLabel}`;
-    }
-    if (petWizardStep === 6) {
       const temperamentLabel = petForm.temperament_ids.length
         ? `${labelOf(options.optTemperament, petForm.temperament_ids[0], dash)}${petForm.temperament_ids.length > 1 ? ` +${petForm.temperament_ids.length - 1}` : ''}`
         : dash;
       return `${t('master.temperament_type', '성격기질')} - ${temperamentLabel} - ${labelOf(options.optActivity, petForm.activity_level_id, dash)}`;
     }
     return `${t('master.coat_length', '털길이')} - ${labelOf(options.optCoatLength, petForm.coat_length_id, dash)} - ${labelOf(options.optGrooming, petForm.grooming_cycle_id, dash)}`;
-  }, [allDiseaseOptions, breedOptionsFiltered, diseaseRows, options, petForm, petWizardStep, t]);
+  }, [breedOptionsFiltered, options, petForm, petWizardStep, t]);
 
   function renderSelect(label: string, value: string, opts: Option[], onChange: (v: string) => void, required = false, name?: string) {
     return (
@@ -304,92 +221,6 @@ export default function PetWizardModal({ open, mode, editingPetId, options, t, s
     );
   }
 
-  function renderDiseaseRows(
-    rows: Array<{ groupId: string; diseaseId: string }>,
-    onChange: (next: Array<{ groupId: string; diseaseId: string }>) => void,
-  ) {
-    const normalizedRows = rows
-      .map((row) => {
-        const groupId = normalizeSingleStableId(row.groupId, options.optDiseaseGroup);
-        const diseaseId = normalizeSingleStableId(row.diseaseId, allDiseaseOptions);
-        return { groupId, diseaseId };
-      })
-      .filter((row) => row.groupId || row.diseaseId);
-    const displayRows = normalizedRows.length > 0 ? normalizedRows : [{ groupId: '', diseaseId: '' }];
-    return (
-      <div className="form-group">
-        <label className="form-label">{t('master.disease_group', 'Disease Group')} / {t('master.disease_type', 'Disease')}</label>
-        <div style={{ display: 'grid', gap: 8 }}>
-          {displayRows.map((row, index) => {
-            const diseaseOptions = allDiseaseOptions
-              .filter((d) => !row.groupId || d.parentId === row.groupId)
-              .filter((d) => d.id === row.diseaseId || !displayRows.some((r, i) => i !== index && r.diseaseId === d.id));
-            return (
-              <div key={`disease-row-${index}-${row.groupId}-${row.diseaseId}`} style={{ display: 'grid', gap: 8, gridTemplateColumns: '1fr 1fr auto' }}>
-                <select
-                  name={`pet-disease-group-${index}`}
-                  className="form-select"
-                  value={row.groupId}
-                  onChange={(e) => {
-                    const nextGroupId = e.target.value;
-                    const next = [...displayRows];
-                    const keepDisease = allDiseaseOptions.some((d) => d.id === next[index].diseaseId && d.parentId === nextGroupId);
-                    next[index] = { groupId: nextGroupId, diseaseId: keepDisease ? next[index].diseaseId : '' };
-                    onChange(next.filter((r) => r.groupId || r.diseaseId));
-                  }}
-                >
-                  <option value="">{t('common.select', 'Select')}</option>
-                  {options.optDiseaseGroup.map((o) => <option key={o.id} value={o.id}>{optionLabel(o, t('common.none', '-'))}</option>)}
-                </select>
-                <select
-                  name={`pet-disease-${index}`}
-                  className="form-select"
-                  value={row.diseaseId}
-                  onChange={(e) => {
-                    const next = [...displayRows];
-                    next[index] = { ...next[index], diseaseId: e.target.value };
-                    onChange(next.filter((r) => r.groupId || r.diseaseId));
-                  }}
-                >
-                  <option value="">{t('common.select', 'Select')}</option>
-                  {diseaseOptions.map((o) => <option key={o.id} value={o.id}>{optionLabel(o, t('common.none', '-'))}</option>)}
-                </select>
-                <button
-                  type="button"
-                  className="btn btn-danger"
-                  onClick={() => onChange(displayRows.filter((_, i) => i !== index))}
-                  disabled={!row.groupId && !row.diseaseId}
-                  aria-label={t('common.delete', 'Delete')}
-                  title={t('common.delete', 'Delete')}
-                >
-                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-                    <path d="M3 6h18" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
-                    <path d="M8 6V4h8v2" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
-                    <path d="M7 6l1 14h8l1-14" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-                    <path d="M10 10v7M14 10v7" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
-                  </svg>
-                </button>
-              </div>
-            );
-          })}
-          <div>
-            <button
-              type="button"
-              className="btn btn-secondary"
-              onClick={() => onChange([...displayRows.filter((r) => r.groupId || r.diseaseId), { groupId: '', diseaseId: '' }])}
-              aria-label={t('common.add', 'Add')}
-              title={t('common.add', 'Add')}
-            >
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-                <path d="M12 5v14M5 12h14" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
-              </svg>
-            </button>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
   async function savePet() {
     const stablePetTypeId = normalizeSingleStableId(petForm.pet_type_id, options.optPetType, false);
     if (!petForm.name.trim()) {
@@ -421,7 +252,7 @@ export default function PetWizardModal({ open, mode, editingPetId, options, t, s
       ...petForm,
       color_ids: normalizeMultiStableIds(petForm.color_ids, options.optColor, false),
       allergy_ids: normalizeMultiStableIds(petForm.allergy_ids, options.optAllergy, false),
-      disease_history_ids: normalizeMultiStableIds(petForm.disease_history_ids, allDiseaseOptions, false),
+      disease_history_ids: normalizeMultiStableIds(petForm.disease_history_ids, options.optDisease, false),
       symptom_tag_ids: normalizeMultiStableIds(petForm.symptom_tag_ids, options.optSymptom, false),
       vaccination_ids: normalizeMultiStableIds(petForm.vaccination_ids, options.optVaccination, false),
       temperament_ids: normalizeMultiStableIds(petForm.temperament_ids, options.optTemperament, false),
@@ -478,7 +309,6 @@ export default function PetWizardModal({ open, mode, editingPetId, options, t, s
   function handleClose() {
     setActivePet(null);
     setPetWizardStep(1);
-    setDiseaseRows([{ groupId: '', diseaseId: '' }]);
     onClose();
   }
 
@@ -501,7 +331,7 @@ export default function PetWizardModal({ open, mode, editingPetId, options, t, s
       return;
     }
     setError('');
-    setPetWizardStep((prev) => (prev < 7 ? ((prev + 1) as PetWizardStep) : prev));
+    setPetWizardStep((prev) => (prev < 6 ? ((prev + 1) as PetWizardStep) : prev));
   }
 
   function gotoPrevPetStep() {
@@ -579,27 +409,6 @@ export default function PetWizardModal({ open, mode, editingPetId, options, t, s
           )}
 
           {petWizardStep === 5 && (
-            <div className="form-row col1">
-              {renderDiseaseRows(diseaseRows, (nextRows) => {
-                const dedupByDisease = new Map<string, { groupId: string; diseaseId: string }>();
-                const incompleteRows: Array<{ groupId: string; diseaseId: string }> = [];
-                for (const row of nextRows) {
-                  if (!row.groupId && !row.diseaseId) continue;
-                  if (row.diseaseId) {
-                    dedupByDisease.set(row.diseaseId, row);
-                  } else {
-                    incompleteRows.push(row);
-                  }
-                }
-                const completeRows = Array.from(dedupByDisease.values());
-                const normalizedRows = [...completeRows, ...incompleteRows];
-                setDiseaseRows(normalizedRows.length ? normalizedRows : [{ groupId: '', diseaseId: '' }]);
-                setPetForm((p) => ({ ...p, disease_history_ids: completeRows.map((r) => r.diseaseId) }));
-              })}
-            </div>
-          )}
-
-          {petWizardStep === 6 && (
             <>
               <div className="form-row col2">
                 {renderDropdownRows(
@@ -633,7 +442,7 @@ export default function PetWizardModal({ open, mode, editingPetId, options, t, s
             </>
           )}
 
-          {petWizardStep === 7 && (
+          {petWizardStep === 6 && (
             <>
               <div className="form-row col2">
                 {renderSelect(t('master.coat_length', 'Coat Length'), petForm.coat_length_id, options.optCoatLength, (v) => setPetForm((p) => ({ ...p, coat_length_id: v })), false, 'pet-coat-length')}
@@ -669,7 +478,7 @@ export default function PetWizardModal({ open, mode, editingPetId, options, t, s
           <button className="btn btn-secondary" onClick={gotoPrevPetStep} disabled={petWizardStep === 1}>
             {t('common.previous', 'Previous')}
           </button>
-          <button className="btn btn-secondary" onClick={gotoNextPetStep} disabled={petWizardStep === 7}>
+          <button className="btn btn-secondary" onClick={gotoNextPetStep} disabled={petWizardStep === 6}>
             {t('common.next', 'Next')}
           </button>
           <button className="btn btn-primary" onClick={() => void savePet()}>
