@@ -101,6 +101,7 @@ export default function MasterPage() {
       ];
     }
     if (key === 'pet_type') return ['pet_type', 'pet_type', null, null, null];
+    if (key === 'business_category') return ['business_category', 'business_category', 'business_category', null, null];
     if (key === 'coat_length') return ['coat_length', 'grooming_cycle', null, null, null];
     if (key === 'temperament_type') return ['temperament_type', 'activity_level', null, null, null];
     if (key === 'pet_gender' || key === 'gender') return ['pet_gender', 'pet_color', null, null, null];
@@ -205,6 +206,22 @@ export default function MasterPage() {
     if (level === 0) return all.filter((it) => !it.parent_id);
 
     const parentId = selectedIds[level - 1];
+
+    // Same category at consecutive levels: show all items at this tree depth
+    // even when no direct parent is selected (e.g. business_category L2 without L1)
+    if (!parentId && key === categoryChain[level - 1]) {
+      let currentIds = new Set(all.filter(it => !it.parent_id).map(it => it.id));
+      for (let d = 1; d <= level; d++) {
+        if (selectedIds[d - 1]) {
+          currentIds = new Set([selectedIds[d - 1]]);
+        }
+        const atDepth = all.filter(it => it.parent_id && currentIds.has(it.parent_id));
+        if (d === level) return atDepth;
+        currentIds = new Set(atDepth.map(it => it.id));
+      }
+      return [];
+    }
+
     if (!parentId) return [];
 
     let list = all.filter((it) => it.parent_id === parentId);
@@ -543,14 +560,14 @@ export default function MasterPage() {
                 </div>
                 <div className="master-column-list">
                   {!selectedCat && <div className="master-empty">{t('admin.master.empty_cat')}</div>}
-                  {selectedCat && level > 0 && !selectedIds[level - 1] && <div className="master-empty">{t('admin.master.level_select_required').replace('{level}', String(level))}</div>}
-                  {selectedCat && (level === 0 || selectedIds[level - 1]) && items.map((item) => (
+                  {selectedCat && level > 0 && !selectedIds[level - 1] && items.length === 0 && <div className="master-empty">{t('admin.master.level_select_required').replace('{level}', String(level))}</div>}
+                  {selectedCat && items.map((item) => (
                     <button key={item.id} className={`master-row-btn ${selectedId === item.id ? 'active' : ''}`} onClick={() => selectLevelItem(level, item.id)}>
                       <div><div className="master-row-title">{getItemLabel(item, categoryChain[level])}</div></div>
                       <span className={`badge ${item.is_active ? 'badge-green' : 'badge-gray'}`}>{item.is_active ? t('admin.master.active') : t('admin.master.inactive')}</span>
                     </button>
                   ))}
-                  {selectedCat && (level === 0 || selectedIds[level - 1]) && items.length === 0 && <div className="master-empty">{t('admin.master.empty_item')}</div>}
+                  {selectedCat && items.length === 0 && (level === 0 || selectedIds[level - 1]) && <div className="master-empty">{t('admin.master.empty_item')}</div>}
                 </div>
               </div>
             );
