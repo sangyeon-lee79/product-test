@@ -674,6 +674,9 @@ export const api = {
         google_translate_service_account_json?: string;
         google_translate_service_account_email?: string;
         google_translate_service_account_private_key?: string;
+        google_places_verified_at?: string;
+        google_oauth_verified_at?: string;
+        google_translate_verified_at?: string;
       }) =>
         request<{ updated: boolean; updated_at: string }>('/api/v1/admin/settings/google', {
           method: 'PUT',

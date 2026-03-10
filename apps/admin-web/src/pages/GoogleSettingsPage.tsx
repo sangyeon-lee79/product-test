@@ -61,6 +61,12 @@ export default function GoogleSettingsPage() {
   const [placesConnected, setPlacesConnected] = useState(false);
   const [oauthConnected, setOauthConnected] = useState(false);
   const [translateConnected, setTranslateConnected] = useState(false);
+  const [initialValues, setInitialValues] = useState({
+    placesKey: '',
+    oauthClientId: '',
+    redirectUri: '',
+    translateServiceJson: '',
+  });
 
   async function load() {
     setLoading(true);
@@ -75,6 +81,15 @@ export default function GoogleSettingsPage() {
       setTranslateServiceJson(loadedJson);
       setTranslateServiceEmail(parsedServiceAccount?.email || data.settings.google_translate_service_account_email?.value || '');
       setTranslatePrivateKey(parsedServiceAccount?.privateKey || data.settings.google_translate_service_account_private_key?.value || '');
+      setInitialValues({
+        placesKey: data.settings.google_places_api_key?.value || '',
+        oauthClientId: data.settings.google_oauth_client_id?.value || '',
+        redirectUri: data.settings.google_oauth_redirect_uri?.value || '',
+        translateServiceJson: loadedJson,
+      });
+      setPlacesConnected(Boolean(data.settings.google_places_verified_at?.value));
+      setOauthConnected(Boolean(data.settings.google_oauth_verified_at?.value));
+      setTranslateConnected(Boolean(data.settings.google_translate_verified_at?.value));
       setUpdatedAt(
         data.settings.google_translate_service_account_json?.updated_at ||
         data.settings.google_translate_service_account_private_key?.updated_at ||
@@ -100,6 +115,9 @@ export default function GoogleSettingsPage() {
     setError('');
     setSuccess('');
     try {
+      const placesChanged = placesKey !== initialValues.placesKey;
+      const oauthChanged = oauthClientId !== initialValues.oauthClientId || redirectUri !== initialValues.redirectUri;
+      const translateChanged = translateServiceJson !== initialValues.translateServiceJson;
       const result = await api.platformSettings.google.update({
         google_places_api_key: placesKey,
         google_oauth_client_id: oauthClientId,
@@ -107,8 +125,20 @@ export default function GoogleSettingsPage() {
         google_translate_service_account_json: translateServiceJson,
         google_translate_service_account_email: translateServiceEmail,
         google_translate_service_account_private_key: translatePrivateKey,
+        ...(placesChanged ? { google_places_verified_at: '' } : {}),
+        ...(oauthChanged ? { google_oauth_verified_at: '' } : {}),
+        ...(translateChanged ? { google_translate_verified_at: '' } : {}),
       });
       setUpdatedAt(result.updated_at);
+      setInitialValues({
+        placesKey,
+        oauthClientId,
+        redirectUri,
+        translateServiceJson,
+      });
+      if (placesChanged) setPlacesConnected(false);
+      if (oauthChanged) setOauthConnected(false);
+      if (translateChanged) setTranslateConnected(false);
       setSuccess(t('admin.google.saved', 'Google API 설정이 저장되었습니다.'));
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Failed to save settings');
@@ -122,6 +152,7 @@ export default function GoogleSettingsPage() {
     setPlacesTestMessage('');
     try {
       await testGooglePlacesKey(placesKey);
+      await api.platformSettings.google.update({ google_places_verified_at: new Date().toISOString() });
       setPlacesConnected(true);
       setPlacesTestMessage('정상입니다. 현재 관리자 웹에서 Google Places 스크립트 로드가 확인되었습니다.');
     } catch (e) {
@@ -137,6 +168,7 @@ export default function GoogleSettingsPage() {
     setOauthTestMessage('');
     try {
       await testGoogleIdentityClient(oauthClientId);
+      await api.platformSettings.google.update({ google_oauth_verified_at: new Date().toISOString() });
       setOauthConnected(true);
       setOauthTestMessage('정상입니다. Google 로그인 스크립트와 Client ID 초기화가 확인되었습니다.');
     } catch (e) {
@@ -158,6 +190,7 @@ export default function GoogleSettingsPage() {
         google_translate_service_account_private_key: parsed?.privateKey || translatePrivateKey,
         text: '테스트 번역',
       });
+      await api.platformSettings.google.update({ google_translate_verified_at: new Date().toISOString() });
       setTranslateConnected(true);
       setTranslateTestMessage(`정상입니다. 테스트 번역 결과: ${result.translated_text || '(빈 응답)'}`);
     } catch (e) {

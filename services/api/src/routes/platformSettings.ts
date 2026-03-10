@@ -13,6 +13,9 @@ const GOOGLE_ADMIN_SETTING_KEYS = [
   'google_translate_service_account_json',
   'google_translate_service_account_email',
   'google_translate_service_account_private_key',
+  'google_places_verified_at',
+  'google_oauth_verified_at',
+  'google_translate_verified_at',
 ] as const;
 
 const GOOGLE_TOKEN_AUDIENCE = 'https://oauth2.googleapis.com/token';
@@ -185,7 +188,10 @@ async function listGoogleSettings(env: Env, me: JwtPayload): Promise<Response> {
        'google_oauth_redirect_uri',
        'google_translate_service_account_json',
        'google_translate_service_account_email',
-       'google_translate_service_account_private_key'
+       'google_translate_service_account_private_key',
+       'google_places_verified_at',
+       'google_oauth_verified_at',
+       'google_translate_verified_at'
      )
      ORDER BY setting_key`
   ).all<Record<string, unknown>>();
