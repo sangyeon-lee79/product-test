@@ -68,7 +68,6 @@ export default function Signup() {
   const [l2Options, setL2Options] = useState<MasterItem[]>([]);
   const [petTypeL1Options, setPetTypeL1Options] = useState<MasterItem[]>([]);
   const [petTypeL2Options, setPetTypeL2Options] = useState<MasterItem[]>([]);
-  const [l3Options, setL3Options] = useState<MasterItem[]>([]);
   const [providerL1Id, setProviderL1Id] = useState('');
   const [providerL2Id, setProviderL2Id] = useState('');
   const [providerPetTypeL1Id, setProviderPetTypeL1Id] = useState('');
@@ -150,21 +149,8 @@ export default function Signup() {
   }, [providerPetTypeL1Id, lang]);
 
   useEffect(() => {
-    if (!providerL1Id || !providerPetTypeL1Id || !providerPetTypeL2Id) { setL3Options([]); setProviderL3Id(''); return; }
-    let mounted = true;
-    void (async () => {
-      try {
-        const rows = await api.master.public.items('business_category', null, lang, {
-          item_level: 'l3_style',
-          business_category_l1_id: providerL1Id,
-          pet_type_l1_id: providerPetTypeL1Id,
-          pet_type_l2_id: providerPetTypeL2Id,
-        });
-        if (mounted) setL3Options(rows);
-      } catch { if (mounted) setL3Options([]); }
-    })();
-    return () => { mounted = false; };
-  }, [providerL1Id, providerPetTypeL1Id, providerPetTypeL2Id, lang]);
+    if (!providerL1Id || !providerPetTypeL1Id || !providerPetTypeL2Id) { setProviderL3Id(''); return; }
+  }, [providerL1Id, providerPetTypeL1Id, providerPetTypeL2Id]);
 
   // ── Google OAuth for choose phase ──
   useEffect(() => {
