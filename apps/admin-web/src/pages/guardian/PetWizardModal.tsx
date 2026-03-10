@@ -582,13 +582,19 @@ export default function PetWizardModal({ open, mode, editingPetId, options, t, s
             <div className="form-row col1">
               {renderDiseaseRows(diseaseRows, (nextRows) => {
                 const dedupByDisease = new Map<string, { groupId: string; diseaseId: string }>();
+                const incompleteRows: Array<{ groupId: string; diseaseId: string }> = [];
                 for (const row of nextRows) {
-                  if (!row.groupId || !row.diseaseId) continue;
-                  dedupByDisease.set(row.diseaseId, row);
+                  if (!row.groupId && !row.diseaseId) continue;
+                  if (row.diseaseId) {
+                    dedupByDisease.set(row.diseaseId, row);
+                  } else {
+                    incompleteRows.push(row);
+                  }
                 }
-                const normalizedRows = Array.from(dedupByDisease.values());
+                const completeRows = Array.from(dedupByDisease.values());
+                const normalizedRows = [...completeRows, ...incompleteRows];
                 setDiseaseRows(normalizedRows.length ? normalizedRows : [{ groupId: '', diseaseId: '' }]);
-                setPetForm((p) => ({ ...p, disease_history_ids: normalizedRows.map((r) => r.diseaseId) }));
+                setPetForm((p) => ({ ...p, disease_history_ids: completeRows.map((r) => r.diseaseId) }));
               })}
             </div>
           )}
