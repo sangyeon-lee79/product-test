@@ -1,6 +1,6 @@
-// 사료 관리 모달 — 등록된 사료 목록, 추가, 수정, 삭제
+// 사료 관리 모달 — 등록된 사료 목록, 추가, 수정, 삭제 + 등록 요청
 import { useEffect, useMemo, useState } from 'react';
-import { api, type FeedBrand, type FeedManufacturer, type FeedModel, type FeedNutrition, type FeedType, type Pet, type PetFeed } from '../../lib/api';
+import { api, type FeedBrand, type FeedManufacturer, type FeedModel, type FeedNutrition, type FeedRegistrationRequest, type FeedType, type Pet, type PetFeed } from '../../lib/api';
 import type { Lang } from '../../lib/i18n';
 import { uiErrorMessage } from './guardianTypes';
 
@@ -40,7 +40,53 @@ export default function FeedManageModal({
   const [models, setModels] = useState<FeedModel[]>([]);
   const [nutrition, setNutrition] = useState<FeedNutrition | null>(null);
 
+  // Registration request state
+  const [showRequestForm, setShowRequestForm] = useState(false);
+  const [requestForm, setRequestForm] = useState({ feed_name: '', manufacturer_name: '', brand_name: '', feed_type_item_id: '', calories_per_100g: '', protein_pct: '', fat_pct: '', fiber_pct: '', moisture_pct: '', reference_url: '', memo: '' });
+  const [requestSaving, setRequestSaving] = useState(false);
+  const [myRequests, setMyRequests] = useState<FeedRegistrationRequest[]>([]);
+  const [showMyRequests, setShowMyRequests] = useState(false);
+  const [showNutritionFields, setShowNutritionFields] = useState(false);
+
   const petId = selectedPet?.id;
+
+  async function loadMyRequests() {
+    try {
+      const rows = await api.feedRequests.list();
+      setMyRequests(rows);
+    } catch { /* ignore */ }
+  }
+
+  async function handleSubmitRequest() {
+    const feedName = requestForm.feed_name.trim();
+    if (!feedName) { setError(t('guardian.feed.request_name', 'Feed Name') + ' required'); return; }
+    setRequestSaving(true);
+    try {
+      await api.feedRequests.create({
+        feed_name: feedName,
+        pet_id: petId || undefined,
+        feed_type_item_id: requestForm.feed_type_item_id || undefined,
+        manufacturer_name: requestForm.manufacturer_name || undefined,
+        brand_name: requestForm.brand_name || undefined,
+        calories_per_100g: requestForm.calories_per_100g ? Number(requestForm.calories_per_100g) : undefined,
+        protein_pct: requestForm.protein_pct ? Number(requestForm.protein_pct) : undefined,
+        fat_pct: requestForm.fat_pct ? Number(requestForm.fat_pct) : undefined,
+        fiber_pct: requestForm.fiber_pct ? Number(requestForm.fiber_pct) : undefined,
+        moisture_pct: requestForm.moisture_pct ? Number(requestForm.moisture_pct) : undefined,
+        reference_url: requestForm.reference_url || undefined,
+        memo: requestForm.memo || undefined,
+      });
+      setShowRequestForm(false);
+      setRequestForm({ feed_name: '', manufacturer_name: '', brand_name: '', feed_type_item_id: '', calories_per_100g: '', protein_pct: '', fat_pct: '', fiber_pct: '', moisture_pct: '', reference_url: '', memo: '' });
+      setShowNutritionFields(false);
+      alert(t('guardian.feed.request_submitted', 'Registration request submitted.'));
+      void loadMyRequests();
+    } catch (e) {
+      setError(uiErrorMessage(e, t('common.err.save', 'Failed to save.')));
+    } finally {
+      setRequestSaving(false);
+    }
+  }
 
   async function loadFeeds() {
     if (!petId) return;
@@ -58,6 +104,7 @@ export default function FeedManageModal({
 
   useEffect(() => {
     if (open && petId) void loadFeeds();
+    if (open) void loadMyRequests();
   }, [open, petId]);
 
   // Load feed types
@@ -384,6 +431,114 @@ export default function FeedManageModal({
                   {t('common.save', 'Save')}
                 </button>
               </div>
+            </div>
+          )}
+          {/* ── Feed Registration Request ────────────────────────── */}
+          {!showForm && (
+            <div style={{ margin: '16px 0 8px', border: '2px dashed var(--border)', borderRadius: 8, padding: 12 }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <div>
+                  <div style={{ fontSize: 14, fontWeight: 600 }}>{t('guardian.feed.request_btn', 'Request Feed Registration')}</div>
+                  <div style={{ fontSize: 12, color: 'var(--text-secondary)', marginTop: 2 }}>{t('guardian.feed.request_desc', "Can't find your feed? Request registration.")}</div>
+                </div>
+                <button className="btn btn-sm btn-primary" onClick={() => setShowRequestForm(!showRequestForm)}>
+                  {showRequestForm ? t('common.cancel', 'Cancel') : '+'}
+                </button>
+              </div>
+              {showRequestForm && (
+                <div style={{ marginTop: 12 }}>
+                  <div className="form-group">
+                    <label className="form-label">{t('guardian.feed.request_name', 'Feed Name')} *</label>
+                    <input className="form-input" value={requestForm.feed_name} onChange={(e) => setRequestForm((p) => ({ ...p, feed_name: e.target.value }))} />
+                  </div>
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
+                    <div className="form-group">
+                      <label className="form-label">{t('guardian.feed.request_manufacturer', 'Manufacturer')}</label>
+                      <input className="form-input" value={requestForm.manufacturer_name} onChange={(e) => setRequestForm((p) => ({ ...p, manufacturer_name: e.target.value }))} />
+                    </div>
+                    <div className="form-group">
+                      <label className="form-label">{t('guardian.feed.request_brand', 'Brand')}</label>
+                      <input className="form-input" value={requestForm.brand_name} onChange={(e) => setRequestForm((p) => ({ ...p, brand_name: e.target.value }))} />
+                    </div>
+                  </div>
+                  {feedTypeOptions.length > 0 && (
+                    <div className="form-group">
+                      <label className="form-label">{t('guardian.feed.request_type', 'Feed Type')}</label>
+                      <select className="form-select" value={requestForm.feed_type_item_id} onChange={(e) => setRequestForm((p) => ({ ...p, feed_type_item_id: e.target.value }))}>
+                        <option value="">{t('common.select', 'Select')}</option>
+                        {feedTypeOptions.map((o) => <option key={o.id} value={o.id}>{o.label}</option>)}
+                      </select>
+                    </div>
+                  )}
+                  <button className="btn btn-sm" style={{ fontSize: 12, marginBottom: 8 }} onClick={() => setShowNutritionFields(!showNutritionFields)}>
+                    {showNutritionFields ? '▼' : '▶'} {t('guardian.feed.request_nutrition', 'Nutrition Info (Optional)')}
+                  </button>
+                  {showNutritionFields && (
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 6 }}>
+                      {[
+                        ['calories_per_100g', 'kcal/100g'],
+                        ['protein_pct', 'Protein %'],
+                        ['fat_pct', 'Fat %'],
+                        ['fiber_pct', 'Fiber %'],
+                        ['moisture_pct', 'Moisture %'],
+                      ].map(([key, label]) => (
+                        <div key={key} className="form-group" style={{ marginBottom: 0 }}>
+                          <label className="form-label" style={{ fontSize: 11 }}>{label}</label>
+                          <input className="form-input" type="number" step="0.1" value={(requestForm as Record<string, string>)[key] || ''} onChange={(e) => setRequestForm((p) => ({ ...p, [key]: e.target.value }))} />
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                  <div className="form-group" style={{ marginTop: 8 }}>
+                    <label className="form-label">{t('guardian.feed.request_url', 'Reference URL')}</label>
+                    <input className="form-input" value={requestForm.reference_url} placeholder="https://..." onChange={(e) => setRequestForm((p) => ({ ...p, reference_url: e.target.value }))} />
+                  </div>
+                  <div className="form-group">
+                    <label className="form-label">{t('guardian.feed.request_memo', 'Memo')}</label>
+                    <textarea className="form-input" rows={2} value={requestForm.memo} onChange={(e) => setRequestForm((p) => ({ ...p, memo: e.target.value }))} />
+                  </div>
+                  <div style={{ textAlign: 'right' }}>
+                    <button className="btn btn-primary btn-sm" disabled={requestSaving} onClick={() => void handleSubmitRequest()}>
+                      {t('common.save', 'Save')}
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* ── My Requests ──────────────────────────────────────── */}
+          {!showForm && myRequests.length > 0 && (
+            <div style={{ marginTop: 8 }}>
+              <button className="btn btn-sm" style={{ fontSize: 12, marginBottom: 8 }} onClick={() => setShowMyRequests(!showMyRequests)}>
+                {showMyRequests ? '▼' : '▶'} {t('guardian.feed.my_requests', 'My Requests')} ({myRequests.length})
+              </button>
+              {showMyRequests && myRequests.map((r) => (
+                <div key={r.id} style={{ border: '1px solid var(--border)', borderRadius: 6, padding: '8px 10px', marginBottom: 6, fontSize: 13 }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <span style={{ fontWeight: 600 }}>{r.feed_name}</span>
+                    <span style={{
+                      fontSize: 11, padding: '1px 8px', borderRadius: 4, fontWeight: 600,
+                      background: r.status === 'approved' ? '#e8f5e9' : r.status === 'rejected' ? '#ffebee' : '#fff8e1',
+                      color: r.status === 'approved' ? '#2e7d32' : r.status === 'rejected' ? '#c62828' : '#f57f17',
+                    }}>
+                      {r.status === 'approved' ? t('guardian.feed.request_status_approved', 'Approved')
+                        : r.status === 'rejected' ? t('guardian.feed.request_status_rejected', 'Rejected')
+                        : t('guardian.feed.request_status_pending', 'Pending')}
+                    </span>
+                  </div>
+                  {(r.manufacturer_name || r.brand_name) && (
+                    <div style={{ fontSize: 12, color: 'var(--text-secondary)', marginTop: 2 }}>
+                      {[r.manufacturer_name, r.brand_name].filter(Boolean).join(' > ')}
+                    </div>
+                  )}
+                  {r.review_note && (
+                    <div style={{ fontSize: 12, color: 'var(--text-secondary)', marginTop: 4, fontStyle: 'italic' }}>
+                      {t('guardian.feed.request_review_note', 'Admin Note')}: {r.review_note}
+                    </div>
+                  )}
+                </div>
+              ))}
             </div>
           )}
         </div>

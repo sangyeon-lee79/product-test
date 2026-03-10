@@ -1,17 +1,85 @@
 import { useEffect, useState, useCallback } from 'react';
-import { api, type FeedType, type FeedManufacturer, type FeedBrand, type FeedModel, type FeedNutrition } from '../lib/api';
+import { api, type FeedType, type FeedManufacturer, type FeedBrand, type FeedModel, type FeedNutrition, type FeedRegistrationRequest } from '../lib/api';
 import { useI18n, useT, SUPPORTED_LANGS, LANG_LABELS } from '../lib/i18n';
 import { emptyTrans, itemLabel, sortByModelCountDesc, i18nRowToTranslations, autoTranslate, findMissingTranslationLangs } from '../lib/catalogUtils';
 import { TranslationFields } from '../components/TranslationFields';
 import { CatalogCol, CatalogStatusBadge, CatalogModelDetail, type ModelDetailField } from '../components/CatalogGrid';
 
 type ModalTarget = 'manufacturer' | 'brand' | 'model';
+type FeedPageTab = 'catalog' | 'requests';
 
 export default function FeedPage() {
   const t = useT();
   const { lang } = useI18n();
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
+  const [pageTab, setPageTab] = useState<FeedPageTab>('catalog');
+
+  // ── Request Management State ──
+  const [requests, setRequests] = useState<FeedRegistrationRequest[]>([]);
+  const [requestFilter, setRequestFilter] = useState<string>('');
+  const [selectedRequest, setSelectedRequest] = useState<FeedRegistrationRequest | null>(null);
+  const [rejectNote, setRejectNote] = useState('');
+  const [showRejectForm, setShowRejectForm] = useState(false);
+  const [requestProcessing, setRequestProcessing] = useState(false);
+
+  const pendingCount = requests.filter((r) => r.status === 'pending').length;
+
+  const loadRequests = useCallback(async (status?: string) => {
+    try {
+      const rows = await api.feedRequests.admin.list(status ? { status } : undefined);
+      setRequests(rows);
+    } catch (e) {
+      setError(String(e));
+    }
+  }, []);
+
+  useEffect(() => {
+    if (pageTab === 'requests') void loadRequests(requestFilter || undefined);
+  }, [pageTab, requestFilter, loadRequests]);
+
+  // Load pending count on mount
+  useEffect(() => {
+    void (async () => {
+      try {
+        const rows = await api.feedRequests.admin.list({ status: 'pending' });
+        setRequests((prev) => prev.length ? prev : rows);
+      } catch { /* ignore */ }
+    })();
+  }, []);
+
+  async function handleApprove(id: string) {
+    if (!confirm(t('admin.feed.approve_confirm', 'Register this feed to the catalog?'))) return;
+    setRequestProcessing(true);
+    try {
+      await api.feedRequests.admin.approve(id);
+      flash(t('admin.feed.approved_success', 'Approved and registered to catalog.'));
+      void loadRequests(requestFilter || undefined);
+      setSelectedRequest(null);
+    } catch (e) {
+      setError(String(e));
+    } finally {
+      setRequestProcessing(false);
+    }
+  }
+
+  async function handleReject(id: string) {
+    setRequestProcessing(true);
+    try {
+      await api.feedRequests.admin.reject(id, { review_note: rejectNote });
+      flash(t('admin.feed.rejected_success', 'Request rejected.'));
+      setRejectNote('');
+      setShowRejectForm(false);
+      void loadRequests(requestFilter || undefined);
+      setSelectedRequest(null);
+    } catch (e) {
+      setError(String(e));
+    } finally {
+      setRequestProcessing(false);
+    }
+  }
+
+  const filteredRequests = requestFilter ? requests.filter((r) => r.status === requestFilter) : requests;
 
   const [types, setTypes] = useState<FeedType[]>([]);
   const [manufacturers, setManufacturers] = useState<FeedManufacturer[]>([]);
@@ -403,6 +471,141 @@ export default function FeedPage() {
       <div className="content">
         {error && <div className="alert alert-error">{error}</div>}
         {success && <div className="alert alert-success">{success}</div>}
+
+        {/* ── Tab Bar ── */}
+        <div style={{ display: 'flex', gap: 4, marginBottom: 16, borderBottom: '2px solid var(--border)', paddingBottom: 0 }}>
+          <button
+            style={{ padding: '8px 16px', fontWeight: pageTab === 'catalog' ? 700 : 400, borderBottom: pageTab === 'catalog' ? '2px solid var(--primary)' : '2px solid transparent', background: 'none', border: 'none', borderBottomWidth: 2, borderBottomStyle: 'solid', borderBottomColor: pageTab === 'catalog' ? 'var(--primary)' : 'transparent', cursor: 'pointer', fontSize: 14 }}
+            onClick={() => setPageTab('catalog')}
+          >
+            {t('admin.feed.catalog_tab', 'Feed Catalog')}
+          </button>
+          <button
+            style={{ padding: '8px 16px', fontWeight: pageTab === 'requests' ? 700 : 400, background: 'none', border: 'none', borderBottomWidth: 2, borderBottomStyle: 'solid', borderBottomColor: pageTab === 'requests' ? 'var(--primary)' : 'transparent', cursor: 'pointer', fontSize: 14, position: 'relative' }}
+            onClick={() => setPageTab('requests')}
+          >
+            {t('admin.feed.requests_tab', 'Requests')}
+            {pendingCount > 0 && (
+              <span style={{ position: 'absolute', top: 2, right: -2, background: '#e53935', color: '#fff', fontSize: 10, fontWeight: 700, borderRadius: 10, padding: '1px 6px', minWidth: 18, textAlign: 'center' }}>{pendingCount}</span>
+            )}
+          </button>
+        </div>
+
+        {/* ── Requests Tab ── */}
+        {pageTab === 'requests' && (
+          <div>
+            <div style={{ display: 'flex', gap: 6, marginBottom: 12 }}>
+              {['', 'pending', 'approved', 'rejected'].map((s) => (
+                <button key={s} className={`btn btn-sm ${requestFilter === s ? 'btn-primary' : 'btn-secondary'}`} onClick={() => setRequestFilter(s)}>
+                  {s === '' ? t('common.all', 'All') : s === 'pending' ? t('guardian.feed.request_status_pending', 'Pending') : s === 'approved' ? t('guardian.feed.request_status_approved', 'Approved') : t('guardian.feed.request_status_rejected', 'Rejected')}
+                </button>
+              ))}
+            </div>
+            {filteredRequests.length === 0 && (
+              <div style={{ textAlign: 'center', padding: 40, color: 'var(--text-muted)' }}>{t('admin.feed.no_requests', 'No registration requests.')}</div>
+            )}
+            <div style={{ display: 'grid', gridTemplateColumns: selectedRequest ? '1fr 1fr' : '1fr', gap: 16 }}>
+              {filteredRequests.length > 0 && (
+                <div>
+                  <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
+                    <thead>
+                      <tr style={{ borderBottom: '2px solid var(--border)', textAlign: 'left' }}>
+                        <th style={{ padding: '8px 6px' }}>{t('admin.feed.requester', 'Requester')}</th>
+                        <th style={{ padding: '8px 6px' }}>{t('guardian.feed.request_name', 'Feed Name')}</th>
+                        <th style={{ padding: '8px 6px' }}>{t('guardian.feed.request_manufacturer', 'Manufacturer')}</th>
+                        <th style={{ padding: '8px 6px' }}>{t('admin.feed.request_date', 'Request Date')}</th>
+                        <th style={{ padding: '8px 6px' }}>{t('common.status', 'Status')}</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {filteredRequests.map((r) => (
+                        <tr key={r.id} onClick={() => { setSelectedRequest(r); setShowRejectForm(false); setRejectNote(''); }} style={{ borderBottom: '1px solid var(--border)', cursor: 'pointer', background: selectedRequest?.id === r.id ? 'var(--primary-light, #fffbeb)' : 'transparent' }}>
+                          <td style={{ padding: '8px 6px' }}>{r.requester_email || r.requester_user_id.slice(0, 8)}</td>
+                          <td style={{ padding: '8px 6px', fontWeight: 600 }}>{r.feed_name}</td>
+                          <td style={{ padding: '8px 6px' }}>{r.manufacturer_name || '—'}</td>
+                          <td style={{ padding: '8px 6px' }}>{r.created_at?.slice(0, 10)}</td>
+                          <td style={{ padding: '8px 6px' }}>
+                            <span style={{
+                              fontSize: 11, padding: '2px 8px', borderRadius: 4, fontWeight: 600,
+                              background: r.status === 'approved' ? '#e8f5e9' : r.status === 'rejected' ? '#ffebee' : '#fff8e1',
+                              color: r.status === 'approved' ? '#2e7d32' : r.status === 'rejected' ? '#c62828' : '#f57f17',
+                            }}>
+                              {r.status === 'approved' ? t('guardian.feed.request_status_approved', 'Approved') : r.status === 'rejected' ? t('guardian.feed.request_status_rejected', 'Rejected') : t('guardian.feed.request_status_pending', 'Pending')}
+                            </span>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+              {selectedRequest && (
+                <div style={{ border: '1px solid var(--border)', borderRadius: 12, padding: 16 }}>
+                  <h4 style={{ margin: '0 0 12px', fontSize: 16 }}>{selectedRequest.feed_name}</h4>
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px 16px', fontSize: 13 }}>
+                    <div><strong>{t('admin.feed.requester', 'Requester')}:</strong> {selectedRequest.requester_email || selectedRequest.requester_user_id.slice(0, 8)}</div>
+                    <div><strong>{t('admin.feed.request_date', 'Date')}:</strong> {selectedRequest.created_at?.slice(0, 10)}</div>
+                    {selectedRequest.manufacturer_name && <div><strong>{t('guardian.feed.request_manufacturer', 'Manufacturer')}:</strong> {selectedRequest.manufacturer_name}</div>}
+                    {selectedRequest.brand_name && <div><strong>{t('guardian.feed.request_brand', 'Brand')}:</strong> {selectedRequest.brand_name}</div>}
+                    {selectedRequest.calories_per_100g != null && <div><strong>kcal/100g:</strong> {selectedRequest.calories_per_100g}</div>}
+                    {selectedRequest.protein_pct != null && <div><strong>Protein:</strong> {selectedRequest.protein_pct}%</div>}
+                    {selectedRequest.fat_pct != null && <div><strong>Fat:</strong> {selectedRequest.fat_pct}%</div>}
+                    {selectedRequest.fiber_pct != null && <div><strong>Fiber:</strong> {selectedRequest.fiber_pct}%</div>}
+                    {selectedRequest.moisture_pct != null && <div><strong>Moisture:</strong> {selectedRequest.moisture_pct}%</div>}
+                  </div>
+                  {selectedRequest.reference_url && (
+                    <div style={{ marginTop: 8, fontSize: 13 }}>
+                      <strong>{t('guardian.feed.request_url', 'URL')}:</strong>{' '}
+                      <a href={selectedRequest.reference_url} target="_blank" rel="noopener noreferrer" style={{ color: 'var(--primary)' }}>{selectedRequest.reference_url}</a>
+                    </div>
+                  )}
+                  {selectedRequest.memo && (
+                    <div style={{ marginTop: 8, fontSize: 13 }}><strong>{t('guardian.feed.request_memo', 'Memo')}:</strong> {selectedRequest.memo}</div>
+                  )}
+                  {selectedRequest.review_note && (
+                    <div style={{ marginTop: 8, fontSize: 13, fontStyle: 'italic', color: 'var(--text-secondary)' }}>
+                      <strong>{t('admin.feed.reject_reason', 'Rejection Reason')}:</strong> {selectedRequest.review_note}
+                    </div>
+                  )}
+                  {selectedRequest.status === 'pending' && (
+                    <div style={{ display: 'flex', gap: 8, marginTop: 16, flexWrap: 'wrap' }}>
+                      <button className="btn btn-primary btn-sm" disabled={requestProcessing} onClick={() => void handleApprove(selectedRequest.id)}>
+                        {t('admin.feed.approve', 'Approve')}
+                      </button>
+                      {!showRejectForm ? (
+                        <button className="btn btn-danger btn-sm" onClick={() => setShowRejectForm(true)}>
+                          {t('admin.feed.reject', 'Reject')}
+                        </button>
+                      ) : (
+                        <div style={{ flex: '1 1 100%' }}>
+                          <textarea
+                            className="form-input"
+                            rows={2}
+                            placeholder={t('admin.feed.reject_reason', 'Rejection Reason')}
+                            value={rejectNote}
+                            onChange={(e) => setRejectNote(e.target.value)}
+                            style={{ marginBottom: 8, fontSize: 13 }}
+                          />
+                          <div style={{ display: 'flex', gap: 6 }}>
+                            <button className="btn btn-danger btn-sm" disabled={requestProcessing} onClick={() => void handleReject(selectedRequest.id)}>
+                              {t('admin.feed.reject', 'Reject')}
+                            </button>
+                            <button className="btn btn-sm" onClick={() => { setShowRejectForm(false); setRejectNote(''); }}>
+                              {t('common.cancel', 'Cancel')}
+                            </button>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* ── Catalog Tab (existing content) ── */}
+        {pageTab === 'catalog' && <>
         <div className="alert" style={{ marginBottom: 12 }}>{t('admin.feed.guide')}</div>
 
         <div className="master-explorer-grid" style={{ gridTemplateColumns: 'repeat(4, minmax(0, 1fr))' }}>
@@ -543,6 +746,7 @@ export default function FeedPage() {
             </div>
           </div>
         )}
+      </>}
       </div>
 
       {modal && (

@@ -101,6 +101,7 @@ export default function GuardianMainPage() {
   const [healthSubTab, setHealthSubTab] = useState<'graph' | 'timeline'>('graph');
   const [chartFilters, setChartFilters] = useState<{ weight: boolean; measurement: boolean; feeding: boolean; calories: boolean }>({ weight: true, measurement: true, feeding: true, calories: true });
   const toggleChartFilter = (key: keyof typeof chartFilters) => setChartFilters((prev) => ({ ...prev, [key]: !prev[key] }));
+  const [chartTooltip, setChartTooltip] = useState<{ x: number; y: number; type: 'weight' | 'measurement' | 'feeding' | 'calories'; lines: string[] } | null>(null);
 
   // ── Pagination ──────────────────────────────────────────────────────────
   const PAGE_SIZE = 10;
@@ -816,9 +817,49 @@ export default function GuardianMainPage() {
           {chartFilters.calories && caloriePath && <path d={caloriePath} fill="none" stroke="#d32f2f" strokeWidth="2" strokeLinecap="round" />}
           {chartFilters.calories && cPoints.length === 1 && <circle cx={cPoints[0].x} cy={cPoints[0].y} r="4" fill="#d32f2f" />}
 
-          {/* Data point dots */}
-          {chartFilters.weight && wPoints.map((p, i) => <circle key={`wd-${i}`} cx={p.x} cy={p.y} r="2.5" fill="#1a73e8" />)}
-          {chartFilters.measurement && mPoints.map((p, i) => <circle key={`md-${i}`} cx={p.x} cy={p.y} r="2.5" fill="#ef6c00" />)}
+          {/* Data point dots with tooltip hit targets */}
+          {chartFilters.weight && wPoints.map((p, i) => {
+            const d = sortedWeights[i];
+            return <g key={`wd-${i}`}>
+              <circle cx={p.x} cy={p.y} r="2.5" fill="#1a73e8" />
+              <circle cx={p.x} cy={p.y} r="8" fill="transparent" cursor="pointer"
+                onMouseEnter={() => setChartTooltip({ x: p.x, y: p.y, type: 'weight', lines: [`${fmtDate(d.measured_at)} · ${Number(d.weight_value).toFixed(2)} kg`] })}
+                onMouseLeave={() => setChartTooltip(null)} />
+            </g>;
+          })}
+          {chartFilters.measurement && mPoints.map((p, i) => {
+            const d = sortedMeasurements[i];
+            const ctxLabel = optMeasurementContext.find((o) => o.id === d.measurement_context_id)?.label || '';
+            return <g key={`md-${i}`}>
+              <circle cx={p.x} cy={p.y} r="2.5" fill="#ef6c00" />
+              <circle cx={p.x} cy={p.y} r="8" fill="transparent" cursor="pointer"
+                onMouseEnter={() => setChartTooltip({ x: p.x, y: p.y, type: 'measurement', lines: [`${fmtDateTime(d.measured_at)} · ${Number(d.value).toFixed(1)}`, ...(ctxLabel ? [ctxLabel] : [])] })}
+                onMouseLeave={() => setChartTooltip(null)} />
+            </g>;
+          })}
+          {chartFilters.feeding && fPoints.map((p, i) => {
+            const d = sortedFeedings[i];
+            const cal100 = d.calories_per_100g ?? feedNutrMap.get(d.pet_feed_id!) ?? 0;
+            const kcal = cal100 > 0 ? (Number(d.amount_g) / 100 * cal100).toFixed(0) : '';
+            const feedName = d.feed_nickname || d.model_display_label || d.model_name || '';
+            return <g key={`fd-${i}`}>
+              <circle cx={p.x} cy={p.y} r="2.5" fill="#43a047" />
+              <circle cx={p.x} cy={p.y} r="8" fill="transparent" cursor="pointer"
+                onMouseEnter={() => setChartTooltip({ x: p.x, y: p.y, type: 'feeding', lines: [`${fmtDateTime(d.feeding_time!)} · ${Number(d.amount_g).toFixed(0)}g${kcal ? ` / ${kcal}kcal` : ''}`, ...(feedName ? [feedName] : [])] })}
+                onMouseLeave={() => setChartTooltip(null)} />
+            </g>;
+          })}
+          {chartFilters.calories && cPoints.map((p, i) => {
+            const cp = sortedCalories[i];
+            const fl = feedingWithAmount.find((f) => new Date(f.feeding_time!).getTime() === cp.time);
+            const feedName = fl ? (fl.feed_nickname || fl.model_display_label || fl.model_name || '') : '';
+            return <g key={`cd-${i}`}>
+              <circle cx={p.x} cy={p.y} r="2.5" fill="#d32f2f" />
+              <circle cx={p.x} cy={p.y} r="8" fill="transparent" cursor="pointer"
+                onMouseEnter={() => setChartTooltip({ x: p.x, y: p.y, type: 'calories', lines: [`${cp.cal.toFixed(0)} kcal`, ...(feedName ? [feedName] : [])] })}
+                onMouseLeave={() => setChartTooltip(null)} />
+            </g>;
+          })}
 
           {/* Last-value labels */}
           {chartFilters.weight && lastWeight && (
@@ -860,6 +901,30 @@ export default function GuardianMainPage() {
               </g>
             );
           })}
+
+          {/* SVG Tooltip */}
+          {chartTooltip && (() => {
+            const colors: Record<string, string> = { weight: '#1a73e8', measurement: '#ef6c00', feeding: '#43a047', calories: '#d32f2f' };
+            const clr = colors[chartTooltip.type] || '#333';
+            const lineH = 15;
+            const maxLineLen = Math.max(...chartTooltip.lines.map((l) => l.length));
+            const tipW = Math.min(Math.max(maxLineLen * 6.5 + 16, 100), 280);
+            const tipH = chartTooltip.lines.length * lineH + 12;
+            const flipX = chartTooltip.x + tipW + 12 > width;
+            const flipY = chartTooltip.y - tipH - 8 < 0;
+            const tx = flipX ? chartTooltip.x - tipW - 8 : chartTooltip.x + 8;
+            const ty = flipY ? chartTooltip.y + 8 : chartTooltip.y - tipH - 8;
+            return (
+              <g className="gm-chart-tooltip" style={{ pointerEvents: 'none' }}>
+                <rect x={tx} y={ty} width={tipW} height={tipH} rx="6" fill="#fff" stroke={clr} strokeWidth="1" opacity="0.95" filter="url(#shadow)" />
+                {chartTooltip.lines.map((line, li) => (
+                  <text key={li} x={tx + 8} y={ty + 14 + li * lineH} fontSize="11" fill="#333" fontFamily="system-ui">
+                    {line}
+                  </text>
+                ))}
+              </g>
+            );
+          })()}
         </svg>
         {/* Clickable legend toggles */}
         <div className="gm-chart-legend">

@@ -572,6 +572,33 @@ export interface GlucoseAlert {
   unit: string;
 }
 
+export interface FeedRegistrationRequest {
+  id: string;
+  requester_user_id: string;
+  requester_email?: string;
+  pet_id?: string | null;
+  feed_name: string;
+  feed_type_item_id?: string | null;
+  manufacturer_name?: string | null;
+  brand_name?: string | null;
+  calories_per_100g?: number | null;
+  protein_pct?: number | null;
+  fat_pct?: number | null;
+  fiber_pct?: number | null;
+  moisture_pct?: number | null;
+  reference_url?: string | null;
+  memo?: string | null;
+  status: string;
+  reviewed_by_user_id?: string | null;
+  review_note?: string | null;
+  reviewed_at?: string | null;
+  approved_manufacturer_id?: string | null;
+  approved_brand_id?: string | null;
+  approved_model_id?: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
 export interface PetLog {
   id: string;
   pet_id: string;

@@ -12,6 +12,7 @@ export type {
   DeviceType, DeviceManufacturer, DeviceBrand, DeviceModel, MeasurementUnit, GuardianDevice,
   FeedType, FeedManufacturer, FeedBrand, FeedModel,
   PetFeed, FeedNutrition, FeedingLog, FeedingMixFavorite,
+  FeedRegistrationRequest,
   PetLog, GlucoseAlert, MemberSummary, MemberRecord, GoogleSettingItem,
 } from '../types/api';
 import type {
@@ -25,6 +26,7 @@ import type {
   DeviceType, DeviceManufacturer, DeviceBrand, DeviceModel, MeasurementUnit, GuardianDevice,
   FeedType, FeedManufacturer, FeedBrand, FeedModel,
   PetFeed, FeedNutrition, FeedingLog, FeedingMixFavorite,
+  FeedRegistrationRequest,
   PetLog, GlucoseAlert, MemberSummary, MemberRecord, GoogleSettingItem,
 } from '../types/api';
 
@@ -789,6 +791,23 @@ export const api = {
         request<FeedModel[]>(`/api/v1/feed-catalog/models${buildQuery({ feed_type_id: filters?.feed_type_id, manufacturer_id: filters?.manufacturer_id, brand_id: filters?.brand_id, lang })}`),
       nutrition: (modelId: string) =>
         request<FeedNutrition | null>(`/api/v1/feed-catalog/models/${modelId}/nutrition`),
+    },
+  },
+
+  feedRequests: {
+    create: (data: { feed_name: string; pet_id?: string; feed_type_item_id?: string; manufacturer_name?: string; brand_name?: string; calories_per_100g?: number; protein_pct?: number; fat_pct?: number; fiber_pct?: number; moisture_pct?: number; reference_url?: string; memo?: string }) =>
+      request<FeedRegistrationRequest>('/api/v1/feed-requests', { method: 'POST', body: JSON.stringify(data) }),
+    list: () =>
+      request<FeedRegistrationRequest[]>('/api/v1/feed-requests'),
+    admin: {
+      list: (params?: { status?: string }) =>
+        request<FeedRegistrationRequest[]>(`/api/v1/admin/feed-requests${buildQuery({ status: params?.status })}`),
+      get: (id: string) =>
+        request<FeedRegistrationRequest>(`/api/v1/admin/feed-requests/${id}`),
+      approve: (id: string) =>
+        request<FeedRegistrationRequest>(`/api/v1/admin/feed-requests/${id}/approve`, { method: 'POST' }),
+      reject: (id: string, data: { review_note?: string }) =>
+        request<FeedRegistrationRequest>(`/api/v1/admin/feed-requests/${id}/reject`, { method: 'POST', body: JSON.stringify(data) }),
     },
   },
 };

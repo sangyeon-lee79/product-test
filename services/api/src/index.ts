@@ -112,6 +112,12 @@ async function dispatch(request: Request, env: Env, url: URL): Promise<Response>
     return handlePets(request, env, url);
   }
 
+  // Feed Registration Requests (guardian, before /feeds prefix)
+  if (path.startsWith('/api/v1/feed-requests')) {
+    const { handleFeedRequests } = await import('./routes/feedRequests');
+    return handleFeedRequests(request, env, url);
+  }
+
   // S10: 피드
   if (path.startsWith('/api/v1/feeds')) {
     const { handleFeeds } = await import('./routes/feeds');
@@ -171,6 +177,10 @@ async function dispatchAdmin(request: Request, env: Env, url: URL, path: string)
   if (path.startsWith('/api/v1/admin/devices')) {
     const { handleDevices } = await import('./routes/devices');
     return handleDevices(request, env, url);
+  }
+  if (path.startsWith('/api/v1/admin/feed-requests')) {
+    const { handleFeedRequests } = await import('./routes/feedRequests');
+    return handleFeedRequests(request, env, url);
   }
   if (path.startsWith('/api/v1/admin/feed-catalog')) {
     const { handleFeedCatalog } = await import('./routes/feedCatalog');
