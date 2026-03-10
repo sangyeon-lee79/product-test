@@ -213,7 +213,7 @@ async function listFeeds(request: Request, env: Env, url: URL): Promise<Response
         NULL as booking_supplier_email,
         NULL as booking_guardian_id,
         NULL as booking_supplier_id,
-        CASE WHEN ? IS NULL THEN false ELSE EXISTS(
+        CASE WHEN CAST(? AS TEXT) IS NULL THEN false ELSE EXISTS(
           SELECT 1 FROM feed_likes fl2 WHERE fl2.post_id = f.id AND fl2.user_id = ?
         ) END as liked_by_me,
         (SELECT COUNT(*) FROM feed_likes fl WHERE fl.post_id = f.id) as like_count,
@@ -262,7 +262,7 @@ async function listFeeds(request: Request, env: Env, url: URL): Promise<Response
       bs.email as booking_supplier_email,
       b.guardian_id as booking_guardian_id,
       b.supplier_id as booking_supplier_id,
-      CASE WHEN ? IS NULL THEN false ELSE EXISTS(
+      CASE WHEN CAST(? AS TEXT) IS NULL THEN false ELSE EXISTS(
         SELECT 1 FROM feed_likes fl2 WHERE fl2.feed_id = f.id AND fl2.user_id = ?
       ) END as liked_by_me,
       (SELECT COUNT(*) FROM feed_likes fl WHERE fl.feed_id = f.id) as like_count,

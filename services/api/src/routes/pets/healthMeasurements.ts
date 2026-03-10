@@ -27,7 +27,7 @@ async function resolveGlucoseJudgement(
        AND measurement_item_id = ?
        AND unit_item_id = ?
        AND status = 'active'
-       AND (? IS NULL OR context_item_id = ? OR context_item_id IS NULL)
+       AND (CAST(? AS TEXT) IS NULL OR context_item_id = ? OR context_item_id IS NULL)
        AND (species_item_id IS NULL OR species_item_id = ?)
        AND (min_value IS NULL OR ? >= min_value)
        AND (max_value IS NULL OR ? <= max_value)
@@ -69,7 +69,7 @@ async function resolveMeasurementJudgement(
        AND measurement_item_id = ?
        AND unit_item_id = ?
        AND status = 'active'
-       AND (? IS NULL OR context_item_id = ? OR context_item_id IS NULL)
+       AND (CAST(? AS TEXT) IS NULL OR context_item_id = ? OR context_item_id IS NULL)
        AND (species_item_id IS NULL OR species_item_id = ?)
        AND (min_value IS NULL OR ? >= min_value)
        AND (max_value IS NULL OR ? <= max_value)

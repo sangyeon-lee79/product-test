@@ -86,7 +86,7 @@ async function listPublicItems(env: Env, categoryKey: string, parentId?: string 
        END
      WHERE mi.category_id = ?
        AND mi.status = 'active'
-       AND (? IS NULL OR mi.parent_item_id = ?)
+       AND (CAST(? AS TEXT) IS NULL OR mi.parent_item_id = ?)
      ORDER BY mi.sort_order, mi.code`
   ).bind(categoryId, parentId ?? null, parentId ?? null).all();
   return ok(rows.results);
@@ -322,11 +322,11 @@ export async function handleMaster(request: Request, env: Env, url: URL): Promis
           ELSE ('master.' || mc.code || '.' || mi.code)
         END
       WHERE mi.category_id = ? AND mi.status = 'active'
-        AND (? IS NULL OR mi.parent_item_id = ?)
-        AND (? IS NULL OR mi.metadata::jsonb->>'item_level' = ?)
-        AND (? IS NULL OR mi.metadata::jsonb->>'business_category_l1_id' = ?)
-        AND (? IS NULL OR mi.metadata::jsonb->>'pet_type_l1_id' = ?)
-        AND (? IS NULL OR mi.metadata::jsonb->>'pet_type_l2_id' = ?)
+        AND (CAST(? AS TEXT) IS NULL OR mi.parent_item_id = ?)
+        AND (CAST(? AS TEXT) IS NULL OR mi.metadata::jsonb->>'item_level' = ?)
+        AND (CAST(? AS TEXT) IS NULL OR mi.metadata::jsonb->>'business_category_l1_id' = ?)
+        AND (CAST(? AS TEXT) IS NULL OR mi.metadata::jsonb->>'pet_type_l1_id' = ?)
+        AND (CAST(? AS TEXT) IS NULL OR mi.metadata::jsonb->>'pet_type_l2_id' = ?)
       ORDER BY mi.sort_order, mi.code
     `).bind(
       cat.id,
