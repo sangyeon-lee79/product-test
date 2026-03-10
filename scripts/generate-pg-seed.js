@@ -114,9 +114,9 @@ function escapeValue(val, colName) {
 
 // ON CONFLICT 키 매핑
 const CONFLICT_KEYS = {
-  'master_categories': 'id',
-  'master_items': 'id',
-  'i18n_translations': 'id',
+  'master_categories': 'code',
+  'master_items': 'category_id, code',
+  'i18n_translations': 'key',
   'device_types': 'id',
   'device_manufacturers': 'id',
   'device_brands': 'id',
