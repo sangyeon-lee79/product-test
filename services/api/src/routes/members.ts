@@ -75,8 +75,8 @@ async function listMembers(env: Env, me: JwtPayload, url: URL): Promise<Response
       COALESCE(ra.id, '') AS role_application_id,
       COALESCE(ra.status, '') AS role_application_status,
       COALESCE(ra.requested_role, '') AS requested_role,
-      COALESCE(l1.display_label, l1.ko, l1.key, '') AS business_l1_label,
-      COALESCE(l2.display_label, l2.ko, l2.key, '') AS business_l2_label
+      COALESCE(l1.display_label, l1.ko, l1.code, '') AS business_l1_label,
+      COALESCE(l2.display_label, l2.ko, l2.code, '') AS business_l2_label
      FROM users u
      LEFT JOIN user_profiles up ON up.user_id = u.id
      LEFT JOIN user_account_details uad ON uad.user_id = u.id
@@ -88,14 +88,14 @@ async function listMembers(env: Env, me: JwtPayload, url: URL): Promise<Response
        LIMIT 1
      )
      LEFT JOIN (
-       SELECT mi.id, mi.key, it.ko, it.en, COALESCE(it.ko, mi.key) AS display_label
+       SELECT mi.id, mi.code, it.ko, it.en, COALESCE(it.ko, mi.code) AS display_label
        FROM master_items mi
-       LEFT JOIN i18n_translations it ON it.key = 'master.' || mi.key
+       LEFT JOIN i18n_translations it ON it.key = 'master.business_category.' || mi.code
      ) l1 ON l1.id = pp.business_category_l1_id
      LEFT JOIN (
-       SELECT mi.id, mi.key, it.ko, it.en, COALESCE(it.ko, mi.key) AS display_label
+       SELECT mi.id, mi.code, it.ko, it.en, COALESCE(it.ko, mi.code) AS display_label
        FROM master_items mi
-       LEFT JOIN i18n_translations it ON it.key = 'master.' || mi.key
+       LEFT JOIN i18n_translations it ON it.key = 'master.business_category.' || mi.code
      ) l2 ON l2.id = pp.business_category_l2_id
      ${clause}
      ORDER BY u.created_at DESC`
