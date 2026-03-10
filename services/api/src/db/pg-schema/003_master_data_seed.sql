@@ -59,7 +59,7 @@ VALUES
   ('dt-insulin-pen', 'insulin_pen', '인슐린 펜', 'Insulin Pen', 'active', 3, '2026-03-07 12:37:20', '2026-03-07 12:37:20'),
   ('dt-pet-scale', 'pet_scale', '반려동물 체중계', 'Pet Scale', 'active', 4, '2026-03-07 12:37:20', '2026-03-07 12:37:20'),
   ('dt-heart-rate', 'heart_rate_monitor', '심박수 모니터', 'Heart Rate Monitor', 'active', 5, '2026-03-07 12:37:20', '2026-03-07 12:37:20')
-ON CONFLICT (category_id, code) DO NOTHING;
+ON CONFLICT (key) DO NOTHING;
 
 -- ---------------------------------------------------------------------------
 -- currencies (10 rows)
