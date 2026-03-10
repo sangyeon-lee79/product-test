@@ -249,6 +249,22 @@ export interface PublicGoogleConfig {
   google_oauth_redirect_uri: string;
 }
 
+export interface PublicKakaoConfig {
+  kakao_rest_api_key: string;
+  kakao_javascript_key: string;
+  kakao_redirect_uri: string;
+}
+
+export interface PublicAppleConfig {
+  apple_service_id: string;
+  apple_redirect_uri: string;
+}
+
+export interface PlatformSettingItem {
+  value: string;
+  updated_at: string | null;
+}
+
 export interface OAuthLoginResponse {
   user_id: string;
   role: string;

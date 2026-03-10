@@ -208,6 +208,20 @@ tbody tr:hover { background: #FAF7F2; }
 .modal-body { padding: 20px; }
 .modal-footer { padding: 14px 20px; border-top: 1px solid var(--border); display: flex; justify-content: flex-end; gap: 8px; }
 
+/* ── Auth Modal ────────────────────────────────────────────── */
+.auth-modal { max-width: 480px; }
+.auth-modal-body { max-height: 70vh; overflow-y: auto; }
+.auth-mode-switch { text-align: center; margin-top: 16px; font-size: 13px; color: var(--text-muted); }
+.auth-mode-switch-link {
+  background: none; border: none; cursor: pointer; color: var(--primary);
+  font-size: 13px; font-weight: 600; text-decoration: underline; padding: 0;
+}
+.auth-mode-switch-link:hover { opacity: .8; }
+@media (max-width: 520px) {
+  .auth-modal { max-width: calc(100vw - 32px); }
+  .auth-modal-body { max-height: 80vh; }
+}
+
 /* ── Alert ──────────────────────────────────────────────────── */
 .alert { padding: 10px 14px; border-radius: 7px; font-size: 13px; margin-bottom: 16px; }
 .alert-error   { background: #FEF2F2; color: #991B1B; border: 1px solid #FECACA; }
@@ -1230,8 +1244,59 @@ html[data-theme="dark"] .ig-card-image { background: #333; }
 .ig-feed-tab:hover { color: var(--text); }
 .ig-feed-tab.active { color: var(--text); border-bottom-color: var(--text); }
 .ig-feed-tab:disabled { opacity: .5; cursor: not-allowed; }
-.ig-filter-row { display: flex; gap: 6px; margin-bottom: 12px; }
-.ig-filter-row .form-select { font-size: 12px; padding: 5px 8px; border-radius: 6px; flex: 1; }
+/* ── Feed Filter Pills ──────────────────────────────────────── */
+.ig-filter-row {
+  display: flex; flex-direction: column; gap: 6px;
+  margin-bottom: 14px; padding: 0;
+}
+.ig-filter-group {
+  display: flex; align-items: center; gap: 6px;
+  overflow-x: auto; scrollbar-width: none; -ms-overflow-style: none;
+  padding-bottom: 2px;
+}
+.ig-filter-group::-webkit-scrollbar { display: none; }
+.ig-filter-group-label {
+  font-size: 11px; font-weight: 600; color: var(--text-muted);
+  letter-spacing: .3px; white-space: nowrap; min-width: fit-content;
+  padding: 0 2px;
+}
+.ig-filter-pill {
+  display: inline-flex; align-items: center; gap: 4px;
+  padding: 5px 14px; border-radius: 20px;
+  font-size: 12px; font-weight: 500; line-height: 1.2;
+  white-space: nowrap; cursor: pointer;
+  border: 1.5px solid var(--border);
+  background: transparent; color: var(--text-muted);
+  transition: all .18s ease;
+  font-family: inherit;
+}
+.ig-filter-pill:hover {
+  border-color: rgba(217,119,6,.4);
+  color: var(--text);
+  background: rgba(217,119,6,.04);
+}
+.ig-filter-pill:active { transform: scale(.96); }
+.ig-filter-pill.active {
+  background: var(--primary);
+  border-color: var(--primary);
+  color: #fff;
+  box-shadow: 0 1px 4px rgba(217,119,6,.25);
+}
+.ig-filter-pill.active:hover {
+  background: var(--primary-dark);
+  border-color: var(--primary-dark);
+}
+html[data-theme="dark"] .ig-filter-pill {
+  border-color: var(--border);
+  color: var(--text-muted);
+}
+html[data-theme="dark"] .ig-filter-pill:hover {
+  border-color: rgba(217,119,6,.5);
+  background: rgba(217,119,6,.08);
+}
+html[data-theme="dark"] .ig-filter-pill.active {
+  box-shadow: 0 1px 6px rgba(217,119,6,.3);
+}
 
 /* ── Instagram Feed Card ────────────────────────────────────── */
 .ig-card {
@@ -2088,6 +2153,8 @@ html[data-theme="dark"] .gm-timeline::before { background: linear-gradient(to bo
   .ig-feed-col .ig-story-bar { padding-left: 12px; }
   .ig-feed-tabs { margin: 0 0 8px; }
   .ig-filter-row { padding: 0 12px; }
+  .ig-filter-pill { padding: 4px 10px; font-size: 11px; }
+  .ig-filter-group-label { font-size: 10px; }
   .provider-page {
     padding: 12px !important;
   }

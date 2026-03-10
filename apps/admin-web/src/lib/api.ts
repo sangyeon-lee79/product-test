@@ -14,6 +14,7 @@ export type {
   PetFeed, FeedNutrition, FeedingLog, FeedingMixFavorite,
   FeedRegistrationRequest,
   PetLog, GlucoseAlert, MemberSummary, MemberRecord, GoogleSettingItem, PublicGoogleConfig, OAuthLoginResponse,
+  PublicKakaoConfig, PublicAppleConfig, PlatformSettingItem,
 } from '../types/api';
 import type {
   I18nRow, MasterCategory, MasterItem, Country, Currency,
@@ -28,6 +29,7 @@ import type {
   PetFeed, FeedNutrition, FeedingLog, FeedingMixFavorite,
   FeedRegistrationRequest,
   PetLog, GlucoseAlert, MemberSummary, MemberRecord, GoogleSettingItem, PublicGoogleConfig, OAuthLoginResponse,
+  PlatformSettingItem,
 } from '../types/api';
 
 const API_BASE = getApiBase();
@@ -333,6 +335,8 @@ export const api = {
   feeds: {
     list: (params?: { feed_type?: string; business_category_id?: string; pet_type_id?: string; tab?: string; limit?: number }) =>
       request<{ feeds: FeedPost[] }>(`/api/v1/feeds${buildQuery({ feed_type: params?.feed_type, business_category_id: params?.business_category_id, pet_type_id: params?.pet_type_id, tab: params?.tab, limit: params?.limit })}`),
+    filters: (lang?: string) =>
+      request<{ business_categories: { id: string; code: string; i18n_key: string; label: string }[]; pet_types: { id: string; code: string; i18n_key: string; label: string }[] }>(`/api/v1/feeds/filters${buildQuery({ lang })}`),
     like: (feedId: string) =>
       request<{ liked: boolean }>(`/api/v1/feeds/${feedId}/like`, { method: 'POST' }),
     unlike: (feedId: string) =>
@@ -699,6 +703,46 @@ export const api = {
         request<{ ok: boolean; translated_text: string }>('/api/v1/admin/settings/google/test-translate', {
           method: 'POST',
           body: JSON.stringify(data),
+        }),
+    },
+    kakao: {
+      get: () =>
+        request<{ settings: Record<string, PlatformSettingItem> }>('/api/v1/admin/settings/kakao'),
+      update: (data: {
+        kakao_rest_api_key?: string;
+        kakao_javascript_key?: string;
+        kakao_redirect_uri?: string;
+        kakao_verified_at?: string;
+      }) =>
+        request<{ updated: boolean; updated_at: string }>('/api/v1/admin/settings/kakao', {
+          method: 'PUT',
+          body: JSON.stringify(data),
+        }),
+      test: () =>
+        request<{ ok: boolean; verified_at: string }>('/api/v1/admin/settings/kakao/test', {
+          method: 'POST',
+          body: '{}',
+        }),
+    },
+    apple: {
+      get: () =>
+        request<{ settings: Record<string, PlatformSettingItem> }>('/api/v1/admin/settings/apple'),
+      update: (data: {
+        apple_service_id?: string;
+        apple_team_id?: string;
+        apple_key_id?: string;
+        apple_private_key?: string;
+        apple_redirect_uri?: string;
+        apple_verified_at?: string;
+      }) =>
+        request<{ updated: boolean; updated_at: string }>('/api/v1/admin/settings/apple', {
+          method: 'PUT',
+          body: JSON.stringify(data),
+        }),
+      test: () =>
+        request<{ ok: boolean; verified_at: string }>('/api/v1/admin/settings/apple/test', {
+          method: 'POST',
+          body: '{}',
         }),
     },
   },

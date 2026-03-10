@@ -3,9 +3,10 @@ import { Link, useNavigate } from 'react-router-dom';
 import { api, type FeedComment, type FeedPost } from '../lib/api';
 import { getStoredRole, isLoggedIn } from '../lib/auth';
 import { LANG_LABELS, SUPPORTED_LANGS, useI18n, useT } from '../lib/i18n';
+import AuthModal from '../components/AuthModal';
 
 type FeedTab = 'all' | 'friends';
-type Option = { id: string; key?: string | null; fallbackLabel: string };
+type FilterOption = { id: string; code: string; i18n_key: string; label: string };
 
 function parseJwtSub(): string | null {
   const token = localStorage.getItem('access_token');
@@ -54,8 +55,8 @@ export default function PublicHome() {
   const [tab, setTab]         = useState<FeedTab>('all');
   const [businessCategoryId, setBusinessCategoryId] = useState('');
   const [petTypeId, setPetTypeId]                   = useState('');
-  const [businessOptions, setBusinessOptions]       = useState<Option[]>([]);
-  const [petTypeOptions, setPetTypeOptions]         = useState<Option[]>([]);
+  const [businessOptions, setBusinessOptions]       = useState<FilterOption[]>([]);
+  const [petTypeOptions, setPetTypeOptions]         = useState<FilterOption[]>([]);
   const [commentMap, setCommentMap]   = useState<Record<string, FeedComment[]>>({});
   const [openComments, setOpenComments] = useState<Record<string, boolean>>({});
   const [commentInput, setCommentInput] = useState<Record<string, string>>({});
@@ -64,6 +65,10 @@ export default function PublicHome() {
   const [friendEmail, setFriendEmail]   = useState('');
   const [friendMessage, setFriendMessage] = useState('');
   const [isDark, setIsDark] = useState(() => localStorage.getItem('petfolio-theme') === 'dark');
+  const [authModalOpen, setAuthModalOpen] = useState(false);
+  const [authModalMode, setAuthModalMode] = useState<'login' | 'signup'>('login');
+
+  const openAuthModal = (mode: 'login' | 'signup') => { setAuthModalMode(mode); setAuthModalOpen(true); };
 
   const loggedIn   = isLoggedIn();
   const role       = getStoredRole();
@@ -116,31 +121,22 @@ export default function PublicHome() {
   async function loadFeed(nextTab = tab, nextBusiness = businessCategoryId, nextPetType = petTypeId) {
     setLoading(true); setError('');
     try {
-      const listRes   = await api.feeds.list({ tab: nextTab, business_category_id: nextBusiness || undefined, pet_type_id: nextPetType || undefined, limit: 40 });
-      const optionRes = await api.feeds.list({ limit: 100 }).catch(() => ({ feeds: [] as FeedPost[] }));
-      const base = listRes.feeds || [];
-      const all  = optionRes.feeds || [];
-      setFeeds(base);
-      const bMap = new Map<string, string>();
-      const pMap = new Map<string, string>();
-      for (const row of all) {
-        if (row.business_category_id) bMap.set(row.business_category_id, `${row.business_category_key || ''}|||${row.business_category_ko || row.business_category_key || row.business_category_id}`);
-        if (row.pet_type_id)          pMap.set(row.pet_type_id,          `${row.pet_type_key || ''}|||${row.pet_type_ko || row.pet_type_key || row.pet_type_id}`);
-      }
-      setBusinessOptions(Array.from(bMap.entries()).map(([id, encoded]) => {
-        const [key, fallbackLabel] = encoded.split('|||');
-        return { id, key: key || null, fallbackLabel };
-      }));
-      setPetTypeOptions(Array.from(pMap.entries()).map(([id, encoded]) => {
-        const [key, fallbackLabel] = encoded.split('|||');
-        return { id, key: key || null, fallbackLabel };
-      }));
+      const listRes = await api.feeds.list({ tab: nextTab, business_category_id: nextBusiness || undefined, pet_type_id: nextPetType || undefined, limit: 40 });
+      setFeeds(listRes.feeds || []);
     } catch (e) { setError(uiErrorMessage(e, t('public.error.feed_load', '피드 데이터를 불러오지 못했습니다.'))); }
     finally { setLoading(false); }
   }
 
-  useEffect(() => { loadFeed(); }, []);
-  useEffect(() => { void loadFeed(tab, businessCategoryId, petTypeId); }, [lang]);
+  async function loadFilters() {
+    try {
+      const res = await api.feeds.filters(lang);
+      setBusinessOptions(res.business_categories || []);
+      setPetTypeOptions(res.pet_types || []);
+    } catch { /* ignore — filters are optional */ }
+  }
+
+  useEffect(() => { loadFeed(); loadFilters(); }, []);
+  useEffect(() => { void loadFeed(tab, businessCategoryId, petTypeId); loadFilters(); }, [lang]);
 
   async function toggleLike(feed: FeedPost) {
     if (!loggedIn) return;
@@ -217,7 +213,7 @@ export default function PublicHome() {
         <div className="ig-hero-mini">
           <h3>{t('public.hero.title', '반려동물의 삶을')}<br />{t('public.hero.title_2', '아름답게 기록하다')}</h3>
           <p>{t('public.hero.sub', 'SNS + 포트폴리오 아카이브')}</p>
-          <Link to="/signup" className="btn btn-primary btn-sm" style={{ width: '100%', justifyContent: 'center' }}>{t('public.cta.start', '시작하기')}</Link>
+          <button className="btn btn-primary btn-sm" style={{ width: '100%', justifyContent: 'center' }} onClick={() => openAuthModal('signup')}>{t('public.cta.start', '시작하기')}</button>
         </div>
       )}
 
@@ -234,7 +230,7 @@ export default function PublicHome() {
           }
           const handleNavClick = () => {
             if (!loggedIn) {
-              navigate('/login');
+              openAuthModal('login');
               return;
             }
             if (item.label === t('public.nav.profile', '프로필') || item.label === t('public.nav.mypet', '내 펫')) {
@@ -268,10 +264,10 @@ export default function PublicHome() {
           </select>
         </div>
         {!loggedIn && (
-          <Link to="/login" className="ig-nav-item">
+          <button className="ig-nav-item" onClick={() => openAuthModal('login')}>
             <span className="ig-nav-icon">🔑</span>
             <span>{t('public.auth.login', '로그인')}</span>
-          </Link>
+          </button>
         )}
         <Link to="/admin/login" className="ig-nav-item" style={{ opacity: .5 }}>
           <span className="ig-nav-icon">⚙️</span>
@@ -474,27 +470,43 @@ export default function PublicHome() {
             </button>
           </div>
 
-          {/* Compact filters */}
-          <div className="ig-filter-row">
-            <select className="form-select" value={businessCategoryId}
-              onChange={(e) => { const v = e.target.value; setBusinessCategoryId(v); loadFeed(tab, v, petTypeId); }}>
-              <option value="">{t('public.filter.business_all', '업종 전체')}</option>
-              {businessOptions.map((o) => (
-                <option key={o.id} value={o.id}>
-                  {translateMasterLabel(o.key, o.fallbackLabel, o.id)}
-                </option>
-              ))}
-            </select>
-            <select className="form-select" value={petTypeId}
-              onChange={(e) => { const v = e.target.value; setPetTypeId(v); loadFeed(tab, businessCategoryId, v); }}>
-              <option value="">{t('public.filter.pet_all', '펫 유형 전체')}</option>
-              {petTypeOptions.map((o) => (
-                <option key={o.id} value={o.id}>
-                  {translateMasterLabel(o.key, o.fallbackLabel, o.id)}
-                </option>
-              ))}
-            </select>
-          </div>
+          {/* Filter pills */}
+          {(businessOptions.length > 0 || petTypeOptions.length > 0) && (
+            <div className="ig-filter-row">
+              {businessOptions.length > 0 && (
+                <div className="ig-filter-group">
+                  <span className="ig-filter-group-label">{t('public.filter.business', '업종')}</span>
+                  <button
+                    className={`ig-filter-pill${businessCategoryId === '' ? ' active' : ''}`}
+                    onClick={() => { setBusinessCategoryId(''); loadFeed(tab, '', petTypeId); }}
+                  >{t('public.filter.all', '전체')}</button>
+                  {businessOptions.map((o) => (
+                    <button
+                      key={o.id}
+                      className={`ig-filter-pill${businessCategoryId === o.id ? ' active' : ''}`}
+                      onClick={() => { const v = businessCategoryId === o.id ? '' : o.id; setBusinessCategoryId(v); loadFeed(tab, v, petTypeId); }}
+                    >{translateMasterLabel(o.i18n_key, o.label, o.code)}</button>
+                  ))}
+                </div>
+              )}
+              {petTypeOptions.length > 0 && (
+                <div className="ig-filter-group">
+                  <span className="ig-filter-group-label">{t('public.filter.pet_type', '펫 유형')}</span>
+                  <button
+                    className={`ig-filter-pill${petTypeId === '' ? ' active' : ''}`}
+                    onClick={() => { setPetTypeId(''); loadFeed(tab, businessCategoryId, ''); }}
+                  >{t('public.filter.all', '전체')}</button>
+                  {petTypeOptions.map((o) => (
+                    <button
+                      key={o.id}
+                      className={`ig-filter-pill${petTypeId === o.id ? ' active' : ''}`}
+                      onClick={() => { const v = petTypeId === o.id ? '' : o.id; setPetTypeId(v); loadFeed(tab, businessCategoryId, v); }}
+                    >{translateMasterLabel(o.i18n_key, o.label, o.code)}</button>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
 
           {error && <div className="alert alert-error">{error}</div>}
 
@@ -528,8 +540,8 @@ export default function PublicHome() {
             </div>
           ) : (
             <div style={{ display: 'flex', gap: 8, marginBottom: 20 }}>
-              <Link to="/login"  className="btn btn-secondary btn-sm" style={{ flex: 1, justifyContent: 'center' }}>{t('public.auth.login', '로그인')}</Link>
-              <Link to="/signup" className="btn btn-primary btn-sm"   style={{ flex: 1, justifyContent: 'center' }}>{t('public.cta.start', '시작하기')}</Link>
+              <button className="btn btn-secondary btn-sm" style={{ flex: 1, justifyContent: 'center' }} onClick={() => openAuthModal('login')}>{t('public.auth.login', '로그인')}</button>
+              <button className="btn btn-primary btn-sm"   style={{ flex: 1, justifyContent: 'center' }} onClick={() => openAuthModal('signup')}>{t('public.cta.start', '시작하기')}</button>
             </div>
           )}
 
@@ -581,10 +593,17 @@ export default function PublicHome() {
       <nav className="ig-bottom-tabbar">
         <Link to="/"        className="ig-tabbar-item active">🏠</Link>
         <Link to="/explore" className="ig-tabbar-item">🔍</Link>
-        <button className="ig-tabbar-item" onClick={() => navigate(loggedIn ? '/guardian' : '/login')} aria-label={loggedIn ? t('public.nav.mypet', '내 펫') : t('public.auth.login', '로그인')}>✏️</button>
-        <button className="ig-tabbar-item" onClick={() => navigate(loggedIn ? '/' : '/login')} aria-label={loggedIn ? t('public.nav.alerts', '알림') : t('public.auth.login', '로그인')}>{loggedIn ? '🔔' : '🔑'}</button>
-        <button className="ig-tabbar-item" onClick={() => navigate(loggedIn ? '/guardian' : '/login')} aria-label={loggedIn ? t('public.nav.profile', '프로필') : t('public.auth.login', '로그인')}>👤</button>
+        <button className="ig-tabbar-item" onClick={() => loggedIn ? navigate('/guardian') : openAuthModal('login')} aria-label={loggedIn ? t('public.nav.mypet', '내 펫') : t('public.auth.login', '로그인')}>✏️</button>
+        <button className="ig-tabbar-item" onClick={() => loggedIn ? navigate('/') : openAuthModal('login')} aria-label={loggedIn ? t('public.nav.alerts', '알림') : t('public.auth.login', '로그인')}>{loggedIn ? '🔔' : '🔑'}</button>
+        <button className="ig-tabbar-item" onClick={() => loggedIn ? navigate('/guardian') : openAuthModal('login')} aria-label={loggedIn ? t('public.nav.profile', '프로필') : t('public.auth.login', '로그인')}>👤</button>
       </nav>
+
+      <AuthModal
+        open={authModalOpen}
+        initialMode={authModalMode}
+        onClose={() => setAuthModalOpen(false)}
+        onSuccess={() => setAuthModalOpen(false)}
+      />
     </div>
   );
 }

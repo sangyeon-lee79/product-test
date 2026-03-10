@@ -2,6 +2,7 @@ import type { Env, JwtPayload } from '../types';
 import { ok, created, err, newId, now } from '../types';
 import { requireAuth, requireRole, verifyJwt } from '../middleware/auth';
 import { hasTable, hasColumn } from '../helpers/sqlHelpers';
+import { SUPPORTED_LANGS } from '@petfolio/shared';
 
 type FeedRow = Record<string, unknown>;
 
@@ -183,6 +184,47 @@ async function upsertAlbumFromFeed(env: Env, params: {
        WHERE pet_id = ? AND source_type = 'profile'`
     ).bind(params.petId, now(), params.petId).run();
   }
+}
+
+async function feedFilters(request: Request, env: Env, url: URL): Promise<Response> {
+  const lang = (url.searchParams.get('lang') || 'ko').trim();
+  const langCol = SUPPORTED_LANGS.includes(lang) ? lang : 'ko';
+
+  // Business categories: distinct L1 from provider_profiles
+  const bizRows = await env.DB.prepare(
+    `SELECT DISTINCT mi.id, mi.code,
+       'master.' || mc.code || '.' || mi.code AS i18n_key,
+       COALESCE(it.${langCol}, it.ko, mi.code) AS label
+     FROM provider_profiles pp
+     JOIN master_items mi ON mi.id = pp.business_category_l1_id
+     JOIN master_categories mc ON mc.id = mi.category_id
+     LEFT JOIN i18n_translations it
+       ON it.key = 'master.' || mc.code || '.' || mi.code
+     WHERE pp.business_category_l1_id IS NOT NULL
+       AND mi.status = 'active'
+     ORDER BY mi.sort_order, mi.code`
+  ).all<{ id: string; code: string; i18n_key: string; label: string }>();
+
+  // Pet types: distinct L1 from pets table
+  const petRows = await env.DB.prepare(
+    `SELECT DISTINCT mi.id, mi.code,
+       'master.' || mc.code || '.' || mi.code AS i18n_key,
+       COALESCE(it.${langCol}, it.ko, mi.code) AS label
+     FROM pets p
+     JOIN master_items mi ON mi.id = p.pet_type_id
+     JOIN master_categories mc ON mc.id = mi.category_id
+     LEFT JOIN i18n_translations it
+       ON it.key = 'master.' || mc.code || '.' || mi.code
+     WHERE p.pet_type_id IS NOT NULL
+       AND p.status = 'active'
+       AND mi.status = 'active'
+     ORDER BY mi.sort_order, mi.code`
+  ).all<{ id: string; code: string; i18n_key: string; label: string }>();
+
+  return ok({
+    business_categories: bizRows.results,
+    pet_types: petRows.results,
+  });
 }
 
 async function listFeeds(request: Request, env: Env, url: URL): Promise<Response> {
@@ -966,6 +1008,7 @@ export async function handleFeeds(request: Request, env: Env, url: URL): Promise
   const sub = url.pathname.replace('/api/v1/feeds', '');
 
   if ((sub === '' || sub === '/') && request.method === 'GET') return listFeeds(request, env, url);
+  if ((sub === '/filters' || sub === '/filters/') && request.method === 'GET') return feedFilters(request, env, url);
   if ((sub === '' || sub === '/') && request.method === 'POST') return createGuardianPost(request, env);
   if ((sub === '/from-completion' || sub === '/from-completion/') && request.method === 'POST') {
     return shareFromCompletion(request, env);

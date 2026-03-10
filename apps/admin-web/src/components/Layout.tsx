@@ -18,7 +18,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
       { to: '/admin/devices',   icon: '🔬', label: t('admin.nav.devices',       '장치 관리') },
       { to: '/admin/feeds',     icon: '🥣', label: t('admin.nav.feeds',         '사료 관리') },
       { to: '/admin/members',   icon: '👥', label: t('admin.nav.members',       '회원 관리') },
-      { to: '/admin/google',    icon: '🗝️', label: t('admin.nav.google_settings','Google API 설정') },
+      { to: '/admin/api-connections', icon: '🔗', label: t('admin.nav.api_connections', 'API 연결') },
     ]},
     { section: t('admin.section.ads', '광고 / 운영'), items: [
       { to: '/admin/ads', icon: '📢', label: t('admin.nav.ads', '광고 설정') },

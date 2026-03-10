@@ -100,7 +100,8 @@ async function dispatch(request: Request, env: Env, url: URL): Promise<Response>
     return handleAds(request, env, url);
   }
 
-  if (path === '/api/v1/google/config') {
+  // Platform configs (public: Google/Kakao/Apple)
+  if (path === '/api/v1/google/config' || path === '/api/v1/kakao/config' || path === '/api/v1/apple/config') {
     const { handlePlatformSettings } = await import('./routes/platformSettings');
     return handlePlatformSettings(request, env, url);
   }
@@ -224,7 +225,7 @@ async function dispatchAdmin(request: Request, env: Env, url: URL, path: string)
     const { handleMembers } = await import('./routes/members');
     return handleMembers(request, env, url);
   }
-  if (path.startsWith('/api/v1/admin/settings/google')) {
+  if (path.startsWith('/api/v1/admin/settings/')) {
     const { handlePlatformSettings } = await import('./routes/platformSettings');
     return handlePlatformSettings(request, env, url);
   }
