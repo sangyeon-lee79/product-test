@@ -19,9 +19,11 @@ Pet SNS + lifetime portfolio platform. Monorepo with three frontends and one Clo
 
 ## Local Development Commands
 
-### API (Cloudflare Workers + D1)
+### API (Cloudflare Workers + PostgreSQL)
 ```bash
 cd services/api
+npm run db:up                              # start Docker PostgreSQL (port 5432)
+npm run db:reset                           # drop & recreate DB, apply pg-schema/*.sql
 npx wrangler dev --local --port 8787      # start local dev server
 npx wrangler types                         # regenerate TS types after wrangler.jsonc changes
 npm run build                              # type-check only (tsc --noEmit)
@@ -29,9 +31,9 @@ npm run test                               # vitest unit tests
 npm run deploy:guarded                     # i18n audit + deploy to Cloudflare
 ```
 
-> **D1 migrations**: `wrangler d1 migrations apply` fails at 0021 — apply migrations individually:
+> **PostgreSQL migrations**: SQL files live in `src/db/pg-schema/`. Apply manually with:
 > ```bash
-> npx wrangler d1 execute pet-life-db --local --file=src/db/migrations/<file>.sql
+> psql "$DATABASE_URL" -v ON_ERROR_STOP=on -f src/db/pg-schema/<file>.sql
 > ```
 
 ### Admin Web (React + Vite 5, port 5173)
@@ -77,7 +79,7 @@ Route files in `src/routes/`: `pets.ts`, `feeds.ts`, `master.ts`, `devices.ts`, 
 
 **Admin only:** `/api/v1/admin/*`
 
-**DB:** Cloudflare D1 (SQLite) locally, migrations in `src/db/migrations/` (0001–0048+). Binding name: `DB`. R2 binding: `R2` (bucket: `pet-life-media`).
+**DB:** Neon PostgreSQL + Cloudflare Hyperdrive (local: Docker PostgreSQL). Migrations in `src/db/pg-schema/`. Binding name: `DB`. R2 binding: `R2` (bucket: `pet-life-media`).
 
 **API response shape:** `{ success: boolean, data?: T, error?: string, code?: string }`
 
@@ -141,7 +143,7 @@ Fallback order: `current_locale → ko → en → key`
 
 After changing `wrangler.jsonc` bindings, run `npx wrangler types` to regenerate `worker-configuration.d.ts`.
 
-Consult live Cloudflare docs before working on Workers/D1/R2/KV (knowledge may be outdated):
+Consult live Cloudflare docs before working on Workers/Hyperdrive/R2/KV (knowledge may be outdated):
 - https://developers.cloudflare.com/workers/
 - Limits: `/workers/platform/limits/`
 
@@ -151,6 +153,6 @@ Consult live Cloudflare docs before working on Workers/D1/R2/KV (knowledge may b
 
 GitHub Actions on push to `main`:
 1. **deploy-admin-web** → Cloudflare Pages (`pet-life-admin`), env `VITE_API_URL`
-2. **deploy-api** → applies D1 migrations remotely, then `wrangler deploy` to Workers (`pet-life-api`)
+2. **deploy-api** → applies PostgreSQL migrations to Neon via `psql`, then `wrangler deploy` to Workers (`pet-life-api`)
 
 Both jobs have 3-attempt retry with 20s/40s backoff.

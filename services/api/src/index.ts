@@ -3,6 +3,7 @@
 
 import type { Env } from './types';
 import { err } from './types';
+import { createDbAdapter } from './db/adapter';
 import { handleCors, corsHeaders } from './middleware/cors';
 import { checkRateLimit } from './middleware/rateLimit';
 import { handleHealth } from './routes/health';
@@ -10,28 +11,35 @@ import { handleHealth } from './routes/health';
 export default {
   async fetch(request: Request, env: Env): Promise<Response> {
     try {
+      // Initialize DB adapter from Hyperdrive or local DATABASE_URL
+      const connectionString = env.HYPERDRIVE?.connectionString || env.DATABASE_URL;
+      if (!connectionString) {
+        return err('Database not configured', 500, 'db_config_error');
+      }
+      const appEnv: Env = { ...env, DB: createDbAdapter(connectionString) };
+
       const url = new URL(request.url);
 
       // 1. CORS preflight
-      const corsResult = handleCors(request, env);
+      const corsResult = handleCors(request, appEnv);
       if (corsResult) return corsResult;
 
       // 2. Rate Limit
-      if (!await checkRateLimit(request, env)) {
-        return addCors(err('Too Many Requests', 429, 'rate_limit'), request, env);
+      if (!await checkRateLimit(request, appEnv)) {
+        return addCors(err('Too Many Requests', 429, 'rate_limit'), request, appEnv);
       }
 
       // 3. Route dispatch
       let response: Response;
       try {
-        response = await dispatch(request, env, url);
+        response = await dispatch(request, appEnv, url);
       } catch (e) {
         const detail = e instanceof Error ? e.message : String(e);
         response = err(`Internal Server Error: ${detail}`, 500, 'internal_error');
       }
 
       // 4. CORS 헤더 부착
-      return addCors(response, request, env);
+      return addCors(response, request, appEnv);
     } catch {
       // Top-level safety: always return CORS headers even on catastrophic failure
       const headers: Record<string, string> = {

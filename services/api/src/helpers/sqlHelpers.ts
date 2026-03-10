@@ -13,7 +13,9 @@ const _tableCache = new Map<string, boolean>();
 export async function hasColumn(env: Env, table: string, column: string): Promise<boolean> {
   const cacheKey = table;
   if (!_columnCache.has(cacheKey)) {
-    const rows = await env.DB.prepare(`PRAGMA table_info(${table})`).all<{ name: string }>();
+    const rows = await env.DB.prepare(
+      `SELECT column_name AS name FROM information_schema.columns WHERE table_schema = 'public' AND table_name = ?`
+    ).bind(table).all<{ name: string }>();
     _columnCache.set(cacheKey, new Set(rows.results.map((r) => r.name)));
   }
   return _columnCache.get(cacheKey)!.has(column);
@@ -22,7 +24,7 @@ export async function hasColumn(env: Env, table: string, column: string): Promis
 export async function hasTable(env: Env, table: string): Promise<boolean> {
   if (_tableCache.has(table)) return _tableCache.get(table)!;
   const row = await env.DB.prepare(
-    "SELECT name FROM sqlite_master WHERE type = 'table' AND name = ? LIMIT 1"
+    `SELECT tablename AS name FROM pg_tables WHERE schemaname = 'public' AND tablename = ?`
   ).bind(table).first<{ name?: string }>();
   const result = Boolean(row?.name);
   _tableCache.set(table, result);
@@ -49,7 +51,7 @@ export async function syncParentMap(
   await env.DB.prepare(`DELETE FROM ${table} WHERE ${childCol} = ?`).bind(childId).run();
   for (const parentId of Array.from(new Set(parentIds.filter(Boolean)))) {
     await env.DB.prepare(
-      `INSERT OR IGNORE INTO ${table} (id, ${childCol}, ${parentCol}, created_at) VALUES (?, ?, ?, ?)`
+      `INSERT INTO ${table} (id, ${childCol}, ${parentCol}, created_at) VALUES (?, ?, ?, ?) ON CONFLICT DO NOTHING`
     ).bind(newId(), childId, parentId, now()).run();
   }
 }
@@ -105,6 +107,6 @@ export async function upsertI18n(
   await env.DB.prepare(
     `INSERT INTO i18n_translations
       (id, key, page, ko, en, ja, zh_cn, zh_tw, es, fr, de, pt, vi, th, id_lang, ar, is_active, created_at, updated_at)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 1, ?, ?)`
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, true, ?, ?)`
   ).bind(newId(), i18nKey, page, ...values, now(), now()).run();
 }

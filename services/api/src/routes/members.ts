@@ -214,7 +214,7 @@ async function createRoleApplication(request: Request, env: Env, me: JwtPayload)
   ).run();
 
   await env.DB.prepare(
-    `INSERT OR REPLACE INTO provider_profiles (
+    `INSERT INTO provider_profiles (
       id, user_id, business_category_l1_id, business_category_l2_id
       ${hasProfileBusinessL3 ? ', business_category_l3_id' : ''}
       ${hasProfilePetTypeL1 ? ', pet_type_l1_id' : ''}
@@ -222,16 +222,29 @@ async function createRoleApplication(request: Request, env: Env, me: JwtPayload)
       business_registration_no, operating_hours, certifications, supported_pet_types,
       address_line, address_place_id, address_lat, address_lng,
       approval_status, created_at, updated_at
-    ) VALUES (
-      COALESCE((SELECT id FROM provider_profiles WHERE user_id = ?), ?),
-      ?, ?, ?
+    ) VALUES (?, ?, ?, ?
       ${hasProfileBusinessL3 ? ', ?' : ''}
       ${hasProfilePetTypeL1 ? ', ?' : ''}
       ${hasProfilePetTypeL2 ? ', ?' : ''},
       ?, ?, ?, ?, ?, ?, ?, 'pending', ?, ?
-    )`
+    )
+    ON CONFLICT (user_id) DO UPDATE SET
+      business_category_l1_id = excluded.business_category_l1_id,
+      business_category_l2_id = excluded.business_category_l2_id,
+      ${hasProfileBusinessL3 ? 'business_category_l3_id = excluded.business_category_l3_id,' : ''}
+      ${hasProfilePetTypeL1 ? 'pet_type_l1_id = excluded.pet_type_l1_id,' : ''}
+      ${hasProfilePetTypeL2 ? 'pet_type_l2_id = excluded.pet_type_l2_id,' : ''}
+      business_registration_no = excluded.business_registration_no,
+      operating_hours = excluded.operating_hours,
+      certifications = excluded.certifications,
+      supported_pet_types = excluded.supported_pet_types,
+      address_line = excluded.address_line,
+      address_place_id = excluded.address_place_id,
+      address_lat = excluded.address_lat,
+      address_lng = excluded.address_lng,
+      approval_status = excluded.approval_status,
+      updated_at = excluded.updated_at`
   ).bind(
-    me.sub,
     newId(),
     me.sub,
     body.business_category_l1_id ?? null,

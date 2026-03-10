@@ -1,18 +1,9 @@
 import type { Env, JwtPayload } from '../types';
 import { ok, created, err, newId, now } from '../types';
 import { requireAuth, requireRole, verifyJwt } from '../middleware/auth';
+import { hasTable, hasColumn } from '../helpers/sqlHelpers';
 
 type FeedRow = Record<string, unknown>;
-async function hasTable(env: Env, table: string): Promise<boolean> {
-  const row = await env.DB.prepare(
-    "SELECT name FROM sqlite_master WHERE type='table' AND name = ? LIMIT 1"
-  ).bind(table).first<{ name: string }>();
-  return Boolean(row?.name);
-}
-async function hasColumn(env: Env, table: string, column: string): Promise<boolean> {
-  const rows = await env.DB.prepare(`PRAGMA table_info(${table})`).all<{ name: string }>();
-  return rows.results.some((r) => r.name === column);
-}
 
 function toJsonArray(value: unknown): string {
   if (!Array.isArray(value)) return '[]';
@@ -171,7 +162,7 @@ async function upsertAlbumFromFeed(env: Env, params: {
       tagsJson,
       params.authorUserId,
       visibility,
-      sourceType === 'profile' && index === 0 ? 1 : 0,
+      sourceType === 'profile' && index === 0,
       index,
       status,
       params.createdAt,
@@ -185,9 +176,9 @@ async function upsertAlbumFromFeed(env: Env, params: {
        SET is_primary = CASE WHEN id = (
          SELECT id FROM pet_album_media
          WHERE pet_id = ? AND source_type = 'profile' AND status = 'active'
-         ORDER BY datetime(created_at) DESC, id DESC
+         ORDER BY created_at DESC, id DESC
          LIMIT 1
-       ) THEN 1 ELSE 0 END,
+       ) THEN true ELSE false END,
        updated_at = ?
        WHERE pet_id = ? AND source_type = 'profile'`
     ).bind(params.petId, now(), params.petId).run();
@@ -222,7 +213,7 @@ async function listFeeds(request: Request, env: Env, url: URL): Promise<Response
         NULL as booking_supplier_email,
         NULL as booking_guardian_id,
         NULL as booking_supplier_id,
-        CASE WHEN ? IS NULL THEN 0 ELSE EXISTS(
+        CASE WHEN ? IS NULL THEN false ELSE EXISTS(
           SELECT 1 FROM feed_likes fl2 WHERE fl2.post_id = f.id AND fl2.user_id = ?
         ) END as liked_by_me,
         (SELECT COUNT(*) FROM feed_likes fl WHERE fl.post_id = f.id) as like_count,
@@ -241,7 +232,7 @@ async function listFeeds(request: Request, env: Env, url: URL): Promise<Response
          LIMIT 1
        )
        ${where.length ? `WHERE ${where.join(' AND ')}` : ''}
-       ORDER BY datetime(f.created_at) DESC
+       ORDER BY f.created_at DESC
        LIMIT ?`
     ).bind(me?.sub ?? null, me?.sub ?? null, ...params, limit).all<FeedRow>();
 
@@ -271,7 +262,7 @@ async function listFeeds(request: Request, env: Env, url: URL): Promise<Response
       bs.email as booking_supplier_email,
       b.guardian_id as booking_guardian_id,
       b.supplier_id as booking_supplier_id,
-      CASE WHEN ? IS NULL THEN 0 ELSE EXISTS(
+      CASE WHEN ? IS NULL THEN false ELSE EXISTS(
         SELECT 1 FROM feed_likes fl2 WHERE fl2.feed_id = f.id AND fl2.user_id = ?
       ) END as liked_by_me,
       (SELECT COUNT(*) FROM feed_likes fl WHERE fl.feed_id = f.id) as like_count,
@@ -329,7 +320,7 @@ async function createGuardianPost(request: Request, env: Env): Promise<Response>
   }
 
   const id = newId();
-  const publicVisible = visibility === 'public' ? 1 : 0;
+  const publicVisible = visibility === 'public';
   const timestamp = now();
   if (await hasTable(env, 'feed_posts')) {
     await env.DB.prepare(
@@ -349,8 +340,8 @@ async function createGuardianPost(request: Request, env: Env): Promise<Response>
     const petId = (body.pet_id as string | null) ?? null;
     if (petId) {
       await env.DB.prepare(
-        `INSERT OR IGNORE INTO feed_post_pets (id, post_id, pet_id, sort_order)
-         VALUES (?, ?, ?, 0)`
+        `INSERT INTO feed_post_pets (id, post_id, pet_id, sort_order)
+         VALUES (?, ?, ?, 0) ON CONFLICT DO NOTHING`
       ).bind(newId(), id, petId).run();
     }
     for (const [index, url] of parseJsonArray(mediaUrls).entries()) {
@@ -461,7 +452,7 @@ async function shareFromCompletion(request: Request, env: Env): Promise<Response
          FROM feed_publish_requests fpr
          INNER JOIN bookings b ON b.id = fpr.booking_id
          WHERE fpr.booking_id = ?
-         ORDER BY datetime(fpr.created_at) DESC
+         ORDER BY fpr.created_at DESC
          LIMIT 1`
       ).bind(bookingId).first<Record<string, unknown>>())
     : (completionId
@@ -511,8 +502,8 @@ async function shareFromCompletion(request: Request, env: Env): Promise<Response
     ).bind(id, me.sub, visibility, caption, timestamp, timestamp).run();
     if (completion.pet_id) {
       await env.DB.prepare(
-        `INSERT OR IGNORE INTO feed_post_pets (id, post_id, pet_id, sort_order)
-         VALUES (?, ?, ?, 0)`
+        `INSERT INTO feed_post_pets (id, post_id, pet_id, sort_order)
+         VALUES (?, ?, ?, 0) ON CONFLICT DO NOTHING`
       ).bind(newId(), id, completion.pet_id).run();
     }
     for (const [index, mediaUrl] of mediaUrls.entries()) {
@@ -541,7 +532,7 @@ async function shareFromCompletion(request: Request, env: Env): Promise<Response
       caption,
       JSON.stringify(mediaUrls),
       tagsJson,
-      visibility === 'public' ? 1 : 0,
+      visibility === 'public',
       timestamp,
       timestamp,
     ).run();
@@ -596,7 +587,7 @@ async function requestBookingCompletedFeed(request: Request, env: Env): Promise<
     const existing = await env.DB.prepare(
       `SELECT id FROM feed_publish_requests
        WHERE booking_id = ?
-       ORDER BY datetime(created_at) DESC
+       ORDER BY created_at DESC
        LIMIT 1`
     ).bind(bookingId).first<{ id: string }>();
     if (existing?.id) {
@@ -637,7 +628,7 @@ async function requestBookingCompletedFeed(request: Request, env: Env): Promise<
         id, feed_type, author_user_id, author_role, pet_id, business_category_id, pet_type_id,
         visibility_scope, booking_id, supplier_id, related_service_id,
         caption, media_urls, tags, publish_request_status, is_public, status, created_at, updated_at
-      ) VALUES (?, 'booking_completed', ?, 'provider', ?, ?, ?, 'connected_only', ?, ?, ?, ?, ?, '[]', 'pending', 0, 'hidden', ?, ?)`
+      ) VALUES (?, 'booking_completed', ?, 'provider', ?, ?, ?, 'connected_only', ?, ?, ?, ?, ?, '[]', 'pending', false, 'hidden', ?, ?)`
     ).bind(
       feedId,
       me.sub,
@@ -663,7 +654,7 @@ async function requestBookingCompletedFeed(request: Request, env: Env): Promise<
         media_urls = ?,
         publish_request_status = 'pending',
         visibility_scope = 'connected_only',
-        is_public = 0,
+        is_public = false,
         status = 'hidden',
         updated_at = ?
       WHERE id = ?`
@@ -727,21 +718,29 @@ async function approveBookingCompletedFeed(request: Request, env: Env, feedId: s
       const visibility = (body.visibility_scope || 'public').trim();
       const postId = `booking-post-${feedId}`;
       await env.DB.prepare(
-        `INSERT OR REPLACE INTO feed_posts (
+        `INSERT INTO feed_posts (
           id, author_user_id, author_role, feed_type, visibility_scope, caption, status, created_at, updated_at
-        ) VALUES (?, ?, 'provider', 'booking_completed', ?, ?, 'published', ?, ?)`
+        ) VALUES (?, ?, 'provider', 'booking_completed', ?, ?, 'published', ?, ?)
+        ON CONFLICT (id) DO UPDATE SET
+          author_user_id = excluded.author_user_id, author_role = excluded.author_role,
+          feed_type = excluded.feed_type, visibility_scope = excluded.visibility_scope,
+          caption = excluded.caption, status = excluded.status,
+          created_at = excluded.created_at, updated_at = excluded.updated_at`
       ).bind(postId, req.supplier_id, visibility, req.content ?? null, timestamp, timestamp).run();
       if (req.pet_id) {
         await env.DB.prepare(
-          `INSERT OR REPLACE INTO feed_post_pets (id, post_id, pet_id, sort_order)
-           VALUES (?, ?, ?, 0)`
+          `INSERT INTO feed_post_pets (id, post_id, pet_id, sort_order)
+           VALUES (?, ?, ?, 0)
+           ON CONFLICT (id) DO UPDATE SET post_id = excluded.post_id, pet_id = excluded.pet_id, sort_order = excluded.sort_order`
         ).bind(`fpp-${postId}`, postId, req.pet_id).run();
       }
       const mediaUrls = parseJsonArray(req.media_urls);
       for (const [index, mediaUrl] of mediaUrls.entries()) {
         await env.DB.prepare(
-          `INSERT OR REPLACE INTO feed_media (id, post_id, media_type, media_url, thumbnail_url, sort_order)
-           VALUES (?, ?, ?, ?, ?, ?)`
+          `INSERT INTO feed_media (id, post_id, media_type, media_url, thumbnail_url, sort_order)
+           VALUES (?, ?, ?, ?, ?, ?)
+           ON CONFLICT (id) DO UPDATE SET post_id = excluded.post_id, media_type = excluded.media_type,
+             media_url = excluded.media_url, thumbnail_url = excluded.thumbnail_url, sort_order = excluded.sort_order`
         ).bind(`${postId}-m-${index}`, postId, inferMediaType(mediaUrl), mediaUrl, mediaUrl, index).run();
       }
       await env.DB.prepare(
@@ -794,7 +793,7 @@ async function approveBookingCompletedFeed(request: Request, env: Env, feedId: s
       `UPDATE feeds
        SET publish_request_status = 'approved',
            visibility_scope = ?,
-           is_public = CASE WHEN ? = 'public' THEN 1 ELSE 0 END,
+           is_public = CASE WHEN ? = 'public' THEN true ELSE false END,
            status = 'published',
            updated_at = ?
        WHERE id = ?`
@@ -818,7 +817,7 @@ async function approveBookingCompletedFeed(request: Request, env: Env, feedId: s
   const timestamp = now();
   await env.DB.prepare(
     `UPDATE feeds
-     SET publish_request_status = 'rejected', is_public = 0, status = 'hidden', updated_at = ?
+     SET publish_request_status = 'rejected', is_public = false, status = 'hidden', updated_at = ?
      WHERE id = ?`
   ).bind(timestamp, feedId).run();
 
@@ -844,7 +843,7 @@ async function likeFeed(request: Request, env: Env, feedId: string): Promise<Res
 
   const likeKey = await hasColumn(env, 'feed_likes', 'post_id') ? 'post_id' : 'feed_id';
   if (request.method === 'POST') {
-    await env.DB.prepare(`INSERT OR IGNORE INTO feed_likes (id, ${likeKey}, user_id, created_at) VALUES (?, ?, ?, ?)`)
+    await env.DB.prepare(`INSERT INTO feed_likes (id, ${likeKey}, user_id, created_at) VALUES (?, ?, ?, ?) ON CONFLICT DO NOTHING`)
       .bind(newId(), feedId, me.sub, now()).run();
     return ok({ liked: true });
   }

@@ -311,7 +311,7 @@ export async function handleI18n(request: Request, env: Env, url: URL): Promise<
     if (!LANGS.includes(lang as Lang)) return err('Unsupported lang');
 
     const col = lang as string;
-    let query = `SELECT key, ${col} as value FROM i18n_translations WHERE is_active = 1`;
+    let query = `SELECT key, ${col} as value FROM i18n_translations WHERE is_active = true`;
     const params: string[] = [];
     if (prefix) { query += ' AND key LIKE ?'; params.push(`${prefix}%`); }
     query += ' ORDER BY key';
@@ -487,7 +487,7 @@ export async function handleI18n(request: Request, env: Env, url: URL): Promise<
       let query = 'SELECT * FROM i18n_translations WHERE 1=1';
       const params: (string | number)[] = [];
       if (prefix) { query += ' AND key LIKE ?'; params.push(`${prefix}%`); }
-      if (activeOnly) { query += ' AND is_active = 1'; }
+      if (activeOnly) { query += ' AND is_active = true'; }
       query += ' ORDER BY key LIMIT ? OFFSET ?';
       params.push(limit, offset);
 
@@ -495,7 +495,7 @@ export async function handleI18n(request: Request, env: Env, url: URL): Promise<
         env.DB.prepare(query).bind(...params).all(),
         env.DB.prepare('SELECT COUNT(*) as c FROM i18n_translations WHERE 1=1'
           + (prefix ? ' AND key LIKE ?' : '')
-          + (activeOnly ? ' AND is_active = 1' : ''))
+          + (activeOnly ? ' AND is_active = true' : ''))
           .bind(...(prefix ? [`${prefix}%`] : [])).first<{ c: number }>(),
       ]);
 
@@ -514,7 +514,7 @@ export async function handleI18n(request: Request, env: Env, url: URL): Promise<
       const langVals = Object.fromEntries(LANGS.map(l => [l, body[l] ?? null])) as Record<string, string | null>;
       const newRow = {
         id: newId(), key: body.key, page: body.page ?? null,
-        is_active: 1, created_at: now(), updated_at: now(),
+        is_active: true, created_at: now(), updated_at: now(),
         ...langVals,
       };
       await env.DB.prepare(
@@ -535,9 +535,9 @@ export async function handleI18n(request: Request, env: Env, url: URL): Promise<
       try { body = await request.json() as Record<string, string | number | boolean>; } catch { return err('Invalid JSON'); }
 
       const sets: string[] = ['updated_at = ?'];
-      const vals: (string | number | null)[] = [now()];
+      const vals: (string | number | boolean | null)[] = [now()];
       if (body.page !== undefined) { sets.push('page = ?'); vals.push(body.page as string); }
-      if (body.is_active !== undefined) { sets.push('is_active = ?'); vals.push(body.is_active ? 1 : 0); }
+      if (body.is_active !== undefined) { sets.push('is_active = ?'); vals.push(body.is_active ? true : false); }
       for (const l of LANGS) {
         if (body[l] !== undefined) { sets.push(`${l} = ?`); vals.push(body[l] as string); }
       }
@@ -555,7 +555,7 @@ export async function handleI18n(request: Request, env: Env, url: URL): Promise<
     // DELETE (비활성화)
     if (request.method === 'DELETE' && id) {
       const result = await env.DB.prepare(
-        'UPDATE i18n_translations SET is_active = 0, updated_at = ? WHERE id = ?'
+        'UPDATE i18n_translations SET is_active = false, updated_at = ? WHERE id = ?'
       ).bind(now(), id).run();
       if (result.meta.changes === 0) return err('Not found', 404);
       return ok({ id, is_active: false });

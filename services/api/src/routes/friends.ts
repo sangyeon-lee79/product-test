@@ -144,8 +144,9 @@ async function respondRequest(request: Request, env: Env, me: JwtPayload, reques
     const b = String(req.receiver_user_id || '');
     const ordered = pair(a, b);
     await env.DB.prepare(
-      `INSERT OR IGNORE INTO friendships (id, user_a_id, user_b_id, relation_type, status, created_at)
-       VALUES (?, ?, ?, 'guardian_supplier_connected', 'active', ?)`
+      `INSERT INTO friendships (id, user_a_id, user_b_id, relation_type, status, created_at)
+       VALUES (?, ?, ?, 'guardian_supplier_connected', 'active', ?)
+       ON CONFLICT DO NOTHING`
     ).bind(newId(), ordered.a, ordered.b, now()).run();
   }
 

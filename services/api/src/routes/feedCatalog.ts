@@ -253,7 +253,7 @@ export async function handleFeedCatalog(request: Request, env: Env, url: URL): P
   if (path === '/api/v1/admin/feed-catalog/manufacturers' && method === 'GET') {
     const typeItemId = url.searchParams.get('type_item_id');
     const parentTypeIdsExpr = hasFeedManufacturerTypeMap
-      ? `(SELECT GROUP_CONCAT(type_item_id) FROM feed_manufacturer_type_map mtm WHERE mtm.manufacturer_id = mfr.id)`
+      ? `(SELECT STRING_AGG(type_item_id, ',') FROM feed_manufacturer_type_map mtm WHERE mtm.manufacturer_id = mfr.id)`
       : `NULL`;
     const binds: string[] = [];
     let modelCountExpr = `(
@@ -307,7 +307,7 @@ export async function handleFeedCatalog(request: Request, env: Env, url: URL): P
       await syncParentMap(env, 'feed_manufacturer_type_map', 'manufacturer_id', id, 'type_item_id', body.parent_type_ids ?? []);
     }
     const parentTypeIdsExpr = hasFeedManufacturerTypeMap
-      ? `(SELECT GROUP_CONCAT(type_item_id) FROM feed_manufacturer_type_map mtm WHERE mtm.manufacturer_id = mfr.id)`
+      ? `(SELECT STRING_AGG(type_item_id, ',') FROM feed_manufacturer_type_map mtm WHERE mtm.manufacturer_id = mfr.id)`
       : `NULL`;
     return created(await env.DB.prepare(
       `SELECT mfr.*,
@@ -345,7 +345,7 @@ export async function handleFeedCatalog(request: Request, env: Env, url: URL): P
         await syncParentMap(env, 'feed_manufacturer_type_map', 'manufacturer_id', mfrId, 'type_item_id', body.parent_type_ids);
       }
       const parentTypeIdsExpr = hasFeedManufacturerTypeMap
-        ? `(SELECT GROUP_CONCAT(type_item_id) FROM feed_manufacturer_type_map mtm WHERE mtm.manufacturer_id = mfr.id)`
+        ? `(SELECT STRING_AGG(type_item_id, ',') FROM feed_manufacturer_type_map mtm WHERE mtm.manufacturer_id = mfr.id)`
         : `NULL`;
       return ok(await env.DB.prepare(
         `SELECT mfr.*,
@@ -367,7 +367,7 @@ export async function handleFeedCatalog(request: Request, env: Env, url: URL): P
     const typeItemId = (url.searchParams.get('type_item_id') || '').trim();
     const hasBrandMfrMap = await hasTable(env, 'feed_brand_manufacturer_map');
     const parentMfrIdsExpr = hasBrandMfrMap
-      ? `(SELECT GROUP_CONCAT(manufacturer_id) FROM feed_brand_manufacturer_map bmm WHERE bmm.brand_id = b.id)`
+      ? `(SELECT STRING_AGG(manufacturer_id, ',') FROM feed_brand_manufacturer_map bmm WHERE bmm.brand_id = b.id)`
       : `NULL`;
     const binds: string[] = [];
     let modelCountExpr = `(
@@ -474,7 +474,7 @@ export async function handleFeedCatalog(request: Request, env: Env, url: URL): P
       && (await hasColumn(env, 'feed_model_brand_map', 'model_id'))
       && (await hasColumn(env, 'feed_model_brand_map', 'brand_id'));
     const parentBrandIdsExpr = hasModelBrandMap
-      ? `(SELECT GROUP_CONCAT(brand_id) FROM feed_model_brand_map mbm WHERE mbm.model_id = m.id)`
+      ? `(SELECT STRING_AGG(brand_id, ',') FROM feed_model_brand_map mbm WHERE mbm.model_id = m.id)`
       : `NULL`;
     const binds: string[] = [];
     let where = '';

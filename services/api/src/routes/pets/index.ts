@@ -474,7 +474,7 @@ async function attachPetRelations(env: Env, pet: Record<string, unknown>) {
        FROM pet_disease_histories h
        LEFT JOIN master_items d ON d.id = h.disease_item_id
        WHERE h.pet_id = ?
-       ORDER BY h.is_active DESC, datetime(h.created_at) DESC`
+       ORDER BY h.is_active DESC, h.created_at DESC`
     ).bind(petId).all<Record<string, unknown>>();
     diseases = rows.results;
     diseaseIds = rows.results
@@ -487,7 +487,7 @@ async function attachPetRelations(env: Env, pet: Record<string, unknown>) {
        FROM health_records hr
        LEFT JOIN master_items mi ON mi.id = hr.disease_id
        WHERE hr.pet_id = ? AND hr.record_type = 'disease'
-       ORDER BY datetime(hr.recorded_at) ASC, hr.id ASC`
+       ORDER BY hr.recorded_at ASC, hr.id ASC`
     ).bind(petId).all<Record<string, unknown>>();
     diseases = rows.results;
     diseaseIds = rows.results.map((row) => String(row.disease_id || '')).filter(Boolean);

@@ -269,7 +269,7 @@ async function createLog(request: Request, env: Env, payload: JwtPayload, petId:
             l.event_date, l.event_time, l.title, l.notes, l.metadata, l.created_at
      FROM logs l LEFT JOIN master_items mi ON mi.id = l.logtype_id
      WHERE l.id = ?`
-  ).first<Record<string, unknown>>(id);
+  ).bind(id).first<Record<string, unknown>>();
 
   const savedValues = await env.DB.prepare(
     `SELECT lv.id, lv.metric_id, mi.code AS metric_code, lv.unit_id, mu.code AS unit_code,

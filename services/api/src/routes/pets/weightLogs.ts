@@ -13,7 +13,7 @@ export async function listWeightLogs(env: Env, payload: JwtPayload, petId: strin
   const where = ['pet_id = ?'];
   const vals: Array<string | number> = [petId];
   if (start) {
-    where.push('datetime(measured_at) >= datetime(?)');
+    where.push('measured_at >= ?');
     vals.push(start);
   }
 
@@ -21,7 +21,7 @@ export async function listWeightLogs(env: Env, payload: JwtPayload, petId: strin
     `SELECT id, pet_id, weight_value, weight_unit_id, measured_at, recorded_by_user_id, notes, created_at, updated_at
      FROM pet_weight_logs
      WHERE ${where.join(' AND ')}
-     ORDER BY datetime(measured_at) DESC, datetime(created_at) DESC, id DESC`
+     ORDER BY measured_at DESC, created_at DESC, id DESC`
   ).bind(...vals).all<Record<string, unknown>>();
 
   const asc = [...rows.results].sort((a, b) => new Date(String(a.measured_at || a.created_at)).getTime() - new Date(String(b.measured_at || b.created_at)).getTime());

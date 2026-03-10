@@ -17,7 +17,7 @@ export async function listDiseases(env: Env, payload: JwtPayload, petId: string)
        LEFT JOIN master_items d ON d.id = h.disease_item_id
        LEFT JOIN master_items g ON g.id = h.disease_group_item_id
        WHERE h.pet_id = ?
-       ORDER BY h.is_active DESC, datetime(h.created_at) DESC`
+       ORDER BY h.is_active DESC, h.created_at DESC`
     ).bind(petId).all<Record<string, unknown>>();
     return ok({ diseases: rows.results });
   }
@@ -26,7 +26,7 @@ export async function listDiseases(env: Env, payload: JwtPayload, petId: string)
     `SELECT hr.id, hr.disease_id AS disease_item_id, hr.recorded_at AS diagnosed_at, hr.description AS notes, 1 AS is_active
      FROM health_records hr
      WHERE hr.pet_id = ? AND hr.record_type = 'disease'
-     ORDER BY datetime(hr.recorded_at) DESC`
+     ORDER BY hr.recorded_at DESC`
   ).bind(petId).all<Record<string, unknown>>();
   return ok({ diseases: rows.results });
 }
@@ -129,7 +129,7 @@ export async function listDiseaseDevices(env: Env, payload: JwtPayload, petId: s
      FROM pet_disease_devices d
      LEFT JOIN master_items mi ON mi.id = d.device_item_id
      WHERE d.pet_id = ?
-     ORDER BY d.is_active DESC, datetime(d.created_at) DESC`
+     ORDER BY d.is_active DESC, d.created_at DESC`
   ).bind(petId).all<Record<string, unknown>>();
   return ok({ devices: rows.results });
 }

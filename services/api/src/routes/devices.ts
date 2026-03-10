@@ -22,7 +22,7 @@ async function resolveLegacyDeviceTypeId(env: Env, masterItemId: string): Promis
     : await env.DB.prepare(
       `SELECT device_type_id
        FROM master_items
-       WHERE id = ? AND is_active = 1
+       WHERE id = ? AND is_active = true
        LIMIT 1`
     ).bind(masterItemId).first<{ device_type_id: string | null }>();
   return row?.device_type_id ?? null;
@@ -100,7 +100,7 @@ export async function handleDevices(request: Request, env: Env, url: URL): Promi
                ELSE ('master.' || mc.key || '.' || mi.key)
              END
            WHERE mc.key IN ('disease_device_type', 'master.disease_device_type')
-             AND mi.is_active = 1
+             AND mi.is_active = true
            ORDER BY mi.sort_order, mi.key`
         ).all();
       return ok(rows.results);
@@ -155,7 +155,7 @@ export async function handleDevices(request: Request, env: Env, url: URL): Promi
        `SELECT
            mfr.*,
            ${modelCountExpr} AS model_count,
-           (SELECT GROUP_CONCAT(type_item_id) FROM device_manufacturer_type_map mtm WHERE mtm.manufacturer_id = mfr.id) AS parent_type_ids,
+           (SELECT STRING_AGG(type_item_id, ',') FROM device_manufacturer_type_map mtm WHERE mtm.manufacturer_id = mfr.id) AS parent_type_ids,
            COALESCE(NULLIF(TRIM(tr.${langCol}), ''), NULLIF(TRIM(tr.en), ''), NULLIF(TRIM(tr.ko), ''), mfr.name_en, mfr.name_ko, mfr.key) AS display_label
          FROM device_manufacturers mfr
          LEFT JOIN i18n_translations tr ON tr.key = mfr.name_key
@@ -397,16 +397,16 @@ export async function handleDevices(request: Request, env: Env, url: URL): Promi
           if (!model) return err('Device model not found', 404, 'not_found');
         }
 
-        const isDefault = body.is_default ? 1 : 0;
+        const isDefault = body.is_default ? true : false;
         if (hasDefaultCol && isDefault) {
           await env.DB.prepare(
-            `UPDATE guardian_devices SET is_default = 0, updated_at = ? WHERE pet_id = ? AND is_default = 1`
+            `UPDATE guardian_devices SET is_default = false, updated_at = ? WHERE pet_id = ? AND is_default = true`
           ).bind(now(), petId).run();
         }
 
         const id = newId();
         const cols = ['id', 'pet_id', 'device_model_id', 'nickname', 'serial_number', 'start_date', 'notes', 'status', 'created_at', 'updated_at'];
-        const binds: (string | number | null)[] = [id, petId, body.device_model_id, body.nickname ?? null, body.serial_number ?? null, body.start_date ?? null, body.notes ?? null, 'active', now(), now()];
+        const binds: (string | number | boolean | null)[] = [id, petId, body.device_model_id, body.nickname ?? null, body.serial_number ?? null, body.start_date ?? null, body.notes ?? null, 'active', now(), now()];
         if (hasDiseaseCol) {
           cols.splice(3, 0, 'disease_item_id');
           binds.splice(3, 0, body.disease_item_id ?? null);
@@ -428,18 +428,18 @@ export async function handleDevices(request: Request, env: Env, url: URL): Promi
 
         if (hasDefaultCol && body.is_default) {
           await env.DB.prepare(
-            `UPDATE guardian_devices SET is_default = 0, updated_at = ? WHERE pet_id = ? AND is_default = 1 AND id != ?`
+            `UPDATE guardian_devices SET is_default = false, updated_at = ? WHERE pet_id = ? AND is_default = true AND id != ?`
           ).bind(now(), petId, deviceId).run();
         }
 
         const sets: string[] = ['updated_at = ?'];
-        const vals: (string | null | number)[] = [now()];
+        const vals: (string | number | boolean | null)[] = [now()];
         if ('nickname' in body) { sets.push('nickname = ?'); vals.push(body.nickname ?? null); }
         if ('serial_number' in body) { sets.push('serial_number = ?'); vals.push(body.serial_number ?? null); }
         if ('notes' in body) { sets.push('notes = ?'); vals.push(body.notes ?? null); }
         if ('start_date' in body) { sets.push('start_date = ?'); vals.push(body.start_date ?? null); }
         if (hasDiseaseCol && 'disease_item_id' in body) { sets.push('disease_item_id = ?'); vals.push(body.disease_item_id ?? null); }
-        if (hasDefaultCol && 'is_default' in body) { sets.push('is_default = ?'); vals.push(body.is_default ? 1 : 0); }
+        if (hasDefaultCol && 'is_default' in body) { sets.push('is_default = ?'); vals.push(body.is_default ? true : false); }
         vals.push(deviceId, petId);
         await env.DB.prepare(`UPDATE guardian_devices SET ${sets.join(', ')} WHERE id = ? AND pet_id = ?`).bind(...vals).run();
         return ok({ id: deviceId, updated: true });
@@ -529,7 +529,7 @@ export async function handleDevices(request: Request, env: Env, url: URL): Promi
              ELSE ('master.' || mc.key || '.' || mi.key)
            END
          WHERE mc.key IN ('disease_device_type', 'master.disease_device_type')
-           AND mi.is_active = 1
+           AND mi.is_active = true
          ORDER BY mi.sort_order, mi.key`
       ).all();
     return ok(rows.results);
@@ -570,7 +570,7 @@ export async function handleDevices(request: Request, env: Env, url: URL): Promi
       binds.push(typeItemId);
     }
     const parentTypeIdsExpr = hasTypeMap
-      ? `(SELECT GROUP_CONCAT(type_item_id) FROM device_manufacturer_type_map mtm WHERE mtm.manufacturer_id = mfr.id)`
+      ? `(SELECT STRING_AGG(type_item_id, ',') FROM device_manufacturer_type_map mtm WHERE mtm.manufacturer_id = mfr.id)`
       : `NULL`;
     const rows = await env.DB.prepare(
       `SELECT
@@ -620,7 +620,7 @@ export async function handleDevices(request: Request, env: Env, url: URL): Promi
       await env.DB.prepare(
         `SELECT
            mfr.*,
-           (SELECT GROUP_CONCAT(type_item_id) FROM device_manufacturer_type_map mtm WHERE mtm.manufacturer_id = mfr.id) AS parent_type_ids,
+           (SELECT STRING_AGG(type_item_id, ',') FROM device_manufacturer_type_map mtm WHERE mtm.manufacturer_id = mfr.id) AS parent_type_ids,
            COALESCE(NULLIF(TRIM(tr.${langCol}), ''), NULLIF(TRIM(tr.en), ''), NULLIF(TRIM(tr.ko), ''), mfr.name_en, mfr.name_ko, mfr.key) AS display_label
          FROM device_manufacturers mfr
          LEFT JOIN i18n_translations tr ON tr.key = mfr.name_key
@@ -671,7 +671,7 @@ export async function handleDevices(request: Request, env: Env, url: URL): Promi
         await env.DB.prepare(
           `SELECT
              mfr.*,
-             (SELECT GROUP_CONCAT(type_item_id) FROM device_manufacturer_type_map mtm WHERE mtm.manufacturer_id = mfr.id) AS parent_type_ids,
+             (SELECT STRING_AGG(type_item_id, ',') FROM device_manufacturer_type_map mtm WHERE mtm.manufacturer_id = mfr.id) AS parent_type_ids,
              COALESCE(NULLIF(TRIM(tr.${langCol}), ''), NULLIF(TRIM(tr.en), ''), NULLIF(TRIM(tr.ko), ''), mfr.name_en, mfr.name_ko, mfr.key) AS display_label
            FROM device_manufacturers mfr
            LEFT JOIN i18n_translations tr ON tr.key = mfr.name_key
@@ -691,7 +691,7 @@ export async function handleDevices(request: Request, env: Env, url: URL): Promi
     const typeItemId = (url.searchParams.get('type_item_id') || '').trim();
     const hasBrandMfrMap = await hasTable(env, 'device_brand_manufacturer_map');
     const parentMfrIdsExpr = hasBrandMfrMap
-      ? `(SELECT GROUP_CONCAT(manufacturer_id) FROM device_brand_manufacturer_map bmm WHERE bmm.brand_id = b.id)`
+      ? `(SELECT STRING_AGG(manufacturer_id, ',') FROM device_brand_manufacturer_map bmm WHERE bmm.brand_id = b.id)`
       : `NULL`;
     const binds: string[] = [];
     let modelCountExpr = `(
@@ -798,7 +798,7 @@ export async function handleDevices(request: Request, env: Env, url: URL): Promi
     const brandId = url.searchParams.get('brand_id');
     const hasModelBrandMap = await hasTable(env, 'device_model_brand_map');
     const parentBrandIdsExpr = hasModelBrandMap
-      ? `(SELECT GROUP_CONCAT(brand_id) FROM device_model_brand_map mbm WHERE mbm.model_id = m.id)`
+      ? `(SELECT STRING_AGG(brand_id, ',') FROM device_model_brand_map mbm WHERE mbm.model_id = m.id)`
       : `NULL`;
     const binds: string[] = [];
     let where = `WHERE 1=1`;

@@ -1,6 +1,8 @@
 // Shared helper functions for pets sub-routes
 import type { Env, JwtPayload } from '../../types';
 import { newId, now } from '../../types';
+import { hasTable, hasColumn } from '../../helpers/sqlHelpers';
+export { hasTable, hasColumn };
 
 export const ARRAY_COLUMNS = [
   'color_ids',
@@ -63,17 +65,6 @@ export function rangeStartByKey(range: string): string | null {
   return current.toISOString();
 }
 
-export async function hasTable(env: Env, table: string): Promise<boolean> {
-  const row = await env.DB.prepare(
-    "SELECT name FROM sqlite_master WHERE type='table' AND name = ? LIMIT 1"
-  ).bind(table).first<{ name: string }>();
-  return Boolean(row?.name);
-}
-
-export async function hasColumn(env: Env, table: string, column: string): Promise<boolean> {
-  const rows = await env.DB.prepare(`PRAGMA table_info(${table})`).all<{ name: string }>();
-  return rows.results.some((r) => r.name === column);
-}
 
 export async function replaceRelationRows(
   env: Env,
@@ -93,17 +84,10 @@ export async function replaceRelationRows(
   }
 }
 
-export async function ensurePetItemRelationTable(env: Env, table: string, itemColumn: string): Promise<void> {
-  await env.DB.prepare(
-    `CREATE TABLE IF NOT EXISTS ${table} (
-      id TEXT PRIMARY KEY,
-      pet_id TEXT NOT NULL REFERENCES pets(id) ON DELETE CASCADE,
-      ${itemColumn} TEXT NOT NULL REFERENCES master_items(id),
-      created_at TEXT NOT NULL DEFAULT (datetime('now')),
-      updated_at TEXT NOT NULL DEFAULT (datetime('now')),
-      UNIQUE(pet_id, ${itemColumn})
-    )`
-  ).run();
+export async function ensurePetItemRelationTable(_env: Env, _table: string, _itemColumn: string): Promise<void> {
+  // No-op: pet_allergies, pet_symptoms, pet_vaccinations, pet_colors,
+  // pet_temperaments, pet_grooming_cycles already exist in the PG schema.
+  // Dynamic CREATE TABLE at runtime is not compatible with PostgreSQL managed migrations.
 }
 
 export async function upsertSinglePetItemRelation(
@@ -181,7 +165,7 @@ export async function replaceDiseaseSelections(
 export async function selectRelationIds(env: Env, petId: string, table: string, itemColumn: string): Promise<string[]> {
   if (!(await hasTable(env, table))) return [];
   const rows = await env.DB.prepare(
-    `SELECT ${itemColumn} AS item_id FROM ${table} WHERE pet_id = ? ORDER BY datetime(created_at) ASC, ${itemColumn} ASC`
+    `SELECT ${itemColumn} AS item_id FROM ${table} WHERE pet_id = ? ORDER BY created_at ASC, ${itemColumn} ASC`
   ).bind(petId).all<{ item_id: string }>();
   return rows.results.map((r) => r.item_id).filter(Boolean);
 }
@@ -231,7 +215,7 @@ export async function syncPetCurrentWeightFromLogs(env: Env, petId: string): Pro
     `SELECT weight_value, weight_unit_id
      FROM pet_weight_logs
      WHERE pet_id = ?
-     ORDER BY datetime(measured_at) DESC, datetime(created_at) DESC, id DESC
+     ORDER BY measured_at DESC, created_at DESC, id DESC
      LIMIT 1`
   ).bind(petId).first<{ weight_value: number; weight_unit_id: string | null }>();
 

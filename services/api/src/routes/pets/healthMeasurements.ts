@@ -103,11 +103,11 @@ export async function listGlucoseLogs(env: Env, payload: JwtPayload, petId: stri
   const start = rangeStartByKey(range === '1w' ? '1m' : range);
   const where = ['pet_id = ?'];
   const vals: Array<string | number> = [petId];
-  if (start) { where.push('datetime(measured_at) >= datetime(?)'); vals.push(start); }
+  if (start) { where.push('measured_at >= ?'); vals.push(start); }
   const rows = await env.DB.prepare(
     `SELECT * FROM pet_glucose_logs
      WHERE ${where.join(' AND ')}
-     ORDER BY datetime(measured_at) DESC, datetime(created_at) DESC`
+     ORDER BY measured_at DESC, created_at DESC`
   ).bind(...vals).all<Record<string, unknown>>();
   const latest = rows.results[0] || null;
   return ok({
@@ -234,14 +234,14 @@ export async function listHealthMeasurementLogs(env: Env, payload: JwtPayload, p
   const where = ['pet_id = ?'];
   const vals: Array<string | number> = [petId];
   if (start) {
-    where.push('datetime(measured_at) >= datetime(?)');
+    where.push('measured_at >= ?');
     vals.push(start);
   }
   const rows = await env.DB.prepare(
     `SELECT *
      FROM pet_health_measurement_logs
      WHERE ${where.join(' AND ')}
-     ORDER BY datetime(measured_at) DESC, datetime(created_at) DESC, id DESC`
+     ORDER BY measured_at DESC, created_at DESC, id DESC`
   ).bind(...vals).all<Record<string, unknown>>();
 
   const latest = rows.results[0] || null;

@@ -257,7 +257,7 @@ Frontend 변경:
 | Guardian Web | React + TypeScript + Vite |
 | Provider Web | React + TypeScript + Vite (MVP Optional) |
 | Backend API | Node.js + TypeScript (Cloudflare Workers) |
-| Database | PostgreSQL + Cloudflare Hyperdrive (커넥션 풀링) |
+| Database | Neon PostgreSQL + Cloudflare Hyperdrive (커넥션 풀링) |
 | Storage | Cloudflare R2 (미디어) |
 | CDN/Deploy | Cloudflare Pages (Web) + Workers (API) |
 | Ads | Google AdMob (Flutter google_mobile_ads) |

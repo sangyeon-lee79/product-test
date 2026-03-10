@@ -8,12 +8,15 @@
 		"check:i18n:master": "bash scripts/check_master_i18n_before_deploy.sh",
 		"deploy:guarded": "npm run check:i18n:master && wrangler deploy",
 		"deploy": "wrangler deploy",
+		"db:up": "docker compose -f ../../docker-compose.yml up -d postgres",
+		"db:reset": "docker compose -f ../../docker-compose.yml down -v && docker compose -f ../../docker-compose.yml up -d postgres",
 		"dev": "wrangler dev",
 		"start": "wrangler dev",
 		"test": "vitest",
 		"cf-typegen": "wrangler types"
 	},
 	"dependencies": {
+		"@neondatabase/serverless": "^1.0.2",
 		"@petfolio/shared": "*"
 	},
 	"devDependencies": {

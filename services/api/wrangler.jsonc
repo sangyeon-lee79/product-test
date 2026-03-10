@@ -19,13 +19,12 @@
 		"PLATFORM_TAGLINE": "Your pet's life portfolio"
 	},
 
-	// D1 로컬 SQLite (개발용 — 배포 시 Hyperdrive+PostgreSQL로 전환)
-	"d1_databases": [
+	// Neon PostgreSQL via Hyperdrive (로컬: Docker PG, 배포: Neon)
+	"hyperdrive": [
 		{
-			"binding": "DB",
-			"database_name": "pet-life-db",
-			"database_id": "307a9a1c-8ea3-4ae6-a4b5-5d31f7178d9d",
-			"migrations_dir": "src/db/migrations"
+			"binding": "HYPERDRIVE",
+			"id": "petfolio-hyperdrive",
+			"localConnectionString": "postgresql://petfolio:petfolio_dev@localhost:5432/petfolio"
 		}
 	],
 	"r2_buckets": [

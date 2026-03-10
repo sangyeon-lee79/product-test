@@ -1,5 +1,7 @@
 // LLD §1 기술 스택 / §6.1 JWT 구조 기반 Env + 공용 타입
 
+import type { D1CompatDatabase } from './db/adapter';
+
 export interface Env {
   ENVIRONMENT: string;
   ALLOWED_ORIGINS: string;
@@ -11,7 +13,9 @@ export interface Env {
   R2_PUBLIC_URL: string;  // R2 퍼블릭 URL (빈 문자열이면 로컬 서빙 fallback)
   PLATFORM_NAME?: string;
   PLATFORM_TAGLINE?: string;
-  DB: D1Database;         // Cloudflare D1 (로컬 개발) / 배포 시 Hyperdrive 전환
+  HYPERDRIVE?: { connectionString: string }; // Cloudflare Hyperdrive → Neon PostgreSQL
+  DATABASE_URL?: string;                     // 로컬 개발 fallback (Docker PG)
+  DB: D1CompatDatabase;   // Neon PostgreSQL via D1-compatible adapter
   R2: R2Bucket;           // Cloudflare R2 미디어 스토리지 (LLD §8)
   RATE_LIMIT_KV?: KVNamespace; // Cloudflare KV — IP 기반 rate limiting
 }

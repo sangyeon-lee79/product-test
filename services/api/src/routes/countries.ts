@@ -43,7 +43,7 @@ async function upsertI18n(env: Env, i18nKey: string, translations: Record<string
     await env.DB.prepare(
       `INSERT INTO i18n_translations (id,key,page,ko,en,ja,zh_cn,zh_tw,es,fr,de,pt,vi,th,id_lang,ar,is_active,created_at,updated_at)
        VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`
-    ).bind(newId(), i18nKey, 'country', ...lv, 1, now(), now()).run();
+    ).bind(newId(), i18nKey, 'country', ...lv, true, now(), now()).run();
   }
 }
 
@@ -53,10 +53,11 @@ async function getNextCountrySortOrder(env: Env): Promise<number> {
 }
 
 async function setDefaultCurrency(env: Env, countryId: string, currencyId: string): Promise<void> {
-  await env.DB.prepare('UPDATE country_currency_map SET is_default = 0 WHERE country_id = ?').bind(countryId).run();
+  await env.DB.prepare('UPDATE country_currency_map SET is_default = false WHERE country_id = ?').bind(countryId).run();
   const mapId = newId();
   await env.DB.prepare(
-    'INSERT OR REPLACE INTO country_currency_map (id,country_id,currency_id,is_default) VALUES (?,?,?,1)'
+    `INSERT INTO country_currency_map (id,country_id,currency_id,is_default) VALUES (?,?,?,true)
+     ON CONFLICT (country_id, currency_id) DO UPDATE SET is_default = true`
   ).bind(mapId, countryId, currencyId).run();
 }
 
@@ -69,7 +70,7 @@ async function ensureCurrencyByCode(env: Env, currencyCode: string): Promise<str
   const id = newId();
   await env.DB.prepare(
     'INSERT INTO currencies (id,code,symbol,name_key,decimal_places,is_active,created_at) VALUES (?,?,?,?,?,?,?)'
-  ).bind(id, code, preset.symbol, `currency.${code.toLowerCase()}`, preset.decimal_places, 1, now()).run();
+  ).bind(id, code, preset.symbol, `currency.${code.toLowerCase()}`, preset.decimal_places, true, now()).run();
   return id;
 }
 
@@ -83,7 +84,7 @@ async function fetchCountryById(env: Env, id: string) {
       cur.code as default_currency_code
     FROM countries c
     LEFT JOIN i18n_translations tr ON tr.key = c.name_key
-    LEFT JOIN country_currency_map ccm ON c.id = ccm.country_id AND ccm.is_default = 1
+    LEFT JOIN country_currency_map ccm ON c.id = ccm.country_id AND ccm.is_default = true
     LEFT JOIN currencies cur ON ccm.currency_id = cur.id
     WHERE c.id = ?
   `).bind(id).first();
@@ -100,9 +101,9 @@ export async function handleCountries(request: Request, env: Env, url: URL): Pro
              cur.symbol as currency_symbol, cur.name_key as currency_name_key,
              cur.decimal_places
       FROM countries c
-      LEFT JOIN country_currency_map ccm ON c.id = ccm.country_id AND ccm.is_default = 1
+      LEFT JOIN country_currency_map ccm ON c.id = ccm.country_id AND ccm.is_default = true
       LEFT JOIN currencies cur ON ccm.currency_id = cur.id
-      WHERE c.is_active = 1 ORDER BY c.sort_order, c.code
+      WHERE c.is_active = true ORDER BY c.sort_order, c.code
     `).all();
     return ok(rows.results);
   }
@@ -130,7 +131,7 @@ export async function handleCountries(request: Request, env: Env, url: URL): Pro
             cur.code as default_currency_code
           FROM countries c
           LEFT JOIN i18n_translations tr ON tr.key = c.name_key
-          LEFT JOIN country_currency_map ccm ON c.id = ccm.country_id AND ccm.is_default = 1
+          LEFT JOIN country_currency_map ccm ON c.id = ccm.country_id AND ccm.is_default = true
           LEFT JOIN currencies cur ON ccm.currency_id = cur.id
           ORDER BY c.sort_order, c.code
         `).all();
@@ -153,7 +154,7 @@ export async function handleCountries(request: Request, env: Env, url: URL): Pro
 
         const nameKey = `country.${code.toLowerCase()}`;
         const sortOrder = await getNextCountrySortOrder(env);
-        const row = { id: newId(), code, name_key: nameKey, is_active: 1, sort_order: sortOrder, created_at: now() };
+        const row = { id: newId(), code, name_key: nameKey, is_active: true, sort_order: sortOrder, created_at: now() };
         await env.DB.prepare('INSERT INTO countries (id,code,name_key,is_active,sort_order,created_at) VALUES (?,?,?,?,?,?)')
           .bind(row.id, row.code, row.name_key, row.is_active, row.sort_order, row.created_at).run();
         if (body.translations) await upsertI18n(env, nameKey, body.translations);
@@ -165,9 +166,9 @@ export async function handleCountries(request: Request, env: Env, url: URL): Pro
         let body: { sort_order?: number; is_active?: boolean; translations?: Record<string, string>; default_currency_code?: string };
         try { body = await request.json() as typeof body; } catch { return err('Invalid JSON'); }
         const sets: string[] = [];
-        const vals: (string | number)[] = [];
+        const vals: (string | number | boolean)[] = [];
         if (body.sort_order !== undefined) { sets.push('sort_order = ?'); vals.push(body.sort_order); }
-        if (body.is_active !== undefined) { sets.push('is_active = ?'); vals.push(body.is_active ? 1 : 0); }
+        if (body.is_active !== undefined) { sets.push('is_active = ?'); vals.push(body.is_active ? true : false); }
         if (sets.length > 0) {
           vals.push(id);
           await env.DB.prepare(`UPDATE countries SET ${sets.join(', ')} WHERE id = ?`).bind(...vals).run();
@@ -185,7 +186,7 @@ export async function handleCountries(request: Request, env: Env, url: URL): Pro
         return ok(await fetchCountryById(env, id));
       }
       if (request.method === 'DELETE' && id && !isCurrencyMap) {
-        await env.DB.prepare('UPDATE countries SET is_active = 0 WHERE id = ?').bind(id).run();
+        await env.DB.prepare('UPDATE countries SET is_active = false WHERE id = ?').bind(id).run();
         return ok({ id, is_active: false });
       }
       // 국가-통화 매핑 추가
@@ -194,11 +195,13 @@ export async function handleCountries(request: Request, env: Env, url: URL): Pro
         try { body = await request.json() as typeof body; } catch { return err('Invalid JSON'); }
         if (!body.currency_id) return err('currency_id required');
         if (body.is_default) {
-          await env.DB.prepare('UPDATE country_currency_map SET is_default = 0 WHERE country_id = ?').bind(id).run();
+          await env.DB.prepare('UPDATE country_currency_map SET is_default = false WHERE country_id = ?').bind(id).run();
         }
         const mapId = newId();
-        await env.DB.prepare('INSERT OR REPLACE INTO country_currency_map (id,country_id,currency_id,is_default) VALUES (?,?,?,?)')
-          .bind(mapId, id, body.currency_id, body.is_default ? 1 : 0).run();
+        await env.DB.prepare(
+          `INSERT INTO country_currency_map (id,country_id,currency_id,is_default) VALUES (?,?,?,?)
+           ON CONFLICT (country_id, currency_id) DO UPDATE SET is_default = excluded.is_default`
+        ).bind(mapId, id, body.currency_id, body.is_default ? true : false).run();
         return created({ id: mapId, country_id: id, currency_id: body.currency_id, is_default: body.is_default ?? false });
       }
     }
@@ -221,7 +224,7 @@ export async function handleCountries(request: Request, env: Env, url: URL): Pro
         let body: { code: string; symbol: string; name_key: string; decimal_places?: number };
         try { body = await request.json() as typeof body; } catch { return err('Invalid JSON'); }
         if (!body.code || !body.symbol || !body.name_key) return err('code, symbol, name_key required');
-        const row = { id: newId(), code: body.code.toUpperCase(), symbol: body.symbol, name_key: body.name_key, decimal_places: body.decimal_places ?? 2, is_active: 1, created_at: now() };
+        const row = { id: newId(), code: body.code.toUpperCase(), symbol: body.symbol, name_key: body.name_key, decimal_places: body.decimal_places ?? 2, is_active: true, created_at: now() };
         await env.DB.prepare('INSERT INTO currencies (id,code,symbol,name_key,decimal_places,is_active,created_at) VALUES (?,?,?,?,?,?,?)')
           .bind(row.id, row.code, row.symbol, row.name_key, row.decimal_places, row.is_active, row.created_at).run();
         return created(row);
@@ -230,18 +233,18 @@ export async function handleCountries(request: Request, env: Env, url: URL): Pro
         let body: { symbol?: string; name_key?: string; decimal_places?: number; is_active?: boolean };
         try { body = await request.json() as typeof body; } catch { return err('Invalid JSON'); }
         const sets: string[] = [];
-        const vals: (string | number)[] = [];
+        const vals: (string | number | boolean)[] = [];
         if (body.symbol !== undefined) { sets.push('symbol = ?'); vals.push(body.symbol); }
         if (body.name_key !== undefined) { sets.push('name_key = ?'); vals.push(body.name_key); }
         if (body.decimal_places !== undefined) { sets.push('decimal_places = ?'); vals.push(body.decimal_places); }
-        if (body.is_active !== undefined) { sets.push('is_active = ?'); vals.push(body.is_active ? 1 : 0); }
+        if (body.is_active !== undefined) { sets.push('is_active = ?'); vals.push(body.is_active ? true : false); }
         if (sets.length === 0) return err('Nothing to update');
         vals.push(id);
         await env.DB.prepare(`UPDATE currencies SET ${sets.join(', ')} WHERE id = ?`).bind(...vals).run();
         return ok(await env.DB.prepare('SELECT * FROM currencies WHERE id = ?').bind(id).first());
       }
       if (request.method === 'DELETE' && id) {
-        await env.DB.prepare('UPDATE currencies SET is_active = 0 WHERE id = ?').bind(id).run();
+        await env.DB.prepare('UPDATE currencies SET is_active = false WHERE id = ?').bind(id).run();
         return ok({ id, is_active: false });
       }
     }

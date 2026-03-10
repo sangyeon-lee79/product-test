@@ -6,6 +6,7 @@
 import type { Env, JwtPayload } from '../types';
 import { ok, created, err, newId, now } from '../types';
 import { requireAuth, issueTokens } from '../middleware/auth';
+import { hasColumn } from '../helpers/sqlHelpers';
 
 // ─────────────────────────────────────────────────────────────────────────────
 
@@ -216,9 +217,9 @@ async function signup(request: Request, env: Env): Promise<Response> {
       c.code as country_code,
       cur.code as default_currency_code
     FROM countries c
-    LEFT JOIN country_currency_map ccm ON c.id = ccm.country_id AND ccm.is_default = 1
+    LEFT JOIN country_currency_map ccm ON c.id = ccm.country_id AND ccm.is_default = true
     LEFT JOIN currencies cur ON ccm.currency_id = cur.id
-    WHERE c.code = ? AND c.is_active = 1
+    WHERE c.code = ? AND c.is_active = true
     LIMIT 1
   `).bind(countryCode).first<{ country_id: string; country_code: string; default_currency_code: string | null }>();
   if (!country?.country_id) return err('country not found', 404);
@@ -261,14 +262,14 @@ async function signup(request: Request, env: Env): Promise<Response> {
     body.address_lng ?? null,
     countryCode,
     language,
-    body.has_pets ? 1 : 0,
+    body.has_pets ? true : false,
     Math.max(0, Number(body.pet_count || 0)),
     JSON.stringify(asJsonArray(body.interested_pet_types)),
-    body.notifications_booking === false ? 0 : 1,
-    body.notifications_health === false ? 0 : 1,
-    body.marketing_opt_in ? 1 : 0,
+    body.notifications_booking !== false,
+    body.notifications_health !== false,
+    Boolean(body.marketing_opt_in),
     body.terms_agreed ? ts : null,
-    body.public_profile ? 1 : 0,
+    Boolean(body.public_profile),
     publicId || null,
     ts,
     ts,
@@ -348,7 +349,7 @@ async function signup(request: Request, env: Env): Promise<Response> {
       'updated_at',
     ];
     const providerProfileValues = [
-      'COALESCE((SELECT id FROM provider_profiles WHERE user_id = ?), ?)',
+      '?',
       '?',
       '?',
       '?',
@@ -367,8 +368,11 @@ async function signup(request: Request, env: Env): Promise<Response> {
       '?',
       '?',
     ];
-    const providerProfileBindings: Array<string | number | null> = [
-      userId,
+    // Columns to update on conflict (everything except id and user_id)
+    const updateCols = providerProfileColumns.slice(2);
+    const updateValues = providerProfileValues.slice(2);
+    const onConflictSet = updateCols.map((col, i) => `${col} = ${updateValues[i]}`).join(', ');
+    const providerProfileBindings: Array<string | number | boolean | null> = [
       newId(),
       userId,
       body.role_application.business_category_l1_id ?? null,
@@ -387,10 +391,13 @@ async function signup(request: Request, env: Env): Promise<Response> {
       ts,
       ts,
     ];
+    // Duplicate bindings for the ON CONFLICT SET clause
+    const conflictBindings = providerProfileBindings.slice(2);
     await env.DB.prepare(
-      `INSERT OR REPLACE INTO provider_profiles (${providerProfileColumns.join(', ')})
-       VALUES (${providerProfileValues.join(', ')})`
-    ).bind(...providerProfileBindings).run();
+      `INSERT INTO provider_profiles (${providerProfileColumns.join(', ')})
+       VALUES (${providerProfileValues.join(', ')})
+       ON CONFLICT (user_id) DO UPDATE SET ${onConflictSet}`
+    ).bind(...providerProfileBindings, ...conflictBindings).run();
   }
 
   const tokens = await issueTokens(userId, role, env.JWT_SECRET);
@@ -565,10 +572,11 @@ async function ensureBangulGuardianSample(env: Env): Promise<{ id: string; role:
   }
 
   await env.DB.prepare(
-    `INSERT OR IGNORE INTO user_profiles (
+    `INSERT INTO user_profiles (
       id, user_id, handle, display_name, avatar_url, bio, bio_translations,
       country_id, language, timezone, interests, created_at, updated_at
-    ) VALUES (?, ?, ?, ?, ?, ?, '{}', NULL, 'ko', 'Asia/Seoul', '[]', ?, ?)`
+    ) VALUES (?, ?, ?, ?, ?, ?, '{}', NULL, 'ko', 'Asia/Seoul', '[]', ?, ?)
+    ON CONFLICT DO NOTHING`
   ).bind(newId(), userId, null, '방울맘', 'https://placehold.co/320x320?text=Bangul', '방울이와 함께하는 일상 기록', ts, ts).run();
 
   await env.DB.prepare(
@@ -600,7 +608,7 @@ async function ensureBangulGuardianSample(env: Env): Promise<{ id: string; role:
           ?, ?, '방울', 'BANGUL-0001',
           ?, ?, ?, NULL, NULL, NULL,
           NULL, NULL, NULL, NULL, NULL,
-          'female', 'dog', '2021-03-15', 4.2, 0, 'https://placehold.co/600x600?text=Bangul', 'active', ?, ?
+          'female', 'dog', '2021-03-15', 4.2, false, 'https://placehold.co/600x600?text=Bangul', 'active', ?, ?
         )
       `).bind(
         petId,
@@ -637,7 +645,7 @@ async function ensureBangulGuardianSample(env: Env): Promise<{ id: string; role:
           NULL, NULL, NULL, NULL,
           '[]', '[]', '[]', '[]', '[]',
           '[]', '샘플 반려동물 데이터', '포메라니안 방울이', '2021-03-15', '2021-03-15', 4.2, 4.2, 'BANGUL-0001',
-          'https://placehold.co/600x600?text=Bangul', 0, 'active', ?, ?
+          'https://placehold.co/600x600?text=Bangul', false, 'active', ?, ?
         )
       `).bind(
         petId,
@@ -669,11 +677,6 @@ async function findMasterItemId(env: Env, key: string): Promise<string | null> {
     // code column may not exist on legacy schema
   }
   return null;
-}
-
-async function hasColumn(env: Env, table: string, column: string): Promise<boolean> {
-  const rows = await env.DB.prepare(`PRAGMA table_info(${table})`).all<{ name: string }>();
-  return rows.results.some((r) => r.name === column);
 }
 
 // ─── refresh ──────────────────────────────────────────────────────────────────

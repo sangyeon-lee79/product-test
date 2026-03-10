@@ -169,7 +169,7 @@ async function listAlbum(request: Request, env: Env, url: URL): Promise<Response
      LEFT JOIN users u ON u.id = pam.uploaded_by_user_id
      LEFT JOIN bookings b ON b.id = pam.booking_id
      WHERE ${where.join(' AND ')}
-     ORDER BY datetime(pam.created_at) ${sort === 'oldest' ? 'ASC' : 'DESC'}, pam.id DESC
+     ORDER BY pam.created_at ${sort === 'oldest' ? 'ASC' : 'DESC'}, pam.id DESC
      LIMIT ?`
   ).bind(...params, limit).all<AlbumRow>();
 
@@ -256,7 +256,7 @@ async function createAlbumMedia(request: Request, env: Env): Promise<Response> {
     toJsonArray(body.tags),
     me.sub,
     visibilityScope,
-    requestedPrimary ? 1 : 0,
+    requestedPrimary ? true : false,
     Number(body.sort_order ?? 0) || 0,
     status,
     timestamp,
@@ -266,7 +266,7 @@ async function createAlbumMedia(request: Request, env: Env): Promise<Response> {
   if (requestedPrimary) {
     await env.DB.prepare(
       `UPDATE pet_album_media
-       SET is_primary = CASE WHEN id = ? THEN 1 ELSE 0 END,
+       SET is_primary = CASE WHEN id = ? THEN true ELSE false END,
            updated_at = ?
        WHERE pet_id = ? AND source_type = 'profile' AND status = 'active'`
     ).bind(id, now(), petId).run();
@@ -343,7 +343,7 @@ async function updateAlbumMedia(request: Request, env: Env, id: string): Promise
     if (!isOwnerPet && !isAdmin) return err('is_primary can be changed by pet guardian only', 403);
     if (String(row.source_type || '') !== 'profile') return err('is_primary requires profile source_type');
     sets.push('is_primary = ?');
-    values.push(bool ? 1 : 0);
+    values.push(bool ? true : false);
     requestedPrimary = bool;
   }
 
@@ -355,7 +355,7 @@ async function updateAlbumMedia(request: Request, env: Env, id: string): Promise
   if (requestedPrimary) {
     await env.DB.prepare(
       `UPDATE pet_album_media
-       SET is_primary = CASE WHEN id = ? THEN 1 ELSE 0 END,
+       SET is_primary = CASE WHEN id = ? THEN true ELSE false END,
            updated_at = ?
        WHERE pet_id = ? AND source_type = 'profile' AND status = 'active'`
     ).bind(id, now(), row.pet_id).run();
@@ -389,7 +389,7 @@ async function deleteAlbumMedia(request: Request, env: Env, id: string): Promise
 
   await env.DB.prepare(
     `UPDATE pet_album_media
-     SET status = 'deleted', is_primary = 0, updated_at = ?
+     SET status = 'deleted', is_primary = false, updated_at = ?
      WHERE id = ?`
   ).bind(now(), id).run();
 
@@ -397,12 +397,12 @@ async function deleteAlbumMedia(request: Request, env: Env, id: string): Promise
     const next = await env.DB.prepare(
       `SELECT id FROM pet_album_media
        WHERE pet_id = ? AND source_type = 'profile' AND status = 'active'
-       ORDER BY datetime(created_at) DESC, id DESC
+       ORDER BY created_at DESC, id DESC
        LIMIT 1`
     ).bind(row.pet_id).first<{ id: string }>();
 
     if (next?.id) {
-      await env.DB.prepare(`UPDATE pet_album_media SET is_primary = 1, updated_at = ? WHERE id = ?`).bind(now(), next.id).run();
+      await env.DB.prepare(`UPDATE pet_album_media SET is_primary = true, updated_at = ? WHERE id = ?`).bind(now(), next.id).run();
       const nextPrimary = await env.DB.prepare(`SELECT media_url FROM pet_album_media WHERE id = ?`).bind(next.id).first<{ media_url: string }>();
       await env.DB.prepare(`UPDATE pets SET avatar_url = ?, updated_at = ? WHERE id = ?`).bind(nextPrimary?.media_url ?? null, now(), row.pet_id).run();
     } else {

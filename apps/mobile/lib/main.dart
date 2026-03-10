@@ -32,7 +32,9 @@ class MobileHomePage extends StatefulWidget {
 class _MobileHomePageState extends State<MobileHomePage> {
   final ApiClient api = ApiClient();
   final TextEditingController emailController = TextEditingController(text: 'guardian@petlife.com');
+  final TextEditingController guardianPasswordController = TextEditingController(text: 'Guardian123!');
   final TextEditingController providerEmailController = TextEditingController(text: 'provider@petlife.com');
+  final TextEditingController providerPasswordController = TextEditingController(text: 'Provider123!');
 
   String? guardianToken;
   String? providerToken;
@@ -91,7 +93,9 @@ class _MobileHomePageState extends State<MobileHomePage> {
   @override
   void dispose() {
     emailController.dispose();
+    guardianPasswordController.dispose();
     providerEmailController.dispose();
+    providerPasswordController.dispose();
     supplierIdController.dispose();
     bookingDateController.dispose();
     bookingTimeController.dispose();
@@ -131,6 +135,43 @@ class _MobileHomePageState extends State<MobileHomePage> {
     try {
       providerToken = await api.testLogin(providerEmailController.text.trim());
       setState(() => message = 'Provider login success');
+    } catch (e) {
+      setState(() => message = e.toString());
+    } finally {
+      setState(() => loading = false);
+    }
+  }
+
+  Future<void> loginGuardianWithPassword() async {
+    setState(() {
+      loading = true;
+      message = '';
+    });
+    try {
+      guardianToken = await api.passwordLogin(
+        emailController.text.trim(),
+        guardianPasswordController.text.trim(),
+      );
+      await loadGuardianData();
+      setState(() => message = 'Guardian password login success');
+    } catch (e) {
+      setState(() => message = e.toString());
+    } finally {
+      setState(() => loading = false);
+    }
+  }
+
+  Future<void> loginProviderWithPassword() async {
+    setState(() {
+      loading = true;
+      message = '';
+    });
+    try {
+      providerToken = await api.passwordLogin(
+        providerEmailController.text.trim(),
+        providerPasswordController.text.trim(),
+      );
+      setState(() => message = 'Provider password login success');
     } catch (e) {
       setState(() => message = e.toString());
     } finally {
@@ -541,13 +582,41 @@ class _MobileHomePageState extends State<MobileHomePage> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
+        Text('API Base: ${api.baseUrl}', style: const TextStyle(fontSize: 12, color: Colors.black54)),
+        const SizedBox(height: 12),
         TextField(controller: emailController, decoration: const InputDecoration(labelText: 'Guardian Email')),
         const SizedBox(height: 8),
-        ElevatedButton(onPressed: loading ? null : loginGuardian, child: const Text('Guardian Test Login')),
+        TextField(
+          controller: guardianPasswordController,
+          obscureText: true,
+          decoration: const InputDecoration(labelText: 'Guardian Password'),
+        ),
+        const SizedBox(height: 8),
+        Wrap(
+          spacing: 8,
+          runSpacing: 8,
+          children: [
+            ElevatedButton(onPressed: loading ? null : loginGuardianWithPassword, child: const Text('Guardian Password Login')),
+            ElevatedButton(onPressed: loading ? null : loginGuardian, child: const Text('Guardian Test Login')),
+          ],
+        ),
         const SizedBox(height: 16),
         TextField(controller: providerEmailController, decoration: const InputDecoration(labelText: 'Provider Email')),
         const SizedBox(height: 8),
-        ElevatedButton(onPressed: loading ? null : loginProvider, child: const Text('Provider Test Login')),
+        TextField(
+          controller: providerPasswordController,
+          obscureText: true,
+          decoration: const InputDecoration(labelText: 'Provider Password'),
+        ),
+        const SizedBox(height: 8),
+        Wrap(
+          spacing: 8,
+          runSpacing: 8,
+          children: [
+            ElevatedButton(onPressed: loading ? null : loginProviderWithPassword, child: const Text('Provider Password Login')),
+            ElevatedButton(onPressed: loading ? null : loginProvider, child: const Text('Provider Test Login')),
+          ],
+        ),
       ],
     );
   }
@@ -981,18 +1050,25 @@ class ApiClient {
   ApiClient({String? base}) : baseUrl = base ?? _defaultBaseUrl();
 
   final String baseUrl;
+  static const String _defaultWorkersApi = 'https://pet-life-api.adrien-lee.workers.dev';
 
   static String _defaultBaseUrl() {
     const envBase = String.fromEnvironment('API_BASE_URL');
     if (envBase.isNotEmpty) return envBase;
-    if (kIsWeb) return 'http://localhost:8787';
-    if (defaultTargetPlatform == TargetPlatform.android) return 'http://10.0.2.2:8787';
-    if (defaultTargetPlatform == TargetPlatform.iOS || defaultTargetPlatform == TargetPlatform.macOS) return 'http://127.0.0.1:8787';
-    return 'http://localhost:8787';
+    if (kIsWeb) return _defaultWorkersApi;
+    return _defaultWorkersApi;
   }
 
   Future<String> testLogin(String email) async {
     final data = await _request('POST', '/api/v1/auth/test-login', body: {'email': email});
+    return (data['access_token'] ?? '') as String;
+  }
+
+  Future<String> passwordLogin(String email, String password) async {
+    final data = await _request('POST', '/api/v1/auth/login', body: {
+      'email': email,
+      'password': password,
+    });
     return (data['access_token'] ?? '') as String;
   }
 

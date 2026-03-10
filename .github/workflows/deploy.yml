@@ -122,9 +122,36 @@ jobs:
         working-directory: services/api
         run: wrangler whoami
 
-      - name: Apply D1 Migrations
+      - name: Apply PostgreSQL Migrations
         working-directory: services/api
-        run: wrangler d1 migrations apply pet-life-db --remote --env=""
+        env:
+          NEON_DATABASE_URL: ${{ secrets.NEON_DATABASE_URL }}
+        run: |
+          set -euo pipefail
+
+          # Create migration tracking table if not exists
+          psql "$NEON_DATABASE_URL" -v ON_ERROR_STOP=on -c "
+            CREATE TABLE IF NOT EXISTS schema_migrations (
+              filename TEXT PRIMARY KEY,
+              applied_at TIMESTAMPTZ DEFAULT NOW()
+            );
+          "
+
+          # Apply each migration file in order
+          for file in src/db/pg-schema/*.sql; do
+            fname=$(basename "$file")
+            already=$(psql "$NEON_DATABASE_URL" -v ON_ERROR_STOP=on -tAc \
+              "SELECT 1 FROM schema_migrations WHERE filename = '$fname';")
+            if [ "$already" = "1" ]; then
+              echo "⏭️  Already applied: $fname"
+            else
+              echo "🚀 Applying: $fname"
+              psql "$NEON_DATABASE_URL" -v ON_ERROR_STOP=on -f "$file"
+              psql "$NEON_DATABASE_URL" -v ON_ERROR_STOP=on -c \
+                "INSERT INTO schema_migrations (filename) VALUES ('$fname');"
+              echo "✅ Applied: $fname"
+            fi
+          done
 
       - name: Deploy to Cloudflare Workers (with retry)
         working-directory: services/api

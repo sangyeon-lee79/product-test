@@ -54,6 +54,7 @@ export default function FeedManageModal({
   const [myRequests, setMyRequests] = useState<FeedRegistrationRequest[]>([]);
   const [showMyRequests, setShowMyRequests] = useState(false);
   const [showNutritionFields, setShowNutritionFields] = useState(false);
+  const [nutritionStep, setNutritionStep] = useState(0);
   // All manufacturers/brands for request form dropdowns
   const [allManufacturers, setAllManufacturers] = useState<FeedManufacturer[]>([]);
   const [allBrands, setAllBrands] = useState<FeedBrand[]>([]);
@@ -546,82 +547,171 @@ export default function FeedManageModal({
               <div className="form-group">
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                   <label className="form-label" style={{ marginBottom: 0 }}>{t('guardian.feed.request_manufacturer', 'Manufacturer')}</label>
-                  <button className="btn btn-sm" style={{ fontSize: 11, padding: '1px 8px' }}
-                    onClick={() => setRequestForm((p) => ({ ...p, manufacturer_custom: !p.manufacturer_custom, manufacturer_id: '', manufacturer_name: '' }))}>
-                    {requestForm.manufacturer_custom ? t('guardian.feed.select_existing', 'Select Existing') : t('guardian.feed.enter_custom', 'Enter Custom')}
-                  </button>
                 </div>
-                {requestForm.manufacturer_custom ? (
-                  <input className="form-input" placeholder={t('guardian.feed.request_manufacturer', 'Manufacturer')}
-                    value={requestForm.manufacturer_name} onChange={(e) => setRequestForm((p) => ({ ...p, manufacturer_name: e.target.value, manufacturer_id: '' }))} />
+                {!requestForm.manufacturer_custom ? (
+                  <>
+                    <select className="form-select" value={requestForm.manufacturer_id}
+                      onChange={(e) => {
+                        const id = e.target.value;
+                        const m = allMfrOptions.find((x) => x.id === id);
+                        setRequestForm((p) => ({ ...p, manufacturer_id: id, manufacturer_name: m?.label || '' }));
+                      }}>
+                      <option value="">{t('common.select', 'Select')}</option>
+                      {allMfrOptions.map((o) => <option key={o.id} value={o.id}>{o.label}</option>)}
+                    </select>
+                    <button type="button" style={{ background: 'none', border: 'none', padding: '4px 0 0', fontSize: 12, color: 'var(--primary)', textDecoration: 'underline', cursor: 'pointer', textAlign: 'left' }}
+                      onClick={() => setRequestForm((p) => ({ ...p, manufacturer_custom: true, manufacturer_id: '', manufacturer_name: '' }))}>
+                      {t('guardian.feed.custom_manufacturer', '찾는 제조사가 없으신가요? 직접 입력하기')}
+                    </button>
+                  </>
                 ) : (
-                  <select className="form-select" value={requestForm.manufacturer_id}
-                    onChange={(e) => {
-                      const id = e.target.value;
-                      const m = allMfrOptions.find((x) => x.id === id);
-                      setRequestForm((p) => ({ ...p, manufacturer_id: id, manufacturer_name: m?.label || '' }));
-                    }}>
-                    <option value="">{t('common.select', 'Select')}</option>
-                    {allMfrOptions.map((o) => <option key={o.id} value={o.id}>{o.label}</option>)}
-                  </select>
+                  <>
+                    <input className="form-input" placeholder={t('guardian.feed.request_manufacturer', 'Manufacturer')}
+                      value={requestForm.manufacturer_name} onChange={(e) => setRequestForm((p) => ({ ...p, manufacturer_name: e.target.value, manufacturer_id: '' }))} />
+                    <button type="button" style={{ background: 'none', border: 'none', padding: '4px 0 0', fontSize: 12, color: 'var(--primary)', textDecoration: 'underline', cursor: 'pointer', textAlign: 'left' }}
+                      onClick={() => setRequestForm((p) => ({ ...p, manufacturer_custom: false, manufacturer_id: '', manufacturer_name: '' }))}>
+                      {t('guardian.feed.select_existing', 'Select Existing')}
+                    </button>
+                  </>
                 )}
               </div>
               {/* Brand: dropdown + custom toggle */}
               <div className="form-group">
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                   <label className="form-label" style={{ marginBottom: 0 }}>{t('guardian.feed.request_brand', 'Brand')}</label>
-                  <button className="btn btn-sm" style={{ fontSize: 11, padding: '1px 8px' }}
-                    onClick={() => setRequestForm((p) => ({ ...p, brand_custom: !p.brand_custom, brand_id: '', brand_name: '' }))}>
-                    {requestForm.brand_custom ? t('guardian.feed.select_existing', 'Select Existing') : t('guardian.feed.enter_custom', 'Enter Custom')}
-                  </button>
                 </div>
-                {requestForm.brand_custom ? (
-                  <input className="form-input" placeholder={t('guardian.feed.request_brand', 'Brand')}
-                    value={requestForm.brand_name} onChange={(e) => setRequestForm((p) => ({ ...p, brand_name: e.target.value, brand_id: '' }))} />
+                {!requestForm.brand_custom ? (
+                  <>
+                    <select className="form-select" value={requestForm.brand_id}
+                      onChange={(e) => {
+                        const id = e.target.value;
+                        const b = allBrandOptions.find((x) => x.id === id);
+                        setRequestForm((p) => ({ ...p, brand_id: id, brand_name: b?.label || '' }));
+                      }}>
+                      <option value="">{t('common.select', 'Select')}</option>
+                      {allBrandOptions.map((o) => <option key={o.id} value={o.id}>{o.label}</option>)}
+                    </select>
+                    <button type="button" style={{ background: 'none', border: 'none', padding: '4px 0 0', fontSize: 12, color: 'var(--primary)', textDecoration: 'underline', cursor: 'pointer', textAlign: 'left' }}
+                      onClick={() => setRequestForm((p) => ({ ...p, brand_custom: true, brand_id: '', brand_name: '' }))}>
+                      {t('guardian.feed.custom_brand', '찾는 브랜드가 없으신가요? 직접 입력하기')}
+                    </button>
+                  </>
                 ) : (
-                  <select className="form-select" value={requestForm.brand_id}
-                    onChange={(e) => {
-                      const id = e.target.value;
-                      const b = allBrandOptions.find((x) => x.id === id);
-                      setRequestForm((p) => ({ ...p, brand_id: id, brand_name: b?.label || '' }));
-                    }}>
-                    <option value="">{t('common.select', 'Select')}</option>
-                    {allBrandOptions.map((o) => <option key={o.id} value={o.id}>{o.label}</option>)}
-                  </select>
+                  <>
+                    <input className="form-input" placeholder={t('guardian.feed.request_brand', 'Brand')}
+                      value={requestForm.brand_name} onChange={(e) => setRequestForm((p) => ({ ...p, brand_name: e.target.value, brand_id: '' }))} />
+                    <button type="button" style={{ background: 'none', border: 'none', padding: '4px 0 0', fontSize: 12, color: 'var(--primary)', textDecoration: 'underline', cursor: 'pointer', textAlign: 'left' }}
+                      onClick={() => setRequestForm((p) => ({ ...p, brand_custom: false, brand_id: '', brand_name: '' }))}>
+                      {t('guardian.feed.select_existing', 'Select Existing')}
+                    </button>
+                  </>
                 )}
               </div>
-              {/* Nutrition fields (13 total) */}
-              <button className="btn btn-sm" style={{ fontSize: 12, marginBottom: 8 }} onClick={() => setShowNutritionFields(!showNutritionFields)}>
-                {showNutritionFields ? '▼' : '▶'} {t('guardian.feed.request_nutrition', 'Nutrition Info (Optional)')}
-              </button>
-              {showNutritionFields && (
-                <>
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 6 }}>
-                    {([
-                      ['calories_per_100g', t('nutrition.calories', 'kcal/100g')],
-                      ['protein_pct', t('nutrition.protein', 'Protein') + ' %'],
-                      ['fat_pct', t('nutrition.fat', 'Fat') + ' %'],
-                      ['fiber_pct', t('nutrition.fiber', 'Fiber') + ' %'],
-                      ['moisture_pct', t('nutrition.moisture', 'Moisture') + ' %'],
-                      ['ash_pct', t('nutrition.ash', 'Ash') + ' %'],
-                      ['calcium_pct', t('nutrition.calcium', 'Calcium') + ' %'],
-                      ['phosphorus_pct', t('nutrition.phosphorus', 'Phosphorus') + ' %'],
-                      ['omega3_pct', t('nutrition.omega3', 'Omega-3') + ' %'],
-                      ['omega6_pct', t('nutrition.omega6', 'Omega-6') + ' %'],
-                      ['carbohydrate_pct', t('nutrition.carbohydrate', 'Carbohydrate') + ' %'],
-                      ['serving_size_g', t('nutrition.serving_size', 'Serving Size') + ' (g)'],
-                    ] as const).map(([key, label]) => (
-                      <div key={key} className="form-group" style={{ marginBottom: 0 }}>
-                        <label className="form-label" style={{ fontSize: 11 }}>{label}</label>
-                        <input className="form-input" type="number" step="0.1" value={(requestForm as unknown as Record<string, string>)[key] || ''} onChange={(e) => setRequestForm((p) => ({ ...p, [key]: e.target.value }))} />
-                      </div>
+              {/* Nutrition fields — 4-step Wizard */}
+              {!showNutritionFields ? (
+                <button className="btn btn-sm" style={{ fontSize: 12, marginBottom: 8 }} onClick={() => { setShowNutritionFields(true); setNutritionStep(0); }}>
+                  ▶ {t('guardian.feed.request_nutrition', 'Nutrition Info (Optional)')}
+                </button>
+              ) : (
+                <div style={{ border: '1px solid var(--border)', borderRadius: 8, padding: 12, marginBottom: 8, background: 'var(--bg)' }}>
+                  <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 8 }}>{t('guardian.feed.request_nutrition', 'Nutrition Info (Optional)')}</div>
+                  {/* Step indicator bar */}
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 1fr', gap: 4, marginBottom: 12 }}>
+                    {[
+                      t('guardian.feed.nutr_step1', '기본 영양소'),
+                      t('guardian.feed.nutr_step2', '상세 영양소'),
+                      t('guardian.feed.nutr_step3', '미네랄/기타'),
+                      t('guardian.feed.nutr_step4', '원재료'),
+                    ].map((label, i) => (
+                      <button key={i} type="button"
+                        onClick={() => setNutritionStep(i)}
+                        style={{
+                          padding: '4px 0', fontSize: 11, fontWeight: nutritionStep === i ? 700 : 400, textAlign: 'center',
+                          border: 'none', borderRadius: 4, cursor: 'pointer',
+                          background: nutritionStep === i ? 'var(--primary)' : 'var(--surface)',
+                          color: nutritionStep === i ? '#fff' : 'var(--text-secondary)',
+                        }}>
+                        {label}
+                      </button>
                     ))}
                   </div>
-                  <div className="form-group" style={{ marginTop: 6 }}>
-                    <label className="form-label" style={{ fontSize: 11 }}>{t('nutrition.ingredients', 'Ingredients')}</label>
-                    <textarea className="form-input" rows={2} value={requestForm.ingredients_text} onChange={(e) => setRequestForm((p) => ({ ...p, ingredients_text: e.target.value }))} />
+                  {/* Step 0: Basic Nutrients */}
+                  {nutritionStep === 0 && (
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 6 }}>
+                      {([
+                        ['calories_per_100g', t('nutrition.calories', 'kcal/100g')],
+                        ['protein_pct', t('nutrition.protein', 'Protein') + ' %'],
+                        ['fat_pct', t('nutrition.fat', 'Fat') + ' %'],
+                        ['carbohydrate_pct', t('nutrition.carbohydrate', 'Carbohydrate') + ' %'],
+                      ] as const).map(([key, label]) => (
+                        <div key={key} className="form-group" style={{ marginBottom: 0 }}>
+                          <label className="form-label" style={{ fontSize: 11 }}>{label}</label>
+                          <input className="form-input" type="number" step="0.1" value={(requestForm as unknown as Record<string, string>)[key] || ''} onChange={(e) => setRequestForm((p) => ({ ...p, [key]: e.target.value }))} />
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                  {/* Step 1: Detailed Nutrients */}
+                  {nutritionStep === 1 && (
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 6 }}>
+                      {([
+                        ['fiber_pct', t('nutrition.fiber', 'Fiber') + ' %'],
+                        ['moisture_pct', t('nutrition.moisture', 'Moisture') + ' %'],
+                        ['ash_pct', t('nutrition.ash', 'Ash') + ' %'],
+                        ['serving_size_g', t('nutrition.serving_size', 'Serving Size') + ' (g)'],
+                      ] as const).map(([key, label]) => (
+                        <div key={key} className="form-group" style={{ marginBottom: 0 }}>
+                          <label className="form-label" style={{ fontSize: 11 }}>{label}</label>
+                          <input className="form-input" type="number" step="0.1" value={(requestForm as unknown as Record<string, string>)[key] || ''} onChange={(e) => setRequestForm((p) => ({ ...p, [key]: e.target.value }))} />
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                  {/* Step 2: Minerals & Others */}
+                  {nutritionStep === 2 && (
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 6 }}>
+                      {([
+                        ['calcium_pct', t('nutrition.calcium', 'Calcium') + ' %'],
+                        ['phosphorus_pct', t('nutrition.phosphorus', 'Phosphorus') + ' %'],
+                        ['omega3_pct', t('nutrition.omega3', 'Omega-3') + ' %'],
+                        ['omega6_pct', t('nutrition.omega6', 'Omega-6') + ' %'],
+                      ] as const).map(([key, label]) => (
+                        <div key={key} className="form-group" style={{ marginBottom: 0 }}>
+                          <label className="form-label" style={{ fontSize: 11 }}>{label}</label>
+                          <input className="form-input" type="number" step="0.1" value={(requestForm as unknown as Record<string, string>)[key] || ''} onChange={(e) => setRequestForm((p) => ({ ...p, [key]: e.target.value }))} />
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                  {/* Step 3: Ingredients */}
+                  {nutritionStep === 3 && (
+                    <div className="form-group" style={{ marginBottom: 0 }}>
+                      <label className="form-label" style={{ fontSize: 11 }}>{t('nutrition.ingredients', 'Ingredients')}</label>
+                      <textarea className="form-input" rows={3} value={requestForm.ingredients_text} onChange={(e) => setRequestForm((p) => ({ ...p, ingredients_text: e.target.value }))} />
+                    </div>
+                  )}
+                  {/* Navigation buttons */}
+                  <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 10 }}>
+                    <div>
+                      {nutritionStep > 0 && (
+                        <button className="btn btn-sm btn-secondary" onClick={() => setNutritionStep((s) => s - 1)}>
+                          {t('guardian.feed.nutr_prev', '이전')}
+                        </button>
+                      )}
+                    </div>
+                    <div>
+                      {nutritionStep < 3 ? (
+                        <button className="btn btn-sm btn-primary" onClick={() => setNutritionStep((s) => s + 1)}>
+                          {t('guardian.feed.nutr_next', '다음')}
+                        </button>
+                      ) : (
+                        <button className="btn btn-sm btn-primary" onClick={() => { setShowNutritionFields(false); setNutritionStep(0); }}>
+                          {t('guardian.feed.nutr_done', '완료')}
+                        </button>
+                      )}
+                    </div>
                   </div>
-                </>
+                </div>
               )}
               <div className="form-group" style={{ marginTop: 8 }}>
                 <label className="form-label">{t('guardian.feed.request_url', 'Reference URL')}</label>
