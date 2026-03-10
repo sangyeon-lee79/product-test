@@ -30,6 +30,9 @@ export default function MembersPage() {
   const [saving, setSaving] = useState(false);
   const [l1Options, setL1Options] = useState<MasterItem[]>([]);
   const [l2Options, setL2Options] = useState<MasterItem[]>([]);
+  const [petTypeL1Options, setPetTypeL1Options] = useState<MasterItem[]>([]);
+  const [petTypeL2Options, setPetTypeL2Options] = useState<MasterItem[]>([]);
+  const [l3Options, setL3Options] = useState<MasterItem[]>([]);
 
   const [form, setForm] = useState({
     full_name: '',
@@ -40,6 +43,9 @@ export default function MembersPage() {
     role: 'guardian' as 'guardian' | 'provider' | 'admin',
     business_category_l1_id: '',
     business_category_l2_id: '',
+    business_category_l3_id: '',
+    pet_type_l1_id: '',
+    pet_type_l2_id: '',
     business_registration_no: '',
     operating_hours: '',
     certifications: '',
@@ -72,13 +78,22 @@ export default function MembersPage() {
     let mounted = true;
     async function loadL1() {
       try {
-        const rows = await api.master.public.items('business_category', null, lang);
+        const rows = await api.master.public.items('business_category', null, lang, { item_level: 'l1' });
         if (mounted) setL1Options(rows);
       } catch {
         if (mounted) setL1Options([]);
       }
     }
+    async function loadPetTypeL1() {
+      try {
+        const rows = await api.master.public.items('pet_type', null, lang);
+        if (mounted) setPetTypeL1Options(rows);
+      } catch {
+        if (mounted) setPetTypeL1Options([]);
+      }
+    }
     void loadL1();
+    void loadPetTypeL1();
     return () => { mounted = false; };
   }, [lang]);
 
@@ -90,7 +105,7 @@ export default function MembersPage() {
     let mounted = true;
     async function loadL2() {
       try {
-        const rows = await api.master.public.items('business_category', form.business_category_l1_id, lang);
+        const rows = await api.master.public.items('business_category', form.business_category_l1_id, lang, { item_level: 'l2' });
         if (mounted) setL2Options(rows);
       } catch {
         if (mounted) setL2Options([]);
@@ -99,6 +114,47 @@ export default function MembersPage() {
     void loadL2();
     return () => { mounted = false; };
   }, [form.business_category_l1_id, lang]);
+
+  useEffect(() => {
+    if (!form.pet_type_l1_id) {
+      setPetTypeL2Options([]);
+      return;
+    }
+    let mounted = true;
+    async function loadPetL2() {
+      try {
+        const rows = await api.master.public.items('pet_type', form.pet_type_l1_id, lang);
+        if (mounted) setPetTypeL2Options(rows);
+      } catch {
+        if (mounted) setPetTypeL2Options([]);
+      }
+    }
+    void loadPetL2();
+    return () => { mounted = false; };
+  }, [form.pet_type_l1_id, lang]);
+
+  useEffect(() => {
+    if (!form.business_category_l1_id || !form.pet_type_l1_id || !form.pet_type_l2_id) {
+      setL3Options([]);
+      return;
+    }
+    let mounted = true;
+    async function loadL3() {
+      try {
+        const rows = await api.master.public.items('business_category', null, lang, {
+          item_level: 'l3_style',
+          business_category_l1_id: form.business_category_l1_id,
+          pet_type_l1_id: form.pet_type_l1_id,
+          pet_type_l2_id: form.pet_type_l2_id,
+        });
+        if (mounted) setL3Options(rows);
+      } catch {
+        if (mounted) setL3Options([]);
+      }
+    }
+    void loadL3();
+    return () => { mounted = false; };
+  }, [form.business_category_l1_id, form.pet_type_l1_id, form.pet_type_l2_id, lang]);
 
   const roleLabel = useMemo(() => ({
     guardian: t('admin.members.role.guardian', '보호자'),
@@ -117,6 +173,9 @@ export default function MembersPage() {
       role: member.role,
       business_category_l1_id: member.business_category_l1_id || '',
       business_category_l2_id: member.business_category_l2_id || '',
+      business_category_l3_id: member.business_category_l3_id || '',
+      pet_type_l1_id: member.pet_type_l1_id || '',
+      pet_type_l2_id: member.pet_type_l2_id || '',
       business_registration_no: member.business_registration_no || '',
       operating_hours: member.operating_hours || '',
       certifications: normalizeCertifications(member.certifications).join(', '),
@@ -133,6 +192,9 @@ export default function MembersPage() {
         certifications: form.certifications.split(',').map((item) => item.trim()).filter(Boolean),
         business_category_l1_id: form.business_category_l1_id || null,
         business_category_l2_id: form.business_category_l2_id || null,
+        business_category_l3_id: form.business_category_l3_id || null,
+        pet_type_l1_id: form.pet_type_l1_id || null,
+        pet_type_l2_id: form.pet_type_l2_id || null,
       });
       setSuccess(t('admin.members.success.updated', '회원 정보가 업데이트되었습니다.'));
       setSelectedMember(null);
@@ -199,6 +261,9 @@ export default function MembersPage() {
                   <th>{t('admin.members.col.role', '현재 role')}</th>
                   <th>{t('admin.members.col.category_l1', '업종 L1')}</th>
                   <th>{t('admin.members.col.category_l2', '업종 L2')}</th>
+                  <th>{t('admin.members.col.pet_l1', '펫종류 L1')}</th>
+                  <th>{t('admin.members.col.pet_l2', '펫종류 L2')}</th>
+                  <th>{t('admin.members.col.category_l3', '작업 스타일')}</th>
                   <th>{t('admin.members.col.application', '신청 상태')}</th>
                   <th>{t('admin.common.action', '작업')}</th>
                 </tr>
@@ -212,6 +277,9 @@ export default function MembersPage() {
                     <td>{roleLabel[member.role]}</td>
                     <td>{member.business_l1_label || '-'}</td>
                     <td>{member.business_l2_label || '-'}</td>
+                    <td>{member.pet_type_l1_label || '-'}</td>
+                    <td>{member.pet_type_l2_label || '-'}</td>
+                    <td>{member.business_l3_label || '-'}</td>
                     <td>{member.role_application_status || t('admin.members.application.none', '없음')}</td>
                     <td className="td-actions">
                       <button className="btn btn-secondary btn-sm" onClick={() => openMember(member)}>{t('admin.members.action.edit', '정보 수정')}</button>
@@ -226,7 +294,7 @@ export default function MembersPage() {
                 ))}
                 {!members.length && (
                   <tr>
-                    <td colSpan={8} style={{ textAlign: 'center', padding: 24, color: 'var(--text-muted)' }}>
+                    <td colSpan={11} style={{ textAlign: 'center', padding: 24, color: 'var(--text-muted)' }}>
                       {t('admin.members.empty', '회원 데이터가 없습니다.')}
                     </td>
                   </tr>
@@ -274,6 +342,29 @@ export default function MembersPage() {
                   <select className="form-select" value={form.business_category_l2_id} onChange={(e) => setForm((prev) => ({ ...prev, business_category_l2_id: e.target.value }))}>
                     <option value="">{t('public.signup.provider_l2_optional', '선택 안 함')}</option>
                     {l2Options.map((item) => <option key={item.id} value={item.id}>{item.display_label || item.ko || item.key}</option>)}
+                  </select>
+                </div>
+              </div>
+              <div className="form-row col3">
+                <div className="form-group">
+                  <label className="form-label">{t('admin.members.field.pet_l1', '펫종류 L1')}</label>
+                  <select className="form-select" value={form.pet_type_l1_id} onChange={(e) => setForm((prev) => ({ ...prev, pet_type_l1_id: e.target.value, pet_type_l2_id: '', business_category_l3_id: '' }))}>
+                    <option value="">{t('admin.common.select', '선택...')}</option>
+                    {petTypeL1Options.map((item) => <option key={item.id} value={item.id}>{item.display_label || item.ko || item.key}</option>)}
+                  </select>
+                </div>
+                <div className="form-group">
+                  <label className="form-label">{t('admin.members.field.pet_l2', '펫종류 L2')}</label>
+                  <select className="form-select" value={form.pet_type_l2_id} onChange={(e) => setForm((prev) => ({ ...prev, pet_type_l2_id: e.target.value, business_category_l3_id: '' }))}>
+                    <option value="">{t('admin.common.select', '선택...')}</option>
+                    {petTypeL2Options.map((item) => <option key={item.id} value={item.id}>{item.display_label || item.ko || item.key}</option>)}
+                  </select>
+                </div>
+                <div className="form-group">
+                  <label className="form-label">{t('admin.members.field.business_l3', '작업 스타일')}</label>
+                  <select className="form-select" value={form.business_category_l3_id} onChange={(e) => setForm((prev) => ({ ...prev, business_category_l3_id: e.target.value }))}>
+                    <option value="">{t('admin.common.select', '선택...')}</option>
+                    {l3Options.map((item) => <option key={item.id} value={item.id}>{item.display_label || item.ko || item.key}</option>)}
                   </select>
                 </div>
               </div>

@@ -221,6 +221,9 @@ export interface MemberRecord {
   preferred_language?: string | null;
   business_category_l1_id?: string | null;
   business_category_l2_id?: string | null;
+  business_category_l3_id?: string | null;
+  pet_type_l1_id?: string | null;
+  pet_type_l2_id?: string | null;
   business_registration_no?: string | null;
   operating_hours?: string | null;
   certifications?: string[] | string;
@@ -230,6 +233,9 @@ export interface MemberRecord {
   requested_role?: string | null;
   business_l1_label?: string | null;
   business_l2_label?: string | null;
+  business_l3_label?: string | null;
+  pet_type_l1_label?: string | null;
+  pet_type_l2_label?: string | null;
 }
 
 export interface GoogleSettingItem {

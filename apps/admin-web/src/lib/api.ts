@@ -190,6 +190,9 @@ export const api = {
       requested_role?: 'provider';
       business_category_l1_id?: string | null;
       business_category_l2_id?: string | null;
+      business_category_l3_id?: string | null;
+      pet_type_l1_id?: string | null;
+      pet_type_l2_id?: string | null;
       business_registration_no?: string | null;
       operating_hours?: string | null;
       certifications?: string[];
@@ -216,6 +219,9 @@ export const api = {
     requested_role: 'provider';
     business_category_l1_id: string;
     business_category_l2_id?: string | null;
+    business_category_l3_id?: string | null;
+    pet_type_l1_id?: string | null;
+    pet_type_l2_id?: string | null;
     business_registration_no?: string | null;
     operating_hours?: string | null;
     certifications?: string[];
@@ -255,8 +261,26 @@ export const api = {
   master: {
     public: {
       categories: () => request<Array<{ id: string; key: string; sort_order: number; is_active: number }>>('/api/v1/master/categories'),
-      items: (categoryKey: string, parentId?: string | null, lang?: string) =>
-        request<MasterItem[]>(`/api/v1/master/items${buildQuery({ category_key: categoryKey, parent_id: parentId, lang })}`),
+      items: (
+        categoryKey: string,
+        parentId?: string | null,
+        lang?: string,
+        filters?: {
+          item_level?: string;
+          business_category_l1_id?: string | null;
+          pet_type_l1_id?: string | null;
+          pet_type_l2_id?: string | null;
+        },
+      ) =>
+        request<MasterItem[]>(`/api/v1/master/items${buildQuery({
+          category_key: categoryKey,
+          parent_id: parentId,
+          lang,
+          item_level: filters?.item_level,
+          business_category_l1_id: filters?.business_category_l1_id,
+          pet_type_l1_id: filters?.pet_type_l1_id,
+          pet_type_l2_id: filters?.pet_type_l2_id,
+        })}`),
     },
     categories: {
       list: () => request<MasterCategory[]>('/api/v1/admin/master/categories'),
@@ -613,6 +637,9 @@ export const api = {
       preferred_language?: string | null;
       business_category_l1_id?: string | null;
       business_category_l2_id?: string | null;
+      business_category_l3_id?: string | null;
+      pet_type_l1_id?: string | null;
+      pet_type_l2_id?: string | null;
       business_registration_no?: string | null;
       operating_hours?: string | null;
       certifications?: string[];

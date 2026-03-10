@@ -37,8 +37,14 @@ export default function Signup() {
   const [applyProvider, setApplyProvider] = useState(false);
   const [l1Options, setL1Options] = useState<MasterItem[]>([]);
   const [l2Options, setL2Options] = useState<MasterItem[]>([]);
+  const [petTypeL1Options, setPetTypeL1Options] = useState<MasterItem[]>([]);
+  const [petTypeL2Options, setPetTypeL2Options] = useState<MasterItem[]>([]);
+  const [l3Options, setL3Options] = useState<MasterItem[]>([]);
   const [providerL1Id, setProviderL1Id] = useState('');
   const [providerL2Id, setProviderL2Id] = useState('');
+  const [providerPetTypeL1Id, setProviderPetTypeL1Id] = useState('');
+  const [providerPetTypeL2Id, setProviderPetTypeL2Id] = useState('');
+  const [providerL3Id, setProviderL3Id] = useState('');
   const [providerBusinessNumber, setProviderBusinessNumber] = useState('');
   const [providerOperatingHours, setProviderOperatingHours] = useState('');
   const [providerCertifications, setProviderCertifications] = useState('');
@@ -74,7 +80,7 @@ export default function Signup() {
     }
     async function loadBusinessL1() {
       try {
-        const rows = await api.master.public.items('business_category', null, lang);
+        const rows = await api.master.public.items('business_category', null, lang, { item_level: 'l1' });
         if (!mounted) return;
         setL1Options(rows);
       } catch (e) {
@@ -82,8 +88,19 @@ export default function Signup() {
         setError(uiErrorMessage(e, '업종 목록을 불러오지 못했습니다.'));
       }
     }
+    async function loadPetTypeL1() {
+      try {
+        const rows = await api.master.public.items('pet_type', null, lang);
+        if (!mounted) return;
+        setPetTypeL1Options(rows);
+      } catch (e) {
+        if (!mounted) return;
+        setError(uiErrorMessage(e, '펫 종류 목록을 불러오지 못했습니다.'));
+      }
+    }
     void loadCountries();
     void loadBusinessL1();
+    void loadPetTypeL1();
     return () => {
       mounted = false;
     };
@@ -98,7 +115,7 @@ export default function Signup() {
     let mounted = true;
     async function loadBusinessL2() {
       try {
-        const rows = await api.master.public.items('business_category', providerL1Id, lang);
+        const rows = await api.master.public.items('business_category', providerL1Id, lang, { item_level: 'l2' });
         if (!mounted) return;
         setL2Options(rows);
       } catch {
@@ -111,6 +128,57 @@ export default function Signup() {
       mounted = false;
     };
   }, [providerL1Id, lang]);
+
+  useEffect(() => {
+    if (!providerPetTypeL1Id) {
+      setPetTypeL2Options([]);
+      setProviderPetTypeL2Id('');
+      return;
+    }
+    let mounted = true;
+    async function loadPetTypeL2() {
+      try {
+        const rows = await api.master.public.items('pet_type', providerPetTypeL1Id, lang);
+        if (!mounted) return;
+        setPetTypeL2Options(rows);
+      } catch {
+        if (!mounted) return;
+        setPetTypeL2Options([]);
+      }
+    }
+    void loadPetTypeL2();
+    return () => {
+      mounted = false;
+    };
+  }, [providerPetTypeL1Id, lang]);
+
+  useEffect(() => {
+    if (!providerL1Id || !providerPetTypeL1Id || !providerPetTypeL2Id) {
+      setL3Options([]);
+      setProviderL3Id('');
+      return;
+    }
+    let mounted = true;
+    async function loadBusinessL3() {
+      try {
+        const rows = await api.master.public.items('business_category', null, lang, {
+          item_level: 'l3_style',
+          business_category_l1_id: providerL1Id,
+          pet_type_l1_id: providerPetTypeL1Id,
+          pet_type_l2_id: providerPetTypeL2Id,
+        });
+        if (!mounted) return;
+        setL3Options(rows);
+      } catch {
+        if (!mounted) return;
+        setL3Options([]);
+      }
+    }
+    void loadBusinessL3();
+    return () => {
+      mounted = false;
+    };
+  }, [providerL1Id, providerPetTypeL1Id, providerPetTypeL2Id, lang]);
 
   const selectedCountry = useMemo(
     () => countries.find(c => c.code === countryCode),
@@ -150,6 +218,9 @@ export default function Signup() {
           requested_role: 'provider',
           business_category_l1_id: providerL1Id || null,
           business_category_l2_id: providerL2Id || null,
+          business_category_l3_id: providerL3Id || null,
+          pet_type_l1_id: providerPetTypeL1Id || null,
+          pet_type_l2_id: providerPetTypeL2Id || null,
           business_registration_no: providerBusinessNumber || null,
           operating_hours: providerOperatingHours || null,
           certifications: providerCertifications.split(',').map(v => v.trim()).filter(Boolean),
@@ -288,7 +359,10 @@ export default function Signup() {
                     <div className="form-row col2">
                       <div className="form-group">
                         <label className="form-label">{t('public.signup.provider_l1', '업종 L1')}</label>
-                        <select className="form-select" value={providerL1Id} onChange={e => setProviderL1Id(e.target.value)}>
+                        <select className="form-select" value={providerL1Id} onChange={e => {
+                          setProviderL1Id(e.target.value);
+                          setProviderL3Id('');
+                        }}>
                           <option value="">{t('admin.common.select', '선택...')}</option>
                           {l1Options.map(item => <option key={item.id} value={item.id}>{item.display_label || item.ko || item.key}</option>)}
                         </select>
@@ -298,6 +372,36 @@ export default function Signup() {
                         <select className="form-select" value={providerL2Id} onChange={e => setProviderL2Id(e.target.value)}>
                           <option value="">{t('public.signup.provider_l2_optional', '선택 안 함')}</option>
                           {l2Options.map(item => <option key={item.id} value={item.id}>{item.display_label || item.ko || item.key}</option>)}
+                        </select>
+                      </div>
+                    </div>
+                    <div className="form-row col3">
+                      <div className="form-group">
+                        <label className="form-label">{t('public.signup.provider_pet_l1', '펫종류 L1')}</label>
+                        <select className="form-select" value={providerPetTypeL1Id} onChange={e => {
+                          setProviderPetTypeL1Id(e.target.value);
+                          setProviderPetTypeL2Id('');
+                          setProviderL3Id('');
+                        }}>
+                          <option value="">{t('admin.common.select', '선택...')}</option>
+                          {petTypeL1Options.map(item => <option key={item.id} value={item.id}>{item.display_label || item.ko || item.key}</option>)}
+                        </select>
+                      </div>
+                      <div className="form-group">
+                        <label className="form-label">{t('public.signup.provider_pet_l2', '펫종류 L2')}</label>
+                        <select className="form-select" value={providerPetTypeL2Id} onChange={e => {
+                          setProviderPetTypeL2Id(e.target.value);
+                          setProviderL3Id('');
+                        }}>
+                          <option value="">{t('admin.common.select', '선택...')}</option>
+                          {petTypeL2Options.map(item => <option key={item.id} value={item.id}>{item.display_label || item.ko || item.key}</option>)}
+                        </select>
+                      </div>
+                      <div className="form-group">
+                        <label className="form-label">{t('public.signup.provider_l3', '작업 스타일')}</label>
+                        <select className="form-select" value={providerL3Id} onChange={e => setProviderL3Id(e.target.value)} disabled={!providerL1Id || !providerPetTypeL1Id || !providerPetTypeL2Id}>
+                          <option value="">{t('admin.common.select', '선택...')}</option>
+                          {l3Options.map(item => <option key={item.id} value={item.id}>{item.display_label || item.ko || item.key}</option>)}
                         </select>
                       </div>
                     </div>

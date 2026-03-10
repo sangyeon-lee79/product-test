@@ -1,6 +1,7 @@
 import type { Env, JwtPayload } from '../types';
 import { err, newId, now, ok } from '../types';
 import { requireAuth, requireRole } from '../middleware/auth';
+import { hasColumn } from '../helpers/sqlHelpers';
 
 type MemberFilters = {
   q?: string;
@@ -23,6 +24,9 @@ function parseJsonArray(raw: unknown): string[] {
 async function listMembers(env: Env, me: JwtPayload, url: URL): Promise<Response> {
   const roleErr = requireRole(me, ['admin']);
   if (roleErr) return roleErr;
+  const hasProfilePetTypeL1 = await hasColumn(env, 'provider_profiles', 'pet_type_l1_id');
+  const hasProfilePetTypeL2 = await hasColumn(env, 'provider_profiles', 'pet_type_l2_id');
+  const hasProfileBusinessL3 = await hasColumn(env, 'provider_profiles', 'business_category_l3_id');
 
   const filters: MemberFilters = {
     q: (url.searchParams.get('q') || '').trim(),
@@ -53,6 +57,46 @@ async function listMembers(env: Env, me: JwtPayload, url: URL): Promise<Response
   }
 
   const clause = where.length ? `WHERE ${where.join(' AND ')}` : '';
+  const labelJoin = `
+    LEFT JOIN (
+      SELECT mi.id, mi.code, COALESCE(it.ko, mi.code) AS display_label
+      FROM master_items mi
+      LEFT JOIN i18n_translations it ON it.key = 'master.' || (
+        SELECT mc.code FROM master_categories mc WHERE mc.id = mi.category_id
+      ) || '.' || mi.code
+    ) labels_business_l1 ON labels_business_l1.id = pp.business_category_l1_id
+    LEFT JOIN (
+      SELECT mi.id, mi.code, COALESCE(it.ko, mi.code) AS display_label
+      FROM master_items mi
+      LEFT JOIN i18n_translations it ON it.key = 'master.' || (
+        SELECT mc.code FROM master_categories mc WHERE mc.id = mi.category_id
+      ) || '.' || mi.code
+    ) labels_business_l2 ON labels_business_l2.id = pp.business_category_l2_id
+    ${hasProfileBusinessL3 ? `
+    LEFT JOIN (
+      SELECT mi.id, mi.code, COALESCE(it.ko, mi.code) AS display_label
+      FROM master_items mi
+      LEFT JOIN i18n_translations it ON it.key = 'master.' || (
+        SELECT mc.code FROM master_categories mc WHERE mc.id = mi.category_id
+      ) || '.' || mi.code
+    ) labels_business_l3 ON labels_business_l3.id = pp.business_category_l3_id` : ''}
+    ${hasProfilePetTypeL1 ? `
+    LEFT JOIN (
+      SELECT mi.id, mi.code, COALESCE(it.ko, mi.code) AS display_label
+      FROM master_items mi
+      LEFT JOIN i18n_translations it ON it.key = 'master.' || (
+        SELECT mc.code FROM master_categories mc WHERE mc.id = mi.category_id
+      ) || '.' || mi.code
+    ) labels_pet_l1 ON labels_pet_l1.id = pp.pet_type_l1_id` : ''}
+    ${hasProfilePetTypeL2 ? `
+    LEFT JOIN (
+      SELECT mi.id, mi.code, COALESCE(it.ko, mi.code) AS display_label
+      FROM master_items mi
+      LEFT JOIN i18n_translations it ON it.key = 'master.' || (
+        SELECT mc.code FROM master_categories mc WHERE mc.id = mi.category_id
+      ) || '.' || mi.code
+    ) labels_pet_l2 ON labels_pet_l2.id = pp.pet_type_l2_id` : ''}
+  `;
   const rows = await env.DB.prepare(
     `SELECT
       u.id,
@@ -68,6 +112,9 @@ async function listMembers(env: Env, me: JwtPayload, url: URL): Promise<Response
       COALESCE(uad.preferred_language, up.language, 'ko') AS preferred_language,
       COALESCE(pp.business_category_l1_id, '') AS business_category_l1_id,
       COALESCE(pp.business_category_l2_id, '') AS business_category_l2_id,
+      ${hasProfileBusinessL3 ? `COALESCE(pp.business_category_l3_id, '')` : `''`} AS business_category_l3_id,
+      ${hasProfilePetTypeL1 ? `COALESCE(pp.pet_type_l1_id, '')` : `''`} AS pet_type_l1_id,
+      ${hasProfilePetTypeL2 ? `COALESCE(pp.pet_type_l2_id, '')` : `''`} AS pet_type_l2_id,
       COALESCE(pp.business_registration_no, '') AS business_registration_no,
       COALESCE(pp.operating_hours, '') AS operating_hours,
       COALESCE(pp.certifications, '[]') AS certifications,
@@ -75,8 +122,11 @@ async function listMembers(env: Env, me: JwtPayload, url: URL): Promise<Response
       COALESCE(ra.id, '') AS role_application_id,
       COALESCE(ra.status, '') AS role_application_status,
       COALESCE(ra.requested_role, '') AS requested_role,
-      COALESCE(l1.display_label, l1.ko, l1.code, '') AS business_l1_label,
-      COALESCE(l2.display_label, l2.ko, l2.code, '') AS business_l2_label
+      COALESCE(labels_business_l1.display_label, '') AS business_l1_label,
+      COALESCE(labels_business_l2.display_label, '') AS business_l2_label,
+      ${hasProfileBusinessL3 ? `COALESCE(labels_business_l3.display_label, '')` : `''`} AS business_l3_label,
+      ${hasProfilePetTypeL1 ? `COALESCE(labels_pet_l1.display_label, '')` : `''`} AS pet_type_l1_label,
+      ${hasProfilePetTypeL2 ? `COALESCE(labels_pet_l2.display_label, '')` : `''`} AS pet_type_l2_label
      FROM users u
      LEFT JOIN user_profiles up ON up.user_id = u.id
      LEFT JOIN user_account_details uad ON uad.user_id = u.id
@@ -87,16 +137,7 @@ async function listMembers(env: Env, me: JwtPayload, url: URL): Promise<Response
        ORDER BY ra2.requested_at DESC
        LIMIT 1
      )
-     LEFT JOIN (
-       SELECT mi.id, mi.code, it.ko, it.en, COALESCE(it.ko, mi.code) AS display_label
-       FROM master_items mi
-       LEFT JOIN i18n_translations it ON it.key = 'master.business_category.' || mi.code
-     ) l1 ON l1.id = pp.business_category_l1_id
-     LEFT JOIN (
-       SELECT mi.id, mi.code, it.ko, it.en, COALESCE(it.ko, mi.code) AS display_label
-       FROM master_items mi
-       LEFT JOIN i18n_translations it ON it.key = 'master.business_category.' || mi.code
-     ) l2 ON l2.id = pp.business_category_l2_id
+     ${labelJoin}
      ${clause}
      ORDER BY u.created_at DESC`
   ).bind(...params).all<Record<string, unknown>>();
@@ -123,6 +164,12 @@ async function listMembers(env: Env, me: JwtPayload, url: URL): Promise<Response
 async function createRoleApplication(request: Request, env: Env, me: JwtPayload): Promise<Response> {
   const roleErr = requireRole(me, ['guardian', 'provider', 'admin']);
   if (roleErr) return roleErr;
+  const hasRoleAppPetTypeL1 = await hasColumn(env, 'role_applications', 'pet_type_l1_id');
+  const hasRoleAppPetTypeL2 = await hasColumn(env, 'role_applications', 'pet_type_l2_id');
+  const hasRoleAppBusinessL3 = await hasColumn(env, 'role_applications', 'business_category_l3_id');
+  const hasProfilePetTypeL1 = await hasColumn(env, 'provider_profiles', 'pet_type_l1_id');
+  const hasProfilePetTypeL2 = await hasColumn(env, 'provider_profiles', 'pet_type_l2_id');
+  const hasProfileBusinessL3 = await hasColumn(env, 'provider_profiles', 'business_category_l3_id');
 
   let body: Record<string, unknown>;
   try {
@@ -143,14 +190,24 @@ async function createRoleApplication(request: Request, env: Env, me: JwtPayload)
   const applicationId = newId();
   await env.DB.prepare(
     `INSERT INTO role_applications (
-      id, user_id, requested_role, business_category_l1_id, business_category_l2_id,
+      id, user_id, requested_role, business_category_l1_id, business_category_l2_id
+      ${hasRoleAppBusinessL3 ? ', business_category_l3_id' : ''}
+      ${hasRoleAppPetTypeL1 ? ', pet_type_l1_id' : ''}
+      ${hasRoleAppPetTypeL2 ? ', pet_type_l2_id' : ''},
       status, requested_at, created_at, updated_at
-    ) VALUES (?, ?, 'provider', ?, ?, 'pending', ?, ?, ?)`
+    ) VALUES (?, ?, 'provider', ?, ?
+      ${hasRoleAppBusinessL3 ? ', ?' : ''}
+      ${hasRoleAppPetTypeL1 ? ', ?' : ''}
+      ${hasRoleAppPetTypeL2 ? ', ?' : ''},
+      'pending', ?, ?, ?)`
   ).bind(
     applicationId,
     me.sub,
     body.business_category_l1_id ?? null,
     body.business_category_l2_id ?? null,
+    ...(hasRoleAppBusinessL3 ? [body.business_category_l3_id ?? null] : []),
+    ...(hasRoleAppPetTypeL1 ? [body.pet_type_l1_id ?? null] : []),
+    ...(hasRoleAppPetTypeL2 ? [body.pet_type_l2_id ?? null] : []),
     timestamp,
     timestamp,
     timestamp,
@@ -158,13 +215,20 @@ async function createRoleApplication(request: Request, env: Env, me: JwtPayload)
 
   await env.DB.prepare(
     `INSERT OR REPLACE INTO provider_profiles (
-      id, user_id, business_category_l1_id, business_category_l2_id,
+      id, user_id, business_category_l1_id, business_category_l2_id
+      ${hasProfileBusinessL3 ? ', business_category_l3_id' : ''}
+      ${hasProfilePetTypeL1 ? ', pet_type_l1_id' : ''}
+      ${hasProfilePetTypeL2 ? ', pet_type_l2_id' : ''},
       business_registration_no, operating_hours, certifications, supported_pet_types,
       address_line, address_place_id, address_lat, address_lng,
       approval_status, created_at, updated_at
     ) VALUES (
       COALESCE((SELECT id FROM provider_profiles WHERE user_id = ?), ?),
-      ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending', ?, ?
+      ?, ?, ?
+      ${hasProfileBusinessL3 ? ', ?' : ''}
+      ${hasProfilePetTypeL1 ? ', ?' : ''}
+      ${hasProfilePetTypeL2 ? ', ?' : ''},
+      ?, ?, ?, ?, ?, ?, ?, 'pending', ?, ?
     )`
   ).bind(
     me.sub,
@@ -172,6 +236,9 @@ async function createRoleApplication(request: Request, env: Env, me: JwtPayload)
     me.sub,
     body.business_category_l1_id ?? null,
     body.business_category_l2_id ?? null,
+    ...(hasProfileBusinessL3 ? [body.business_category_l3_id ?? null] : []),
+    ...(hasProfilePetTypeL1 ? [body.pet_type_l1_id ?? null] : []),
+    ...(hasProfilePetTypeL2 ? [body.pet_type_l2_id ?? null] : []),
     body.business_registration_no ?? null,
     body.operating_hours ?? null,
     JSON.stringify(Array.isArray(body.certifications) ? body.certifications : []),
@@ -190,6 +257,9 @@ async function createRoleApplication(request: Request, env: Env, me: JwtPayload)
 async function updateMember(request: Request, env: Env, me: JwtPayload, memberId: string): Promise<Response> {
   const roleErr = requireRole(me, ['admin']);
   if (roleErr) return roleErr;
+  const hasProfilePetTypeL1 = await hasColumn(env, 'provider_profiles', 'pet_type_l1_id');
+  const hasProfilePetTypeL2 = await hasColumn(env, 'provider_profiles', 'pet_type_l2_id');
+  const hasProfileBusinessL3 = await hasColumn(env, 'provider_profiles', 'business_category_l3_id');
 
   let body: Record<string, unknown>;
   try {
@@ -237,12 +307,23 @@ async function updateMember(request: Request, env: Env, me: JwtPayload, memberId
 
   await env.DB.prepare(
     `INSERT INTO provider_profiles (
-      id, user_id, business_category_l1_id, business_category_l2_id, business_registration_no,
+      id, user_id, business_category_l1_id, business_category_l2_id
+      ${hasProfileBusinessL3 ? ', business_category_l3_id' : ''}
+      ${hasProfilePetTypeL1 ? ', pet_type_l1_id' : ''}
+      ${hasProfilePetTypeL2 ? ', pet_type_l2_id' : ''},
+      business_registration_no,
       operating_hours, certifications, approval_status, updated_at, created_at
-    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    ) VALUES (?, ?, ?, ?
+      ${hasProfileBusinessL3 ? ', ?' : ''}
+      ${hasProfilePetTypeL1 ? ', ?' : ''}
+      ${hasProfilePetTypeL2 ? ', ?' : ''},
+      ?, ?, ?, ?, ?, ?)
     ON CONFLICT(user_id) DO UPDATE SET
       business_category_l1_id = excluded.business_category_l1_id,
       business_category_l2_id = excluded.business_category_l2_id,
+      ${hasProfileBusinessL3 ? 'business_category_l3_id = excluded.business_category_l3_id,' : ''}
+      ${hasProfilePetTypeL1 ? 'pet_type_l1_id = excluded.pet_type_l1_id,' : ''}
+      ${hasProfilePetTypeL2 ? 'pet_type_l2_id = excluded.pet_type_l2_id,' : ''}
       business_registration_no = excluded.business_registration_no,
       operating_hours = excluded.operating_hours,
       certifications = excluded.certifications,
@@ -253,6 +334,9 @@ async function updateMember(request: Request, env: Env, me: JwtPayload, memberId
     memberId,
     body.business_category_l1_id ?? null,
     body.business_category_l2_id ?? null,
+    ...(hasProfileBusinessL3 ? [body.business_category_l3_id ?? null] : []),
+    ...(hasProfilePetTypeL1 ? [body.pet_type_l1_id ?? null] : []),
+    ...(hasProfilePetTypeL2 ? [body.pet_type_l2_id ?? null] : []),
     body.business_registration_no ?? null,
     body.operating_hours ?? null,
     JSON.stringify(Array.isArray(body.certifications) ? body.certifications : []),

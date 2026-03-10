@@ -279,6 +279,10 @@ export async function handleMaster(request: Request, env: Env, url: URL): Promis
     const categoryKey = url.searchParams.get('category_key');
     if (!categoryKey) return err('category_key required');
     const parentId = (url.searchParams.get('parent_id') || '').trim() || null;
+    const itemLevel = (url.searchParams.get('item_level') || '').trim() || null;
+    const businessCategoryL1Id = (url.searchParams.get('business_category_l1_id') || '').trim() || null;
+    const petTypeL1Id = (url.searchParams.get('pet_type_l1_id') || '').trim() || null;
+    const petTypeL2Id = (url.searchParams.get('pet_type_l2_id') || '').trim() || null;
     const langRaw = (url.searchParams.get('lang') || 'ko') as typeof LANGS[number];
     const lang = LANGS.includes(langRaw) ? langRaw : 'ko';
     const langCol = lang;
@@ -319,8 +323,24 @@ export async function handleMaster(request: Request, env: Env, url: URL): Promis
         END
       WHERE mi.category_id = ? AND mi.status = 'active'
         AND (? IS NULL OR mi.parent_item_id = ?)
+        AND (? IS NULL OR json_extract(mi.metadata, '$.item_level') = ?)
+        AND (? IS NULL OR json_extract(mi.metadata, '$.business_category_l1_id') = ?)
+        AND (? IS NULL OR json_extract(mi.metadata, '$.pet_type_l1_id') = ?)
+        AND (? IS NULL OR json_extract(mi.metadata, '$.pet_type_l2_id') = ?)
       ORDER BY mi.sort_order, mi.code
-    `).bind(cat.id, parentId, parentId).all();
+    `).bind(
+      cat.id,
+      parentId,
+      parentId,
+      itemLevel,
+      itemLevel,
+      businessCategoryL1Id,
+      businessCategoryL1Id,
+      petTypeL1Id,
+      petTypeL1Id,
+      petTypeL2Id,
+      petTypeL2Id,
+    ).all();
     return ok(rows.results);
   }
 

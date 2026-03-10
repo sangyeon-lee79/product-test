@@ -46,6 +46,9 @@ type SignupBody = {
     requested_role?: string;
     business_category_l1_id?: string | null;
     business_category_l2_id?: string | null;
+    business_category_l3_id?: string | null;
+    pet_type_l1_id?: string | null;
+    pet_type_l2_id?: string | null;
     business_registration_no?: string | null;
     operating_hours?: string | null;
     certifications?: string[] | null;
@@ -269,37 +272,106 @@ async function signup(request: Request, env: Env): Promise<Response> {
 
   if (body.role_application && normalizeRequestedRole(body.role_application.requested_role) === 'provider') {
     const applicationId = newId();
-    await env.DB.prepare(
-      `INSERT INTO role_applications (
-        id, user_id, requested_role, business_category_l1_id, business_category_l2_id,
-        status, requested_at, created_at, updated_at
-      ) VALUES (?, ?, 'provider', ?, ?, 'pending', ?, ?, ?)`
-    ).bind(
+    const hasRoleAppPetTypeL1 = await hasColumn(env, 'role_applications', 'pet_type_l1_id');
+    const hasRoleAppPetTypeL2 = await hasColumn(env, 'role_applications', 'pet_type_l2_id');
+    const hasRoleAppBusinessL3 = await hasColumn(env, 'role_applications', 'business_category_l3_id');
+    const roleAppColumns = [
+      'id',
+      'user_id',
+      'requested_role',
+      'business_category_l1_id',
+      'business_category_l2_id',
+      ...(hasRoleAppBusinessL3 ? ['business_category_l3_id'] : []),
+      ...(hasRoleAppPetTypeL1 ? ['pet_type_l1_id'] : []),
+      ...(hasRoleAppPetTypeL2 ? ['pet_type_l2_id'] : []),
+      'status',
+      'requested_at',
+      'created_at',
+      'updated_at',
+    ];
+    const roleAppValues = [
+      '?',
+      '?',
+      "'provider'",
+      '?',
+      '?',
+      ...(hasRoleAppBusinessL3 ? ['?'] : []),
+      ...(hasRoleAppPetTypeL1 ? ['?'] : []),
+      ...(hasRoleAppPetTypeL2 ? ['?'] : []),
+      "'pending'",
+      '?',
+      '?',
+      '?',
+    ];
+    const roleAppBindings: Array<string | number | null> = [
       applicationId,
       userId,
       body.role_application.business_category_l1_id ?? null,
       body.role_application.business_category_l2_id ?? null,
+      ...(hasRoleAppBusinessL3 ? [body.role_application.business_category_l3_id ?? null] : []),
+      ...(hasRoleAppPetTypeL1 ? [body.role_application.pet_type_l1_id ?? null] : []),
+      ...(hasRoleAppPetTypeL2 ? [body.role_application.pet_type_l2_id ?? null] : []),
       ts,
       ts,
       ts,
-    ).run();
-
+    ];
     await env.DB.prepare(
-      `INSERT OR REPLACE INTO provider_profiles (
-        id, user_id, business_category_l1_id, business_category_l2_id,
-        business_registration_no, operating_hours, supported_pet_types, certifications,
-        address_line, address_place_id, address_lat, address_lng,
-        approval_status, created_at, updated_at
-      ) VALUES (
-        COALESCE((SELECT id FROM provider_profiles WHERE user_id = ?), ?),
-        ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending', ?, ?
-      )`
-    ).bind(
+      `INSERT INTO role_applications (${roleAppColumns.join(', ')})
+       VALUES (${roleAppValues.join(', ')})`
+    ).bind(...roleAppBindings).run();
+
+    const hasProfilePetTypeL1 = await hasColumn(env, 'provider_profiles', 'pet_type_l1_id');
+    const hasProfilePetTypeL2 = await hasColumn(env, 'provider_profiles', 'pet_type_l2_id');
+    const hasProfileBusinessL3 = await hasColumn(env, 'provider_profiles', 'business_category_l3_id');
+    const providerProfileColumns = [
+      'id',
+      'user_id',
+      'business_category_l1_id',
+      'business_category_l2_id',
+      ...(hasProfileBusinessL3 ? ['business_category_l3_id'] : []),
+      ...(hasProfilePetTypeL1 ? ['pet_type_l1_id'] : []),
+      ...(hasProfilePetTypeL2 ? ['pet_type_l2_id'] : []),
+      'business_registration_no',
+      'operating_hours',
+      'supported_pet_types',
+      'certifications',
+      'address_line',
+      'address_place_id',
+      'address_lat',
+      'address_lng',
+      'approval_status',
+      'created_at',
+      'updated_at',
+    ];
+    const providerProfileValues = [
+      'COALESCE((SELECT id FROM provider_profiles WHERE user_id = ?), ?)',
+      '?',
+      '?',
+      '?',
+      ...(hasProfileBusinessL3 ? ['?'] : []),
+      ...(hasProfilePetTypeL1 ? ['?'] : []),
+      ...(hasProfilePetTypeL2 ? ['?'] : []),
+      '?',
+      '?',
+      '?',
+      '?',
+      '?',
+      '?',
+      '?',
+      '?',
+      "'pending'",
+      '?',
+      '?',
+    ];
+    const providerProfileBindings: Array<string | number | null> = [
       userId,
       newId(),
       userId,
       body.role_application.business_category_l1_id ?? null,
       body.role_application.business_category_l2_id ?? null,
+      ...(hasProfileBusinessL3 ? [body.role_application.business_category_l3_id ?? null] : []),
+      ...(hasProfilePetTypeL1 ? [body.role_application.pet_type_l1_id ?? null] : []),
+      ...(hasProfilePetTypeL2 ? [body.role_application.pet_type_l2_id ?? null] : []),
       body.role_application.business_registration_no ?? null,
       body.role_application.operating_hours ?? null,
       JSON.stringify(asJsonArray(body.role_application.supported_pet_types)),
@@ -310,7 +382,11 @@ async function signup(request: Request, env: Env): Promise<Response> {
       body.role_application.address_lng ?? body.address_lng ?? null,
       ts,
       ts,
-    ).run();
+    ];
+    await env.DB.prepare(
+      `INSERT OR REPLACE INTO provider_profiles (${providerProfileColumns.join(', ')})
+       VALUES (${providerProfileValues.join(', ')})`
+    ).bind(...providerProfileBindings).run();
   }
 
   const tokens = await issueTokens(userId, role, env.JWT_SECRET);
