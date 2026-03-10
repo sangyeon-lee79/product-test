@@ -414,10 +414,12 @@ export const api = {
       create: (petId: string, data: {
         pet_feed_id?: string; feed_model_id?: string; amount_g?: number;
         amount_unit?: string; frequency?: number; feeding_time?: string; memo?: string;
+        is_mixed?: boolean; items?: Array<{ pet_feed_id: string; amount_g?: number; ratio_pct?: number }>;
       }) => request<{ id: string }>(`/api/v1/pets/${petId}/feeding-logs`, { method: 'POST', body: JSON.stringify(data) }),
       update: (petId: string, logId: string, data: Partial<{
         pet_feed_id: string; feed_model_id: string; amount_g: number;
         amount_unit: string; frequency: number; feeding_time: string; memo: string;
+        is_mixed: boolean; items: Array<{ pet_feed_id: string; amount_g?: number; ratio_pct?: number }>;
       }>) => request<{ id: string; updated: boolean }>(`/api/v1/pets/${petId}/feeding-logs/${logId}`, { method: 'PUT', body: JSON.stringify(data) }),
       remove: (petId: string, logId: string) =>
         request<{ id: string; deleted: boolean }>(`/api/v1/pets/${petId}/feeding-logs/${logId}`, { method: 'DELETE' }),

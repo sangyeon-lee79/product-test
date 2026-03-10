@@ -345,15 +345,26 @@ export default function FeedManageModal({
               {/* Nutrition info (read-only, shown when model selected) */}
               {nutrition && (
                 <div style={{ margin: '8px 0', padding: '10px 12px', background: 'var(--bg)', borderRadius: 6, border: '1px solid var(--border)' }}>
-                  <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 6 }}>{t('admin.feed.nutrition', 'Nutrition')}</div>
+                  <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 6 }}>{t('nutrition.title', '영양 정보')}</div>
                   <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '4px 12px', fontSize: 12, color: 'var(--text-secondary)' }}>
-                    {nutrition.calories_per_100g != null && <span>{t('admin.feed.calories', 'Calories')}: {nutrition.calories_per_100g} kcal</span>}
-                    {nutrition.protein_pct != null && <span>{t('admin.feed.protein', 'Protein')}: {nutrition.protein_pct}%</span>}
-                    {nutrition.fat_pct != null && <span>{t('admin.feed.fat', 'Fat')}: {nutrition.fat_pct}%</span>}
-                    {nutrition.fiber_pct != null && <span>{t('admin.feed.fiber', 'Fiber')}: {nutrition.fiber_pct}%</span>}
-                    {nutrition.moisture_pct != null && <span>{t('admin.feed.moisture', 'Moisture')}: {nutrition.moisture_pct}%</span>}
-                    {nutrition.carbohydrate_pct != null && <span>{t('admin.feed.carbohydrate', 'Carbs')}: {nutrition.carbohydrate_pct}%</span>}
+                    {nutrition.calories_per_100g != null && <span>{t('nutrition.calories', '칼로리')}: {nutrition.calories_per_100g} kcal</span>}
+                    {nutrition.protein_pct != null && <span>{t('nutrition.protein', '단백질')}: {nutrition.protein_pct}%</span>}
+                    {nutrition.fat_pct != null && <span>{t('nutrition.fat', '지방')}: {nutrition.fat_pct}%</span>}
+                    {nutrition.fiber_pct != null && <span>{t('nutrition.fiber', '식이섬유')}: {nutrition.fiber_pct}%</span>}
+                    {nutrition.moisture_pct != null && <span>{t('nutrition.moisture', '수분')}: {nutrition.moisture_pct}%</span>}
+                    {nutrition.carbohydrate_pct != null && <span>{t('nutrition.carbohydrate', '탄수화물')}: {nutrition.carbohydrate_pct}%</span>}
+                    {nutrition.ash_pct != null && <span>{t('nutrition.ash', '조회분')}: {nutrition.ash_pct}%</span>}
+                    {nutrition.calcium_pct != null && <span>{t('nutrition.calcium', '칼슘')}: {nutrition.calcium_pct}%</span>}
+                    {nutrition.phosphorus_pct != null && <span>{t('nutrition.phosphorus', '인')}: {nutrition.phosphorus_pct}%</span>}
+                    {nutrition.omega3_pct != null && <span>{t('nutrition.omega3', '오메가3')}: {nutrition.omega3_pct}%</span>}
+                    {nutrition.omega6_pct != null && <span>{t('nutrition.omega6', '오메가6')}: {nutrition.omega6_pct}%</span>}
+                    {nutrition.serving_size_g != null && <span>{t('nutrition.serving_size', '1회급여량')}: {nutrition.serving_size_g}g</span>}
                   </div>
+                  {nutrition.ingredients_text && (
+                    <div style={{ marginTop: 6, fontSize: 11, color: 'var(--text-muted)' }}>
+                      <span style={{ fontWeight: 600 }}>{t('nutrition.ingredients', '성분')}: </span>{nutrition.ingredients_text}
+                    </div>
+                  )}
                 </div>
               )}
               <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 14, marginTop: 8, cursor: 'pointer' }}>

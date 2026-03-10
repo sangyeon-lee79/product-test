@@ -30,7 +30,7 @@ export default function WeightModal({ open, editingLog, selectedPet, t, setError
         notes: editingLog.notes || '',
       });
     } else {
-      setWeightForm({ value: '', measured_at: '', notes: '' });
+      setWeightForm({ value: '', measured_at: toDatetimeLocal(), notes: '' });
     }
     setInitialized(true);
   }

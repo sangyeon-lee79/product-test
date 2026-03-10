@@ -97,6 +97,8 @@ export default function GuardianMainPage() {
 
   // ── Health sub-tabs ──────────────────────────────────────────────────────
   const [healthSubTab, setHealthSubTab] = useState<'graph' | 'timeline'>('graph');
+  const [chartFilters, setChartFilters] = useState<{ weight: boolean; measurement: boolean; feeding: boolean; calories: boolean }>({ weight: true, measurement: true, feeding: true, calories: true });
+  const toggleChartFilter = (key: keyof typeof chartFilters) => setChartFilters((prev) => ({ ...prev, [key]: !prev[key] }));
 
   // ── Pagination ──────────────────────────────────────────────────────────
   const PAGE_SIZE = 10;
@@ -607,15 +609,30 @@ export default function GuardianMainPage() {
     const width = 720;
     const hasFeedBands = petFeeds.filter((f) => f.start_date).length > 0;
     const feedBandHeight = hasFeedBands ? 40 : 0;
-    const height = 260 + feedBandHeight;
-    const pad = 34;
-    const rightPad = 46;
-    const usableW = width - pad - rightPad;
-    const chartBottom = height - pad - feedBandHeight;
-    const usableH = chartBottom - pad;
+    const height = 280 + feedBandHeight;
+    const padL = 50; // left pad for Y-axis labels
+    const padR = 50; // right pad for second Y-axis
+    const padT = 30;
+    const padB = 34;
+    const usableW = width - padL - padR;
+    const chartBottom = height - padB - feedBandHeight;
+    const usableH = chartBottom - padT;
 
     // Feeding logs with valid amount
     const feedingWithAmount = feedingLogs.filter((fl) => fl.amount_g != null && fl.feeding_time);
+
+    // Calorie data: per-feeding calorie calculation
+    const feedNutrMap = new Map<string, number>();
+    for (const pf of petFeeds) {
+      if (pf.calories_per_100g) feedNutrMap.set(pf.id, pf.calories_per_100g);
+    }
+    const caloriePoints = feedingWithAmount
+      .filter((fl) => fl.pet_feed_id && fl.amount_g)
+      .map((fl) => {
+        const cal100 = fl.calories_per_100g ?? feedNutrMap.get(fl.pet_feed_id!) ?? 0;
+        return { time: new Date(fl.feeding_time!).getTime(), cal: cal100 > 0 ? (Number(fl.amount_g) / 100) * cal100 : 0 };
+      })
+      .filter((p) => p.cal > 0);
 
     const allTimes = [
       ...weightRows.map((row) => new Date(row.measured_at).getTime()),
@@ -627,41 +644,71 @@ export default function GuardianMainPage() {
     const maxT = allTimes.length ? Math.max(...allTimes) : Date.now();
     const tSpan = Math.max(1, maxT - minT);
 
-    const normalizeX = (timeMs: number) => pad + Math.max(0, Math.min(usableW, ((timeMs - minT) / tSpan) * usableW));
+    const normalizeX = (timeMs: number) => padL + Math.max(0, Math.min(usableW, ((timeMs - minT) / tSpan) * usableW));
+
+    // Normalize with 10% padding above/below
+    function rangeWithPad(values: number[]): [number, number, number] {
+      if (!values.length) return [0, 1, 1];
+      const mn = Math.min(...values);
+      const mx = Math.max(...values);
+      const span = Math.max(0.0001, mx - mn);
+      const padding = span * 0.1;
+      return [mn - padding, mx + padding, span + padding * 2];
+    }
+
     const weightValues = weightRows.map((row) => Number(row.weight_value));
     const measurementValues = mRows.map((row) => Number(row.value));
     const feedingValues = feedingWithAmount.map((fl) => Number(fl.amount_g));
-    const minW = weightValues.length ? Math.min(...weightValues) : 0;
-    const maxW = weightValues.length ? Math.max(...weightValues) : 1;
-    const minM = measurementValues.length ? Math.min(...measurementValues) : 0;
-    const maxM = measurementValues.length ? Math.max(...measurementValues) : 1;
-    const minF = feedingValues.length ? Math.min(...feedingValues) : 0;
-    const maxF = feedingValues.length ? Math.max(...feedingValues) : 1;
-    const wSpan = Math.max(0.0001, maxW - minW);
-    const mSpan = Math.max(0.0001, maxM - minM);
-    const fSpan = Math.max(0.0001, maxF - minF);
-    const normalizeYW = (value: number) => pad + (1 - ((value - minW) / wSpan)) * usableH;
-    const normalizeYM = (value: number) => pad + (1 - ((value - minM) / mSpan)) * usableH;
-    const normalizeYF = (value: number) => pad + (1 - ((value - minF) / fSpan)) * usableH;
+    const calorieValues = caloriePoints.map((p) => p.cal);
+
+    const [minW, , wSpan] = rangeWithPad(weightValues);
+    const [minM, , mSpan] = rangeWithPad(measurementValues);
+    const [minF, , fSpan] = rangeWithPad(feedingValues);
+    const [minC, , cSpan] = rangeWithPad(calorieValues);
+
+    const normalizeY = (value: number, mn: number, span: number) => padT + (1 - ((value - mn) / span)) * usableH;
+    const normalizeYW = (v: number) => normalizeY(v, minW, wSpan);
+    const normalizeYM = (v: number) => normalizeY(v, minM, mSpan);
+    const normalizeYF = (v: number) => normalizeY(v, minF, fSpan);
+    const normalizeYC = (v: number) => normalizeY(v, minC, cSpan);
 
     const sortedWeights = [...weightRows].sort((a, b) => new Date(a.measured_at).getTime() - new Date(b.measured_at).getTime());
     const sortedMeasurements = [...mRows].sort((a, b) => new Date(a.measured_at).getTime() - new Date(b.measured_at).getTime());
     const sortedFeedings = [...feedingWithAmount].sort((a, b) => new Date(a.feeding_time!).getTime() - new Date(b.feeding_time!).getTime());
+    const sortedCalories = [...caloriePoints].sort((a, b) => a.time - b.time);
 
-    const weightPath = sortedWeights
-      .map((row, idx) => `${idx === 0 ? 'M' : 'L'} ${normalizeX(new Date(row.measured_at).getTime())} ${normalizeYW(Number(row.weight_value))}`)
-      .join(' ');
-    const measurementPath = sortedMeasurements
-      .map((row, idx) => `${idx === 0 ? 'M' : 'L'} ${normalizeX(new Date(row.measured_at).getTime())} ${normalizeYM(Number(row.value))}`)
-      .join(' ');
-    const feedingPath = sortedFeedings
-      .map((fl, idx) => `${idx === 0 ? 'M' : 'L'} ${normalizeX(new Date(fl.feeding_time!).getTime())} ${normalizeYF(Number(fl.amount_g))}`)
-      .join(' ');
+    // Quadratic bezier smooth path builder
+    function smoothPath(points: Array<{ x: number; y: number }>): string {
+      if (points.length === 0) return '';
+      if (points.length === 1) return ''; // single point handled separately with circle
+      let d = `M ${points[0].x} ${points[0].y}`;
+      for (let i = 1; i < points.length; i++) {
+        const prev = points[i - 1];
+        const curr = points[i];
+        const mx = (prev.x + curr.x) / 2;
+        d += ` Q ${prev.x} ${prev.y} ${mx} ${(prev.y + curr.y) / 2}`;
+        if (i === points.length - 1) {
+          d += ` Q ${mx} ${(prev.y + curr.y) / 2} ${curr.x} ${curr.y}`;
+        }
+      }
+      return d;
+    }
+
+    const wPoints = sortedWeights.map((r) => ({ x: normalizeX(new Date(r.measured_at).getTime()), y: normalizeYW(Number(r.weight_value)) }));
+    const mPoints = sortedMeasurements.map((r) => ({ x: normalizeX(new Date(r.measured_at).getTime()), y: normalizeYM(Number(r.value)) }));
+    const fPoints = sortedFeedings.map((fl) => ({ x: normalizeX(new Date(fl.feeding_time!).getTime()), y: normalizeYF(Number(fl.amount_g)) }));
+    const cPoints = sortedCalories.map((p) => ({ x: normalizeX(p.time), y: normalizeYC(p.cal) }));
+
+    const weightPath = wPoints.length > 1 ? smoothPath(wPoints) : '';
+    const measurementPath = mPoints.length > 1 ? smoothPath(mPoints) : '';
+    const feedingPath = fPoints.length > 1 ? smoothPath(fPoints) : '';
+    const caloriePath = cPoints.length > 1 ? smoothPath(cPoints) : '';
 
     // Last points for end-of-line labels
     const lastWeight = sortedWeights[sortedWeights.length - 1];
     const lastMeasurement = sortedMeasurements[sortedMeasurements.length - 1];
     const lastFeeding = sortedFeedings[sortedFeedings.length - 1];
+    const lastCalorie = sortedCalories[sortedCalories.length - 1];
 
     // Feed timeline bands
     const feedColors = ['#43a047', '#7b1fa2', '#e65100', '#0277bd', '#c62828', '#558b2f'];
@@ -675,41 +722,83 @@ export default function GuardianMainPage() {
 
     const feedBandY = chartBottom + 8;
 
+    // Y-axis tick labels
+    const yTickCount = 4;
+    const wTicks = weightValues.length ? Array.from({ length: yTickCount }, (_, i) => minW + (wSpan * i) / (yTickCount - 1)) : [];
+    const mTicks = measurementValues.length ? Array.from({ length: yTickCount }, (_, i) => minM + (mSpan * i) / (yTickCount - 1)) : [];
+
     return (
       <div className="weight-chart">
         <svg viewBox={`0 0 ${width} ${height}`} role="img" aria-label="Combined health trend chart">
           <rect x="0" y="0" width={width} height={height} rx="12" fill="#f7fbff" />
-          <line x1={pad} y1={pad} x2={pad} y2={chartBottom} stroke="#b8c8de" />
-          <line x1={width - rightPad} y1={pad} x2={width - rightPad} y2={chartBottom} stroke="#d6deec" />
-          <line x1={pad} y1={chartBottom} x2={width - rightPad} y2={chartBottom} stroke="#b8c8de" />
+          {/* Grid lines */}
+          {[0.25, 0.5, 0.75].map((frac) => (
+            <line key={`grid-${frac}`} x1={padL} y1={padT + frac * usableH} x2={width - padR} y2={padT + frac * usableH}
+              stroke="#e8edf3" strokeWidth="1" />
+          ))}
+          <line x1={padL} y1={padT} x2={padL} y2={chartBottom} stroke="#b8c8de" />
+          <line x1={width - padR} y1={padT} x2={width - padR} y2={chartBottom} stroke="#d6deec" />
+          <line x1={padL} y1={chartBottom} x2={width - padR} y2={chartBottom} stroke="#b8c8de" />
+
+          {/* Left Y-axis labels (weight in blue) */}
+          {chartFilters.weight && wTicks.map((v, i) => (
+            <text key={`wt-${i}`} x={padL - 4} y={normalizeYW(v) + 3} fontSize="9" fill="#1a73e8" textAnchor="end">
+              {v.toFixed(1)}
+            </text>
+          ))}
+
+          {/* Right Y-axis labels (measurement in orange) */}
+          {chartFilters.measurement && mTicks.map((v, i) => (
+            <text key={`mt-${i}`} x={width - padR + 4} y={normalizeYM(v) + 3} fontSize="9" fill="#ef6c00" textAnchor="start">
+              {v.toFixed(0)}
+            </text>
+          ))}
 
           {/* Feed change vertical markers */}
           {feedBands.map(({ feed, startMs, color }) => {
             const x = normalizeX(startMs);
             return (
-              <line key={`fvm-${feed.id}`} x1={x} y1={pad} x2={x} y2={chartBottom}
+              <line key={`fvm-${feed.id}`} x1={x} y1={padT} x2={x} y2={chartBottom}
                 stroke={color} strokeWidth="1" strokeDasharray="4 3" opacity="0.5" />
             );
           })}
 
-          {weightPath && <path d={weightPath} fill="none" stroke="#1a73e8" strokeWidth="3" />}
-          {measurementPath && <path d={measurementPath} fill="none" stroke="#ef6c00" strokeWidth="3" />}
-          {feedingPath && <path d={feedingPath} fill="none" stroke="#43a047" strokeWidth="2" strokeDasharray="6 3" />}
+          {/* Series paths — conditionally rendered based on legend toggles */}
+          {chartFilters.weight && weightPath && <path d={weightPath} fill="none" stroke="#1a73e8" strokeWidth="2.5" strokeLinecap="round" />}
+          {chartFilters.weight && wPoints.length === 1 && <circle cx={wPoints[0].x} cy={wPoints[0].y} r="4" fill="#1a73e8" />}
+
+          {chartFilters.measurement && measurementPath && <path d={measurementPath} fill="none" stroke="#ef6c00" strokeWidth="2.5" strokeLinecap="round" />}
+          {chartFilters.measurement && mPoints.length === 1 && <circle cx={mPoints[0].x} cy={mPoints[0].y} r="4" fill="#ef6c00" />}
+
+          {chartFilters.feeding && feedingPath && <path d={feedingPath} fill="none" stroke="#43a047" strokeWidth="2" strokeDasharray="6 3" strokeLinecap="round" />}
+          {chartFilters.feeding && fPoints.length === 1 && <circle cx={fPoints[0].x} cy={fPoints[0].y} r="4" fill="#43a047" />}
+
+          {chartFilters.calories && caloriePath && <path d={caloriePath} fill="none" stroke="#d32f2f" strokeWidth="2" strokeLinecap="round" />}
+          {chartFilters.calories && cPoints.length === 1 && <circle cx={cPoints[0].x} cy={cPoints[0].y} r="4" fill="#d32f2f" />}
+
+          {/* Data point dots */}
+          {chartFilters.weight && wPoints.map((p, i) => <circle key={`wd-${i}`} cx={p.x} cy={p.y} r="2.5" fill="#1a73e8" />)}
+          {chartFilters.measurement && mPoints.map((p, i) => <circle key={`md-${i}`} cx={p.x} cy={p.y} r="2.5" fill="#ef6c00" />)}
 
           {/* Last-value labels */}
-          {lastWeight && (
+          {chartFilters.weight && lastWeight && (
             <text x={normalizeX(new Date(lastWeight.measured_at).getTime()) + 6} y={normalizeYW(Number(lastWeight.weight_value)) - 6} fontSize="10" fill="#1a73e8" fontWeight="600">
               {Number(lastWeight.weight_value).toFixed(1)}
             </text>
           )}
-          {lastMeasurement && (
+          {chartFilters.measurement && lastMeasurement && (
             <text x={normalizeX(new Date(lastMeasurement.measured_at).getTime()) + 6} y={normalizeYM(Number(lastMeasurement.value)) - 6} fontSize="10" fill="#ef6c00" fontWeight="600">
               {Number(lastMeasurement.value).toFixed(1)}
             </text>
           )}
-          {lastFeeding && (
+          {chartFilters.feeding && lastFeeding && (
             <text x={normalizeX(new Date(lastFeeding.feeding_time!).getTime()) + 6} y={normalizeYF(Number(lastFeeding.amount_g)) - 6} fontSize="10" fill="#43a047" fontWeight="600">
               {Number(lastFeeding.amount_g).toFixed(0)}g
+            </text>
+          )}
+          {chartFilters.calories && lastCalorie && (
+            <text x={normalizeX(lastCalorie.time) + 6} y={normalizeYC(lastCalorie.cal) - 6} fontSize="10" fill="#d32f2f" fontWeight="600">
+              {lastCalorie.cal.toFixed(0)}kcal
             </text>
           )}
 
@@ -732,15 +821,27 @@ export default function GuardianMainPage() {
             );
           })}
         </svg>
+        {/* Clickable legend toggles */}
         <div className="gm-chart-legend">
           {weightRows.length > 0 && (
-            <div className="gm-chart-legend-item"><span className="gm-chart-legend-dot" style={{ background: '#1a73e8' }} />{t('guardian.health.chart_weight_legend', 'Weight')} (kg)</div>
+            <div className={`gm-chart-legend-item${!chartFilters.weight ? ' gm-legend-off' : ''}`} onClick={() => toggleChartFilter('weight')} style={{ cursor: 'pointer', opacity: chartFilters.weight ? 1 : 0.4 }}>
+              <span className="gm-chart-legend-dot" style={{ background: '#1a73e8' }} />{t('guardian.health.chart_weight_legend', 'Weight')} (kg)
+            </div>
           )}
           {mRows.length > 0 && (
-            <div className="gm-chart-legend-item"><span className="gm-chart-legend-dot" style={{ background: '#ef6c00' }} />{t('guardian.health.chart_measure_legend', 'Measurement')}</div>
+            <div className={`gm-chart-legend-item${!chartFilters.measurement ? ' gm-legend-off' : ''}`} onClick={() => toggleChartFilter('measurement')} style={{ cursor: 'pointer', opacity: chartFilters.measurement ? 1 : 0.4 }}>
+              <span className="gm-chart-legend-dot" style={{ background: '#ef6c00' }} />{t('guardian.health.chart_measure_legend', 'Measurement')}
+            </div>
           )}
           {feedingWithAmount.length > 0 && (
-            <div className="gm-chart-legend-item"><span className="gm-chart-legend-dot" style={{ background: '#43a047' }} />{t('guardian.feeding.amount', 'Feeding')} (g)</div>
+            <div className={`gm-chart-legend-item${!chartFilters.feeding ? ' gm-legend-off' : ''}`} onClick={() => toggleChartFilter('feeding')} style={{ cursor: 'pointer', opacity: chartFilters.feeding ? 1 : 0.4 }}>
+              <span className="gm-chart-legend-dot" style={{ background: '#43a047' }} />{t('guardian.feeding.amount', 'Feeding')} (g)
+            </div>
+          )}
+          {caloriePoints.length > 0 && (
+            <div className={`gm-chart-legend-item${!chartFilters.calories ? ' gm-legend-off' : ''}`} onClick={() => toggleChartFilter('calories')} style={{ cursor: 'pointer', opacity: chartFilters.calories ? 1 : 0.4 }}>
+              <span className="gm-chart-legend-dot" style={{ background: '#d32f2f' }} />{t('guardian.feeding.total_calories', 'Calories')} (kcal)
+            </div>
           )}
         </div>
       </div>
@@ -1111,11 +1212,12 @@ export default function GuardianMainPage() {
                                     const log = item.source as PetHealthMeasurementLog;
                                     const hh = new Date(log.measured_at).getHours().toString().padStart(2, '0');
                                     const mm = new Date(log.measured_at).getMinutes().toString().padStart(2, '0');
+                                    const contextLabel = log.measurement_context_id ? optMeasurementContext.find((o) => o.id === log.measurement_context_id)?.label : undefined;
                                     return (<>{dateHeader}<div key={item.id} className="gm-tl-card" data-type="measurement">
                                       <div className="gm-tl-icon">📊</div>
                                       <div className="gm-tl-body">
                                         <div className="gm-tl-title">{t('guardian.health.type_measurement', '수치')} <span className="gm-tl-meta">{hh}:{mm}</span></div>
-                                        <div className="gm-tl-value">{log.value}{log.judgement_label ? <span className="gm-tl-meta" style={{ marginLeft: 6, fontWeight: 400 }}>{log.judgement_label}</span> : ''}</div>
+                                        <div className="gm-tl-value">{log.value}{contextLabel ? <span className="gm-tl-meta" style={{ marginLeft: 6, fontWeight: 400 }}>({contextLabel})</span> : ''}{log.judgement_label ? <span className="gm-tl-meta" style={{ marginLeft: 6, fontWeight: 400 }}>{log.judgement_label}</span> : ''}</div>
                                         {log.memo && <div className="gm-tl-memo">{log.memo}</div>}
                                       </div>
                                       <div className="gm-tl-actions">

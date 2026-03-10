@@ -446,6 +446,24 @@ export interface FeedNutrition {
 
 // ─── Pet Feeding Logs ─────────────────────────────────────────────────────────
 
+export interface FeedingLogItem {
+  id: string;
+  feeding_log_id: string;
+  pet_feed_id?: string | null;
+  feed_model_id?: string | null;
+  amount_g?: number | null;
+  ratio_pct?: number | null;
+  sort_order: number;
+  feed_nickname?: string | null;
+  model_name?: string | null;
+  model_display_label?: string | null;
+  calories_per_100g?: number | null;
+  protein_pct?: number | null;
+  fat_pct?: number | null;
+  fiber_pct?: number | null;
+  carbohydrate_pct?: number | null;
+}
+
 export interface FeedingLog {
   id: string;
   pet_id: string;
@@ -456,10 +474,13 @@ export interface FeedingLog {
   frequency?: number | null;
   feeding_time?: string | null;
   memo?: string | null;
+  is_mixed?: number | null;
+  items?: FeedingLogItem[];
   status: string;
   feed_nickname?: string | null;
   model_name?: string | null;
   model_display_label?: string | null;
+  calories_per_100g?: number | null;
   created_at: string;
   updated_at: string;
 }
