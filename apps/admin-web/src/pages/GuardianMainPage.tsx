@@ -94,7 +94,7 @@ export default function GuardianMainPage() {
   const [editingFeedingLog, setEditingFeedingLog] = useState<FeedingLog | null>(null);
   const [feedingMixFavorites, setFeedingMixFavorites] = useState<FeedingMixFavorite[]>([]);
   const [feedTab, setFeedTab] = useState<FeedTab>('all');
-  const [petTab, setPetTab] = useState<PetProfileTab>('gallery');
+  const [petTab, setPetTab] = useState<PetProfileTab>('health');
   const [composeModalOpen, setComposeModalOpen] = useState(false);
 
   // ── Health sub-tabs ──────────────────────────────────────────────────────
