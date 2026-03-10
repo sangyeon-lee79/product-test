@@ -1121,73 +1121,84 @@ export default function GuardianMainPage() {
               {/* ── Health ── */}
               {petTab === 'health' && (
                 <>
-                  {/* glucose alert banner */}
-                  {logAlert && (
-                    <div className={`gm-alert-banner gm-alert-${logAlert.severity}`} style={{ padding: '10px 14px', margin: '8px 0', borderRadius: 8, background: logAlert.severity === 'critical' ? 'var(--danger-light, #fee2e2)' : 'var(--warning-light, #fef9c3)', color: logAlert.severity === 'critical' ? '#b91c1c' : '#92400e', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                      <span>⚠️ {t(logAlert.message_key, logAlert.type)} — {logAlert.value} {logAlert.unit}</span>
-                      <button style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 16 }} onClick={() => setLogAlert(null)}>✕</button>
-                    </div>
-                  )}
-                  <div className="gm-health-summary-card">
-                    <div className="gm-pet-avatar" style={{ width: 48, height: 48, fontSize: 20 }}>
-                      {selectedPet ? selectedPet.name[0].toUpperCase() : '🐾'}
-                    </div>
-                    <div className="gm-health-summary-info">
-                      <div className="gm-health-summary-name">{selectedPet?.name || '-'}</div>
-                      <div className="gm-health-summary-row">
-                        <span>{t('guardian.health.current_weight', '체중')}: <strong>{weightSummary?.latest_weight ?? selectedPet?.current_weight ?? '-'} kg</strong></span>
-                        <span className="gm-health-summary-sep">·</span>
-                        <span>{t('guardian.health.last_measured', '측정')}: <strong>{formatDate(weightSummary?.latest_measured_at, '-')}</strong></span>
-                      </div>
-                      <div className="gm-health-summary-row">
-                        <span>{t('guardian.health.latest_measurement', '수치')}: <strong>{measurementSummary?.latest_value ?? '-'}</strong></span>
-                        <span className="gm-health-summary-sep">·</span>
-                        <span>{t('guardian.health.judgement', '상태')}: <strong>{measurementSummary?.latest_judgement_label || measurementSummary?.latest_judgement_level || '-'}</strong></span>
+                  {!selectedPet ? (
+                    <div className="gm-section">
+                      <div className="gm-section-body gm-empty">
+                        <div className="gm-empty-icon">🐾</div>
+                        <div className="gm-empty-title">{t('guardian.empty.no_pets_title', 'Register your first pet')}</div>
+                        <p style={{ fontSize: 14, color: 'var(--text-muted)', marginBottom: 12 }}>{t('guardian.empty.no_pets_desc', 'Without a pet profile, feed/health/booking links are limited.')}</p>
+                        <button className="btn btn-primary" onClick={openCreatePet}>{t('guardian.empty.no_pets_cta', 'Register your first pet')}</button>
                       </div>
                     </div>
-                  </div>
-                  {/* ── Health Toolkit ── */}
-                  <div className="gm-health-toolbar">
-                    <div className="gm-toolbar-group gm-toolbar-record">
-                      <button className="gm-toolbar-tile gm-tile-weight" onClick={() => { setEditingWeightLog(null); setWeightModalOpen(true); }}>
-                        <span className="gm-tile-icon">⚖️</span>
-                        <span className="gm-tile-label">{t('guardian.health.add_weight', '몸무게')}</span>
-                      </button>
-                      <button className="gm-toolbar-tile gm-tile-measure" onClick={openCreateHealthMeasurementModal}>
-                        <span className="gm-tile-icon">📊</span>
-                        <span className="gm-tile-label">{t('guardian.health.add_measurement', '수치 추가')}</span>
-                      </button>
-                      <button className="gm-toolbar-tile gm-tile-feed" onClick={() => { setEditingFeedingLog(null); setFeedingLogModalOpen(true); }}>
-                        <span className="gm-tile-icon">🍽️</span>
-                        <span className="gm-tile-label">{t('guardian.feeding.add', '급여 기록')}</span>
-                      </button>
-                    </div>
-                    <div className="gm-toolbar-divider" />
-                    <div className="gm-toolbar-group gm-toolbar-manage">
-                      <button className="gm-toolbar-tile gm-tile-devices" onClick={() => setDeviceManageModalOpen(true)}>
-                        <span className="gm-tile-icon">🩺</span>
-                        <span className="gm-tile-label">{t('guardian.device.manage_title', '측정 장비')}</span>
-                      </button>
-                      <button className="gm-toolbar-tile gm-tile-feeds" onClick={() => setFeedManageModalOpen(true)}>
-                        <span className="gm-tile-icon">🥣</span>
-                        <span className="gm-tile-label">{t('guardian.feed.manage_title', '사료 관리')}</span>
-                      </button>
-                    </div>
-                  </div>
-
-                  {/* ── Health Sub-Tabs (Graph / Timeline) ── */}
-                  <div className="gm-period-chips" style={{ marginBottom: 4 }}>
-                    <button className={`gm-period-chip${healthSubTab === 'graph' ? ' active' : ''}`} onClick={() => setHealthSubTab('graph')}>
-                      {t('guardian.health.subtab_graph', '그래프')}
-                    </button>
-                    <button className={`gm-period-chip${healthSubTab === 'timeline' ? ' active' : ''}`} onClick={() => { setHealthSubTab('timeline'); setTimelinePage(1); }}>
-                      {t('guardian.health.subtab_timeline', '타임라인')}
-                    </button>
-                  </div>
-
-                  {/* ── Graph Sub-Tab ── */}
-                  {healthSubTab === 'graph' && (
+                  ) : (
                     <>
+                      {/* glucose alert banner */}
+                      {logAlert && (
+                        <div className={`gm-alert-banner gm-alert-${logAlert.severity}`} style={{ padding: '10px 14px', margin: '8px 0', borderRadius: 8, background: logAlert.severity === 'critical' ? 'var(--danger-light, #fee2e2)' : 'var(--warning-light, #fef9c3)', color: logAlert.severity === 'critical' ? '#b91c1c' : '#92400e', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                          <span>⚠️ {t(logAlert.message_key, logAlert.type)} — {logAlert.value} {logAlert.unit}</span>
+                          <button style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 16 }} onClick={() => setLogAlert(null)}>✕</button>
+                        </div>
+                      )}
+                      <div className="gm-health-summary-card">
+                        <div className="gm-pet-avatar" style={{ width: 48, height: 48, fontSize: 20 }}>
+                          {selectedPet.name[0].toUpperCase()}
+                        </div>
+                        <div className="gm-health-summary-info">
+                          <div className="gm-health-summary-name">{selectedPet.name}</div>
+                          <div className="gm-health-summary-row">
+                            <span>{t('guardian.health.current_weight', '체중')}: <strong>{weightSummary?.latest_weight ?? selectedPet.current_weight ?? '-'} kg</strong></span>
+                            <span className="gm-health-summary-sep">·</span>
+                            <span>{t('guardian.health.last_measured', '측정')}: <strong>{formatDate(weightSummary?.latest_measured_at, '-')}</strong></span>
+                          </div>
+                          <div className="gm-health-summary-row">
+                            <span>{t('guardian.health.latest_measurement', '수치')}: <strong>{measurementSummary?.latest_value ?? '-'}</strong></span>
+                            <span className="gm-health-summary-sep">·</span>
+                            <span>{t('guardian.health.judgement', '상태')}: <strong>{measurementSummary?.latest_judgement_label || measurementSummary?.latest_judgement_level || '-'}</strong></span>
+                          </div>
+                        </div>
+                      </div>
+                      {/* ── Health Toolkit ── */}
+                      <div className="gm-health-toolbar">
+                        <div className="gm-toolbar-group gm-toolbar-record">
+                          <button className="gm-toolbar-tile gm-tile-weight" onClick={() => { setEditingWeightLog(null); setWeightModalOpen(true); }}>
+                            <span className="gm-tile-icon">⚖️</span>
+                            <span className="gm-tile-label">{t('guardian.health.add_weight', '몸무게')}</span>
+                          </button>
+                          <button className="gm-toolbar-tile gm-tile-measure" onClick={openCreateHealthMeasurementModal}>
+                            <span className="gm-tile-icon">📊</span>
+                            <span className="gm-tile-label">{t('guardian.health.add_measurement', '수치 추가')}</span>
+                          </button>
+                          <button className="gm-toolbar-tile gm-tile-feed" onClick={() => { setEditingFeedingLog(null); setFeedingLogModalOpen(true); }}>
+                            <span className="gm-tile-icon">🍽️</span>
+                            <span className="gm-tile-label">{t('guardian.feeding.add', '급여 기록')}</span>
+                          </button>
+                        </div>
+                        <div className="gm-toolbar-divider" />
+                        <div className="gm-toolbar-group gm-toolbar-manage">
+                          <button className="gm-toolbar-tile gm-tile-devices" onClick={() => setDeviceManageModalOpen(true)}>
+                            <span className="gm-tile-icon">🩺</span>
+                            <span className="gm-tile-label">{t('guardian.device.manage_title', '측정 장비')}</span>
+                          </button>
+                          <button className="gm-toolbar-tile gm-tile-feeds" onClick={() => setFeedManageModalOpen(true)}>
+                            <span className="gm-tile-icon">🥣</span>
+                            <span className="gm-tile-label">{t('guardian.feed.manage_title', '사료 관리')}</span>
+                          </button>
+                        </div>
+                      </div>
+
+                      {/* ── Health Sub-Tabs (Graph / Timeline) ── */}
+                      <div className="gm-period-chips" style={{ marginBottom: 4 }}>
+                        <button className={`gm-period-chip${healthSubTab === 'graph' ? ' active' : ''}`} onClick={() => setHealthSubTab('graph')}>
+                          {t('guardian.health.subtab_graph', '그래프')}
+                        </button>
+                        <button className={`gm-period-chip${healthSubTab === 'timeline' ? ' active' : ''}`} onClick={() => { setHealthSubTab('timeline'); setTimelinePage(1); }}>
+                          {t('guardian.health.subtab_timeline', '타임라인')}
+                        </button>
+                      </div>
+
+                      {/* ── Graph Sub-Tab ── */}
+                      {healthSubTab === 'graph' && (
+                        <>
                       <div className="gm-section">
                         <div className="gm-section-header">
                           <span className="gm-section-title">{t('guardian.health.chart_title', '건강 추이')}</span>
@@ -1272,12 +1283,12 @@ export default function GuardianMainPage() {
                           {renderPagination(feedingLogPage, feedingLogs.length, setFeedingLogPage)}
                         </div>
                       </div>
-                    </>
-                  )}
+                        </>
+                      )}
 
-                  {/* ── Timeline Sub-Tab ── */}
-                  {healthSubTab === 'timeline' && (
-                    <>
+                      {/* ── Timeline Sub-Tab ── */}
+                      {healthSubTab === 'timeline' && (
+                        <>
                       <div className="gm-section">
                         <div className="gm-section-header">
                           <span className="gm-section-title">{t('guardian.health.subtab_timeline', '타임라인')}</span>
@@ -1415,74 +1426,75 @@ export default function GuardianMainPage() {
                           </div>
                         </div>
                       </div>
+                        </>
+                      )}
+
+                      {/* ── Log Create Modal ── */}
+                      {logModalOpen && (
+                        <div className="modal-overlay" onClick={() => setLogModalOpen(false)}>
+                          <div className="modal" onClick={(e) => e.stopPropagation()} style={{ maxWidth: 480 }}>
+                            <div className="modal-header">
+                              <h3 className="modal-title">{t('guardian.log.add', '기록 추가')}</h3>
+                              <button className="modal-close" onClick={() => setLogModalOpen(false)}>✕</button>
+                            </div>
+                            <div className="modal-body">
+                              <div className="form-group">
+                                <label className="form-label" htmlFor="log-logtype">{t('guardian.log.logtype', '기록 유형')} *</label>
+                                <select id="log-logtype" name="log-logtype" className="form-select" value={logFormLogtypeId} onChange={(e) => { setLogFormLogtypeId(e.target.value); setLogFormValue(''); setLogFormUnitId(''); }}>
+                                  <option value="">{t('common.select', 'Select')}</option>
+                                  {optLogType.map((o) => <option key={o.id} value={o.id}>{o.label}</option>)}
+                                </select>
+                              </div>
+                              {(() => {
+                                const selectedCode = optLogType.find((o) => o.id === logFormLogtypeId)?.code ?? '';
+                                const metricCfg = LOG_TYPE_METRIC_MAP[selectedCode];
+                                if (!metricCfg) return null;
+                                const metricItem = optMetric.find((m) => m.key === metricCfg.metricKey);
+                                if (!metricItem) return null;
+                                const unitItems = optUnit.filter((u) => metricCfg.unitKeys.includes(u.key ?? ''));
+                                const metricLabel = metricItem.display_label ?? metricItem[lang as keyof typeof metricItem] as string ?? metricItem.ko ?? metricItem.key;
+                                return (
+                                  <div className="form-group">
+                                    <label className="form-label">{metricLabel}</label>
+                                    <div style={{ display: 'flex', gap: 8 }}>
+                                      <input id="log-value" name="log-value" className="form-input" type="number" step="any" value={logFormValue} onChange={(e) => setLogFormValue(e.target.value)} placeholder="0" style={{ flex: 1 }} />
+                                      <select id="log-unit" name="log-unit" className="form-select" value={logFormUnitId} onChange={(e) => setLogFormUnitId(e.target.value)} style={{ width: 100 }}>
+                                        <option value="">{t('common.unit', '단위')}</option>
+                                        {unitItems.map((u) => <option key={u.id} value={u.id}>{u.display_label ?? u.key}</option>)}
+                                      </select>
+                                    </div>
+                                  </div>
+                                );
+                              })()}
+                              <div className="form-group">
+                                <label className="form-label" htmlFor="log-event-date">{t('guardian.log.event_date', '날짜')} *</label>
+                                <input id="log-event-date" name="log-event-date" className="form-input" type="date" value={logFormDate} onChange={(e) => setLogFormDate(e.target.value)} />
+                              </div>
+                              <div className="form-group">
+                                <label className="form-label" htmlFor="log-event-time">{t('guardian.log.event_time', '시간')}</label>
+                                <input id="log-event-time" name="log-event-time" className="form-input" type="time" value={logFormTime} onChange={(e) => setLogFormTime(e.target.value)} />
+                              </div>
+                              <div className="form-group">
+                                <label className="form-label" htmlFor="log-title">{t('guardian.log.title_field', '제목')}</label>
+                                <input id="log-title" name="log-title" className="form-input" type="text" value={logFormTitle} onChange={(e) => setLogFormTitle(e.target.value)} placeholder={t('guardian.log.title_field', '제목')} />
+                              </div>
+                              <div className="form-group">
+                                <label className="form-label" htmlFor="log-notes">{t('guardian.log.notes', '메모')}</label>
+                                <textarea id="log-notes" name="log-notes" className="form-input" rows={3} value={logFormNotes} onChange={(e) => setLogFormNotes(e.target.value)} placeholder={t('guardian.log.notes', '메모')} />
+                              </div>
+                            </div>
+                            <div className="modal-footer">
+                              <button className="btn btn-secondary" onClick={() => setLogModalOpen(false)}>{t('guardian.log.cancel', '취소')}</button>
+                              <button className="btn btn-primary" disabled={!logFormLogtypeId || !logFormDate || logFormSaving} onClick={() => void createPetLog()}>
+                                {logFormSaving ? t('common.saving', '저장 중...') : t('guardian.log.save', '저장')}
+                              </button>
+                            </div>
+                          </div>
+                        </div>
+                      )}
                     </>
                   )}
-
-                  {/* ── Log Create Modal ── */}
-                  {logModalOpen && (
-                    <div className="modal-overlay" onClick={() => setLogModalOpen(false)}>
-                      <div className="modal" onClick={(e) => e.stopPropagation()} style={{ maxWidth: 480 }}>
-                        <div className="modal-header">
-                          <h3 className="modal-title">{t('guardian.log.add', '기록 추가')}</h3>
-                          <button className="modal-close" onClick={() => setLogModalOpen(false)}>✕</button>
-                        </div>
-                        <div className="modal-body">
-                          <div className="form-group">
-                            <label className="form-label" htmlFor="log-logtype">{t('guardian.log.logtype', '기록 유형')} *</label>
-                            <select id="log-logtype" name="log-logtype" className="form-select" value={logFormLogtypeId} onChange={(e) => { setLogFormLogtypeId(e.target.value); setLogFormValue(''); setLogFormUnitId(''); }}>
-                              <option value="">{t('common.select', 'Select')}</option>
-                              {optLogType.map((o) => <option key={o.id} value={o.id}>{o.label}</option>)}
-                            </select>
-                          </div>
-                          {(() => {
-                            const selectedCode = optLogType.find((o) => o.id === logFormLogtypeId)?.code ?? '';
-                            const metricCfg = LOG_TYPE_METRIC_MAP[selectedCode];
-                            if (!metricCfg) return null;
-                            const metricItem = optMetric.find((m) => m.key === metricCfg.metricKey);
-                            if (!metricItem) return null;
-                            const unitItems = optUnit.filter((u) => metricCfg.unitKeys.includes(u.key ?? ''));
-                            const metricLabel = metricItem.display_label ?? metricItem[lang as keyof typeof metricItem] as string ?? metricItem.ko ?? metricItem.key;
-                            return (
-                              <div className="form-group">
-                                <label className="form-label">{metricLabel}</label>
-                                <div style={{ display: 'flex', gap: 8 }}>
-                                  <input id="log-value" name="log-value" className="form-input" type="number" step="any" value={logFormValue} onChange={(e) => setLogFormValue(e.target.value)} placeholder="0" style={{ flex: 1 }} />
-                                  <select id="log-unit" name="log-unit" className="form-select" value={logFormUnitId} onChange={(e) => setLogFormUnitId(e.target.value)} style={{ width: 100 }}>
-                                    <option value="">{t('common.unit', '단위')}</option>
-                                    {unitItems.map((u) => <option key={u.id} value={u.id}>{u.display_label ?? u.key}</option>)}
-                                  </select>
-                                </div>
-                              </div>
-                            );
-                          })()}
-                          <div className="form-group">
-                            <label className="form-label" htmlFor="log-event-date">{t('guardian.log.event_date', '날짜')} *</label>
-                            <input id="log-event-date" name="log-event-date" className="form-input" type="date" value={logFormDate} onChange={(e) => setLogFormDate(e.target.value)} />
-                          </div>
-                          <div className="form-group">
-                            <label className="form-label" htmlFor="log-event-time">{t('guardian.log.event_time', '시간')}</label>
-                            <input id="log-event-time" name="log-event-time" className="form-input" type="time" value={logFormTime} onChange={(e) => setLogFormTime(e.target.value)} />
-                          </div>
-                          <div className="form-group">
-                            <label className="form-label" htmlFor="log-title">{t('guardian.log.title_field', '제목')}</label>
-                            <input id="log-title" name="log-title" className="form-input" type="text" value={logFormTitle} onChange={(e) => setLogFormTitle(e.target.value)} placeholder={t('guardian.log.title_field', '제목')} />
-                          </div>
-                          <div className="form-group">
-                            <label className="form-label" htmlFor="log-notes">{t('guardian.log.notes', '메모')}</label>
-                            <textarea id="log-notes" name="log-notes" className="form-input" rows={3} value={logFormNotes} onChange={(e) => setLogFormNotes(e.target.value)} placeholder={t('guardian.log.notes', '메모')} />
-                          </div>
-                        </div>
-                        <div className="modal-footer">
-                          <button className="btn btn-secondary" onClick={() => setLogModalOpen(false)}>{t('guardian.log.cancel', '취소')}</button>
-                          <button className="btn btn-primary" disabled={!logFormLogtypeId || !logFormDate || logFormSaving} onClick={() => void createPetLog()}>
-                            {logFormSaving ? t('common.saving', '저장 중...') : t('guardian.log.save', '저장')}
-                          </button>
-                        </div>
-                      </div>
-                    </div>
-                  )}
-
-                  {healthFeeds.length > 0 && (
+                  {selectedPet && healthFeeds.length > 0 && (
                     <div className="gm-section">
                       <div className="gm-section-header"><span className="gm-section-title">{t('guardian.health.updates', 'Health Updates')}</span></div>
                       <div className="gm-section-body">
