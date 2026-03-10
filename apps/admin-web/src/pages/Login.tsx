@@ -11,7 +11,7 @@ export default function Login() {
   const forcedAdmin = location.pathname === '/admin/login';
   const [email, setEmail] = useState(forcedAdmin ? 'admin@petlife.com' : 'guardian@petlife.com');
   const [password, setPassword] = useState('');
-  const [loadingMode, setLoadingMode] = useState<'password' | 'test' | ''>('');
+  const [loadingMode, setLoadingMode] = useState<'password' | ''>('');
   const [error, setError] = useState('');
   const title = useMemo(() => (forcedAdmin ? t('admin.login.console', 'Admin Console') : t('public.login.title', '로그인')), [forcedAdmin, t]);
 
@@ -38,19 +38,6 @@ export default function Login() {
     setError('');
     try {
       const data = await api.login(email, password);
-      await completeLogin(data);
-    } catch (err) {
-      setError(uiErrorMessage(err));
-    } finally {
-      setLoadingMode('');
-    }
-  }
-
-  async function handleTestLogin() {
-    setLoadingMode('test');
-    setError('');
-    try {
-      const data = await api.testLogin(email);
       await completeLogin(data);
     } catch (err) {
       setError(uiErrorMessage(err));
@@ -94,9 +81,6 @@ export default function Login() {
             <div style={{ display: 'grid', gap: 10 }}>
               <button className="btn btn-primary" type="submit" disabled={loadingMode !== ''} style={{ width: '100%', justifyContent: 'center' }}>
                 {loadingMode === 'password' ? t('admin.login.loading', '로그인 중...') : t('public.login.submit_password', '이메일 로그인')}
-              </button>
-              <button className="btn btn-secondary" type="button" disabled={loadingMode !== ''} style={{ width: '100%', justifyContent: 'center' }} onClick={() => void handleTestLogin()}>
-                {loadingMode === 'test' ? t('admin.login.loading', '로그인 중...') : t('public.login.submit_test', '개발용 테스트 로그인')}
               </button>
             </div>
           </form>

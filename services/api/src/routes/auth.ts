@@ -452,7 +452,7 @@ async function ensureDefaultSampleAccount(
           : await ensureAdminSample(env);
   if (!ensuredBase) return null;
 
-  const passwordHash = existing?.password_hash || await ensureSamplePassword(env, ensuredBase.id, sample.password);
+  const passwordHash = await forceSamplePassword(env, ensuredBase.id, sample.password);
   const ts = now();
   await env.DB.prepare(
     'UPDATE users SET role = ?, status = ?, updated_at = ? WHERE id = ?'
@@ -471,6 +471,14 @@ async function ensureSamplePassword(env: Env, userId: string, password: string):
     'SELECT password_hash FROM users WHERE id = ?'
   ).bind(userId).first<{ password_hash: string | null }>();
   if (existing?.password_hash) return existing.password_hash;
+  const passwordHash = await hashPassword(password);
+  await env.DB.prepare(
+    'UPDATE users SET password_hash = ?, updated_at = ? WHERE id = ?'
+  ).bind(passwordHash, now(), userId).run();
+  return passwordHash;
+}
+
+async function forceSamplePassword(env: Env, userId: string, password: string): Promise<string> {
   const passwordHash = await hashPassword(password);
   await env.DB.prepare(
     'UPDATE users SET password_hash = ?, updated_at = ? WHERE id = ?'
