@@ -1759,10 +1759,9 @@ html[data-theme="dark"] .gm-tile-feeds:hover .gm-tile-label { color: #f9a8d4; }
   cursor: pointer; border-radius: 6px; transition: background .15s;
   position: relative;
 }
-.gm-tl-chip:hover { background: var(--bg); }
-.gm-tl-chip + .gm-tl-chip::before {
-  content: '\2192'; margin-right: 6px; font-size: 10px; color: var(--text-muted);
-}
+.gm-tl-chip:nth-child(odd) { background: var(--surface); }
+.gm-tl-chip:nth-child(even) { background: var(--bg); }
+.gm-tl-chip:hover { opacity: .85; }
 .gm-tl-chip-time { font-weight: 600; color: var(--text-muted); }
 .gm-tl-chip-dot { color: var(--text-muted); }
 .gm-tl-chip-note { color: var(--text-muted); font-style: italic; max-width: 120px; overflow: hidden; text-overflow: ellipsis; }
