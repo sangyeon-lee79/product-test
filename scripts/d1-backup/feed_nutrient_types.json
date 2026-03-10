@@ -1,0 +1,211 @@
+[
+  {
+    "id": "e91710d82bd5c714681318cd4f5a5889",
+    "key": "energy",
+    "name_key": "feed.nutrient.energy",
+    "name_ko": "에너지",
+    "name_en": "Energy",
+    "status": "active",
+    "sort_order": 1,
+    "created_at": "2026-03-08 15:09:30",
+    "updated_at": "2026-03-08 15:09:30"
+  },
+  {
+    "id": "b6d95f154f1e3477b61bc93af3723e3c",
+    "key": "moisture",
+    "name_key": "feed.nutrient.moisture",
+    "name_ko": "수분",
+    "name_en": "Moisture",
+    "status": "active",
+    "sort_order": 2,
+    "created_at": "2026-03-08 15:09:30",
+    "updated_at": "2026-03-08 15:09:30"
+  },
+  {
+    "id": "289e2e2434c3d5640198b1447a7a8c85",
+    "key": "crude_protein",
+    "name_key": "feed.nutrient.crude_protein",
+    "name_ko": "조단백",
+    "name_en": "Crude Protein",
+    "status": "active",
+    "sort_order": 3,
+    "created_at": "2026-03-08 15:09:30",
+    "updated_at": "2026-03-08 15:09:30"
+  },
+  {
+    "id": "b574ca121e34b3734f36a1fe87316623",
+    "key": "crude_fat",
+    "name_key": "feed.nutrient.crude_fat",
+    "name_ko": "조지방",
+    "name_en": "Crude Fat",
+    "status": "active",
+    "sort_order": 4,
+    "created_at": "2026-03-08 15:09:30",
+    "updated_at": "2026-03-08 15:09:30"
+  },
+  {
+    "id": "70d746a6d9582121bb90745b6f17d26d",
+    "key": "crude_fiber",
+    "name_key": "feed.nutrient.crude_fiber",
+    "name_ko": "조섬유",
+    "name_en": "Crude Fiber",
+    "status": "active",
+    "sort_order": 5,
+    "created_at": "2026-03-08 15:09:30",
+    "updated_at": "2026-03-08 15:09:30"
+  },
+  {
+    "id": "6a1d5492c7ff0fccff9645fad61a0896",
+    "key": "crude_ash",
+    "name_key": "feed.nutrient.crude_ash",
+    "name_ko": "조회분",
+    "name_en": "Crude Ash",
+    "status": "active",
+    "sort_order": 6,
+    "created_at": "2026-03-08 15:09:30",
+    "updated_at": "2026-03-08 15:09:30"
+  },
+  {
+    "id": "8c95556a707d8f58e17257c839314847",
+    "key": "calcium",
+    "name_key": "feed.nutrient.calcium",
+    "name_ko": "칼슘",
+    "name_en": "Calcium",
+    "status": "active",
+    "sort_order": 7,
+    "created_at": "2026-03-08 15:09:30",
+    "updated_at": "2026-03-08 15:09:30"
+  },
+  {
+    "id": "4dad29342a3764986aa3ed39460c9637",
+    "key": "phosphorus",
+    "name_key": "feed.nutrient.phosphorus",
+    "name_ko": "인",
+    "name_en": "Phosphorus",
+    "status": "active",
+    "sort_order": 8,
+    "created_at": "2026-03-08 15:09:30",
+    "updated_at": "2026-03-08 15:09:30"
+  },
+  {
+    "id": "9e1ff7c4b6fce5d85cad355339fc220a",
+    "key": "magnesium",
+    "name_key": "feed.nutrient.magnesium",
+    "name_ko": "마그네슘",
+    "name_en": "Magnesium",
+    "status": "active",
+    "sort_order": 9,
+    "created_at": "2026-03-08 15:09:30",
+    "updated_at": "2026-03-08 15:09:30"
+  },
+  {
+    "id": "759b451acf59532dce3ed13494df336e",
+    "key": "sodium",
+    "name_key": "feed.nutrient.sodium",
+    "name_ko": "나트륨",
+    "name_en": "Sodium",
+    "status": "active",
+    "sort_order": 10,
+    "created_at": "2026-03-08 15:09:30",
+    "updated_at": "2026-03-08 15:09:30"
+  },
+  {
+    "id": "c37c8c21ba9501ccf68868ea02938772",
+    "key": "potassium",
+    "name_key": "feed.nutrient.potassium",
+    "name_ko": "칼륨",
+    "name_en": "Potassium",
+    "status": "active",
+    "sort_order": 11,
+    "created_at": "2026-03-08 15:09:30",
+    "updated_at": "2026-03-08 15:09:30"
+  },
+  {
+    "id": "44ed11a192af01db0f1f2f8ca4e67ef2",
+    "key": "taurine",
+    "name_key": "feed.nutrient.taurine",
+    "name_ko": "타우린",
+    "name_en": "Taurine",
+    "status": "active",
+    "sort_order": 12,
+    "created_at": "2026-03-08 15:09:30",
+    "updated_at": "2026-03-08 15:09:30"
+  },
+  {
+    "id": "1ce0a0cc05916a92cdbc37a40f618d59",
+    "key": "vitamin_d",
+    "name_key": "feed.nutrient.vitamin_d",
+    "name_ko": "비타민D",
+    "name_en": "Vitamin D",
+    "status": "active",
+    "sort_order": 13,
+    "created_at": "2026-03-08 15:09:30",
+    "updated_at": "2026-03-08 15:09:30"
+  },
+  {
+    "id": "ed458dab7a9790c96673d7790ecf7598",
+    "key": "vitamin_e_alpha",
+    "name_key": "feed.nutrient.vitamin_e_alpha",
+    "name_ko": "비타민E",
+    "name_en": "Vitamin E",
+    "status": "active",
+    "sort_order": 14,
+    "created_at": "2026-03-08 15:09:30",
+    "updated_at": "2026-03-08 15:09:30"
+  },
+  {
+    "id": "aa8dd2d17c16de5ff3d71a37f5d602c5",
+    "key": "omega3",
+    "name_key": "feed.nutrient.omega3",
+    "name_ko": "오메가3",
+    "name_en": "Omega-3",
+    "status": "active",
+    "sort_order": 15,
+    "created_at": "2026-03-08 15:09:30",
+    "updated_at": "2026-03-08 15:09:30"
+  },
+  {
+    "id": "ff98a9afc7d9f056035e68491b3650c1",
+    "key": "omega6",
+    "name_key": "feed.nutrient.omega6",
+    "name_ko": "오메가6",
+    "name_en": "Omega-6",
+    "status": "active",
+    "sort_order": 16,
+    "created_at": "2026-03-08 15:09:30",
+    "updated_at": "2026-03-08 15:09:30"
+  },
+  {
+    "id": "9f824f0b6d5abaa54937bcacbb9adc9d",
+    "key": "epa_dha",
+    "name_key": "feed.nutrient.epa_dha",
+    "name_ko": "EPA+DHA",
+    "name_en": "EPA + DHA",
+    "status": "active",
+    "sort_order": 17,
+    "created_at": "2026-03-08 15:09:30",
+    "updated_at": "2026-03-08 15:09:30"
+  },
+  {
+    "id": "a97eeedd3ab777d14bb0ef94e03a776e",
+    "key": "epa",
+    "name_key": "feed.nutrient.epa",
+    "name_ko": "EPA",
+    "name_en": "EPA",
+    "status": "active",
+    "sort_order": 18,
+    "created_at": "2026-03-08 15:09:30",
+    "updated_at": "2026-03-08 15:09:30"
+  },
+  {
+    "id": "ace5f657471a0e268f286107391f1450",
+    "key": "dha",
+    "name_key": "feed.nutrient.dha",
+    "name_ko": "DHA",
+    "name_en": "DHA",
+    "status": "active",
+    "sort_order": 19,
+    "created_at": "2026-03-08 15:09:30",
+    "updated_at": "2026-03-08 15:09:30"
+  }
+]

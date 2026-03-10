@@ -1,0 +1,74 @@
+[
+  {
+    "id": "203743d7202c3907b4d219af1fc953a7",
+    "key": "kcal",
+    "name_key": "feed.nutrient.unit.kcal",
+    "name_ko": "킬로칼로리",
+    "name_en": "Kilocalorie",
+    "symbol": "kcal",
+    "status": "active",
+    "sort_order": 1,
+    "created_at": "2026-03-08 15:09:30",
+    "updated_at": "2026-03-08 15:09:30"
+  },
+  {
+    "id": "88c0645262e7edb0ff6d48fa1faf920d",
+    "key": "percent",
+    "name_key": "feed.nutrient.unit.percent",
+    "name_ko": "퍼센트",
+    "name_en": "Percent",
+    "symbol": "%",
+    "status": "active",
+    "sort_order": 2,
+    "created_at": "2026-03-08 15:09:30",
+    "updated_at": "2026-03-08 15:09:30"
+  },
+  {
+    "id": "291f0f1d3789f47db96a938c4f604432",
+    "key": "g",
+    "name_key": "feed.nutrient.unit.g",
+    "name_ko": "그램",
+    "name_en": "Gram",
+    "symbol": "g",
+    "status": "active",
+    "sort_order": 3,
+    "created_at": "2026-03-08 15:09:30",
+    "updated_at": "2026-03-08 15:09:30"
+  },
+  {
+    "id": "89e93a16947c766b74dc4f47d103a53b",
+    "key": "mg",
+    "name_key": "feed.nutrient.unit.mg",
+    "name_ko": "밀리그램",
+    "name_en": "Milligram",
+    "symbol": "mg",
+    "status": "active",
+    "sort_order": 4,
+    "created_at": "2026-03-08 15:09:30",
+    "updated_at": "2026-03-08 15:09:30"
+  },
+  {
+    "id": "4b6e800d2412865967e8447538085eea",
+    "key": "ug",
+    "name_key": "feed.nutrient.unit.ug",
+    "name_ko": "마이크로그램",
+    "name_en": "Microgram",
+    "symbol": "ug",
+    "status": "active",
+    "sort_order": 5,
+    "created_at": "2026-03-08 15:09:30",
+    "updated_at": "2026-03-08 15:09:30"
+  },
+  {
+    "id": "3bba0d230138487583fb19125ea7515e",
+    "key": "iu",
+    "name_key": "feed.nutrient.unit.iu",
+    "name_ko": "국제단위",
+    "name_en": "International Unit",
+    "symbol": "IU",
+    "status": "active",
+    "sort_order": 6,
+    "created_at": "2026-03-08 15:09:30",
+    "updated_at": "2026-03-08 15:09:30"
+  }
+]

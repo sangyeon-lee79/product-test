@@ -1,0 +1,52 @@
+[
+  {
+    "id": "dt-glucose-meter",
+    "key": "glucose_meter",
+    "name_ko": "혈당측정기",
+    "name_en": "Blood Glucose Meter",
+    "status": "active",
+    "sort_order": 1,
+    "created_at": "2026-03-07 12:37:20",
+    "updated_at": "2026-03-07 12:37:20"
+  },
+  {
+    "id": "dt-cgm",
+    "key": "continuous_glucose_monitor",
+    "name_ko": "연속혈당측정기",
+    "name_en": "Continuous Glucose Monitor",
+    "status": "active",
+    "sort_order": 2,
+    "created_at": "2026-03-07 12:37:20",
+    "updated_at": "2026-03-07 12:37:20"
+  },
+  {
+    "id": "dt-insulin-pen",
+    "key": "insulin_pen",
+    "name_ko": "인슐린 펜",
+    "name_en": "Insulin Pen",
+    "status": "active",
+    "sort_order": 3,
+    "created_at": "2026-03-07 12:37:20",
+    "updated_at": "2026-03-07 12:37:20"
+  },
+  {
+    "id": "dt-pet-scale",
+    "key": "pet_scale",
+    "name_ko": "반려동물 체중계",
+    "name_en": "Pet Scale",
+    "status": "active",
+    "sort_order": 4,
+    "created_at": "2026-03-07 12:37:20",
+    "updated_at": "2026-03-07 12:37:20"
+  },
+  {
+    "id": "dt-heart-rate",
+    "key": "heart_rate_monitor",
+    "name_ko": "심박수 모니터",
+    "name_en": "Heart Rate Monitor",
+    "status": "active",
+    "sort_order": 5,
+    "created_at": "2026-03-07 12:37:20",
+    "updated_at": "2026-03-07 12:37:20"
+  }
+]

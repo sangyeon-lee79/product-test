@@ -1,0 +1,74 @@
+[
+  {
+    "id": "bc434154-7b94-45c9-8e60-181f669c4188",
+    "key": "mfr_7nt73v5b",
+    "name_key": "feed.manufacturer.mfr_7nt73v5b",
+    "name_ko": "루이비통",
+    "name_en": "루이비통",
+    "country": null,
+    "status": "inactive",
+    "sort_order": 0,
+    "created_at": "2026-03-08T10:37:24.456Z",
+    "updated_at": "2026-03-08T12:56:26.868Z"
+  },
+  {
+    "id": "b7fb70cc066d57ebb3112fdad877840a",
+    "key": "royal_canin",
+    "name_key": "feed.manufacturer.royal_canin",
+    "name_ko": "로얄캐닌",
+    "name_en": "Royal Canin",
+    "country": "FR",
+    "status": "active",
+    "sort_order": 1,
+    "created_at": "2026-03-08 15:09:30",
+    "updated_at": "2026-03-08 15:09:30"
+  },
+  {
+    "id": "b34b21bddd4d938ab32bc375b2322011",
+    "key": "hills",
+    "name_key": "feed.manufacturer.hills",
+    "name_ko": "힐스",
+    "name_en": "Hill's",
+    "country": "US",
+    "status": "active",
+    "sort_order": 2,
+    "created_at": "2026-03-08 15:09:30",
+    "updated_at": "2026-03-08 15:09:30"
+  },
+  {
+    "id": "224c123f93ff25abf697f97af88dae1b",
+    "key": "orijen",
+    "name_key": "feed.manufacturer.orijen",
+    "name_ko": "오리젠",
+    "name_en": "Orijen",
+    "country": "CA",
+    "status": "active",
+    "sort_order": 3,
+    "created_at": "2026-03-08 15:09:30",
+    "updated_at": "2026-03-08 15:09:30"
+  },
+  {
+    "id": "4e1bb9529767fd6d485fe1f56ebcde24",
+    "key": "acana",
+    "name_key": "feed.manufacturer.acana",
+    "name_ko": "아카나",
+    "name_en": "Acana",
+    "country": "CA",
+    "status": "active",
+    "sort_order": 4,
+    "created_at": "2026-03-08 15:09:30",
+    "updated_at": "2026-03-08 15:09:30"
+  },
+  {
+    "id": "5147d84c6992d4248142d3bc8e74a571",
+    "key": "ray_n_yvonne",
+    "name_key": "feed.manufacturer.ray_n_yvonne",
+    "name_ko": "레이앤이본",
+    "name_en": "Ray & Yvonne",
+    "country": "KR",
+    "status": "active",
+    "sort_order": 5,
+    "created_at": "2026-03-08 15:09:30",
+    "updated_at": "2026-03-08 15:09:30"
+  }
+]

@@ -1,0 +1,50 @@
+[
+  {
+    "id": "dm-abbott",
+    "key": "abbott",
+    "name_ko": "Abbott",
+    "name_en": "Abbott",
+    "country": "US",
+    "status": "active",
+    "sort_order": 1,
+    "created_at": "2026-03-07 12:37:20",
+    "updated_at": "2026-03-07 12:37:20",
+    "name_key": "device.manufacturer.abbott"
+  },
+  {
+    "id": "dm-roche",
+    "key": "roche",
+    "name_ko": "Roche",
+    "name_en": "Roche",
+    "country": "CH",
+    "status": "active",
+    "sort_order": 2,
+    "created_at": "2026-03-07 12:37:20",
+    "updated_at": "2026-03-07 12:37:20",
+    "name_key": "device.manufacturer.roche"
+  },
+  {
+    "id": "dm-lifescan",
+    "key": "lifescan",
+    "name_ko": "LifeScan",
+    "name_en": "LifeScan",
+    "country": "US",
+    "status": "active",
+    "sort_order": 3,
+    "created_at": "2026-03-07 12:37:20",
+    "updated_at": "2026-03-07 12:37:20",
+    "name_key": "device.manufacturer.lifescan"
+  },
+  {
+    "id": "dm-omron",
+    "key": "omron",
+    "name_ko": "Omron",
+    "name_en": "Omron",
+    "country": "JP",
+    "status": "active",
+    "sort_order": 4,
+    "created_at": "2026-03-07 12:37:20",
+    "updated_at": "2026-03-07 12:37:20",
+    "name_key": "device.manufacturer.omron"
+  }
+]

@@ -1,0 +1,26 @@
+[
+  {
+    "id": "3c0d12a888639199e1c94eb245a00782",
+    "brand_id": "db-freestyle",
+    "manufacturer_id": "dm-abbott",
+    "created_at": "2026-03-08 10:33:08"
+  },
+  {
+    "id": "34e6817afda2a895331bd492a8547a64",
+    "brand_id": "db-accu-chek",
+    "manufacturer_id": "dm-roche",
+    "created_at": "2026-03-08 10:33:08"
+  },
+  {
+    "id": "7011c1612bf48dbc0a056179dd8f1490",
+    "brand_id": "db-onetouch",
+    "manufacturer_id": "dm-lifescan",
+    "created_at": "2026-03-08 10:33:08"
+  },
+  {
+    "id": "bc4f9ec20bbaebe9a715cc6064e1d636",
+    "brand_id": "db-omron",
+    "manufacturer_id": "dm-omron",
+    "created_at": "2026-03-08 10:33:08"
+  }
+]

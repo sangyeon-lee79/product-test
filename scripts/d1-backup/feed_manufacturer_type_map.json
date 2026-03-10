@@ -1,0 +1,110 @@
+[
+  {
+    "id": "4ced2e43-aaba-4b48-985b-90a84b619166",
+    "manufacturer_id": "bc434154-7b94-45c9-8e60-181f669c4188",
+    "type_item_id": "mi-diet-feed-adult-daily-formula",
+    "created_at": "2026-03-08T10:38:34.652Z"
+  },
+  {
+    "id": "6ba73ea67c09e008aeddce740233d4c8",
+    "manufacturer_id": "b7fb70cc066d57ebb3112fdad877840a",
+    "type_item_id": "mi-diet-feed-dry-food-core",
+    "created_at": "2026-03-08 15:09:30"
+  },
+  {
+    "id": "607e52db79b530601281feb08437347f",
+    "manufacturer_id": "b7fb70cc066d57ebb3112fdad877840a",
+    "type_item_id": "mi-diet-feed-wet-food-core",
+    "created_at": "2026-03-08 15:09:30"
+  },
+  {
+    "id": "809ec1bf55bfa52e21a790317a834a7d",
+    "manufacturer_id": "b7fb70cc066d57ebb3112fdad877840a",
+    "type_item_id": "mi-diet-feed-prescription-diet-core",
+    "created_at": "2026-03-08 15:09:30"
+  },
+  {
+    "id": "f73fe5d96078d5a23a9974e7b6e5d317",
+    "manufacturer_id": "b34b21bddd4d938ab32bc375b2322011",
+    "type_item_id": "mi-diet-feed-dry-food-core",
+    "created_at": "2026-03-08 15:09:30"
+  },
+  {
+    "id": "82e3cc3ae556925aa94eaa0899d62e35",
+    "manufacturer_id": "b34b21bddd4d938ab32bc375b2322011",
+    "type_item_id": "mi-diet-feed-wet-food-core",
+    "created_at": "2026-03-08 15:09:30"
+  },
+  {
+    "id": "1a3f815de1bd240e36de33c3df8edbe6",
+    "manufacturer_id": "b34b21bddd4d938ab32bc375b2322011",
+    "type_item_id": "mi-diet-feed-prescription-diet-core",
+    "created_at": "2026-03-08 15:09:30"
+  },
+  {
+    "id": "36b56cdd8b05e3bb2be45b7ef6c49c78",
+    "manufacturer_id": "224c123f93ff25abf697f97af88dae1b",
+    "type_item_id": "mi-diet-feed-dry-food-core",
+    "created_at": "2026-03-08 15:09:30"
+  },
+  {
+    "id": "7efb7d312fa588b779d69f1086e6d561",
+    "manufacturer_id": "224c123f93ff25abf697f97af88dae1b",
+    "type_item_id": "mi-diet-feed-wet-food-core",
+    "created_at": "2026-03-08 15:09:30"
+  },
+  {
+    "id": "2cc8e56b928891b7880a45f0ddb3e1ba",
+    "manufacturer_id": "224c123f93ff25abf697f97af88dae1b",
+    "type_item_id": "mi-diet-feed-freeze-dried-complete-core",
+    "created_at": "2026-03-08 15:09:30"
+  },
+  {
+    "id": "80a3b626d0323f32763a4944f30faf86",
+    "manufacturer_id": "4e1bb9529767fd6d485fe1f56ebcde24",
+    "type_item_id": "mi-diet-feed-dry-food-core",
+    "created_at": "2026-03-08 15:09:30"
+  },
+  {
+    "id": "daba54106c16b1c3732e21dd437e846a",
+    "manufacturer_id": "4e1bb9529767fd6d485fe1f56ebcde24",
+    "type_item_id": "mi-diet-feed-wet-food-core",
+    "created_at": "2026-03-08 15:09:30"
+  },
+  {
+    "id": "bd8ecaf655119ff1de6803d616eb8538",
+    "manufacturer_id": "4e1bb9529767fd6d485fe1f56ebcde24",
+    "type_item_id": "mi-diet-feed-freeze-dried-complete-core",
+    "created_at": "2026-03-08 15:09:30"
+  },
+  {
+    "id": "902006d14dd8e2c606eec55f6fecbb27",
+    "manufacturer_id": "5147d84c6992d4248142d3bc8e74a571",
+    "type_item_id": "mi-diet-feed-wet-food-core",
+    "created_at": "2026-03-08 15:09:30"
+  },
+  {
+    "id": "cdf71a69c8828ad383ce0c53d1873552",
+    "manufacturer_id": "5147d84c6992d4248142d3bc8e74a571",
+    "type_item_id": "mi-diet-feed-prescription-diet-core",
+    "created_at": "2026-03-08 15:09:30"
+  },
+  {
+    "id": "5ccceade873b247522a046b642f812a2",
+    "manufacturer_id": "5147d84c6992d4248142d3bc8e74a571",
+    "type_item_id": "mi-diet-feed-snack-treat-core",
+    "created_at": "2026-03-08 15:09:30"
+  },
+  {
+    "id": "04ac488005d7611013e5bed2e6194c7a",
+    "manufacturer_id": "bc434154-7b94-45c9-8e60-181f669c4188",
+    "type_item_id": "mi-diet-feed-puppy-small-breed-formula",
+    "created_at": "2026-03-08 15:27:47"
+  },
+  {
+    "id": "e3a0310da769611b5b0249565de9eded",
+    "manufacturer_id": "5147d84c6992d4248142d3bc8e74a571",
+    "type_item_id": "mi-diet-feed-raw-frozen-food-core",
+    "created_at": "2026-03-08 15:33:09"
+  }
+]

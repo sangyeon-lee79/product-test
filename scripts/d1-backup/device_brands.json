@@ -1,0 +1,42 @@
+[
+  {
+    "id": "db-freestyle",
+    "manufacturer_id": "dm-abbott",
+    "name_ko": "FreeStyle",
+    "name_en": "FreeStyle",
+    "status": "active",
+    "created_at": "2026-03-07 12:37:20",
+    "updated_at": "2026-03-07 12:37:20",
+    "name_key": "device.brand.db-freestyle"
+  },
+  {
+    "id": "db-accu-chek",
+    "manufacturer_id": "dm-roche",
+    "name_ko": "Accu-Chek",
+    "name_en": "Accu-Chek",
+    "status": "active",
+    "created_at": "2026-03-07 12:37:20",
+    "updated_at": "2026-03-07 12:37:20",
+    "name_key": "device.brand.db-accu-chek"
+  },
+  {
+    "id": "db-onetouch",
+    "manufacturer_id": "dm-lifescan",
+    "name_ko": "OneTouch",
+    "name_en": "OneTouch",
+    "status": "active",
+    "created_at": "2026-03-07 12:37:20",
+    "updated_at": "2026-03-07 12:37:20",
+    "name_key": "device.brand.db-onetouch"
+  },
+  {
+    "id": "db-omron",
+    "manufacturer_id": "dm-omron",
+    "name_ko": "Omron",
+    "name_en": "Omron",
+    "status": "active",
+    "created_at": "2026-03-07 12:37:20",
+    "updated_at": "2026-03-07 12:37:20",
+    "name_key": "device.brand.db-omron"
+  }
+]

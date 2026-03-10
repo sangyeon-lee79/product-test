@@ -1,0 +1,68 @@
+[
+  {
+    "id": "6b493b8a-71d7-4095-85a2-e6319191db80",
+    "brand_id": "6c5792eb-dcd1-4d6c-aeda-5f3b4b08d8f8",
+    "manufacturer_id": "bc434154-7b94-45c9-8e60-181f669c4188",
+    "created_at": "2026-03-08T12:04:10.665Z"
+  },
+  {
+    "id": "e4cd5e41f5b780a3ef25b385be5150e4",
+    "brand_id": "99635c64f9f13e45dbeff2acba0e8ca5",
+    "manufacturer_id": "b7fb70cc066d57ebb3112fdad877840a",
+    "created_at": "2026-03-08 15:09:30"
+  },
+  {
+    "id": "597e713f12e1960609f0815bca6cc2e7",
+    "brand_id": "c0bdcd3b790fbef964011554fb827c82",
+    "manufacturer_id": "b7fb70cc066d57ebb3112fdad877840a",
+    "created_at": "2026-03-08 15:09:30"
+  },
+  {
+    "id": "0222c2cd7af27541a4be1b221f6256cc",
+    "brand_id": "a0c1b2d1a2f9d1242192358251b06418",
+    "manufacturer_id": "b7fb70cc066d57ebb3112fdad877840a",
+    "created_at": "2026-03-08 15:09:30"
+  },
+  {
+    "id": "3de284112ca3957bdb87b1c5d35a4f1a",
+    "brand_id": "390cd004d6687779a5f8de777221d3a8",
+    "manufacturer_id": "b34b21bddd4d938ab32bc375b2322011",
+    "created_at": "2026-03-08 15:09:30"
+  },
+  {
+    "id": "d6f5f900805a1b98ba5e06ee15b17e23",
+    "brand_id": "17953569386d061a9864dd9bf96ef0b1",
+    "manufacturer_id": "b34b21bddd4d938ab32bc375b2322011",
+    "created_at": "2026-03-08 15:09:30"
+  },
+  {
+    "id": "9614e9795c83427dbeb21f0491359d75",
+    "brand_id": "5cbe500319db4c490b448dda21232c24",
+    "manufacturer_id": "224c123f93ff25abf697f97af88dae1b",
+    "created_at": "2026-03-08 15:09:30"
+  },
+  {
+    "id": "bbb03aa31b593946bbeb3b4d019da4f1",
+    "brand_id": "3044ebd814a6a42dd4b62809d0fcc486",
+    "manufacturer_id": "4e1bb9529767fd6d485fe1f56ebcde24",
+    "created_at": "2026-03-08 15:09:30"
+  },
+  {
+    "id": "ce1f461b1543aff9d93ee5adc53d10aa",
+    "brand_id": "b5248fc836d32e4644a06a6554b575b6",
+    "manufacturer_id": "5147d84c6992d4248142d3bc8e74a571",
+    "created_at": "2026-03-08 15:09:30"
+  },
+  {
+    "id": "7ee8a3f0b00313ae110cc48c7c95140f",
+    "brand_id": "42eea7073831e65e3c339450ebd82699",
+    "manufacturer_id": "5147d84c6992d4248142d3bc8e74a571",
+    "created_at": "2026-03-08 15:09:30"
+  },
+  {
+    "id": "dce205453c62ee53f44dd13f53b82749",
+    "brand_id": "f1edff7fb2746e10ee737e0c6d441c15",
+    "manufacturer_id": "5147d84c6992d4248142d3bc8e74a571",
+    "created_at": "2026-03-08 15:09:30"
+  }
+]

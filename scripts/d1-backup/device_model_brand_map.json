@@ -1,0 +1,38 @@
+[
+  {
+    "id": "d64b10308b66897cda5c49f1a3e63d06",
+    "model_id": "mod-libre2",
+    "brand_id": "db-freestyle",
+    "created_at": "2026-03-08 10:33:08"
+  },
+  {
+    "id": "764aa435649070aadd1f0e0d2bb85a10",
+    "model_id": "mod-libre3",
+    "brand_id": "db-freestyle",
+    "created_at": "2026-03-08 10:33:08"
+  },
+  {
+    "id": "8303cf37b6c4bb99b8fe29ac990feab1",
+    "model_id": "mod-accuchek-guide",
+    "brand_id": "db-accu-chek",
+    "created_at": "2026-03-08 10:33:08"
+  },
+  {
+    "id": "34973754e43e363e351dc75ffb310a30",
+    "model_id": "mod-accuchek-active",
+    "brand_id": "db-accu-chek",
+    "created_at": "2026-03-08 10:33:08"
+  },
+  {
+    "id": "7fbfdf002a09fe298c49656903f7f55f",
+    "model_id": "mod-onetouch-ultra",
+    "brand_id": "db-onetouch",
+    "created_at": "2026-03-08 10:33:08"
+  },
+  {
+    "id": "64c8d4a90921a066ea8283826fd1362d",
+    "model_id": "mod-onetouch-select",
+    "brand_id": "db-onetouch",
+    "created_at": "2026-03-08 10:33:08"
+  }
+]

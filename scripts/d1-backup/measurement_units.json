@@ -1,0 +1,112 @@
+[
+  {
+    "id": "mu-mg-dl",
+    "key": "mg_dl",
+    "name": "Milligrams per deciliter",
+    "symbol": "mg/dL",
+    "status": "active",
+    "sort_order": 1,
+    "created_at": "2026-03-07 12:37:20",
+    "updated_at": "2026-03-07 12:37:20"
+  },
+  {
+    "id": "mu-mmol-l",
+    "key": "mmol_l",
+    "name": "Millimoles per liter",
+    "symbol": "mmol/L",
+    "status": "active",
+    "sort_order": 2,
+    "created_at": "2026-03-07 12:37:20",
+    "updated_at": "2026-03-07 12:37:20"
+  },
+  {
+    "id": "mu-kg",
+    "key": "kg",
+    "name": "Kilogram",
+    "symbol": "kg",
+    "status": "active",
+    "sort_order": 3,
+    "created_at": "2026-03-07 12:37:20",
+    "updated_at": "2026-03-07 12:37:20"
+  },
+  {
+    "id": "mu-g",
+    "key": "g",
+    "name": "Gram",
+    "symbol": "g",
+    "status": "active",
+    "sort_order": 4,
+    "created_at": "2026-03-07 12:37:20",
+    "updated_at": "2026-03-07 12:37:20"
+  },
+  {
+    "id": "mu-bpm",
+    "key": "bpm",
+    "name": "Beats per minute",
+    "symbol": "bpm",
+    "status": "active",
+    "sort_order": 5,
+    "created_at": "2026-03-07 12:37:20",
+    "updated_at": "2026-03-07 12:37:20"
+  },
+  {
+    "id": "mu-celsius",
+    "key": "celsius",
+    "name": "Celsius",
+    "symbol": "°C",
+    "status": "active",
+    "sort_order": 6,
+    "created_at": "2026-03-07 12:37:20",
+    "updated_at": "2026-03-07 12:37:20"
+  },
+  {
+    "id": "mu-percent",
+    "key": "percent",
+    "name": "Percent",
+    "symbol": "%",
+    "status": "active",
+    "sort_order": 7,
+    "created_at": "2026-03-07 12:37:20",
+    "updated_at": "2026-03-07 12:37:20"
+  },
+  {
+    "id": "mu-iu",
+    "key": "iu",
+    "name": "International Unit",
+    "symbol": "IU",
+    "status": "active",
+    "sort_order": 8,
+    "created_at": "2026-03-07 12:37:20",
+    "updated_at": "2026-03-07 12:37:20"
+  },
+  {
+    "id": "mu-ml",
+    "key": "ml",
+    "name": "Milliliter",
+    "symbol": "ml",
+    "status": "active",
+    "sort_order": 9,
+    "created_at": "2026-03-07 12:37:20",
+    "updated_at": "2026-03-07 12:37:20"
+  },
+  {
+    "id": "mu-kcal",
+    "key": "kcal",
+    "name": "Kilocalorie",
+    "symbol": "kcal",
+    "status": "active",
+    "sort_order": 10,
+    "created_at": "2026-03-07 12:37:20",
+    "updated_at": "2026-03-07 12:37:20"
+  },
+  {
+    "id": "mu-min",
+    "key": "min",
+    "name": "Minute",
+    "symbol": "min",
+    "status": "active",
+    "sort_order": 11,
+    "created_at": "2026-03-07 12:37:20",
+    "updated_at": "2026-03-07 12:37:20"
+  }
+]

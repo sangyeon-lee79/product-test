@@ -1,0 +1,80 @@
+[
+  {
+    "id": "ccm-kr-krw",
+    "country_id": "country-kr",
+    "currency_id": "cur-krw",
+    "is_default": 1
+  },
+  {
+    "id": "ccm-us-usd",
+    "country_id": "country-us",
+    "currency_id": "cur-usd",
+    "is_default": 1
+  },
+  {
+    "id": "ccm-jp-jpy",
+    "country_id": "country-jp",
+    "currency_id": "cur-jpy",
+    "is_default": 1
+  },
+  {
+    "id": "ccm-cn-cny",
+    "country_id": "country-cn",
+    "currency_id": "cur-cny",
+    "is_default": 1
+  },
+  {
+    "id": "ccm-tw-twd",
+    "country_id": "country-tw",
+    "currency_id": "cur-twd",
+    "is_default": 1
+  },
+  {
+    "id": "ccm-es-eur",
+    "country_id": "country-es",
+    "currency_id": "cur-eur",
+    "is_default": 1
+  },
+  {
+    "id": "ccm-fr-eur",
+    "country_id": "country-fr",
+    "currency_id": "cur-eur",
+    "is_default": 1
+  },
+  {
+    "id": "ccm-de-eur",
+    "country_id": "country-de",
+    "currency_id": "cur-eur",
+    "is_default": 1
+  },
+  {
+    "id": "ccm-pt-eur",
+    "country_id": "country-pt",
+    "currency_id": "cur-eur",
+    "is_default": 1
+  },
+  {
+    "id": "ccm-vn-vnd",
+    "country_id": "country-vn",
+    "currency_id": "cur-vnd",
+    "is_default": 1
+  },
+  {
+    "id": "ccm-th-thb",
+    "country_id": "country-th",
+    "currency_id": "cur-thb",
+    "is_default": 1
+  },
+  {
+    "id": "ccm-id-idr",
+    "country_id": "country-id",
+    "currency_id": "cur-idr",
+    "is_default": 1
+  },
+  {
+    "id": "ccm-sa-sar",
+    "country_id": "country-sa",
+    "currency_id": "cur-sar",
+    "is_default": 1
+  }
+]

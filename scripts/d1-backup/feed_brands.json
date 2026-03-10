@@ -1,0 +1,112 @@
+[
+  {
+    "id": "6c5792eb-dcd1-4d6c-aeda-5f3b4b08d8f8",
+    "manufacturer_id": "bc434154-7b94-45c9-8e60-181f669c4188",
+    "name_key": "feed.brand.brand_qhtkunvd",
+    "name_ko": "가방",
+    "name_en": "가방",
+    "status": "inactive",
+    "created_at": "2026-03-08T12:04:10.378Z",
+    "updated_at": "2026-03-08T13:51:04.173Z"
+  },
+  {
+    "id": "99635c64f9f13e45dbeff2acba0e8ca5",
+    "manufacturer_id": "b7fb70cc066d57ebb3112fdad877840a",
+    "name_key": "feed.brand.royal_canin_size_health_nutrition_line",
+    "name_ko": "사이즈 헬스 뉴트리션",
+    "name_en": "Size Health Nutrition",
+    "status": "active",
+    "created_at": "2026-03-08 15:09:30",
+    "updated_at": "2026-03-08 15:09:30"
+  },
+  {
+    "id": "c0bdcd3b790fbef964011554fb827c82",
+    "manufacturer_id": "b7fb70cc066d57ebb3112fdad877840a",
+    "name_key": "feed.brand.royal_canin_feline_health_nutrition_line",
+    "name_ko": "펠라인 헬스 뉴트리션",
+    "name_en": "Feline Health Nutrition",
+    "status": "active",
+    "created_at": "2026-03-08 15:09:30",
+    "updated_at": "2026-03-08 15:09:30"
+  },
+  {
+    "id": "a0c1b2d1a2f9d1242192358251b06418",
+    "manufacturer_id": "b7fb70cc066d57ebb3112fdad877840a",
+    "name_key": "feed.brand.royal_canin_veterinary_diet_line",
+    "name_ko": "베터리너리 다이어트",
+    "name_en": "Veterinary Diet",
+    "status": "active",
+    "created_at": "2026-03-08 15:09:30",
+    "updated_at": "2026-03-08 15:09:30"
+  },
+  {
+    "id": "390cd004d6687779a5f8de777221d3a8",
+    "manufacturer_id": "b34b21bddd4d938ab32bc375b2322011",
+    "name_key": "feed.brand.hills_science_diet_line",
+    "name_ko": "사이언스 다이어트",
+    "name_en": "Science Diet",
+    "status": "active",
+    "created_at": "2026-03-08 15:09:30",
+    "updated_at": "2026-03-08 15:09:30"
+  },
+  {
+    "id": "17953569386d061a9864dd9bf96ef0b1",
+    "manufacturer_id": "b34b21bddd4d938ab32bc375b2322011",
+    "name_key": "feed.brand.hills_prescription_diet_line",
+    "name_ko": "프리스크립션 다이어트",
+    "name_en": "Prescription Diet",
+    "status": "active",
+    "created_at": "2026-03-08 15:09:30",
+    "updated_at": "2026-03-08 15:09:30"
+  },
+  {
+    "id": "5cbe500319db4c490b448dda21232c24",
+    "manufacturer_id": "224c123f93ff25abf697f97af88dae1b",
+    "name_key": "feed.brand.orijen_dry_line",
+    "name_ko": "오리젠 드라이 라인",
+    "name_en": "Orijen Dry Line",
+    "status": "active",
+    "created_at": "2026-03-08 15:09:30",
+    "updated_at": "2026-03-08 15:09:30"
+  },
+  {
+    "id": "3044ebd814a6a42dd4b62809d0fcc486",
+    "manufacturer_id": "4e1bb9529767fd6d485fe1f56ebcde24",
+    "name_key": "feed.brand.acana_wholesome_grains_line",
+    "name_ko": "홀섬 그레인 라인",
+    "name_en": "Wholesome Grains",
+    "status": "active",
+    "created_at": "2026-03-08 15:09:30",
+    "updated_at": "2026-03-08 15:09:30"
+  },
+  {
+    "id": "b5248fc836d32e4644a06a6554b575b6",
+    "manufacturer_id": "5147d84c6992d4248142d3bc8e74a571",
+    "name_key": "feed.brand.ray_yvonne_raw_line",
+    "name_ko": "레이앤이본 생식",
+    "name_en": "Ray & Yvonne Raw",
+    "status": "active",
+    "created_at": "2026-03-08 15:09:30",
+    "updated_at": "2026-03-08 15:09:30"
+  },
+  {
+    "id": "42eea7073831e65e3c339450ebd82699",
+    "manufacturer_id": "5147d84c6992d4248142d3bc8e74a571",
+    "name_key": "feed.brand.ray_yvonne_cooked_line",
+    "name_ko": "레이앤이본 조리식",
+    "name_en": "Ray & Yvonne Cooked",
+    "status": "active",
+    "created_at": "2026-03-08 15:09:30",
+    "updated_at": "2026-03-08 15:09:30"
+  },
+  {
+    "id": "f1edff7fb2746e10ee737e0c6d441c15",
+    "manufacturer_id": "5147d84c6992d4248142d3bc8e74a571",
+    "name_key": "feed.brand.ray_yvonne_management_line",
+    "name_ko": "레이앤이본 관리식",
+    "name_en": "Ray & Yvonne Care",
+    "status": "active",
+    "created_at": "2026-03-08 15:09:30",
+    "updated_at": "2026-03-08 15:09:30"
+  }
+]

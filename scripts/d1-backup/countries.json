@@ -1,0 +1,106 @@
+[
+  {
+    "id": "country-kr",
+    "code": "KR",
+    "name_key": "country.kr",
+    "is_active": 1,
+    "sort_order": 10,
+    "created_at": "2026-03-08 08:24:01"
+  },
+  {
+    "id": "country-us",
+    "code": "US",
+    "name_key": "country.us",
+    "is_active": 1,
+    "sort_order": 20,
+    "created_at": "2026-03-08 08:24:01"
+  },
+  {
+    "id": "country-vn",
+    "code": "VN",
+    "name_key": "country.vn",
+    "is_active": 1,
+    "sort_order": 30,
+    "created_at": "2026-03-08 08:24:01"
+  },
+  {
+    "id": "country-jp",
+    "code": "JP",
+    "name_key": "country.jp",
+    "is_active": 1,
+    "sort_order": 40,
+    "created_at": "2026-03-08 08:24:01"
+  },
+  {
+    "id": "country-cn",
+    "code": "CN",
+    "name_key": "country.cn",
+    "is_active": 1,
+    "sort_order": 40,
+    "created_at": "2026-03-08 10:33:08"
+  },
+  {
+    "id": "country-tw",
+    "code": "TW",
+    "name_key": "country.tw",
+    "is_active": 1,
+    "sort_order": 50,
+    "created_at": "2026-03-08 10:33:08"
+  },
+  {
+    "id": "country-es",
+    "code": "ES",
+    "name_key": "country.es",
+    "is_active": 1,
+    "sort_order": 60,
+    "created_at": "2026-03-08 10:33:08"
+  },
+  {
+    "id": "country-fr",
+    "code": "FR",
+    "name_key": "country.fr",
+    "is_active": 1,
+    "sort_order": 70,
+    "created_at": "2026-03-08 10:33:08"
+  },
+  {
+    "id": "country-de",
+    "code": "DE",
+    "name_key": "country.de",
+    "is_active": 1,
+    "sort_order": 80,
+    "created_at": "2026-03-08 10:33:08"
+  },
+  {
+    "id": "country-pt",
+    "code": "PT",
+    "name_key": "country.pt",
+    "is_active": 1,
+    "sort_order": 90,
+    "created_at": "2026-03-08 10:33:08"
+  },
+  {
+    "id": "country-th",
+    "code": "TH",
+    "name_key": "country.th",
+    "is_active": 1,
+    "sort_order": 110,
+    "created_at": "2026-03-08 10:33:08"
+  },
+  {
+    "id": "country-id",
+    "code": "ID",
+    "name_key": "country.id",
+    "is_active": 1,
+    "sort_order": 120,
+    "created_at": "2026-03-08 10:33:08"
+  },
+  {
+    "id": "country-sa",
+    "code": "SA",
+    "name_key": "country.sa",
+    "is_active": 1,
+    "sort_order": 130,
+    "created_at": "2026-03-08 10:33:08"
+  }
+]

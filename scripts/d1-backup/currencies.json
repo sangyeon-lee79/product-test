@@ -1,0 +1,92 @@
+[
+  {
+    "id": "cur-krw",
+    "code": "KRW",
+    "symbol": "₩",
+    "name_key": "currency.krw",
+    "decimal_places": 0,
+    "is_active": 1,
+    "created_at": "2026-03-08 08:24:01"
+  },
+  {
+    "id": "cur-usd",
+    "code": "USD",
+    "symbol": "$",
+    "name_key": "currency.usd",
+    "decimal_places": 2,
+    "is_active": 1,
+    "created_at": "2026-03-08 08:24:01"
+  },
+  {
+    "id": "cur-vnd",
+    "code": "VND",
+    "symbol": "₫",
+    "name_key": "currency.vnd",
+    "decimal_places": 0,
+    "is_active": 1,
+    "created_at": "2026-03-08 08:24:01"
+  },
+  {
+    "id": "cur-jpy",
+    "code": "JPY",
+    "symbol": "¥",
+    "name_key": "currency.jpy",
+    "decimal_places": 0,
+    "is_active": 1,
+    "created_at": "2026-03-08 08:24:01"
+  },
+  {
+    "id": "cur-cny",
+    "code": "CNY",
+    "symbol": "¥",
+    "name_key": "currency.cny",
+    "decimal_places": 2,
+    "is_active": 1,
+    "created_at": "2026-03-08 10:33:08"
+  },
+  {
+    "id": "cur-twd",
+    "code": "TWD",
+    "symbol": "NT$",
+    "name_key": "currency.twd",
+    "decimal_places": 2,
+    "is_active": 1,
+    "created_at": "2026-03-08 10:33:08"
+  },
+  {
+    "id": "cur-eur",
+    "code": "EUR",
+    "symbol": "€",
+    "name_key": "currency.eur",
+    "decimal_places": 2,
+    "is_active": 1,
+    "created_at": "2026-03-08 10:33:08"
+  },
+  {
+    "id": "cur-thb",
+    "code": "THB",
+    "symbol": "฿",
+    "name_key": "currency.thb",
+    "decimal_places": 2,
+    "is_active": 1,
+    "created_at": "2026-03-08 10:33:08"
+  },
+  {
+    "id": "cur-idr",
+    "code": "IDR",
+    "symbol": "Rp",
+    "name_key": "currency.idr",
+    "decimal_places": 0,
+    "is_active": 1,
+    "created_at": "2026-03-08 10:33:08"
+  },
+  {
+    "id": "cur-sar",
+    "code": "SAR",
+    "symbol": "﷼",
+    "name_key": "currency.sar",
+    "decimal_places": 2,
+    "is_active": 1,
+    "created_at": "2026-03-08 10:33:08"
+  }
+]

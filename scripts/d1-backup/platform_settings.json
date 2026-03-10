@@ -1,0 +1,29 @@
+[
+  {
+    "id": "6a9bdbdd4da3c24bb820f1ef1de43192",
+    "setting_key": "google_places_api_key",
+    "setting_value": "",
+    "description": "Google Places API key",
+    "updated_by_user_id": null,
+    "created_at": "2026-03-10 01:57:46",
+    "updated_at": "2026-03-10 01:57:46"
+  },
+  {
+    "id": "a77da0eaf16b1b8f67ac54d4764214ca",
+    "setting_key": "google_oauth_client_id",
+    "setting_value": "",
+    "description": "Google OAuth client id",
+    "updated_by_user_id": null,
+    "created_at": "2026-03-10 01:57:46",
+    "updated_at": "2026-03-10 01:57:46"
+  },
+  {
+    "id": "df1ca560702a37b0517c939fb6e95302",
+    "setting_key": "google_oauth_redirect_uri",
+    "setting_value": "",
+    "description": "Google OAuth redirect uri",
+    "updated_by_user_id": null,
+    "created_at": "2026-03-10 01:57:46",
+    "updated_at": "2026-03-10 01:57:46"
+  }
+]

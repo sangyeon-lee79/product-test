@@ -1,0 +1,20 @@
+[
+  {
+    "id": "066c917fc6d7276bf3e3fb6dc14674d7",
+    "manufacturer_id": "dm-abbott",
+    "type_item_id": "mi-ddev-cgm",
+    "created_at": "2026-03-08 10:33:08"
+  },
+  {
+    "id": "57d1cead2b45d0f9c66e7ee82de6b6e8",
+    "manufacturer_id": "dm-roche",
+    "type_item_id": "mi-device-glucose-meter",
+    "created_at": "2026-03-08 10:33:08"
+  },
+  {
+    "id": "da3d1b82ccad30d15b6b59cc863bf5fc",
+    "manufacturer_id": "dm-lifescan",
+    "type_item_id": "mi-device-glucose-meter",
+    "created_at": "2026-03-08 10:33:08"
+  }
+]

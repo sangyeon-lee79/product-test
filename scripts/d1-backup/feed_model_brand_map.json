@@ -1,0 +1,158 @@
+[
+  {
+    "id": "ccd0a6b0-ca01-401c-ab67-fb7c455aa515",
+    "model_id": "f8bba612-591e-4626-a766-0457676fccac",
+    "brand_id": "6c5792eb-dcd1-4d6c-aeda-5f3b4b08d8f8",
+    "created_at": "2026-03-08T12:05:26.502Z"
+  },
+  {
+    "id": "6240f3032cda7c720525f7c613583ef4",
+    "model_id": "f6f6a6ce8da79dd3be87b9a7b21f7fca",
+    "brand_id": "99635c64f9f13e45dbeff2acba0e8ca5",
+    "created_at": "2026-03-08 15:09:30"
+  },
+  {
+    "id": "97cd9d4a539f213fb3aa9b2c2fd5b557",
+    "model_id": "bc7f9c875687e6d953b825046f7ab560",
+    "brand_id": "99635c64f9f13e45dbeff2acba0e8ca5",
+    "created_at": "2026-03-08 15:09:30"
+  },
+  {
+    "id": "553d63e456d29f927fc170afe7e4f509",
+    "model_id": "117cc5cc22e7af6c3a712d0ed0dbfbe5",
+    "brand_id": "c0bdcd3b790fbef964011554fb827c82",
+    "created_at": "2026-03-08 15:09:30"
+  },
+  {
+    "id": "b258c0bdb053237e36faac50858d9af8",
+    "model_id": "e86efef6887278040e9c5638c4770f57",
+    "brand_id": "99635c64f9f13e45dbeff2acba0e8ca5",
+    "created_at": "2026-03-08 15:09:30"
+  },
+  {
+    "id": "3fb0a9878ed7d2c0e43d023f7945ab6b",
+    "model_id": "e51acd01341618f88ed8b88719e27cdf",
+    "brand_id": "a0c1b2d1a2f9d1242192358251b06418",
+    "created_at": "2026-03-08 15:09:30"
+  },
+  {
+    "id": "5685003e28b750494baddc2d98e0108b",
+    "model_id": "129f361f2353fc4497213c84b823de63",
+    "brand_id": "390cd004d6687779a5f8de777221d3a8",
+    "created_at": "2026-03-08 15:09:30"
+  },
+  {
+    "id": "e5ca9acf00cd487e0d5dfce0f3e9dac4",
+    "model_id": "c58723a3039ed0b2af4baaf1b52cf077",
+    "brand_id": "390cd004d6687779a5f8de777221d3a8",
+    "created_at": "2026-03-08 15:09:30"
+  },
+  {
+    "id": "eac76c4c7b0d50d610d875430005b7d6",
+    "model_id": "60ddcdb36f7b4d3fe27b35ddd4f7c772",
+    "brand_id": "390cd004d6687779a5f8de777221d3a8",
+    "created_at": "2026-03-08 15:09:30"
+  },
+  {
+    "id": "898b9bd0fa344a5deb822df8ed9c610b",
+    "model_id": "5c76dcd7b4cbb65e0ddf4aef667a2c9f",
+    "brand_id": "390cd004d6687779a5f8de777221d3a8",
+    "created_at": "2026-03-08 15:09:30"
+  },
+  {
+    "id": "a975e038046636128df1a9b71b27c0db",
+    "model_id": "8c22fce8c776e839a55c050c8cc5a057",
+    "brand_id": "17953569386d061a9864dd9bf96ef0b1",
+    "created_at": "2026-03-08 15:09:30"
+  },
+  {
+    "id": "0b8236e6cbe4b6188a4375a09831e782",
+    "model_id": "d0dc5d77cbe93deeb1baa571b9bc59e2",
+    "brand_id": "5cbe500319db4c490b448dda21232c24",
+    "created_at": "2026-03-08 15:09:30"
+  },
+  {
+    "id": "dce39f3bb9f5b38559d06ee35c30f2dd",
+    "model_id": "f4bec9f6e33de4a551f93b9db924d33d",
+    "brand_id": "5cbe500319db4c490b448dda21232c24",
+    "created_at": "2026-03-08 15:09:30"
+  },
+  {
+    "id": "b0b382a2bd6f8450e84847292b65151e",
+    "model_id": "160fd0741ea2c793cc1cfac657d600a4",
+    "brand_id": "5cbe500319db4c490b448dda21232c24",
+    "created_at": "2026-03-08 15:09:30"
+  },
+  {
+    "id": "820638bad9236fa0d289e48c33192d3e",
+    "model_id": "a3c33fa73c719ebb94ea2bc09174e8de",
+    "brand_id": "5cbe500319db4c490b448dda21232c24",
+    "created_at": "2026-03-08 15:09:30"
+  },
+  {
+    "id": "a342fc34424567c76fffc629377d6358",
+    "model_id": "9d73e4a1da8fd6a6a3879e5493ec095e",
+    "brand_id": "5cbe500319db4c490b448dda21232c24",
+    "created_at": "2026-03-08 15:09:30"
+  },
+  {
+    "id": "88fe83535eb64b14ac10998b709698f3",
+    "model_id": "4789fd0fd1d5e6eb4a6186840d61dc34",
+    "brand_id": "3044ebd814a6a42dd4b62809d0fcc486",
+    "created_at": "2026-03-08 15:09:30"
+  },
+  {
+    "id": "075e57f1e37c4df750c6549456a83b83",
+    "model_id": "caa294e7d09dc6a8651e4b0aaffa2114",
+    "brand_id": "3044ebd814a6a42dd4b62809d0fcc486",
+    "created_at": "2026-03-08 15:09:30"
+  },
+  {
+    "id": "c622de2a92ad63f0b4f2e6cc82a0acbb",
+    "model_id": "fbd1d7b780cdf00fbb64d90b5e48031f",
+    "brand_id": "3044ebd814a6a42dd4b62809d0fcc486",
+    "created_at": "2026-03-08 15:09:30"
+  },
+  {
+    "id": "ce149e7290030d389d1238af977d707c",
+    "model_id": "70a9dc175eb6d649936834302eeee270",
+    "brand_id": "3044ebd814a6a42dd4b62809d0fcc486",
+    "created_at": "2026-03-08 15:09:30"
+  },
+  {
+    "id": "aaa117b8ec89a1e72fc7a570612494b7",
+    "model_id": "95f97389eebbb31cc052200e0a2f4ef1",
+    "brand_id": "3044ebd814a6a42dd4b62809d0fcc486",
+    "created_at": "2026-03-08 15:09:30"
+  },
+  {
+    "id": "88404e3a2140fe8aadb7a3c5d637a2a5",
+    "model_id": "540f62700cddf97bc9e559bebeb075cb",
+    "brand_id": "b5248fc836d32e4644a06a6554b575b6",
+    "created_at": "2026-03-08 15:09:30"
+  },
+  {
+    "id": "5ef427424a54db5c29ba3f4f00617afd",
+    "model_id": "958216d2122d7546cc6e1a9603406be9",
+    "brand_id": "b5248fc836d32e4644a06a6554b575b6",
+    "created_at": "2026-03-08 15:09:30"
+  },
+  {
+    "id": "9aa4ab0a5213bfbe355508bceb2663b1",
+    "model_id": "bd085857f00fa01d0fa5231c38abfce9",
+    "brand_id": "42eea7073831e65e3c339450ebd82699",
+    "created_at": "2026-03-08 15:09:30"
+  },
+  {
+    "id": "7fece7a710cf189d9b676301f8e256cd",
+    "model_id": "98639042eadd07384d21afa17b8ecf3b",
+    "brand_id": "f1edff7fb2746e10ee737e0c6d441c15",
+    "created_at": "2026-03-08 15:09:30"
+  },
+  {
+    "id": "4a9150dd508541355f7a66e82af90ca1",
+    "model_id": "017675d248027257bfcb8943d1626f0d",
+    "brand_id": "f1edff7fb2746e10ee737e0c6d441c15",
+    "created_at": "2026-03-08 15:09:30"
+  }
+]
