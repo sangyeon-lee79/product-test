@@ -55,12 +55,26 @@ async function loadGoogleTranslateServiceAccount(env: Env): Promise<{ email: str
   const rows = await env.DB.prepare(
     `SELECT setting_key, setting_value
      FROM platform_settings
-     WHERE setting_key IN ('google_translate_service_account_email', 'google_translate_service_account_private_key')`
+     WHERE setting_key IN ('google_translate_service_account_json', 'google_translate_service_account_email', 'google_translate_service_account_private_key')`
   ).all<{ setting_key: string; setting_value: string | null }>();
 
   const mapped = Object.fromEntries(
     (rows.results || []).map((row) => [row.setting_key, String(row.setting_value || '').trim()]),
   ) as Record<string, string>;
+
+  const jsonRaw = mapped.google_translate_service_account_json || '';
+  if (jsonRaw) {
+    try {
+      const parsed = JSON.parse(jsonRaw) as { client_email?: string; private_key?: string };
+      const jsonEmail = String(parsed.client_email || '').trim();
+      const jsonPrivateKey = String(parsed.private_key || '').trim();
+      if (jsonEmail && jsonPrivateKey) {
+        return { email: jsonEmail, privateKey: jsonPrivateKey };
+      }
+    } catch {
+      // fall back to split fields when saved JSON is malformed
+    }
+  }
 
   return {
     email: mapped.google_translate_service_account_email || '',

@@ -10,6 +10,7 @@ const GOOGLE_PUBLIC_SETTING_KEYS = [
 
 const GOOGLE_ADMIN_SETTING_KEYS = [
   ...GOOGLE_PUBLIC_SETTING_KEYS,
+  'google_translate_service_account_json',
   'google_translate_service_account_email',
   'google_translate_service_account_private_key',
 ] as const;
@@ -95,6 +96,7 @@ async function testGoogleTranslateCredentials(request: Request, me: JwtPayload):
   if (roleErr) return roleErr;
 
   let body: {
+    google_translate_service_account_json?: string;
     google_translate_service_account_email?: string;
     google_translate_service_account_private_key?: string;
     text?: string;
@@ -105,9 +107,20 @@ async function testGoogleTranslateCredentials(request: Request, me: JwtPayload):
     return err('Invalid JSON body');
   }
 
-  const serviceAccountEmail = String(body.google_translate_service_account_email || '').trim();
-  const privateKey = String(body.google_translate_service_account_private_key || '').trim();
+  const serviceAccountJson = String(body.google_translate_service_account_json || '').trim();
+  let serviceAccountEmail = String(body.google_translate_service_account_email || '').trim();
+  let privateKey = String(body.google_translate_service_account_private_key || '').trim();
   const text = String(body.text || '테스트 번역').trim();
+
+  if (serviceAccountJson) {
+    try {
+      const parsed = JSON.parse(serviceAccountJson) as { client_email?: string; private_key?: string };
+      serviceAccountEmail = String(parsed.client_email || '').trim();
+      privateKey = String(parsed.private_key || '').trim();
+    } catch {
+      return err('google translate service account json is invalid');
+    }
+  }
 
   if (!serviceAccountEmail) return err('google translate service account email required');
   if (!privateKey) return err('google translate service account private key required');
@@ -156,6 +169,7 @@ async function listGoogleSettings(env: Env, me: JwtPayload): Promise<Response> {
        'google_places_api_key',
        'google_oauth_client_id',
        'google_oauth_redirect_uri',
+       'google_translate_service_account_json',
        'google_translate_service_account_email',
        'google_translate_service_account_private_key'
      )
