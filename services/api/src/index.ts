@@ -11,8 +11,8 @@ import { handleHealth } from './routes/health';
 export default {
   async fetch(request: Request, env: Env): Promise<Response> {
     try {
-      // Initialize DB adapter from Hyperdrive or local DATABASE_URL
-      const connectionString = env.HYPERDRIVE?.connectionString || env.DATABASE_URL;
+      // Initialize DB adapter: DATABASE_URL (neon HTTP) preferred, Hyperdrive as fallback
+      const connectionString = env.DATABASE_URL || env.HYPERDRIVE?.connectionString;
       if (!connectionString) {
         return err('Database not configured', 500, 'db_config_error');
       }
