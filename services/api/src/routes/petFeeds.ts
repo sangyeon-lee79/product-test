@@ -170,7 +170,7 @@ export async function handlePetFeeds(request: Request, env: Env, url: URL): Prom
       }
 
       const sets: string[] = ['updated_at = ?'];
-      const vals: (string | number | null)[] = [now()];
+      const vals: (string | number | boolean | null)[] = [now()];
       if ('nickname' in body) { sets.push('nickname = ?'); vals.push(body.nickname ?? null); }
       if ('disease_item_id' in body) { sets.push('disease_item_id = ?'); vals.push(body.disease_item_id ?? null); }
       if ('daily_amount_g' in body) { sets.push('daily_amount_g = ?'); vals.push(body.daily_amount_g ?? null); }
