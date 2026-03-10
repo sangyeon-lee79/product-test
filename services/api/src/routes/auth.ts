@@ -448,7 +448,8 @@ async function signup(request: Request, env: Env): Promise<Response> {
   const addressLine = (body.address_line || '').trim();
   const addressPlaceId = (body.address_place_id || '').trim();
   const publicId = (body.public_id || '').trim();
-  const role = 'guardian';
+  const role = (body.role_application && normalizeRequestedRole(body.role_application.requested_role) === 'provider')
+    ? 'provider' : 'guardian';
 
   if (!email) return err('email required');
   if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return err('invalid email');
