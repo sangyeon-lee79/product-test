@@ -161,11 +161,11 @@ async function passwordLogin(request: Request, env: Env): Promise<Response> {
   ).bind(email).first<UserRow>();
 
   if (email === DEFAULT_SAMPLE_ACCOUNTS.guardian.email) {
-    user = await ensureDefaultSampleAccount(env, DEFAULT_SAMPLE_ACCOUNTS.guardian);
+    user = await ensureDefaultSampleAccount(env, DEFAULT_SAMPLE_ACCOUNTS.guardian, user);
   } else if (email === DEFAULT_SAMPLE_ACCOUNTS.provider.email) {
-    user = await ensureDefaultSampleAccount(env, DEFAULT_SAMPLE_ACCOUNTS.provider);
+    user = await ensureDefaultSampleAccount(env, DEFAULT_SAMPLE_ACCOUNTS.provider, user);
   } else if (email === DEFAULT_SAMPLE_ACCOUNTS.admin.email) {
-    user = await ensureDefaultSampleAccount(env, DEFAULT_SAMPLE_ACCOUNTS.admin);
+    user = await ensureDefaultSampleAccount(env, DEFAULT_SAMPLE_ACCOUNTS.admin, user);
   }
 
   if (!user?.id || !user.password_hash) return err('invalid email or password', 401);
@@ -418,14 +418,14 @@ async function testLogin(request: Request, env: Env): Promise<Response> {
   ).bind(email).first<{ id: string; role: string }>();
 
   if (email === DEFAULT_SAMPLE_ACCOUNTS.guardian.email) {
-    user = await ensureBangulGuardianSample(env);
-    if (user) await ensureDefaultSampleAccount(env, DEFAULT_SAMPLE_ACCOUNTS.guardian);
+    const normalized = await ensureDefaultSampleAccount(env, DEFAULT_SAMPLE_ACCOUNTS.guardian);
+    user = normalized ? { id: normalized.id, role: normalized.role } : null;
   } else if (email === DEFAULT_SAMPLE_ACCOUNTS.provider.email) {
-    user = await ensureProviderSample(env);
-    if (user) await ensureDefaultSampleAccount(env, DEFAULT_SAMPLE_ACCOUNTS.provider);
+    const normalized = await ensureDefaultSampleAccount(env, DEFAULT_SAMPLE_ACCOUNTS.provider);
+    user = normalized ? { id: normalized.id, role: normalized.role } : null;
   } else if (email === DEFAULT_SAMPLE_ACCOUNTS.admin.email) {
-    user = await ensureAdminSample(env);
-    if (user) await ensureDefaultSampleAccount(env, DEFAULT_SAMPLE_ACCOUNTS.admin);
+    const normalized = await ensureDefaultSampleAccount(env, DEFAULT_SAMPLE_ACCOUNTS.admin);
+    user = normalized ? { id: normalized.id, role: normalized.role } : null;
   }
   if (!user) return err('account not found. please signup first', 404);
 
@@ -436,16 +436,23 @@ async function testLogin(request: Request, env: Env): Promise<Response> {
 async function ensureDefaultSampleAccount(
   env: Env,
   sample: { email: string; password: string; role: JwtPayload['role'] },
+  existingUser?: UserRow | null,
 ): Promise<UserRow | null> {
+  const existing = existingUser ?? await env.DB.prepare(
+    'SELECT id, role, password_hash, status FROM users WHERE email = ?'
+  ).bind(sample.email).first<UserRow>();
+
   const ensuredBase =
-    sample.role === 'guardian'
-      ? await ensureBangulGuardianSample(env)
-      : sample.role === 'provider'
-        ? await ensureProviderSample(env)
-        : await ensureAdminSample(env);
+    existing?.id
+      ? { id: existing.id, role: existing.role }
+      : sample.role === 'guardian'
+        ? await ensureBangulGuardianSample(env)
+        : sample.role === 'provider'
+          ? await ensureProviderSample(env)
+          : await ensureAdminSample(env);
   if (!ensuredBase) return null;
 
-  const passwordHash = await ensureSamplePassword(env, ensuredBase.id, sample.password);
+  const passwordHash = existing?.password_hash || await ensureSamplePassword(env, ensuredBase.id, sample.password);
   const ts = now();
   await env.DB.prepare(
     'UPDATE users SET role = ?, status = ?, updated_at = ? WHERE id = ?'
