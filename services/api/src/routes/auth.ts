@@ -91,6 +91,13 @@ type PasswordLoginBody = {
   password?: string;
 };
 
+type UserRow = {
+  id: string;
+  role: string;
+  password_hash: string | null;
+  status: string | null;
+};
+
 function normalizeRequestedRole(raw?: string): JwtPayload['role'] {
   const role = (raw || 'provider').toLowerCase();
   if (role === 'supplier') return 'provider';
@@ -148,23 +155,18 @@ async function passwordLogin(request: Request, env: Env): Promise<Response> {
 
   let user = await env.DB.prepare(
     'SELECT id, role, password_hash, status FROM users WHERE email = ?'
-  ).bind(email).first<{ id: string; role: string; password_hash: string | null; status: string }>();
+  ).bind(email).first<UserRow>();
 
-  if (!user && email === DEFAULT_SAMPLE_ACCOUNTS.guardian.email) {
-    const sample = await ensureBangulGuardianSample(env);
-    user = sample ? { id: sample.id, role: sample.role, password_hash: await ensureSamplePassword(env, sample.id, DEFAULT_SAMPLE_ACCOUNTS.guardian.password), status: 'active' } : null;
-  }
-  if (!user && email === DEFAULT_SAMPLE_ACCOUNTS.provider.email) {
-    const sample = await ensureProviderSample(env);
-    user = sample ? { id: sample.id, role: sample.role, password_hash: await ensureSamplePassword(env, sample.id, DEFAULT_SAMPLE_ACCOUNTS.provider.password), status: 'active' } : null;
-  }
-  if (!user && email === DEFAULT_SAMPLE_ACCOUNTS.admin.email) {
-    const sample = await ensureAdminSample(env);
-    user = sample ? { id: sample.id, role: sample.role, password_hash: await ensureSamplePassword(env, sample.id, DEFAULT_SAMPLE_ACCOUNTS.admin.password), status: 'active' } : null;
+  if (email === DEFAULT_SAMPLE_ACCOUNTS.guardian.email) {
+    user = await ensureDefaultSampleAccount(env, DEFAULT_SAMPLE_ACCOUNTS.guardian);
+  } else if (email === DEFAULT_SAMPLE_ACCOUNTS.provider.email) {
+    user = await ensureDefaultSampleAccount(env, DEFAULT_SAMPLE_ACCOUNTS.provider);
+  } else if (email === DEFAULT_SAMPLE_ACCOUNTS.admin.email) {
+    user = await ensureDefaultSampleAccount(env, DEFAULT_SAMPLE_ACCOUNTS.admin);
   }
 
   if (!user?.id || !user.password_hash) return err('invalid email or password', 401);
-  if (user.status !== 'active') return err('account is not active', 403);
+  if ((user.status || 'active') !== 'active') return err('account is not active', 403);
   if (!await verifyPassword(password, user.password_hash)) return err('invalid email or password', 401);
 
   const tokens = await issueTokens(user.id, user.role as JwtPayload['role'], env.JWT_SECRET);
@@ -339,27 +341,46 @@ async function testLogin(request: Request, env: Env): Promise<Response> {
     'SELECT id, role FROM users WHERE email = ?'
   ).bind(email).first<{ id: string; role: string }>();
 
-  if (!user) {
-    if (email === DEFAULT_SAMPLE_ACCOUNTS.guardian.email) {
-      user = await ensureBangulGuardianSample(env);
-      if (user) await ensureSamplePassword(env, user.id, DEFAULT_SAMPLE_ACCOUNTS.guardian.password);
-    }
-
-    if (!user && email === DEFAULT_SAMPLE_ACCOUNTS.provider.email) {
-      user = await ensureProviderSample(env);
-      if (user) await ensureSamplePassword(env, user.id, DEFAULT_SAMPLE_ACCOUNTS.provider.password);
-    }
-
-    // Admin 계정은 공개 signup이 없으므로 내부 계정 부트스트랩 허용.
-    if (!user && email === DEFAULT_SAMPLE_ACCOUNTS.admin.email) {
-      user = await ensureAdminSample(env);
-      if (user) await ensureSamplePassword(env, user.id, DEFAULT_SAMPLE_ACCOUNTS.admin.password);
-    }
-    if (!user) return err('account not found. please signup first', 404);
+  if (email === DEFAULT_SAMPLE_ACCOUNTS.guardian.email) {
+    user = await ensureBangulGuardianSample(env);
+    if (user) await ensureDefaultSampleAccount(env, DEFAULT_SAMPLE_ACCOUNTS.guardian);
+  } else if (email === DEFAULT_SAMPLE_ACCOUNTS.provider.email) {
+    user = await ensureProviderSample(env);
+    if (user) await ensureDefaultSampleAccount(env, DEFAULT_SAMPLE_ACCOUNTS.provider);
+  } else if (email === DEFAULT_SAMPLE_ACCOUNTS.admin.email) {
+    user = await ensureAdminSample(env);
+    if (user) await ensureDefaultSampleAccount(env, DEFAULT_SAMPLE_ACCOUNTS.admin);
   }
+  if (!user) return err('account not found. please signup first', 404);
 
   const tokens = await issueTokens(user.id, user.role as JwtPayload['role'], env.JWT_SECRET);
   return created({ user_id: user.id, role: user.role, ...tokens });
+}
+
+async function ensureDefaultSampleAccount(
+  env: Env,
+  sample: { email: string; password: string; role: JwtPayload['role'] },
+): Promise<UserRow | null> {
+  const ensuredBase =
+    sample.role === 'guardian'
+      ? await ensureBangulGuardianSample(env)
+      : sample.role === 'provider'
+        ? await ensureProviderSample(env)
+        : await ensureAdminSample(env);
+  if (!ensuredBase) return null;
+
+  const passwordHash = await ensureSamplePassword(env, ensuredBase.id, sample.password);
+  const ts = now();
+  await env.DB.prepare(
+    'UPDATE users SET role = ?, status = ?, updated_at = ? WHERE id = ?'
+  ).bind(sample.role, 'active', ts, ensuredBase.id).run();
+
+  return {
+    id: ensuredBase.id,
+    role: sample.role,
+    password_hash: passwordHash,
+    status: 'active',
+  };
 }
 
 async function ensureSamplePassword(env: Env, userId: string, password: string): Promise<string> {
