@@ -4,6 +4,7 @@ import {
   api,
   type Booking,
   type FeedingLog,
+  type FeedingMixFavorite,
   type FeedPost,
   type FriendRequest,
   type GlucoseAlert,
@@ -91,6 +92,7 @@ export default function GuardianMainPage() {
   const [feedingLogModalOpen, setFeedingLogModalOpen] = useState(false);
   const [feedingLogs, setFeedingLogs] = useState<FeedingLog[]>([]);
   const [editingFeedingLog, setEditingFeedingLog] = useState<FeedingLog | null>(null);
+  const [feedingMixFavorites, setFeedingMixFavorites] = useState<FeedingMixFavorite[]>([]);
   const [feedTab, setFeedTab] = useState<FeedTab>('all');
   const [petTab, setPetTab] = useState<PetProfileTab>('gallery');
   const [composeModalOpen, setComposeModalOpen] = useState(false);
@@ -388,10 +390,11 @@ export default function GuardianMainPage() {
 
   // Guardian devices + pet feeds — pet 변경 시에만 로드 (weightRange 무관)
   useEffect(() => {
-    if (!selectedPet?.id) { setGuardianDevices([]); setPetFeeds([]); setFeedingLogs([]); return; }
+    if (!selectedPet?.id) { setGuardianDevices([]); setPetFeeds([]); setFeedingLogs([]); setFeedingMixFavorites([]); return; }
     void loadGuardianDevices(selectedPet.id);
     void loadPetFeeds(selectedPet.id);
     void loadFeedingLogs(selectedPet.id);
+    void api.pets.feedingMixFavorites.list(selectedPet.id).then(r => setFeedingMixFavorites(r.favorites || [])).catch(() => setFeedingMixFavorites([]));
   }, [selectedPet?.id]);
 
 
@@ -601,6 +604,43 @@ export default function GuardianMainPage() {
     for (const log of feedingLogs) items.push({ id: `f-${log.id}`, type: 'feeding', date: log.feeding_time || log.created_at, source: log });
     return items.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
   }, [weightLogs, measurementLogs, feedingLogs]);
+
+  // ── Grouped Timeline (date + type → horizontal chips) ──────────────────
+  interface TimelineGroup { dateKey: string; type: 'weight' | 'measurement' | 'feeding'; items: TimelineItem[] }
+  const groupedTimeline = useMemo<TimelineGroup[]>(() => {
+    const map = new Map<string, TimelineGroup>();
+    for (const item of unifiedTimeline) {
+      const dk = fmtDate(item.date);
+      const key = `${dk}__${item.type}`;
+      if (!map.has(key)) map.set(key, { dateKey: dk, type: item.type, items: [] });
+      map.get(key)!.items.push(item);
+    }
+    const groups = Array.from(map.values());
+    // Items within a group: ascending time (left→right)
+    for (const g of groups) g.items.sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+    // Groups: date descending → same date: weight(0) → feeding(1) → measurement(2)
+    const typeOrd: Record<string, number> = { weight: 0, feeding: 1, measurement: 2 };
+    groups.sort((a, b) => {
+      const dA = new Date(a.items[0].date).setHours(0, 0, 0, 0);
+      const dB = new Date(b.items[0].date).setHours(0, 0, 0, 0);
+      if (dA !== dB) return dB - dA;
+      return (typeOrd[a.type] ?? 9) - (typeOrd[b.type] ?? 9);
+    });
+    return groups;
+  }, [unifiedTimeline]);
+
+  function getMixedFeedLabel(log: FeedingLog): string {
+    if (!log.items?.length) return t('guardian.feeding.mixed_feed', '혼합급여');
+    const ids = new Set(log.items.map(i => i.pet_feed_id).filter(Boolean));
+    for (const fav of feedingMixFavorites) {
+      try {
+        const fi = JSON.parse(fav.items_json) as Array<{ pet_feed_id: string }>;
+        const fids = new Set(fi.map(i => i.pet_feed_id));
+        if (ids.size === fids.size && [...ids].every(id => fids.has(id!))) return fav.name;
+      } catch { /* skip */ }
+    }
+    return t('guardian.feeding.mixed_feed', '혼합급여');
+  }
 
   function renderCombinedHealthChart(weightRows: PetWeightLog[], mRows: PetHealthMeasurementLog[]) {
     if (!weightRows.length && !mRows.length && !petFeeds.length && !feedingLogs.length) {
@@ -1178,7 +1218,7 @@ export default function GuardianMainPage() {
                           <span className="gm-section-title">{t('guardian.health.subtab_timeline', '타임라인')}</span>
                         </div>
                         <div className="gm-section-body">
-                          {unifiedTimeline.length === 0 ? (
+                          {groupedTimeline.length === 0 ? (
                             <div className="gm-tl-empty">
                               <div className="gm-tl-empty-icon">📋</div>
                               <p>{t('guardian.log.no_records', '기록이 없습니다.')}</p>
@@ -1187,66 +1227,94 @@ export default function GuardianMainPage() {
                             <div className="gm-timeline">
                               {(() => {
                                 let lastDateKey = '';
-                                return unifiedTimeline.slice((timelinePage - 1) * PAGE_SIZE, timelinePage * PAGE_SIZE).map((item) => {
-                                  const dateKey = fmtDate(item.date);
-                                  const showDateHeader = dateKey !== lastDateKey;
-                                  lastDateKey = dateKey;
-                                  const dateHeader = showDateHeader ? <div key={`date-${dateKey}-${item.id}`} className="gm-tl-date">{dateKey}</div> : null;
+                                const pageGroups = groupedTimeline.slice((timelinePage - 1) * PAGE_SIZE, timelinePage * PAGE_SIZE);
+                                return pageGroups.flatMap((group) => {
+                                  const showDateHeader = group.dateKey !== lastDateKey;
+                                  lastDateKey = group.dateKey;
+                                  const emoji = group.type === 'weight' ? '⚖️' : group.type === 'feeding' ? '🍽️' : '📊';
+                                  const els: React.ReactNode[] = [];
+                                  if (showDateHeader) els.push(<div key={`date-${group.dateKey}`} className="gm-tl-date">{group.dateKey}</div>);
+                                  els.push(
+                                    <div key={`${group.dateKey}__${group.type}`} className="gm-tl-card" data-type={group.type}>
+                                      <div className="gm-tl-icon">{emoji}</div>
+                                      <div className="gm-tl-row-scroll">
+                                        {group.items.map((item) => {
+                                          const d = new Date(item.date);
+                                          const hhmm = `${d.getHours().toString().padStart(2, '0')}:${d.getMinutes().toString().padStart(2, '0')}`;
 
-                                  if (item.type === 'weight') {
-                                    const log = item.source as PetWeightLog;
-                                    return (<>{dateHeader}<div key={item.id} className="gm-tl-card" data-type="weight">
-                                      <div className="gm-tl-icon">⚖️</div>
-                                      <div className="gm-tl-body">
-                                        <div className="gm-tl-title">{t('guardian.health.type_weight', '몸무게')}</div>
-                                        <div className="gm-tl-value">{log.weight_value} kg</div>
-                                        {log.notes && <div className="gm-tl-memo">{log.notes}</div>}
+                                          if (item.type === 'weight') {
+                                            const log = item.source as PetWeightLog;
+                                            return (
+                                              <div className="gm-tl-chip" key={item.id}>
+                                                <span className="gm-tl-chip-time">{hhmm}</span>
+                                                <span className="gm-tl-chip-dot">·</span>
+                                                <span>{log.weight_value}kg</span>
+                                                {log.notes && <><span className="gm-tl-chip-dot">·</span><span className="gm-tl-chip-note">{log.notes}</span></>}
+                                                <span className="gm-tl-chip-actions">
+                                                  <button title={t('common.edit', 'Edit')} aria-label={t('common.edit', 'Edit')} onClick={() => { setEditingWeightLog(log); setWeightModalOpen(true); }}>✏️</button>
+                                                  <button title={t('common.delete', 'Delete')} aria-label={t('common.delete', 'Delete')} onClick={() => removeWeightLog(log.id)}>🗑️</button>
+                                                </span>
+                                              </div>
+                                            );
+                                          }
+
+                                          if (item.type === 'measurement') {
+                                            const log = item.source as PetHealthMeasurementLog;
+                                            const ctxLabel = log.measurement_context_id ? optMeasurementContext.find((o) => o.id === log.measurement_context_id)?.label : undefined;
+                                            const metricLabel = optMetric.find((m) => m.id === log.measurement_item_id)?.display_label;
+                                            return (
+                                              <div className="gm-tl-chip" key={item.id}>
+                                                <span className="gm-tl-chip-time">{hhmm}</span>
+                                                <span className="gm-tl-chip-dot">·</span>
+                                                <span>{log.value}</span>
+                                                {ctxLabel && <><span className="gm-tl-chip-dot">·</span><span>{ctxLabel}</span></>}
+                                                {metricLabel && <><span className="gm-tl-chip-dot">·</span><span>{metricLabel}</span></>}
+                                                <span className="gm-tl-chip-actions">
+                                                  <button title={t('common.edit', 'Edit')} aria-label={t('common.edit', 'Edit')} onClick={() => openEditHealthMeasurementLog(log)}>✏️</button>
+                                                  <button title={t('common.delete', 'Delete')} aria-label={t('common.delete', 'Delete')} onClick={() => removeHealthMeasurementLog(log.id)}>🗑️</button>
+                                                </span>
+                                              </div>
+                                            );
+                                          }
+
+                                          // feeding
+                                          const log = item.source as FeedingLog;
+                                          const isMixed = !!log.is_mixed && !!log.items?.length;
+                                          let totalG: number | null = null;
+                                          let totalKcal: number | null = null;
+                                          let feedLabel: string;
+                                          if (isMixed) {
+                                            totalG = log.items!.reduce((s, i) => s + (i.amount_g ?? 0), 0);
+                                            totalKcal = Math.round(log.items!.reduce((s, i) => s + ((i.amount_g ?? 0) * (i.calories_per_100g ?? 0) / 100), 0));
+                                            feedLabel = getMixedFeedLabel(log);
+                                          } else {
+                                            totalG = log.amount_g ?? null;
+                                            totalKcal = (log.amount_g && log.calories_per_100g) ? Math.round(log.amount_g * log.calories_per_100g / 100) : null;
+                                            feedLabel = log.feed_nickname || log.model_display_label || log.model_name || t('common.none', '-');
+                                          }
+                                          return (
+                                            <div className="gm-tl-chip" key={item.id}>
+                                              <span className="gm-tl-chip-time">{hhmm}</span>
+                                              <span className="gm-tl-chip-dot">·</span>
+                                              <span>{totalG != null ? `${totalG}g` : '-'}{totalKcal ? ` / ${totalKcal}kcal` : ''}</span>
+                                              <span className="gm-tl-chip-dot">·</span>
+                                              <span>{feedLabel}</span>
+                                              <span className="gm-tl-chip-actions">
+                                                <button title={t('common.edit', 'Edit')} aria-label={t('common.edit', 'Edit')} onClick={() => { setEditingFeedingLog(log); setFeedingLogModalOpen(true); }}>✏️</button>
+                                                <button title={t('common.delete', 'Delete')} aria-label={t('common.delete', 'Delete')} onClick={() => removeFeedingLog(log.id)}>🗑️</button>
+                                              </span>
+                                            </div>
+                                          );
+                                        })}
                                       </div>
-                                      <div className="gm-tl-actions">
-                                        <button className="btn btn-secondary btn-sm" title={t('common.edit', 'Edit')} aria-label={t('common.edit', 'Edit')} onClick={() => { setEditingWeightLog(log); setWeightModalOpen(true); }}>✏️</button>
-                                        <button className="btn btn-danger btn-sm" title={t('common.delete', 'Delete')} aria-label={t('common.delete', 'Delete')} onClick={() => removeWeightLog(log.id)}>🗑️</button>
-                                      </div>
-                                    </div></>);
-                                  }
-                                  if (item.type === 'measurement') {
-                                    const log = item.source as PetHealthMeasurementLog;
-                                    const hh = new Date(log.measured_at).getHours().toString().padStart(2, '0');
-                                    const mm = new Date(log.measured_at).getMinutes().toString().padStart(2, '0');
-                                    const contextLabel = log.measurement_context_id ? optMeasurementContext.find((o) => o.id === log.measurement_context_id)?.label : undefined;
-                                    return (<>{dateHeader}<div key={item.id} className="gm-tl-card" data-type="measurement">
-                                      <div className="gm-tl-icon">📊</div>
-                                      <div className="gm-tl-body">
-                                        <div className="gm-tl-title">{t('guardian.health.type_measurement', '수치')} <span className="gm-tl-meta">{hh}:{mm}</span></div>
-                                        <div className="gm-tl-value">{log.value}{contextLabel ? <span className="gm-tl-meta" style={{ marginLeft: 6, fontWeight: 400 }}>({contextLabel})</span> : ''}{log.judgement_label ? <span className="gm-tl-meta" style={{ marginLeft: 6, fontWeight: 400 }}>{log.judgement_label}</span> : ''}</div>
-                                        {log.memo && <div className="gm-tl-memo">{log.memo}</div>}
-                                      </div>
-                                      <div className="gm-tl-actions">
-                                        <button className="btn btn-secondary btn-sm" title={t('common.edit', 'Edit')} aria-label={t('common.edit', 'Edit')} onClick={() => openEditHealthMeasurementLog(log)}>✏️</button>
-                                        <button className="btn btn-danger btn-sm" title={t('common.delete', 'Delete')} aria-label={t('common.delete', 'Delete')} onClick={() => removeHealthMeasurementLog(log.id)}>🗑️</button>
-                                      </div>
-                                    </div></>);
-                                  }
-                                  // feeding
-                                  const log = item.source as FeedingLog;
-                                  const fname = log.feed_nickname || log.model_display_label || log.model_name || t('common.none', '-');
-                                  const fTime = log.feeding_time ? (() => { const d = new Date(log.feeding_time); return `${d.getHours().toString().padStart(2, '0')}:${d.getMinutes().toString().padStart(2, '0')}`; })() : '';
-                                  return (<>{dateHeader}<div key={item.id} className="gm-tl-card" data-type="feeding">
-                                    <div className="gm-tl-icon">🍽️</div>
-                                    <div className="gm-tl-body">
-                                      <div className="gm-tl-title">{fname} {fTime && <span className="gm-tl-meta">{fTime}</span>}</div>
-                                      <div className="gm-tl-value">{log.amount_g != null ? `${log.amount_g}g` : '-'}</div>
-                                      {log.memo && <div className="gm-tl-memo">{log.memo}</div>}
                                     </div>
-                                    <div className="gm-tl-actions">
-                                      <button className="btn btn-secondary btn-sm" title={t('common.edit', 'Edit')} aria-label={t('common.edit', 'Edit')} onClick={() => { setEditingFeedingLog(log); setFeedingLogModalOpen(true); }}>✏️</button>
-                                      <button className="btn btn-danger btn-sm" title={t('common.delete', 'Delete')} aria-label={t('common.delete', 'Delete')} onClick={() => removeFeedingLog(log.id)}>🗑️</button>
-                                    </div>
-                                  </div></>);
+                                  );
+                                  return els;
                                 });
                               })()}
                             </div>
                           )}
-                          {renderPagination(timelinePage, unifiedTimeline.length, setTimelinePage)}
+                          {renderPagination(timelinePage, groupedTimeline.length, setTimelinePage)}
                         </div>
                       </div>
                       {/* ── S7 Health Logs ── */}

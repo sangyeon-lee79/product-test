@@ -1746,33 +1746,33 @@ html[data-theme="dark"] .gm-tile-feeds:hover .gm-tile-label { color: #f9a8d4; }
 .gm-tl-card[data-type="measurement"] .gm-tl-icon { background: #fffbeb; }
 .gm-tl-card[data-type="feeding"] .gm-tl-icon { background: #ecfdf5; }
 
-/* Card body */
-.gm-tl-body { flex: 1; min-width: 0; }
-.gm-tl-title {
-  font-size: 13px; font-weight: 600; color: var(--text);
-  line-height: 1.4;
+/* Horizontal chip row (replaces card body) */
+.gm-tl-row-scroll {
+  display: flex; gap: 0; overflow-x: auto; flex: 1; min-width: 0;
+  scrollbar-width: thin; align-items: center;
 }
-.gm-tl-value {
-  font-size: 15px; font-weight: 700; color: var(--text);
-  margin: 2px 0;
+.gm-tl-row-scroll::-webkit-scrollbar { height: 4px; }
+.gm-tl-row-scroll::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+.gm-tl-chip {
+  flex-shrink: 0; display: flex; align-items: center; gap: 4px;
+  padding: 4px 10px; font-size: 12px; white-space: nowrap;
+  cursor: pointer; border-radius: 6px; transition: background .15s;
+  position: relative;
 }
-.gm-tl-meta {
-  font-size: 11px; color: var(--text-muted);
-  line-height: 1.4;
+.gm-tl-chip:hover { background: var(--bg); }
+.gm-tl-chip + .gm-tl-chip::before {
+  content: '\2192'; margin-right: 6px; font-size: 10px; color: var(--text-muted);
 }
-.gm-tl-memo {
-  font-size: 11px; color: var(--text-muted);
-  margin-top: 3px; font-style: italic;
+.gm-tl-chip-time { font-weight: 600; color: var(--text-muted); }
+.gm-tl-chip-dot { color: var(--text-muted); }
+.gm-tl-chip-note { color: var(--text-muted); font-style: italic; max-width: 120px; overflow: hidden; text-overflow: ellipsis; }
+.gm-tl-chip-actions {
+  display: none; gap: 2px; margin-left: 4px;
 }
-/* Card actions */
-.gm-tl-actions {
-  flex-shrink: 0;
-  display: flex; gap: 4px;
-  align-self: center;
-  opacity: 0;
-  transition: opacity .15s;
+.gm-tl-chip-actions button {
+  background: none; border: none; padding: 0 2px; cursor: pointer; font-size: 12px; line-height: 1;
 }
-.gm-tl-card:hover .gm-tl-actions { opacity: 1; }
+.gm-tl-chip:hover .gm-tl-chip-actions { display: inline-flex; }
 
 /* Staggered reveal */
 @keyframes gm-tl-slide-in {
@@ -1813,7 +1813,7 @@ html[data-theme="dark"] .gm-timeline::before { background: linear-gradient(to bo
   .gm-tl-date::before { left: -18px; width: 8px; height: 8px; }
   .gm-tl-card::before { left: -18px; width: 6px; height: 6px; }
   .gm-tl-icon { width: 28px; height: 28px; font-size: 13px; }
-  .gm-tl-actions { opacity: 1; }
+  .gm-tl-chip-actions { display: inline-flex; }
 }
 
 /* Period chips */
