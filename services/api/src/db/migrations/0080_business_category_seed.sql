@@ -1,20 +1,54 @@
-INSERT OR IGNORE INTO master_categories (id, key, sort_order, is_active, created_at, updated_at) VALUES
-  ('mc-business-category', 'business_category', 230, 1, datetime('now'), datetime('now'));
+INSERT OR IGNORE INTO master_categories (id, code, sort_order, status, created_at, updated_at) VALUES
+  ('mc-business-category', 'business_category', 230, 'active', datetime('now'), datetime('now'));
 
-INSERT OR IGNORE INTO master_items (id, category_id, key, parent_id, sort_order, is_active, metadata, created_at, updated_at) VALUES
-  ('mi-business-hospital', 'mc-business-category', 'hospital', NULL, 1, 1, '{}', datetime('now'), datetime('now')),
-  ('mi-business-grooming', 'mc-business-category', 'grooming', NULL, 2, 1, '{}', datetime('now'), datetime('now')),
-  ('mi-business-petshop', 'mc-business-category', 'pet_shop', NULL, 3, 1, '{}', datetime('now'), datetime('now')),
-  ('mi-business-hotel', 'mc-business-category', 'pet_hotel', NULL, 4, 1, '{}', datetime('now'), datetime('now')),
-  ('mi-business-training', 'mc-business-category', 'training', NULL, 5, 1, '{}', datetime('now'), datetime('now')),
-  ('mi-business-doctor', 'mc-business-category', 'doctor', 'mi-business-hospital', 101, 1, '{}', datetime('now'), datetime('now')),
-  ('mi-business-nurse', 'mc-business-category', 'nurse', 'mi-business-hospital', 102, 1, '{}', datetime('now'), datetime('now')),
-  ('mi-business-groomer', 'mc-business-category', 'groomer', 'mi-business-grooming', 201, 1, '{}', datetime('now'), datetime('now')),
-  ('mi-business-stylist', 'mc-business-category', 'stylist', 'mi-business-grooming', 202, 1, '{}', datetime('now'), datetime('now')),
-  ('mi-business-shop-manager', 'mc-business-category', 'shop_manager', 'mi-business-petshop', 301, 1, '{}', datetime('now'), datetime('now')),
-  ('mi-business-consultant', 'mc-business-category', 'consultant', 'mi-business-petshop', 302, 1, '{}', datetime('now'), datetime('now')),
-  ('mi-business-caretaker', 'mc-business-category', 'caretaker', 'mi-business-hotel', 401, 1, '{}', datetime('now'), datetime('now')),
-  ('mi-business-trainer', 'mc-business-category', 'trainer', 'mi-business-training', 501, 1, '{}', datetime('now'), datetime('now'));
+INSERT OR IGNORE INTO master_items (id, category_id, parent_item_id, code, sort_order, status, metadata, created_at, updated_at)
+SELECT 'mi-business-hospital', c.id, NULL, 'hospital', 1, 'active', '{}', datetime('now'), datetime('now')
+FROM master_categories c WHERE c.code = 'business_category';
+INSERT OR IGNORE INTO master_items (id, category_id, parent_item_id, code, sort_order, status, metadata, created_at, updated_at)
+SELECT 'mi-business-grooming', c.id, NULL, 'grooming', 2, 'active', '{}', datetime('now'), datetime('now')
+FROM master_categories c WHERE c.code = 'business_category';
+INSERT OR IGNORE INTO master_items (id, category_id, parent_item_id, code, sort_order, status, metadata, created_at, updated_at)
+SELECT 'mi-business-petshop', c.id, NULL, 'pet_shop', 3, 'active', '{}', datetime('now'), datetime('now')
+FROM master_categories c WHERE c.code = 'business_category';
+INSERT OR IGNORE INTO master_items (id, category_id, parent_item_id, code, sort_order, status, metadata, created_at, updated_at)
+SELECT 'mi-business-hotel', c.id, NULL, 'pet_hotel', 4, 'active', '{}', datetime('now'), datetime('now')
+FROM master_categories c WHERE c.code = 'business_category';
+INSERT OR IGNORE INTO master_items (id, category_id, parent_item_id, code, sort_order, status, metadata, created_at, updated_at)
+SELECT 'mi-business-training', c.id, NULL, 'training', 5, 'active', '{}', datetime('now'), datetime('now')
+FROM master_categories c WHERE c.code = 'business_category';
+
+INSERT OR IGNORE INTO master_items (id, category_id, parent_item_id, code, sort_order, status, metadata, created_at, updated_at)
+SELECT 'mi-business-doctor', c.id, p.id, 'doctor', 101, 'active', '{}', datetime('now'), datetime('now')
+FROM master_categories c, master_items p
+WHERE c.code = 'business_category' AND p.code = 'hospital' AND p.category_id = c.id;
+INSERT OR IGNORE INTO master_items (id, category_id, parent_item_id, code, sort_order, status, metadata, created_at, updated_at)
+SELECT 'mi-business-nurse', c.id, p.id, 'nurse', 102, 'active', '{}', datetime('now'), datetime('now')
+FROM master_categories c, master_items p
+WHERE c.code = 'business_category' AND p.code = 'hospital' AND p.category_id = c.id;
+INSERT OR IGNORE INTO master_items (id, category_id, parent_item_id, code, sort_order, status, metadata, created_at, updated_at)
+SELECT 'mi-business-groomer', c.id, p.id, 'groomer', 201, 'active', '{}', datetime('now'), datetime('now')
+FROM master_categories c, master_items p
+WHERE c.code = 'business_category' AND p.code = 'grooming' AND p.category_id = c.id;
+INSERT OR IGNORE INTO master_items (id, category_id, parent_item_id, code, sort_order, status, metadata, created_at, updated_at)
+SELECT 'mi-business-stylist', c.id, p.id, 'stylist', 202, 'active', '{}', datetime('now'), datetime('now')
+FROM master_categories c, master_items p
+WHERE c.code = 'business_category' AND p.code = 'grooming' AND p.category_id = c.id;
+INSERT OR IGNORE INTO master_items (id, category_id, parent_item_id, code, sort_order, status, metadata, created_at, updated_at)
+SELECT 'mi-business-shop-manager', c.id, p.id, 'shop_manager', 301, 'active', '{}', datetime('now'), datetime('now')
+FROM master_categories c, master_items p
+WHERE c.code = 'business_category' AND p.code = 'pet_shop' AND p.category_id = c.id;
+INSERT OR IGNORE INTO master_items (id, category_id, parent_item_id, code, sort_order, status, metadata, created_at, updated_at)
+SELECT 'mi-business-consultant', c.id, p.id, 'consultant', 302, 'active', '{}', datetime('now'), datetime('now')
+FROM master_categories c, master_items p
+WHERE c.code = 'business_category' AND p.code = 'pet_shop' AND p.category_id = c.id;
+INSERT OR IGNORE INTO master_items (id, category_id, parent_item_id, code, sort_order, status, metadata, created_at, updated_at)
+SELECT 'mi-business-caretaker', c.id, p.id, 'caretaker', 401, 'active', '{}', datetime('now'), datetime('now')
+FROM master_categories c, master_items p
+WHERE c.code = 'business_category' AND p.code = 'pet_hotel' AND p.category_id = c.id;
+INSERT OR IGNORE INTO master_items (id, category_id, parent_item_id, code, sort_order, status, metadata, created_at, updated_at)
+SELECT 'mi-business-trainer', c.id, p.id, 'trainer', 501, 'active', '{}', datetime('now'), datetime('now')
+FROM master_categories c, master_items p
+WHERE c.code = 'business_category' AND p.code = 'training' AND p.category_id = c.id;
 
 INSERT OR IGNORE INTO i18n_translations (id, key, page, ko, en, ja, zh_cn, zh_tw, es, fr, de, pt, vi, th, id_lang, ar, is_active, created_at, updated_at) VALUES
   (lower(hex(randomblob(16))), 'master.business_category', 'master', '업종 분류', 'Business Category', '業種分類', '业务分类', '業務分類', 'Categoria de negocio', 'Categorie d activite', 'Geschaeftskategorie', 'Categoria de negocio', 'Danh muc nganh nghe', 'หมวดหมู่ธุรกิจ', 'Kategori bisnis', 'فئة النشاط', 1, datetime('now'), datetime('now')),
