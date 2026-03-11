@@ -60,6 +60,7 @@ export default function FeedManageModal({
   const [showForm, setShowForm] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [form, setForm] = useState(EMPTY_FORM);
+  const [saving, setSaving] = useState(false);
 
   // cascade state
   const [feedTypes, setFeedTypes] = useState<FeedType[]>([]);
@@ -321,46 +322,55 @@ export default function FeedManageModal({
   }
 
   async function handleSave() {
-    if (!petId) return;
+    if (!petId || saving) return;
     const modelRequiredMsg = isFeed
       ? t('guardian.feed.model_required', 'Please select a feed product.')
       : t('guardian.supplement.model_required', 'Please select a supplement product.');
     if (!editingId && !form.model_id) { setError(modelRequiredMsg); return; }
+    setSaving(true);
     try {
       if (editingId) {
         await itemApi.update(petId, editingId, { nickname: form.nickname, is_primary: form.is_primary });
       } else {
         await itemApi.create(petId, { feed_model_id: form.model_id, nickname: form.nickname || undefined, is_primary: form.is_primary });
       }
+      if (isFeed) await loadFeeds(); else await loadSupplements();
       setShowForm(false);
       setEditingId(null);
       setForm(EMPTY_FORM);
       setNutrition(null);
-      if (isFeed) await loadFeeds(); else await loadSupplements();
     } catch (e) {
       setError(uiErrorMessage(e, t('common.err.save', 'Failed to save.')));
+    } finally {
+      setSaving(false);
     }
   }
 
   async function handleDelete(id: string) {
-    if (!petId) return;
+    if (!petId || saving) return;
     const msg = isFeed ? t('guardian.feed.delete_confirm', 'Delete this feed?') : t('guardian.supplement.delete_confirm', 'Delete this supplement?');
     if (!confirm(msg)) return;
+    setSaving(true);
     try {
       await itemApi.remove(petId, id);
       if (isFeed) await loadFeeds(); else await loadSupplements();
     } catch (e) {
       setError(uiErrorMessage(e, t('common.err.save', 'Failed to delete.')));
+    } finally {
+      setSaving(false);
     }
   }
 
   async function handleSetPrimary(id: string) {
-    if (!petId) return;
+    if (!petId || saving) return;
+    setSaving(true);
     try {
       await itemApi.update(petId, id, { is_primary: true });
       if (isFeed) await loadFeeds(); else await loadSupplements();
     } catch (e) {
       setError(uiErrorMessage(e, t('common.err.save', 'Failed to set primary.')));
+    } finally {
+      setSaving(false);
     }
   }
 
@@ -583,12 +593,12 @@ export default function FeedManageModal({
                   </div>
                   <div style={{ display: 'flex', gap: 4, flexShrink: 0 }}>
                     {!f.is_primary && (
-                      <button className="btn btn-sm" style={{ fontSize: 12 }} onClick={() => void handleSetPrimary(f.id)}>
+                      <button className="btn btn-sm" style={{ fontSize: 12 }} disabled={saving} onClick={() => void handleSetPrimary(f.id)}>
                         {tabLabels.setPrimary}
                       </button>
                     )}
-                    <button className="btn btn-sm" style={{ fontSize: 12 }} title={t('common.edit', 'Edit')} aria-label={t('common.edit', 'Edit')} onClick={() => openEditForm(f)}>✏️</button>
-                    <button className="btn btn-sm btn-danger" style={{ fontSize: 12 }} title={t('common.delete', 'Delete')} aria-label={t('common.delete', 'Delete')} onClick={() => void handleDelete(f.id)}>🗑️</button>
+                    <button className="btn btn-sm" style={{ fontSize: 12 }} disabled={saving} title={t('common.edit', 'Edit')} aria-label={t('common.edit', 'Edit')} onClick={() => openEditForm(f)}>✏️</button>
+                    <button className="btn btn-sm btn-danger" style={{ fontSize: 12 }} disabled={saving} title={t('common.delete', 'Delete')} aria-label={t('common.delete', 'Delete')} onClick={() => void handleDelete(f.id)}>🗑️</button>
                   </div>
                 </div>
               </div>
@@ -646,11 +656,11 @@ export default function FeedManageModal({
                 {tabLabels.setPrimary}
               </label>
               <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end', marginTop: 12 }}>
-                <button className="btn btn-secondary btn-sm" onClick={() => { setShowForm(false); setEditingId(null); }}>
+                <button className="btn btn-secondary btn-sm" disabled={saving} onClick={() => { setShowForm(false); setEditingId(null); }}>
                   {t('common.cancel', 'Cancel')}
                 </button>
-                <button className="btn btn-primary btn-sm" onClick={() => void handleSave()}>
-                  {t('common.save', 'Save')}
+                <button className="btn btn-primary btn-sm" disabled={saving} onClick={() => void handleSave()}>
+                  {saving ? t('common.saving', 'Saving...') : t('common.save', 'Save')}
                 </button>
               </div>
             </div>
