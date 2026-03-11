@@ -75,7 +75,6 @@ const init = () => {
         localStorage.setItem('theme', document.body.classList.contains('light-mode') ? 'light' : 'dark');
     });
     document.getElementById('role-selector').addEventListener('change', (e) => { currentRole = e.target.value; render(); });
-    document.getElementById('lang-selector').addEventListener('change', (e) => { currentLang = e.target.value; localStorage.setItem('lang', currentLang); render(); });
     
     const savedTheme = localStorage.getItem('theme');
     if (savedTheme === 'light') document.body.classList.add('light-mode');
