@@ -83,6 +83,9 @@ export default function PublicHome() {
   const [myPets, setMyPets] = useState<Pet[]>([]);
   const [myBookings, setMyBookings] = useState<Booking[]>([]);
   const [rightLoading, setRightLoading] = useState(false);
+  const [friendStatusMap, setFriendStatusMap] = useState<Map<string, 'none' | 'pending' | 'accepted'>>(new Map());
+  const [requestingIds, setRequestingIds] = useState<Set<string>>(new Set());
+  const [friendDataLoaded, setFriendDataLoaded] = useState(false);
 
   const openAuthModal = (mode: 'login' | 'signup') => { setAuthModalMode(mode); setAuthModalOpen(true); };
   const handleImgError = useCallback((key: string) => { setBrokenImages(prev => { const n = new Set(prev); n.add(key); return n; }); }, []);
@@ -154,16 +157,34 @@ export default function PublicHome() {
   useEffect(() => { void loadFeed(tab, businessCategoryId, petTypeId); loadFilters(); }, [lang]);
 
   useEffect(() => {
-    if (!loggedIn) { setMyProfile(null); setMyPets([]); setMyBookings([]); return; }
+    if (!loggedIn) { setMyProfile(null); setMyPets([]); setMyBookings([]); setFriendStatusMap(new Map()); setFriendDataLoaded(false); return; }
     setRightLoading(true);
     Promise.allSettled([
       api.guardians.me(),
       api.pets.list(),
       api.bookings.list(),
-    ]).then(([profRes, petsRes, bookRes]) => {
+      api.friends.list(),
+      api.friends.requests.list('outbox'),
+    ]).then(([profRes, petsRes, bookRes, friendsRes, outboxRes]) => {
       if (profRes.status === 'fulfilled') setMyProfile(profRes.value.profile ?? null);
       if (petsRes.status === 'fulfilled') setMyPets(petsRes.value.pets || []);
       if (bookRes.status === 'fulfilled') setMyBookings(bookRes.value.bookings || []);
+      /* Build friend status map */
+      const map = new Map<string, 'none' | 'pending' | 'accepted'>();
+      if (friendsRes.status === 'fulfilled') {
+        for (const f of (friendsRes.value.friends || [])) {
+          if (f.status === 'accepted') map.set(f.friend_user_id, 'accepted');
+        }
+      }
+      if (outboxRes.status === 'fulfilled') {
+        for (const r of (outboxRes.value.requests || [])) {
+          if (r.status === 'pending' && !map.has(r.receiver_user_id)) {
+            map.set(r.receiver_user_id, 'pending');
+          }
+        }
+      }
+      setFriendStatusMap(map);
+      setFriendDataLoaded(true);
     }).finally(() => setRightLoading(false));
   }, [loggedIn]);
 
@@ -238,6 +259,30 @@ export default function PublicHome() {
       n.has(feedId) ? n.delete(feedId) : n.add(feedId);
       return n;
     });
+  }
+
+  async function sendFriendRequestFromCard(authorUserId: string) {
+    if (!loggedIn || requestingIds.has(authorUserId)) return;
+    setRequestingIds(prev => { const n = new Set(prev); n.add(authorUserId); return n; });
+    try {
+      await api.friends.requests.create({ receiver_user_id: authorUserId });
+      setFriendStatusMap(prev => { const n = new Map(prev); n.set(authorUserId, 'pending'); return n; });
+    } catch { /* ignore */ }
+    finally { setRequestingIds(prev => { const n = new Set(prev); n.delete(authorUserId); return n; }); }
+  }
+
+  function renderFriendButton(feed: FeedPost) {
+    if (!loggedIn || !friendDataLoaded || feed.author_user_id === myUserId) return null;
+    const status = friendStatusMap.get(feed.author_user_id) || 'none';
+    if (status === 'accepted') return <span className="pf-friend-btn pf-friend-btn--accepted">{t('friend.btn.accepted', '친구')}</span>;
+    if (status === 'pending') return <span className="pf-friend-btn pf-friend-btn--pending">{t('friend.btn.pending', '신청 중')}</span>;
+    const isProvider = feed.author_role === 'provider';
+    const requesting = requestingIds.has(feed.author_user_id);
+    return (
+      <button className="pf-friend-btn pf-friend-btn--add" disabled={requesting} onClick={() => sendFriendRequestFromCard(feed.author_user_id)}>
+        {requesting ? '…' : isProvider ? t('friend.btn.add_provider', '단골 맺기') : t('friend.btn.add_guardian', '친구 신청')}
+      </button>
+    );
   }
 
   /* ── Card type detection ───────────────────────────────── */
@@ -333,6 +378,7 @@ export default function PublicHome() {
               <span className="pf-card-username">{authorLine.split('@')[0] || authorLine}</span>
               <span className="pf-card-time">{relativeTime(feed.created_at)}</span>
             </div>
+            {renderFriendButton(feed)}
             {canDelete && (
               <button className="pf-card-menu" onClick={() => api.feeds.remove(feed.id).then(() => loadFeed()).catch(() => null)}>
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/><circle cx="5" cy="12" r="1"/></svg>
@@ -379,6 +425,7 @@ export default function PublicHome() {
               <span className="pf-card-username">{authorLine.split('@')[0]}</span>
               <span className="pf-card-time">{relativeTime(feed.created_at)}</span>
             </div>
+            {renderFriendButton(feed)}
           </div>
           {feed.pet_name && <span className="pf-health-pet">{feed.pet_name}</span>}
           <div className="pf-health-grid">
@@ -441,6 +488,7 @@ export default function PublicHome() {
               <span className="pf-card-username">{authorLine.split('@')[0]}</span>
               {feed.pet_name && <span className="pf-badge pf-badge--pet" style={{ marginLeft: 6 }}>{feed.pet_name}</span>}
             </div>
+            {renderFriendButton(feed)}
             <span className="pf-card-time">{relativeTime(feed.created_at)}</span>
           </div>
           <div className="pf-card-actions">

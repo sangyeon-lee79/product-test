@@ -2918,6 +2918,14 @@ html[data-theme="dark"] .pf-feed-tab:hover { color: #ccc; }
 .pf-card-menu { background: none; border: none; cursor: pointer; color: #6B6B6B; padding: 4px; line-height: 1; border-radius: 6px; transition: background .15s; }
 .pf-card-menu:hover { background: rgba(0,0,0,.05); }
 
+/* Friend button on feed cards */
+.pf-friend-btn { padding: 3px 10px; border-radius: 12px; font-size: 11px; font-weight: 600; cursor: pointer; border: none; white-space: nowrap; transition: all .15s var(--ease); line-height: 1.4; }
+.pf-friend-btn--add { border: 1.5px solid #F5823A; color: #F5823A; background: transparent; }
+.pf-friend-btn--add:hover { background: #F5823A; color: #fff; }
+.pf-friend-btn--add:disabled { opacity: .5; cursor: not-allowed; }
+.pf-friend-btn--pending { background: rgba(245,130,58,.08); color: #B45309; cursor: default; }
+.pf-friend-btn--accepted { background: rgba(22,163,74,.08); color: #16A34A; cursor: default; }
+
 .pf-card-badges { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 8px; }
 .pf-badge {
   display: inline-flex; align-items: center;
@@ -3138,6 +3146,11 @@ html[data-theme="dark"] .pf-pill { border-color: #3a3a3a; color: #888; }
 html[data-theme="dark"] .pf-pill:hover { border-color: rgba(245,130,58,.5); background: rgba(245,130,58,.08); }
 html[data-theme="dark"] .pf-pill.active { box-shadow: 0 2px 8px rgba(245,130,58,.3); }
 html[data-theme="dark"] .pf-text-quote { color: #ddd; border-left-color: #F5823A; }
+html[data-theme="dark"] .pf-friend-btn--add { border-color: #F5823A; color: #F5823A; }
+html[data-theme="dark"] .pf-friend-btn--add:hover { background: #F5823A; color: #fff; }
+html[data-theme="dark"] .pf-friend-btn--pending { background: rgba(245,130,58,.12); color: #FBBF24; }
+html[data-theme="dark"] .pf-friend-btn--accepted { background: rgba(22,163,74,.12); color: #4ADE80; }
+html[data-theme="dark"] .pf-card--health .pf-friend-btn--add { border-color: #F5823A; }
 
 /* ── Responsive: tablet ────────────────────────────────────── */
 @media (max-width: 1199px) {
