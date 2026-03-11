@@ -87,6 +87,7 @@ export default function GuardianMainPage() {
   const [guardianDevices, setGuardianDevices] = useState<GuardianDevice[]>([]);
   const [feedManageModalOpen, setFeedManageModalOpen] = useState(false);
   const [petFeeds, setPetFeeds] = useState<PetFeed[]>([]);
+  const [petSupplements, setPetSupplements] = useState<PetFeed[]>([]);
   const [feedingLogModalOpen, setFeedingLogModalOpen] = useState(false);
   const [feedingLogs, setFeedingLogs] = useState<FeedingLog[]>([]);
   const [editingFeedingLog, setEditingFeedingLog] = useState<FeedingLog | null>(null);
@@ -374,9 +375,10 @@ export default function GuardianMainPage() {
 
   // Guardian devices + pet feeds — pet 변경 시에만 로드 (weightRange 무관)
   useEffect(() => {
-    if (!selectedPet?.id) { setGuardianDevices([]); setPetFeeds([]); setFeedingLogs([]); setFeedingMixFavorites([]); return; }
+    if (!selectedPet?.id) { setGuardianDevices([]); setPetFeeds([]); setPetSupplements([]); setFeedingLogs([]); setFeedingMixFavorites([]); return; }
     void loadGuardianDevices(selectedPet.id);
     void loadPetFeeds(selectedPet.id);
+    void loadPetSupplements(selectedPet.id);
     void loadFeedingLogs(selectedPet.id);
     void api.pets.feedingMixFavorites.list(selectedPet.id).then(r => setFeedingMixFavorites(r.favorites || [])).catch(() => setFeedingMixFavorites([]));
   }, [selectedPet?.id]);
@@ -439,6 +441,15 @@ export default function GuardianMainPage() {
       setPetFeeds(res.feeds || []);
     } catch {
       setPetFeeds([]);
+    }
+  }
+
+  async function loadPetSupplements(petId: string) {
+    try {
+      const res = await api.pets.petSupplements.list(petId);
+      setPetSupplements(res.feeds || []);
+    } catch {
+      setPetSupplements([]);
     }
   }
 
@@ -1160,6 +1171,7 @@ export default function GuardianMainPage() {
         editingLog={editingFeedingLog}
         selectedPet={selectedPet}
         petFeeds={petFeeds}
+        petSupplements={petSupplements}
         t={t}
         setError={setError}
         onClose={() => { setFeedingLogModalOpen(false); setEditingFeedingLog(null); }}
