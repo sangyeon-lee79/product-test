@@ -190,7 +190,6 @@ export default function Signup() {
       .then(data => {
         setSnsToken({ access: data.access_token, refresh: data.refresh_token, role: data.role });
         if (data.email) setEmail(data.email);
-        if (data.display_name) setDisplayName(data.display_name);
         setPhase('sns');
         setStep(1);
       })

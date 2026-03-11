@@ -3,7 +3,6 @@ import { Link, useNavigate } from 'react-router-dom';
 import { api, type FeedComment, type FeedPost } from '../lib/api';
 import { getStoredRole, isLoggedIn } from '../lib/auth';
 import { LANG_LABELS, SUPPORTED_LANGS, useI18n, useT } from '../lib/i18n';
-import { BCP47_LOCALE_MAP, type Lang } from '@petfolio/shared';
 import AuthModal from '../components/AuthModal';
 
 type FeedTab = 'all' | 'friends';
@@ -59,7 +58,6 @@ const IMG_PLACEHOLDER = 'data:image/svg+xml,' + encodeURIComponent('<svg xmlns="
 export default function PublicHome() {
   const t = useT();
   const { lang, setLang } = useI18n();
-  const locale = BCP47_LOCALE_MAP[lang as Lang] || 'en-US';
 
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
