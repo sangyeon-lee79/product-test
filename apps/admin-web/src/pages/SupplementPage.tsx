@@ -3,7 +3,7 @@ import { api, type FeedType, type FeedManufacturer, type FeedBrand, type FeedMod
 import { useI18n, useT, SUPPORTED_LANGS, LANG_LABELS } from '../lib/i18n';
 import { emptyTrans, itemLabel, sortCatalog, i18nRowToTranslations, autoTranslate, findMissingTranslationLangs, type CatalogSortMode } from '../lib/catalogUtils';
 import { TranslationFields } from '../components/TranslationFields';
-import { CatalogCol, CatalogStatusBadge, CatalogModelDetail, type ModelDetailField } from '../components/CatalogGrid';
+import { CatalogCol, CatalogStatusBadge, CatalogModelDetail, CatalogListThumb, type ModelDetailField } from '../components/CatalogGrid';
 
 type ModalTarget = 'manufacturer' | 'brand' | 'model';
 
@@ -402,6 +402,16 @@ export default function SupplementPage() {
     } catch (e) { setError(String(e)); }
   }
 
+  async function handleModelImageUrlChange(url: string) {
+    if (!selectedModel) return;
+    try {
+      await api.supplementCatalog.models.update(selectedModel.id, { image_url: url });
+      setSelectedModel({ ...selectedModel, image_url: url });
+      setModels((prev) => prev.map((m) => m.id === selectedModel.id ? { ...m, image_url: url } : m));
+    } catch (e) { setError(String(e)); }
+  }
+
+  const SUPPLEMENT_PLACEHOLDER = '/assets/images/placeholder_supplement.svg';
   const addLabel = t('admin.master.btn_add');
   function SBadge({ status }: { status: string }) { return <CatalogStatusBadge status={status} t={t} />; }
 
@@ -482,7 +492,8 @@ export default function SupplementPage() {
               const meta = parseModelMeta(item);
               return (
                 <button key={item.id} className={`master-row-btn ${selectedModel?.id === item.id ? 'active' : ''}`} onClick={() => setSelectedModel(item)}>
-                  <div>
+                  <CatalogListThumb src={item.image_url} fallbackSrc={SUPPLEMENT_PLACEHOLDER} alt={item.model_name} />
+                  <div style={{ minWidth: 0, flex: 1 }}>
                     <div className="master-row-title">{item.model_display_label || item.model_name}</div>
                     <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>
                       {meta.dosage_unit ?? ''} {meta.species_key ? `(${meta.species_key})` : ''}
@@ -510,8 +521,10 @@ export default function SupplementPage() {
               editLabel="&#9998;"
               deleteLabel="&#128465;"
               imageUrl={selectedModel.image_url}
+              fallbackImageSrc={SUPPLEMENT_PLACEHOLDER}
               onImageUpload={(file) => void handleModelImageUpload(file)}
               onImageRemove={() => void handleModelImageRemove()}
+              onImageUrlChange={(url) => void handleModelImageUrlChange(url)}
               t={t}
               fields={[
                 { label: t('admin.supplement.type', 'Type'), value: selectedModel.type_display_label || selectedModel.type_name_en || selectedModel.type_name_ko || '-' },

@@ -301,8 +301,13 @@ export default function DeviceManageModal({
               border: '1px solid var(--border)', borderRadius: 8, padding: '12px 14px', marginBottom: 8,
               background: d.is_default ? 'var(--primary-light, #fffbeb)' : 'var(--surface)',
             }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                <div>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 10 }}>
+                {d.model_image_url ? (
+                  <img src={d.model_image_url} alt="" className="gm-device-card-thumb" onError={(e) => { (e.target as HTMLImageElement).src = '/assets/images/placeholder_device.svg'; }} />
+                ) : (
+                  <div className="gm-device-card-thumb-placeholder">{'\u{1F4F1}'}</div>
+                )}
+                <div style={{ minWidth: 0, flex: 1 }}>
                   <div style={{ fontWeight: 600, fontSize: 15 }}>
                     {deviceLabel(d)}
                     {d.nickname && <span style={{ fontWeight: 400, color: 'var(--text-secondary)', marginLeft: 8 }}>({d.nickname})</span>}

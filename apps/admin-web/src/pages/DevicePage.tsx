@@ -3,7 +3,7 @@ import { api, type DeviceType, type DeviceManufacturer, type DeviceBrand, type D
 import { useI18n, useT, LANG_LABELS, SUPPORTED_LANGS } from '../lib/i18n';
 import { emptyTrans, itemLabel, sortCatalog, i18nRowToTranslations, autoTranslate, findMissingTranslationLangs, type CatalogSortMode } from '../lib/catalogUtils';
 import { TranslationFields } from '../components/TranslationFields';
-import { CatalogCol, CatalogStatusBadge, CatalogModelDetail, type ModelDetailField } from '../components/CatalogGrid';
+import { CatalogCol, CatalogStatusBadge, CatalogModelDetail, CatalogListThumb, type ModelDetailField } from '../components/CatalogGrid';
 
 type Tab = 'devices' | 'units';
 type ModalTarget = 'manufacturer' | 'brand' | 'model' | 'unit';
@@ -405,6 +405,16 @@ export default function DevicePage() {
     } catch (e) { setError(String(e)); }
   }
 
+  async function handleModelImageUrlChange(url: string) {
+    if (!selectedModel) return;
+    try {
+      await api.devices.models.update(selectedModel.id, { image_url: url });
+      setSelectedModel({ ...selectedModel, image_url: url });
+      setModels((prev) => prev.map((m) => m.id === selectedModel.id ? { ...m, image_url: url } : m));
+    } catch (e) { setError(String(e)); }
+  }
+
+  const DEVICE_PLACEHOLDER = '/assets/images/placeholder_device.svg';
   const addLabel = t('admin.master.btn_add');
   function SBadge({ status }: { status: string }) { return <CatalogStatusBadge status={status} t={t} />; }
 
@@ -485,7 +495,8 @@ export default function DevicePage() {
                 {selectedType && models.length === 0 && <div className="master-empty">{t('admin.device.empty')}</div>}
                 {selectedType && models.map((item) => (
                   <button key={item.id} className={`master-row-btn ${selectedModel?.id === item.id ? 'active' : ''}`} onClick={() => setSelectedModel(item)}>
-                    <div>
+                    <CatalogListThumb src={item.image_url} fallbackSrc={DEVICE_PLACEHOLDER} alt={item.model_name} />
+                    <div style={{ minWidth: 0, flex: 1 }}>
                       <div className="master-row-title">{item.model_display_label || item.model_name}</div>
                       <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>{item.model_code ?? ''} {item.mfr_display_label ?? item.mfr_name_en ?? ''}</div>
                     </div>
@@ -506,8 +517,10 @@ export default function DevicePage() {
                 editLabel="✏️"
                 deleteLabel="🗑️"
                 imageUrl={selectedModel.image_url}
+                fallbackImageSrc={DEVICE_PLACEHOLDER}
                 onImageUpload={(file) => void handleModelImageUpload(file)}
                 onImageRemove={() => void handleModelImageRemove()}
+                onImageUrlChange={(url) => void handleModelImageUrlChange(url)}
                 t={t}
                 fields={[
                   { label: t('admin.device.device_type'), value: selectedModel.type_display_label || selectedModel.type_name_en || selectedModel.type_name_ko || '—' },

@@ -3,7 +3,7 @@ import { api, type FeedType, type FeedManufacturer, type FeedBrand, type FeedMod
 import { useI18n, useT, SUPPORTED_LANGS, LANG_LABELS } from '../lib/i18n';
 import { emptyTrans, itemLabel, sortCatalog, i18nRowToTranslations, autoTranslate, findMissingTranslationLangs, type CatalogSortMode } from '../lib/catalogUtils';
 import { TranslationFields } from '../components/TranslationFields';
-import { CatalogCol, CatalogStatusBadge, CatalogModelDetail, type ModelDetailField } from '../components/CatalogGrid';
+import { CatalogCol, CatalogStatusBadge, CatalogModelDetail, CatalogListThumb, type ModelDetailField } from '../components/CatalogGrid';
 
 type ModalTarget = 'manufacturer' | 'brand' | 'model';
 type FeedPageTab = 'catalog' | 'requests';
@@ -524,6 +524,16 @@ export default function FeedPage() {
     } catch (e) { setError(String(e)); }
   }
 
+  async function handleModelImageUrlChange(url: string) {
+    if (!selectedModel) return;
+    try {
+      await api.feedCatalog.models.update(selectedModel.id, { image_url: url });
+      setSelectedModel({ ...selectedModel, image_url: url });
+      setModels((prev) => prev.map((m) => m.id === selectedModel.id ? { ...m, image_url: url } : m));
+    } catch (e) { setError(String(e)); }
+  }
+
+  const FEED_PLACEHOLDER = '/assets/images/placeholder_feed.svg';
   const addLabel = t('admin.master.btn_add');
   function SBadge({ status }: { status: string }) { return <CatalogStatusBadge status={status} t={t} />; }
 
@@ -858,7 +868,8 @@ export default function FeedPage() {
             {selectedType && models.length === 0 && <div className="master-empty">{t('admin.feed.empty')}</div>}
             {selectedType && models.map((item) => (
               <button key={item.id} className={`master-row-btn ${selectedModel?.id === item.id ? 'active' : ''}`} onClick={() => setSelectedModel(item)}>
-                <div>
+                <CatalogListThumb src={item.image_url} fallbackSrc={FEED_PLACEHOLDER} alt={item.model_name} />
+                <div style={{ minWidth: 0, flex: 1 }}>
                   <div className="master-row-title">{item.model_display_label || item.model_name}</div>
                   <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>{item.model_code ?? ''} {item.mfr_display_label ?? item.mfr_name_en ?? ''}</div>
                 </div>
@@ -879,8 +890,10 @@ export default function FeedPage() {
             editLabel="✏️"
             deleteLabel="🗑️"
             imageUrl={selectedModel.image_url}
+            fallbackImageSrc={FEED_PLACEHOLDER}
             onImageUpload={(file) => void handleModelImageUpload(file)}
             onImageRemove={() => void handleModelImageRemove()}
+            onImageUrlChange={(url) => void handleModelImageUrlChange(url)}
             t={t}
             fields={[
               { label: t('admin.feed.type'), value: selectedModel.type_display_label || selectedModel.type_name_en || selectedModel.type_name_ko || '—' },

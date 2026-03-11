@@ -1,6 +1,6 @@
 // Shared components for catalog hierarchy pages (DevicePage, FeedPage)
 
-import { type ReactNode, useRef } from 'react';
+import { type ReactNode, useRef, useState } from 'react';
 import type { CatalogSortMode } from '../lib/catalogUtils';
 
 // ─── Col ─────────────────────────────────────────────────────────────────────
@@ -65,6 +65,28 @@ export function CatalogStatusBadge({ status, t }: StatusBadgeProps) {
   );
 }
 
+// ─── List Thumbnail ──────────────────────────────────────────────────────────
+
+interface CatalogListThumbProps {
+  src?: string | null;
+  fallbackSrc: string;
+  alt?: string;
+}
+
+export function CatalogListThumb({ src, fallbackSrc, alt }: CatalogListThumbProps) {
+  if (!src) {
+    return <img src={fallbackSrc} alt={alt ?? ''} className="catalog-list-thumb" />;
+  }
+  return (
+    <img
+      src={src}
+      alt={alt ?? ''}
+      className="catalog-list-thumb"
+      onError={(e) => { (e.target as HTMLImageElement).src = fallbackSrc; }}
+    />
+  );
+}
+
 // ─── ModelDetail ──────────────────────────────────────────────────────────────
 
 export interface ModelDetailField {
@@ -80,13 +102,26 @@ interface CatalogModelDetailProps {
   editLabel: string;
   deleteLabel: string;
   imageUrl?: string | null;
+  fallbackImageSrc?: string;
   onImageUpload?: (file: File) => void;
   onImageRemove?: () => void;
+  onImageUrlChange?: (url: string) => void;
   t?: (key: string, fallback?: string) => string;
 }
 
-export function CatalogModelDetail({ title, fields, onEdit, onDelete, editLabel, deleteLabel, imageUrl, onImageUpload, onImageRemove, t }: CatalogModelDetailProps) {
+export function CatalogModelDetail({ title, fields, onEdit, onDelete, editLabel, deleteLabel, imageUrl, fallbackImageSrc, onImageUpload, onImageRemove, onImageUrlChange, t }: CatalogModelDetailProps) {
   const fileRef = useRef<HTMLInputElement>(null);
+  const [showUrlInput, setShowUrlInput] = useState(false);
+  const [urlDraft, setUrlDraft] = useState('');
+
+  const handleUrlSave = () => {
+    const trimmed = urlDraft.trim();
+    if (trimmed && onImageUrlChange) {
+      onImageUrlChange(trimmed);
+    }
+    setShowUrlInput(false);
+    setUrlDraft('');
+  };
 
   return (
     <div className="card" style={{ marginTop: 12 }}>
@@ -118,7 +153,10 @@ export function CatalogModelDetail({ title, fields, onEdit, onDelete, editLabel,
                   src={imageUrl}
                   alt={title}
                   className="catalog-model-image"
-                  onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
+                  onError={(e) => {
+                    if (fallbackImageSrc) (e.target as HTMLImageElement).src = fallbackImageSrc;
+                    else (e.target as HTMLImageElement).style.display = 'none';
+                  }}
                 />
                 <div className="catalog-model-image-actions">
                   <button className="btn btn-secondary btn-xs" onClick={() => fileRef.current?.click()}>
@@ -137,9 +175,43 @@ export function CatalogModelDetail({ title, fields, onEdit, onDelete, editLabel,
                 onClick={() => fileRef.current?.click()}
                 title={t?.('admin.catalog.upload_image', 'Upload Image') ?? 'Upload Image'}
               >
-                <span style={{ fontSize: 24, opacity: 0.4 }}>&#128247;</span>
+                {fallbackImageSrc ? (
+                  <img src={fallbackImageSrc} alt="" style={{ width: 48, height: 48, opacity: 0.5 }} />
+                ) : (
+                  <span style={{ fontSize: 24, opacity: 0.4 }}>&#128247;</span>
+                )}
                 <span style={{ fontSize: 11 }}>{t?.('admin.catalog.upload_image', 'Upload') ?? 'Upload'}</span>
                 <span style={{ fontSize: 10, opacity: 0.5 }}>{t?.('admin.catalog.image_upload_hint', '200×200') ?? '200×200'}</span>
+              </div>
+            )}
+            {/* URL input toggle */}
+            {onImageUrlChange && (
+              <div style={{ marginTop: 4 }}>
+                {showUrlInput ? (
+                  <div style={{ display: 'flex', gap: 4 }}>
+                    <input
+                      type="text"
+                      className="form-input"
+                      value={urlDraft}
+                      onChange={(e) => setUrlDraft(e.target.value)}
+                      placeholder={t?.('admin.catalog.image_url_hint', 'Paste image URL') ?? 'Paste image URL'}
+                      style={{ fontSize: 11, padding: '3px 6px', flex: 1, minWidth: 0 }}
+                      onKeyDown={(e) => { if (e.key === 'Enter') handleUrlSave(); }}
+                    />
+                    <button className="btn btn-primary btn-xs" onClick={handleUrlSave}>
+                      {t?.('admin.catalog.image_url_save', 'OK') ?? 'OK'}
+                    </button>
+                    <button className="btn btn-secondary btn-xs" onClick={() => { setShowUrlInput(false); setUrlDraft(''); }}>✕</button>
+                  </div>
+                ) : (
+                  <button
+                    className="btn btn-secondary btn-xs"
+                    style={{ fontSize: 10, width: '100%' }}
+                    onClick={() => { setShowUrlInput(true); setUrlDraft(imageUrl ?? ''); }}
+                  >
+                    {t?.('admin.catalog.image_url', 'Image URL') ?? 'Image URL'}
+                  </button>
+                )}
               </div>
             )}
           </div>

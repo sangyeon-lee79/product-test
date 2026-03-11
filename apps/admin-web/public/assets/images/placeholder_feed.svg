@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200" fill="none">
+  <rect width="200" height="200" rx="16" fill="#f5f0eb"/>
+  <g transform="translate(40,50)">
+    <!-- Bowl -->
+    <path d="M10 70 Q60 110 110 70" stroke="#c4a882" stroke-width="5" fill="none" stroke-linecap="round"/>
+    <ellipse cx="60" cy="70" rx="55" ry="14" fill="#d4c4a8" opacity="0.5"/>
+    <!-- Kibble pieces -->
+    <circle cx="40" cy="55" r="8" fill="#c4a882"/>
+    <circle cx="60" cy="48" r="9" fill="#b89e78"/>
+    <circle cx="78" cy="55" r="7" fill="#c4a882"/>
+    <circle cx="50" cy="40" r="6" fill="#d4b896"/>
+    <circle cx="70" cy="42" r="7" fill="#b89e78"/>
+  </g>
+</svg>

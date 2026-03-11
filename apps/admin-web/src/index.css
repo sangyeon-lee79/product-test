@@ -164,12 +164,31 @@ body { background: var(--bg); color: var(--text); font-size: 14px; line-height: 
 }
 .catalog-model-image-placeholder:hover { border-color: var(--primary); color: var(--primary); }
 
+/* Catalog list thumbnail (model list items) */
+.catalog-list-thumb {
+  width: 32px; height: 32px; border-radius: 4px; object-fit: cover; flex-shrink: 0;
+  border: 1px solid var(--border); background: var(--bg);
+}
+.catalog-row-thumb { width: 28px; height: 28px; border-radius: 4px; object-fit: cover; flex-shrink: 0; border: 1px solid var(--border); }
+.catalog-row-thumb-placeholder { width: 28px; height: 28px; border-radius: 4px; display: flex; align-items: center; justify-content: center; font-size: 14px; flex-shrink: 0; background: var(--bg); border: 1px solid var(--border); }
+.catalog-image-url-input { width: 100%; font-size: 11px; padding: 4px 6px; margin-top: 4px; border: 1px solid var(--border); border-radius: 4px; background: var(--bg); color: var(--text); }
+.catalog-image-url-actions { display: flex; gap: 4px; margin-top: 4px; }
+
 /* Guardian feed card thumbnail */
 .gm-feed-card-thumb {
   width: 48px; height: 48px; border-radius: 8px; object-fit: cover; flex-shrink: 0;
   border: 1px solid var(--border); background: var(--bg);
 }
 .gm-feed-card-thumb-placeholder {
+  width: 48px; height: 48px; border-radius: 8px; flex-shrink: 0;
+  display: flex; align-items: center; justify-content: center;
+  background: var(--bg); border: 1px solid var(--border); font-size: 20px;
+}
+.gm-device-card-thumb {
+  width: 48px; height: 48px; border-radius: 8px; object-fit: cover; flex-shrink: 0;
+  border: 1px solid var(--border); background: var(--bg);
+}
+.gm-device-card-thumb-placeholder {
   width: 48px; height: 48px; border-radius: 8px; flex-shrink: 0;
   display: flex; align-items: center; justify-content: center;
   background: var(--bg); border: 1px solid var(--border); font-size: 20px;

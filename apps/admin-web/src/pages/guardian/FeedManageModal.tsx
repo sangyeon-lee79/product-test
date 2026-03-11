@@ -1,5 +1,5 @@
 // 사료/영양제 관리 모달 — 탭 전환, 등록/수정/삭제 + 등록 요청
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState, useCallback } from 'react';
 import { api, type FeedBrand, type FeedManufacturer, type FeedModel, type FeedNutrition, type FeedRegistrationRequest, type FeedType, type Pet, type PetFeed } from '../../lib/api';
 import type { Lang } from '../../lib/i18n';
 import { uiErrorMessage } from './guardianTypes';
@@ -57,6 +57,12 @@ export default function FeedManageModal({
   // --- Supplement state ---
   const [supplements, setSupplements] = useState<PetFeed[]>([]);
   const [suppLoading, setSuppLoading] = useState(false);
+
+  // --- Broken image tracking ---
+  const [brokenImages, setBrokenImages] = useState<Set<string>>(new Set());
+  const handleImgError = useCallback((id: string) => {
+    setBrokenImages((prev) => { const next = new Set(prev); next.add(id); return next; });
+  }, []);
 
   // --- Shared form state ---
   const [showForm, setShowForm] = useState(false);
@@ -612,8 +618,8 @@ export default function FeedManageModal({
                 background: f.is_primary ? 'var(--primary-light, #fffbeb)' : 'var(--surface)',
               }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 10 }}>
-                  {f.image_url ? (
-                    <img src={f.image_url} alt="" className="gm-feed-card-thumb" onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }} />
+                  {f.image_url && !brokenImages.has(f.id) ? (
+                    <img src={f.image_url} alt="" className="gm-feed-card-thumb" onError={() => handleImgError(f.id)} />
                   ) : (
                     <div className="gm-feed-card-thumb-placeholder">{isFeed ? '\u{1F37D}' : '\u{1F48A}'}</div>
                   )}

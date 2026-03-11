@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200" fill="none">
+  <rect width="200" height="200" rx="16" fill="#f0f5f0"/>
+  <g transform="translate(50,40)">
+    <!-- Device body -->
+    <rect x="10" y="10" width="80" height="110" rx="12" fill="#a8c4a8" opacity="0.4"/>
+    <rect x="10" y="10" width="80" height="110" rx="12" stroke="#88a888" stroke-width="3" fill="none"/>
+    <!-- Screen -->
+    <rect x="22" y="24" width="56" height="40" rx="6" fill="#d8e8d8"/>
+    <!-- Display text lines -->
+    <line x1="30" y1="38" x2="70" y2="38" stroke="#88a888" stroke-width="2" stroke-linecap="round"/>
+    <line x1="30" y1="48" x2="56" y2="48" stroke="#88a888" stroke-width="2" stroke-linecap="round"/>
+    <!-- Button -->
+    <circle cx="50" cy="90" r="10" fill="#a8c4a8"/>
+    <circle cx="50" cy="90" r="6" fill="#88a888" opacity="0.5"/>
+  </g>
+</svg>
