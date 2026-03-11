@@ -132,35 +132,7 @@ jobs:
             echo "⏭️  NEON_DATABASE_URL not set — skipping migrations"
             exit 0
           fi
-          node -e "
-            const { neon } = require('@neondatabase/serverless');
-            const fs = require('fs');
-            const path = require('path');
-            (async () => {
-              const sql = neon(process.env.NEON_DATABASE_URL);
-              const dir = 'src/db/pg-schema';
-              const files = fs.readdirSync(dir).filter(f => f.endsWith('.sql')).sort();
-              for (const file of files) {
-                console.log('Applying:', file);
-                const content = fs.readFileSync(path.join(dir, file), 'utf-8');
-                const cleaned = content.replace(/^\s*--[^\n]*/gm,'');
-                const stmts = [];
-                let buf = '', inDollar = false;
-                for (const part of cleaned.split(/;\s*\n/)) {
-                  buf = buf ? buf + ';\n' + part : part;
-                  const opens = (buf.match(/\$\$/g) || []).length;
-                  inDollar = opens % 2 !== 0;
-                  if (!inDollar) { const t = buf.trim(); if (t) stmts.push(t); buf = ''; }
-                }
-                if (buf.trim()) stmts.push(buf.trim());
-                for (const stmt of stmts) {
-                  await sql.query(stmt + ';');
-                }
-                console.log('Done:', file);
-              }
-              console.log('All migrations applied');
-            })().catch(e => { console.error(e.message); process.exit(1); });
-          "
+          node src/db/migrate.js
 
       - name: Deploy to Cloudflare Workers (with retry)
         working-directory: services/api
