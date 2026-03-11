@@ -1,6 +1,6 @@
 // 약품 투여 기록 추가/수정 모달 — GuardianMainPage Health 탭에서 사용
 // Search-first UI: 검색 → 약품 선택 → 투여 정보 입력
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { api, type FeedModel, type FeedType, type Pet, type PetLog } from '../../lib/api';
 import { uiErrorMessage } from './guardianTypes';
 import type { Lang } from '@petfolio/shared';
@@ -142,8 +142,11 @@ export default function MedicationLogModal({
 
   const isEdit = !!editingLog;
 
-  // Client-side filtered models
-  const filteredModels = (() => {
+  // IME composition tracking (Korean input on mobile)
+  const composingRef = useRef(false);
+
+  // Client-side filtered models (useMemo — matches Feed/Device pattern)
+  const filteredModels = useMemo(() => {
     let result = allModels;
     if (searchTerm.trim()) {
       const term = searchTerm.trim().toLowerCase();
@@ -153,7 +156,7 @@ export default function MedicationLogModal({
       );
     }
     return result;
-  })();
+  }, [allModels, searchTerm]);
 
   const selectedModel = allModels.find((m) => m.id === form.medicine_model_id);
   const modelMeta = selectedModel ? parseModelMeta(selectedModel) : {};
@@ -270,9 +273,12 @@ export default function MedicationLogModal({
               </span>
             </div>
             <input
-              className="form-input" type="text" value={searchTerm} autoFocus={!isEdit}
+              id="medicine-search" className="form-input" type="text" value={searchTerm} autoFocus={!isEdit}
               placeholder={`🔍 ${t('guardian.medication.search_placeholder', '약품을 검색하세요...')}`}
-              onChange={(e) => setSearchTerm(e.target.value)}
+              autoComplete="off" autoCorrect="off"
+              onChange={(e) => { if (!composingRef.current) setSearchTerm(e.target.value); }}
+              onCompositionStart={() => { composingRef.current = true; }}
+              onCompositionEnd={(e) => { composingRef.current = false; setSearchTerm((e.target as HTMLInputElement).value); }}
             />
           </div>
 
