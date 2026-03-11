@@ -192,7 +192,7 @@ async function feedFilters(request: Request, env: Env, url: URL): Promise<Respon
 
   // Business categories: distinct L1 from provider_profiles
   const bizRows = await env.DB.prepare(
-    `SELECT DISTINCT mi.id, mi.code,
+    `SELECT DISTINCT mi.id, mi.code, mi.sort_order,
        'master.' || mc.code || '.' || mi.code AS i18n_key,
        COALESCE(it.${langCol}, it.ko, mi.code) AS label
      FROM provider_profiles pp
@@ -207,7 +207,7 @@ async function feedFilters(request: Request, env: Env, url: URL): Promise<Respon
 
   // Pet types: distinct L1 from pets table
   const petRows = await env.DB.prepare(
-    `SELECT DISTINCT mi.id, mi.code,
+    `SELECT DISTINCT mi.id, mi.code, mi.sort_order,
        'master.' || mc.code || '.' || mi.code AS i18n_key,
        COALESCE(it.${langCol}, it.ko, mi.code) AS label
      FROM pets p
