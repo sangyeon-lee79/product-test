@@ -8,7 +8,7 @@ import {
   type FeedPost,
   type FriendPet,
   type FriendRequest,
-  type GlucoseAlert,
+
   type GuardianDevice,
   type HealthMeasurementSummary,
   type PetFeed,
@@ -17,20 +17,12 @@ import {
   type PetAlbumMedia,
   type PetHealthMeasurementLog,
   type PetExerciseLog,
-  type PetLog,
+
   type PetWeightLog,
   type WeightSummary,
 } from '../lib/api';
 
-// log type → metric/unit config (matches local master seed)
-const LOG_TYPE_METRIC_MAP: Record<string, { metricKey: string; unitKeys: string[] }> = {
-  blood_glucose_log: { metricKey: 'blood_glucose', unitKeys: ['mg_dl', 'mmol_l'] },
-  insulin_log:       { metricKey: 'insulin_dose',  unitKeys: ['iu'] },
-  meal_log:          { metricKey: 'food_weight',   unitKeys: ['g', 'kcal', 'ml'] },
-  water_log:         { metricKey: 'water_intake',  unitKeys: ['ml'] },
-  activity_log:      { metricKey: 'duration',      unitKeys: ['min'] },
-  weight_log:        { metricKey: 'body_weight',   unitKeys: ['kg'] },
-};
+
 import { useI18n, useT } from '../lib/i18n';
 import { BCP47_LOCALE_MAP, type Lang } from '@petfolio/shared';
 import { getStoredRole } from '../lib/auth';
@@ -116,21 +108,7 @@ export default function GuardianMainPage() {
   const PAGE_SIZE = 10;
   const [timelinePage, setTimelinePage] = useState(1);
 
-  // ── S7 Health Logs ────────────────────────────────────────────────────────
-  const [petLogs, setPetLogs] = useState<PetLog[]>([]);
-  const [logAlert, setLogAlert] = useState<GlucoseAlert | null>(null);
-  const [logModalOpen, setLogModalOpen] = useState(false);
-  const [optLogType, setOptLogType] = useState<{ id: string; code: string; label: string }[]>([]);
   const [optMetric, setOptMetric] = useState<MasterItem[]>([]);
-  const [optUnit, setOptUnit] = useState<MasterItem[]>([]);
-  const [logFormLogtypeId, setLogFormLogtypeId] = useState('');
-  const [logFormValue, setLogFormValue] = useState('');
-  const [logFormUnitId, setLogFormUnitId] = useState('');
-  const [logFormDate, setLogFormDate] = useState('');
-  const [logFormTime, setLogFormTime] = useState('');
-  const [logFormTitle, setLogFormTitle] = useState('');
-  const [logFormNotes, setLogFormNotes] = useState('');
-  const [logFormSaving, setLogFormSaving] = useState(false);
   const [lightboxIndex, setLightboxIndex] = useState(-1);
   const [lightboxItems, setLightboxItems] = useState<string[]>([]);
 
@@ -286,9 +264,7 @@ export default function GuardianMainPage() {
         temperamentRows,
         coatLengthRows,
         groomingRows,
-        logTypeRows,
         metricRows,
-        unitRows,
         exerciseTypeRows,
         exerciseIntensityRows,
         exerciseLocationRows,
@@ -319,9 +295,7 @@ export default function GuardianMainPage() {
         loadCategoryItems(CATEGORY_KEYS.temperament_type, lang),
         loadCategoryItems(CATEGORY_KEYS.coat_length, lang),
         loadCategoryItems(CATEGORY_KEYS.grooming_cycle, lang),
-        loadCategoryItems(['log_type'], lang),
         loadCategoryItems(['metric'], lang),
-        loadCategoryItems(['unit'], lang),
         loadCategoryItems(CATEGORY_KEYS.exercise_type, lang),
         loadCategoryItems(CATEGORY_KEYS.exercise_intensity, lang),
         loadCategoryItems(CATEGORY_KEYS.exercise_location, lang),
@@ -355,13 +329,7 @@ export default function GuardianMainPage() {
       setOptTemperament(toOption(temperamentRows, lang, t, CATEGORY_KEYS.temperament_type[0]));
       setOptCoatLength(toOption(coatLengthRows, lang, t, CATEGORY_KEYS.coat_length[0]));
       setOptGrooming(toOption(groomingRows, lang, t, CATEGORY_KEYS.grooming_cycle[0]));
-      setOptLogType(logTypeRows.map((item) => ({
-        id: item.id,
-        code: item.key ?? '',
-        label: item.display_label ?? item[lang as keyof typeof item] as string ?? item.ko ?? item.key ?? '',
-      })));
       setOptMetric(metricRows);
-      setOptUnit(unitRows);
       setExerciseTypeItems(exerciseTypeRows);
       setExerciseIntensityItems(exerciseIntensityRows);
       setExerciseLocationItems(exerciseLocationRows);
@@ -397,13 +365,11 @@ export default function GuardianMainPage() {
       setMeasurementLogs([]);
       setMeasurementSummary(null);
       setExerciseLogs([]);
-      setPetLogs([]);
       return;
     }
     loadWeightLogs(selectedPet.id, weightRange);
     loadMeasurementLogs(selectedPet.id, weightRange);
     void loadExerciseLogs(selectedPet.id);
-    void loadPetLogs(selectedPet.id);
   }, [selectedPet?.id, weightRange]);
 
   // Guardian devices + pet feeds — pet 변경 시에만 로드 (weightRange 무관)
@@ -476,61 +442,7 @@ export default function GuardianMainPage() {
     }
   }
 
-  async function loadPetLogs(petId: string) {
-    try {
-      const res = await api.pets.logs.list(petId, { limit: 50 });
-      setPetLogs(res.logs || []);
-    } catch {
-      setPetLogs([]);
-    }
-  }
 
-  async function createPetLog() {
-    if (!selectedPet?.id) return;
-    if (!logFormLogtypeId || !logFormDate) return;
-    setLogFormSaving(true);
-    try {
-      const selectedCode = optLogType.find((o) => o.id === logFormLogtypeId)?.code ?? '';
-      const metricCfg = LOG_TYPE_METRIC_MAP[selectedCode];
-      const metricItem = metricCfg ? optMetric.find((m) => m.key === metricCfg.metricKey) : null;
-      const valuesPayload = metricItem && logFormValue && logFormUnitId
-        ? [{ metric_id: metricItem.id, unit_id: logFormUnitId, numeric_value: parseFloat(logFormValue) }]
-        : [];
-      const result = await api.pets.logs.create(selectedPet.id, {
-        logtype_id: logFormLogtypeId,
-        event_date: logFormDate,
-        event_time: logFormTime || null,
-        title: logFormTitle || null,
-        notes: logFormNotes || null,
-        values: valuesPayload,
-      });
-      setLogAlert(result.alert ?? null);
-      setLogModalOpen(false);
-      setLogFormLogtypeId('');
-      setLogFormValue('');
-      setLogFormUnitId('');
-      setLogFormDate('');
-      setLogFormTime('');
-      setLogFormTitle('');
-      setLogFormNotes('');
-      await loadPetLogs(selectedPet.id);
-    } catch (e) {
-      setError(uiErrorMessage(e, t('guardian.log.save_failed', '기록 저장에 실패했습니다.')));
-    } finally {
-      setLogFormSaving(false);
-    }
-  }
-
-  async function removePetLog(logId: string) {
-    if (!selectedPet?.id) return;
-    if (!confirm(t('guardian.log.delete_confirm', '이 기록을 삭제하시겠습니까?'))) return;
-    try {
-      await api.pets.logs.remove(selectedPet.id, logId);
-      await loadPetLogs(selectedPet.id);
-    } catch (e) {
-      setError(uiErrorMessage(e, t('guardian.log.delete_failed', '기록 삭제에 실패했습니다.')));
-    }
-  }
 
   async function removeWeightLog(logId: string) {
     if (!selectedPet?.id) return;
@@ -713,10 +625,28 @@ export default function GuardianMainPage() {
           </div>
         )}
         <div className="gm-header-actions">
-          <button className="btn btn-primary btn-sm" onClick={openCreatePet}>+ {t('common.add_pet', 'Add Pet')}</button>
+          {pets.length <= 1 && (
+            <button className="btn btn-primary btn-sm" onClick={openCreatePet}>+ {t('common.add_pet', 'Add Pet')}</button>
+          )}
           <Link className="btn btn-secondary btn-sm" to="/">{t('guardian.main.public_feed', 'Feed')}</Link>
         </div>
       </div>
+
+      {/* ── Pet switching tabs (2+ pets) ── */}
+      {pets.length >= 2 && (
+        <div className="gm-pet-switch-tabs">
+          {pets.map((p) => {
+            const isActive = selectedPet?.id === p.id;
+            return (
+              <button key={p.id} className={`gm-pet-switch-tab${isActive ? ' active' : ''}`} onClick={() => setSelectedPetId(p.id)}>
+                <span className="gm-pet-switch-dot" style={{ background: isActive ? 'var(--primary)' : 'var(--text-muted)' }} />
+                {p.name}
+              </button>
+            );
+          })}
+          <button className="gm-pet-switch-tab add" onClick={openCreatePet} title={t('common.add_pet', 'Add Pet')} aria-label={t('common.add_pet', 'Add Pet')}>+</button>
+        </div>
+      )}
 
       {/* ── Sticky tab bar ── */}
       <div className="gm-tabs">
@@ -749,13 +679,11 @@ export default function GuardianMainPage() {
           <div className="gm-layout">
             <main className="gm-main">
               {pets.length === 0 && (
-                <div className="gm-section">
-                  <div className="gm-section-body gm-empty">
-                    <div className="gm-empty-icon">🐾</div>
-                    <div className="gm-empty-title">{t('guardian.empty.no_pets_title', 'Register your first pet')}</div>
-                    <p style={{ fontSize: 14, color: 'var(--text-muted)', marginBottom: 12 }}>{t('guardian.empty.no_pets_desc', 'Without a pet profile, feed/health/booking links are limited.')}</p>
-                    <button className="btn btn-primary" onClick={openCreatePet}>{t('guardian.empty.no_pets_cta', 'Register your first pet')}</button>
-                  </div>
+                <div className="gm-onboard-card">
+                  <div className="gm-onboard-icon">🐾</div>
+                  <div className="gm-onboard-title">{t('guardian.empty.onboard_title', '아직 등록된 반려동물이 없어요')}</div>
+                  <p className="gm-onboard-desc">{t('guardian.empty.onboard_desc', '반려동물을 추가하고 건강을 기록해보세요!')}</p>
+                  <button className="gm-onboard-btn" onClick={openCreatePet}>{t('guardian.empty.onboard_cta', '+ 반려동물 추가하기')}</button>
                 </div>
               )}
 
@@ -863,13 +791,6 @@ export default function GuardianMainPage() {
                     </div>
                   ) : (
                     <>
-                      {/* glucose alert banner */}
-                      {logAlert && (
-                        <div className={`gm-alert-banner gm-alert-${logAlert.severity}`} style={{ padding: '10px 14px', margin: '8px 0', borderRadius: 8, background: logAlert.severity === 'critical' ? 'var(--danger-light, #fee2e2)' : 'var(--warning-light, #fef9c3)', color: logAlert.severity === 'critical' ? '#b91c1c' : '#92400e', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                          <span>⚠️ {t(logAlert.message_key, logAlert.type)} — {logAlert.value} {logAlert.unit}</span>
-                          <button style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 16 }} onClick={() => setLogAlert(null)}>✕</button>
-                        </div>
-                      )}
                       <div className="gm-health-summary-card">
                         <div className="gm-pet-avatar" style={{ width: 48, height: 48, fontSize: 20 }}>
                           {selectedPet.name[0].toUpperCase()}
@@ -1047,103 +968,6 @@ export default function GuardianMainPage() {
                           {renderPagination(timelinePage, groupedTimeline.length, setTimelinePage)}
                         </div>
                       </div>
-                      {/* ── S7 Health Logs ── */}
-                      <div className="gm-section">
-                        <div className="gm-section-header">
-                          <span className="gm-section-title">{t('guardian.log.timeline', 'Health Logs')}</span>
-                          {isGuardian && <button className="btn btn-primary btn-sm" onClick={() => setLogModalOpen(true)}>+ {t('guardian.log.add', '기록 추가')}</button>}
-                        </div>
-                        <div className="gm-section-body">
-                          {petLogs.length === 0 && <p className="text-muted" style={{ fontSize: 13 }}>{t('guardian.log.no_records', '기록이 없습니다.')}</p>}
-                          <div className="guardian-pet-list">
-                            {petLogs.map((log) => {
-                              const ltLabel = optLogType.find((o) => o.id === log.logtype_id)?.label ?? log.logtype_code ?? log.logtype_id;
-                              return (
-                                <div key={log.id} className="guardian-pet-item" style={{ flexDirection: 'column', alignItems: 'flex-start', gap: 4 }}>
-                                  <div style={{ display: 'flex', justifyContent: 'space-between', width: '100%' }}>
-                                    <span className="badge badge-gray" style={{ fontSize: 11 }}>{ltLabel}</span>
-                                    <span className="text-muted" style={{ fontSize: 12 }}>{log.event_date}{log.event_time ? ` ${log.event_time}` : ''}</span>
-                                  </div>
-                                  {log.title && <p style={{ fontSize: 13, fontWeight: 600, margin: 0 }}>{log.title}</p>}
-                                  {log.notes && <p style={{ fontSize: 12, color: 'var(--text-muted)', margin: 0 }}>{log.notes}</p>}
-                                  {log.values.length > 0 && (
-                                    <p style={{ fontSize: 12, margin: 0 }}>
-                                      {log.values.map((v) => `${v.numeric_value ?? v.text_value ?? ''} ${v.unit_code ?? ''}`.trim()).join(' / ')}
-                                    </p>
-                                  )}
-                                  <div className="td-actions">
-                                    <button className="btn btn-danger btn-sm" title={t('common.delete', 'Delete')} aria-label={t('common.delete', 'Delete')} onClick={() => removePetLog(log.id)}>🗑️</button>
-                                  </div>
-                                </div>
-                              );
-                            })}
-                          </div>
-                        </div>
-                      </div>
-
-                      {/* ── Log Create Modal ── */}
-                      {logModalOpen && (
-                        <div className="modal-overlay" onClick={() => setLogModalOpen(false)}>
-                          <div className="modal" onClick={(e) => e.stopPropagation()} style={{ maxWidth: 480 }}>
-                            <div className="modal-header">
-                              <h3 className="modal-title">{t('guardian.log.add', '기록 추가')}</h3>
-                              <button className="modal-close" onClick={() => setLogModalOpen(false)}>✕</button>
-                            </div>
-                            <div className="modal-body">
-                              <div className="form-group">
-                                <label className="form-label" htmlFor="log-logtype">{t('guardian.log.logtype', '기록 유형')} *</label>
-                                <select id="log-logtype" name="log-logtype" className="form-select" value={logFormLogtypeId} onChange={(e) => { setLogFormLogtypeId(e.target.value); setLogFormValue(''); setLogFormUnitId(''); }}>
-                                  <option value="">{t('common.select', 'Select')}</option>
-                                  {optLogType.map((o) => <option key={o.id} value={o.id}>{o.label}</option>)}
-                                </select>
-                              </div>
-                              {(() => {
-                                const selectedCode = optLogType.find((o) => o.id === logFormLogtypeId)?.code ?? '';
-                                const metricCfg = LOG_TYPE_METRIC_MAP[selectedCode];
-                                if (!metricCfg) return null;
-                                const metricItem = optMetric.find((m) => m.key === metricCfg.metricKey);
-                                if (!metricItem) return null;
-                                const unitItems = optUnit.filter((u) => metricCfg.unitKeys.includes(u.key ?? ''));
-                                const metricLabel = metricItem.display_label ?? metricItem[lang as keyof typeof metricItem] as string ?? metricItem.ko ?? metricItem.key;
-                                return (
-                                  <div className="form-group">
-                                    <label className="form-label">{metricLabel}</label>
-                                    <div style={{ display: 'flex', gap: 8 }}>
-                                      <input id="log-value" name="log-value" className="form-input" type="number" step="any" value={logFormValue} onChange={(e) => setLogFormValue(e.target.value)} placeholder="0" style={{ flex: 1 }} />
-                                      <select id="log-unit" name="log-unit" className="form-select" value={logFormUnitId} onChange={(e) => setLogFormUnitId(e.target.value)} style={{ width: 100 }}>
-                                        <option value="">{t('common.unit', '단위')}</option>
-                                        {unitItems.map((u) => <option key={u.id} value={u.id}>{u.display_label ?? u.key}</option>)}
-                                      </select>
-                                    </div>
-                                  </div>
-                                );
-                              })()}
-                              <div className="form-group">
-                                <label className="form-label" htmlFor="log-event-date">{t('guardian.log.event_date', '날짜')} *</label>
-                                <input id="log-event-date" name="log-event-date" className="form-input" type="date" value={logFormDate} onChange={(e) => setLogFormDate(e.target.value)} />
-                              </div>
-                              <div className="form-group">
-                                <label className="form-label" htmlFor="log-event-time">{t('guardian.log.event_time', '시간')}</label>
-                                <input id="log-event-time" name="log-event-time" className="form-input" type="time" value={logFormTime} onChange={(e) => setLogFormTime(e.target.value)} />
-                              </div>
-                              <div className="form-group">
-                                <label className="form-label" htmlFor="log-title">{t('guardian.log.title_field', '제목')}</label>
-                                <input id="log-title" name="log-title" className="form-input" type="text" value={logFormTitle} onChange={(e) => setLogFormTitle(e.target.value)} placeholder={t('guardian.log.title_field', '제목')} />
-                              </div>
-                              <div className="form-group">
-                                <label className="form-label" htmlFor="log-notes">{t('guardian.log.notes', '메모')}</label>
-                                <textarea id="log-notes" name="log-notes" className="form-input" rows={3} value={logFormNotes} onChange={(e) => setLogFormNotes(e.target.value)} placeholder={t('guardian.log.notes', '메모')} />
-                              </div>
-                            </div>
-                            <div className="modal-footer">
-                              <button className="btn btn-secondary" onClick={() => setLogModalOpen(false)}>{t('guardian.log.cancel', '취소')}</button>
-                              <button className="btn btn-primary" disabled={!logFormLogtypeId || !logFormDate || logFormSaving} onClick={() => void createPetLog()}>
-                                {logFormSaving ? t('common.saving', '저장 중...') : t('guardian.log.save', '저장')}
-                              </button>
-                            </div>
-                          </div>
-                        </div>
-                      )}
                     </>
                   )}
                   {selectedPet && healthFeeds.length > 0 && (
@@ -1225,15 +1049,37 @@ export default function GuardianMainPage() {
             <aside className="gm-sidebar">
               <div className="gm-sidebar-section">
                 <div className="gm-sidebar-header">{t('guardian.mypets.title', 'My Pets')}</div>
-                <div className="gm-sidebar-body">
-                  <button className="gm-quick-btn primary" style={{ width: '100%', marginBottom: 8 }} onClick={openCreatePet}>+ {t('common.add_pet', 'Add Pet')}</button>
-                  {pets.map((p) => (
-                    <div key={p.id} className="gm-pet-select-row">
-                      <button className={`gm-pet-select-btn${selectedPet?.id === p.id ? ' active' : ''}`} onClick={() => setSelectedPetId(p.id)}>{p.name}</button>
-                      <button className="btn btn-secondary btn-sm" title={t('common.edit', 'Edit')} aria-label={t('common.edit', 'Edit')} onClick={() => openEditPet(p.id)}>✏️</button>
-                      <button className="btn btn-danger btn-sm" title={t('common.delete', 'Delete')} aria-label={t('common.delete', 'Delete')} onClick={() => removePet(p.id)}>🗑️</button>
+                <div className="gm-sidebar-body" style={{ padding: pets.length ? '8px' : undefined }}>
+                  {pets.length === 0 ? (
+                    <div style={{ textAlign: 'center', padding: '12px 0' }}>
+                      <p style={{ fontSize: 13, color: 'var(--text-muted)', marginBottom: 8 }}>{t('guardian.empty.onboard_title', '아직 등록된 반려동물이 없어요')}</p>
+                      <button className="gm-quick-btn primary" style={{ width: '100%' }} onClick={openCreatePet}>+ {t('common.add_pet', 'Add Pet')}</button>
                     </div>
-                  ))}
+                  ) : (
+                    <>
+                      {pets.map((p) => {
+                        const isSelected = selectedPet?.id === p.id;
+                        const weight = p.current_weight ?? p.weight_kg;
+                        const breedLabel = labelOf(optBreed, p.breed_id, '');
+                        const genderLabel = labelOf(optGender, p.gender_id, '');
+                        const infoLine = [weight != null ? `${weight}kg` : null, breedLabel || null, genderLabel || null].filter(Boolean).join(' · ');
+                        return (
+                          <div key={p.id} className={`gm-pet-card${isSelected ? ' selected' : ''}`} onClick={() => setSelectedPetId(p.id)}>
+                            <div className="gm-pet-card-avatar">{p.name[0].toUpperCase()}</div>
+                            <div className="gm-pet-card-info">
+                              <div className="gm-pet-card-name">{p.name}</div>
+                              {infoLine && <div className="gm-pet-card-detail">{infoLine}</div>}
+                            </div>
+                            <div className="gm-pet-card-actions">
+                              <button className="gm-pet-card-action" title={t('common.edit', 'Edit')} aria-label={t('common.edit', 'Edit')} onClick={(e) => { e.stopPropagation(); openEditPet(p.id); }}>✏️</button>
+                              <button className="gm-pet-card-action danger" title={t('common.delete', 'Delete')} aria-label={t('common.delete', 'Delete')} onClick={(e) => { e.stopPropagation(); removePet(p.id); }}>🗑️</button>
+                            </div>
+                          </div>
+                        );
+                      })}
+                      <button className="gm-sidebar-add-btn" onClick={openCreatePet}>+ {t('common.add_pet', 'Add Pet')}</button>
+                    </>
+                  )}
                 </div>
               </div>
               <div className="gm-sidebar-section">

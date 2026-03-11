@@ -40,7 +40,7 @@ const EMPTY_FORM: ExerciseForm = {
   exercise_type: '',
   exercise_subtype: '',
   exercise_date: '',
-  duration_min: '',
+  duration_min: '30',
   distance_km: '',
   intensity: 'medium',
   leash: false,
@@ -66,6 +66,7 @@ export default function ExerciseLogModal({
   const [form, setForm] = useState<ExerciseForm>(EMPTY_FORM);
   const [initialized, setInitialized] = useState(false);
   const [companionSearch, setCompanionSearch] = useState('');
+  const [fieldErrors, setFieldErrors] = useState<{ exercise_type?: string; duration_min?: string }>({});
 
   if (open && !initialized) {
     if (editingLog) {
@@ -87,6 +88,7 @@ export default function ExerciseLogModal({
       setForm({ ...EMPTY_FORM, exercise_date: toDateOnly() });
     }
     setCompanionSearch('');
+    setFieldErrors({});
     setInitialized(true);
   }
   if (!open && initialized) {
@@ -159,13 +161,14 @@ export default function ExerciseLogModal({
 
   async function handleSave() {
     if (!selectedPet?.id) return;
-    if (!form.exercise_type) { setError(t('guardian.exercise.type', 'Exercise Type') + ' required'); return; }
-    if (!form.exercise_subtype) { setError(t('guardian.exercise.subtype', 'Subtype') + ' required'); return; }
+    const errors: { exercise_type?: string; duration_min?: string } = {};
+    if (!form.exercise_type) errors.exercise_type = t('guardian.exercise.err_type_required', 'Please select an exercise type.');
     const duration = Number(form.duration_min);
-    if (!Number.isFinite(duration) || duration <= 0) {
-      setError(t('guardian.exercise.duration', 'Duration') + ' required');
-      return;
+    if (!form.duration_min || !Number.isFinite(duration) || duration <= 0) {
+      errors.duration_min = t('guardian.exercise.err_duration_required', 'Please enter a valid duration.');
     }
+    if (Object.keys(errors).length > 0) { setFieldErrors(errors); return; }
+    setFieldErrors({});
 
     const distanceKm = form.distance_km.trim() ? Number(form.distance_km) : null;
     if (distanceKm !== null && !Number.isFinite(distanceKm)) {
@@ -227,12 +230,14 @@ export default function ExerciseLogModal({
           {/* Row 1: Type + Subtype */}
           <div className="form-row col2">
             <div className="form-group">
-              <label className="form-label" htmlFor="ex-type">{t('guardian.exercise.type', 'Exercise Type')}</label>
+              <label className="form-label" htmlFor="ex-type">{t('guardian.exercise.type', 'Exercise Type')} *</label>
               <select id="ex-type" className="form-select" value={form.exercise_type}
-                onChange={(e) => { update('exercise_type', e.target.value); update('exercise_subtype', ''); }}>
+                style={fieldErrors.exercise_type ? { borderColor: 'var(--danger, #dc2626)' } : undefined}
+                onChange={(e) => { update('exercise_type', e.target.value); update('exercise_subtype', ''); setFieldErrors((prev) => ({ ...prev, exercise_type: undefined })); }}>
                 <option value="">--</option>
                 {l1Options.map((o) => <option key={o.id} value={o.key}>{o.label}</option>)}
               </select>
+              {fieldErrors.exercise_type && <p style={{ color: 'var(--danger, #dc2626)', fontSize: 12, margin: '4px 0 0' }}>{fieldErrors.exercise_type}</p>}
             </div>
             <div className="form-group">
               <label className="form-label" htmlFor="ex-subtype">{t('guardian.exercise.subtype', 'Subtype')}</label>
@@ -253,13 +258,15 @@ export default function ExerciseLogModal({
                 disabled={!!editingLog} />
             </div>
             <div className="form-group">
-              <label className="form-label" htmlFor="ex-duration">{t('guardian.exercise.duration', 'Duration')}</label>
+              <label className="form-label" htmlFor="ex-duration">{t('guardian.exercise.duration', 'Duration')} *</label>
               <div className="exercise-duration-wrap">
                 <input id="ex-duration" className="form-input" type="number" min="1" step="1"
                   placeholder="30"
-                  value={form.duration_min} onChange={(e) => update('duration_min', e.target.value)} />
+                  style={fieldErrors.duration_min ? { borderColor: 'var(--danger, #dc2626)' } : undefined}
+                  value={form.duration_min} onChange={(e) => { update('duration_min', e.target.value); setFieldErrors((prev) => ({ ...prev, duration_min: undefined })); }} />
                 <span className="exercise-duration-unit">{t('guardian.exercise.duration_unit', 'min')}</span>
               </div>
+              {fieldErrors.duration_min && <p style={{ color: 'var(--danger, #dc2626)', fontSize: 12, margin: '4px 0 0' }}>{fieldErrors.duration_min}</p>}
             </div>
           </div>
 
@@ -404,7 +411,7 @@ export default function ExerciseLogModal({
         </div>
         <div className="modal-footer">
           <button className="btn btn-secondary" onClick={onClose}>{t('common.cancel', 'Cancel')}</button>
-          <button className="btn btn-primary" onClick={() => void handleSave()}>{t('common.save', 'Save')}</button>
+          <button className="btn btn-primary" disabled={!form.exercise_type || !form.duration_min || Number(form.duration_min) <= 0} onClick={() => void handleSave()}>{t('common.save', 'Save')}</button>
         </div>
       </div>
     </div>
