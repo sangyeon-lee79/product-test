@@ -252,14 +252,14 @@ export default function MedicationLogModal({
 
   return (
     <div className="modal-overlay" onClick={onClose}>
-      <div className="modal" onClick={(e) => e.stopPropagation()} style={{ maxWidth: 540 }}>
+      <div className="modal" onClick={(e) => e.stopPropagation()} style={{ maxWidth: 540, maxHeight: '100dvh' }}>
         <div className="modal-header">
           <h3 className="modal-title">
             💉 {isEdit ? t('guardian.medication.edit_title', '약품 투여 수정') : t('guardian.medication.title', '약품 기록')}
           </h3>
           <button className="modal-close" onClick={onClose}>&times;</button>
         </div>
-        <div className="modal-body" style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+        <div className="modal-body" style={{ display: 'flex', flexDirection: 'column', gap: 14, overflowY: 'auto', WebkitOverflowScrolling: 'touch' }}>
 
           {/* ── Medicine search (search-first) ── */}
           <div className="form-group" style={{ marginBottom: 0 }}>
@@ -280,7 +280,7 @@ export default function MedicationLogModal({
           {allModelsLoading ? (
             <p style={{ fontSize: 13, color: 'var(--text-muted)', margin: 0 }}>{t('guardian.catalog.loading_models', '제품 목록 불러오는 중...')}</p>
           ) : (
-            <div style={{ maxHeight: 200, overflowY: 'auto', border: '1px solid var(--border)', borderRadius: 8 }}>
+            <div style={{ maxHeight: 240, overflowY: 'auto', WebkitOverflowScrolling: 'touch', border: '1px solid var(--border)', borderRadius: 8, marginBottom: 4 }}>
               {filteredModels.length === 0 ? (
                 <div style={{ padding: '20px 12px', textAlign: 'center', color: 'var(--text-muted)', fontSize: 13 }}>
                   {t('guardian.catalog.no_results', '검색 결과가 없습니다')}

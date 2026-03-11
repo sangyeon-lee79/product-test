@@ -654,7 +654,7 @@ export default function PetWizardModal({ open, mode, editingPetId, locale, optio
                   title={label}
                   style={{ flex: 1, minWidth: 0, padding: '6px 4px', fontSize: 13 }}
                 >
-                  {step}.{emoji}
+                  {emoji}
                 </button>
               );
             })}
