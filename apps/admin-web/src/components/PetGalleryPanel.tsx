@@ -421,41 +421,46 @@ export default function PetGalleryPanel({
   return (
     <div className="gallery-shell card">
       <div className="card-body">
-        <header className="gallery-summary">
-          <div className="gallery-profile-pic" aria-label="pet profile summary">{selectedPet.name.slice(0, 1).toUpperCase()}</div>
-          <div className="gallery-summary-text">
-            <h3>{selectedPet.name}</h3>
-            <p className="text-muted">{breedLabel} / {genderLabel} / {lifeStageLabel}</p>
-            <p className="gallery-summary-meta">{t('guardian.gallery.photo_count', 'Photos')} {photoCount} · {t('guardian.gallery.video_count', 'Videos')} {videoCount} · {t('guardian.gallery.last_update', 'Last update')}: {latestUploadDate}</p>
-          </div>
-          {isGuardian && <button className="btn btn-primary" onClick={() => setUploadOpen(true)}>{t('guardian.pet.gallery.add_photo.open')}</button>}
-        </header>
+        {allItems.length > 0 && (
+          <>
+            <header className="gallery-summary">
+              <div className="gallery-profile-pic" aria-label="pet profile summary">{selectedPet.name.slice(0, 1).toUpperCase()}</div>
+              <div className="gallery-summary-text">
+                <h3>{selectedPet.name}</h3>
+                <p className="text-muted">{breedLabel} / {genderLabel} / {lifeStageLabel}</p>
+                <p className="gallery-summary-meta">{t('guardian.gallery.photo_count', 'Photos')} {photoCount} · {t('guardian.gallery.video_count', 'Videos')} {videoCount} · {t('guardian.gallery.last_update', 'Last update')}: {latestUploadDate}</p>
+              </div>
+              {isGuardian && <button className="btn btn-primary" onClick={() => setUploadOpen(true)}>{t('guardian.pet.gallery.add_photo.open')}</button>}
+            </header>
 
-        <div className="gallery-filter-bar">
-          <div className="gallery-filter-group">
-            {(['all', 'feed', 'booking_completed', 'health_record', 'profile', 'manual_upload'] as const).map((v) => (
-              <button
-                key={v}
-                className={`feed-tab ${sourceFilter === v ? 'active' : ''}`}
-                onClick={() => setSourceFilter(v)}
-              >
-                {v === 'all' ? t('guardian.gallery.filter.all', 'All') : sourceLabel(v, t)}
-              </button>
-            ))}
-          </div>
-          <div className="gallery-filter-group">
-            <button className={`feed-tab ${mediaFilter === 'image' ? 'active' : ''}`} onClick={() => setMediaFilter('image')}>{t('guardian.gallery.filter.image_only', 'Photos')}</button>
-            <button className={`feed-tab ${mediaFilter === 'video' ? 'active' : ''}`} onClick={() => setMediaFilter('video')}>{t('guardian.gallery.filter.video_only', 'Videos')}</button>
-            <button className={`feed-tab ${mediaFilter === 'all' ? 'active' : ''}`} onClick={() => setMediaFilter('all')}>{t('guardian.gallery.filter.all_media', 'All')}</button>
-            <select className="form-select gallery-sort" value={sortOrder} onChange={(e) => setSortOrder(e.target.value as SortOrder)}>
-              <option value="latest">{t('guardian.gallery.sort.latest', 'Latest')}</option>
-              <option value="oldest">{t('guardian.gallery.sort.oldest', 'Oldest')}</option>
-            </select>
-          </div>
-        </div>
+            <div className="gallery-filter-bar">
+              <div className="gallery-filter-group">
+                {(['all', 'feed', 'booking_completed', 'health_record', 'profile', 'manual_upload'] as const).map((v) => (
+                  <button
+                    key={v}
+                    className={`feed-tab ${sourceFilter === v ? 'active' : ''}`}
+                    onClick={() => setSourceFilter(v)}
+                  >
+                    {v === 'all' ? t('guardian.gallery.filter.all', 'All') : sourceLabel(v, t)}
+                  </button>
+                ))}
+              </div>
+              <div className="gallery-filter-group">
+                <button className={`feed-tab ${mediaFilter === 'image' ? 'active' : ''}`} onClick={() => setMediaFilter('image')}>{t('guardian.gallery.filter.image_only', 'Photos')}</button>
+                <button className={`feed-tab ${mediaFilter === 'video' ? 'active' : ''}`} onClick={() => setMediaFilter('video')}>{t('guardian.gallery.filter.video_only', 'Videos')}</button>
+                <button className={`feed-tab ${mediaFilter === 'all' ? 'active' : ''}`} onClick={() => setMediaFilter('all')}>{t('guardian.gallery.filter.all_media', 'All')}</button>
+                <select className="form-select gallery-sort" value={sortOrder} onChange={(e) => setSortOrder(e.target.value as SortOrder)}>
+                  <option value="latest">{t('guardian.gallery.sort.latest', 'Latest')}</option>
+                  <option value="oldest">{t('guardian.gallery.sort.oldest', 'Oldest')}</option>
+                </select>
+              </div>
+            </div>
+          </>
+        )}
 
         {allItems.length === 0 ? (
-          <div className="gallery-empty">
+          <div className="gallery-empty" style={{ padding: '48px 0', textAlign: 'center' }}>
+            <div style={{ fontSize: 48, marginBottom: 12 }}>🖼️</div>
             <h4>{t('guardian.gallery.empty.title', 'No photos yet.')}</h4>
             <p>{t('guardian.gallery.empty.desc', 'Upload your first profile or pet photo.')}</p>
             {isGuardian && <button className="btn btn-primary" onClick={() => setUploadOpen(true)}>{t('guardian.pet.gallery.add_photo.open')}</button>}

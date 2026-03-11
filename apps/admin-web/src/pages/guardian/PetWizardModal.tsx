@@ -642,8 +642,8 @@ export default function PetWizardModal({ open, mode, editingPetId, locale, optio
           )}
         </div>
         <div className="modal-footer">
-          <div style={{ display: 'flex', gap: 6, marginRight: 'auto', flexWrap: 'wrap' }}>
-            {PET_WIZARD_STEPS.map(({ step, labelKey, fallback }) => {
+          <div style={{ display: 'flex', gap: 4, marginRight: 'auto', flexWrap: 'wrap' }}>
+            {PET_WIZARD_STEPS.map(({ step, labelKey, fallback, emoji }) => {
               const label = t(labelKey, fallback);
               return (
                 <button
@@ -652,8 +652,9 @@ export default function PetWizardModal({ open, mode, editingPetId, locale, optio
                   className={`btn ${petWizardStep === step ? 'btn-primary' : 'btn-secondary'}`}
                   onClick={() => gotoPetStep(step)}
                   title={label}
+                  style={{ flex: 1, minWidth: 0, padding: '6px 4px', fontSize: 13 }}
                 >
-                  {step}. {label}
+                  {step}.{emoji}
                 </button>
               );
             })}

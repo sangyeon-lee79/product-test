@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import {
   api,
@@ -114,6 +114,25 @@ export default function GuardianMainPage() {
   const [feedTab, setFeedTab] = useState<FeedTab>('all');
   const [petTab, setPetTab] = useState<PetProfileTab>('health');
   const [composeModalOpen, setComposeModalOpen] = useState(false);
+
+  // ── Tab scroll indicators ──
+  const tabsRef = useRef<HTMLDivElement>(null);
+  const [tabScrollState, setTabScrollState] = useState<'none' | 'left' | 'right' | 'both'>('none');
+  const updateTabScroll = useCallback(() => {
+    const el = tabsRef.current;
+    if (!el) return;
+    const canLeft = el.scrollLeft > 2;
+    const canRight = el.scrollLeft + el.clientWidth < el.scrollWidth - 2;
+    setTabScrollState(canLeft && canRight ? 'both' : canLeft ? 'left' : canRight ? 'right' : 'none');
+  }, []);
+  useEffect(() => {
+    const el = tabsRef.current;
+    if (!el) return;
+    updateTabScroll();
+    el.addEventListener('scroll', updateTabScroll, { passive: true });
+    window.addEventListener('resize', updateTabScroll);
+    return () => { el.removeEventListener('scroll', updateTabScroll); window.removeEventListener('resize', updateTabScroll); };
+  }, [updateTabScroll]);
 
   // ── Health sub-tabs ──────────────────────────────────────────────────────
 
@@ -659,25 +678,33 @@ export default function GuardianMainPage() {
       )}
 
       {/* ── Sticky tab bar ── */}
-      <div className="gm-tabs">
-        <button className={`gm-tab${petTab === 'timeline' ? ' active' : ''}`} onClick={() => setPetTab('timeline')}>
-          <span className="gm-tab-icon">📋</span>{t('guardian.tab.timeline', 'Timeline')}
-        </button>
-        <button className={`gm-tab${petTab === 'health' ? ' active' : ''}`} onClick={() => setPetTab('health')}>
-          <span className="gm-tab-icon">❤️</span>{t('guardian.tab.health', 'Health')}
-        </button>
-        <button className={`gm-tab${petTab === 'services' ? ' active' : ''}`} onClick={() => setPetTab('services')}>
-          <span className="gm-tab-icon">🛎️</span>{t('guardian.tab.services', 'Services')}
-        </button>
-        <button className={`gm-tab${petTab === 'gallery' ? ' active' : ''}`} onClick={() => setPetTab('gallery')}>
-          <span className="gm-tab-icon">🖼️</span>{t('guardian.tab.gallery', 'Gallery')}
-        </button>
-        <button className={`gm-tab${petTab === 'profile' ? ' active' : ''}`} onClick={() => setPetTab('profile')}>
-          <span className="gm-tab-icon">👤</span>{t('guardian.tab.profile', 'Profile')}
-        </button>
-        <button className={`gm-tab${petTab === 'report' ? ' active' : ''}`} onClick={() => setPetTab('report')}>
-          <span className="gm-tab-icon">📊</span>{t('guardian.tab.report', 'Report')}
-        </button>
+      <div className="gm-tabs-wrapper">
+        {(tabScrollState === 'left' || tabScrollState === 'both') && (
+          <button className="gm-tabs-arrow left" onClick={() => tabsRef.current?.scrollBy({ left: -120, behavior: 'smooth' })} aria-label="scroll left">‹</button>
+        )}
+        <div className={`gm-tabs ${tabScrollState !== 'none' ? `gm-tabs--scroll-${tabScrollState}` : ''}`} ref={tabsRef}>
+          <button className={`gm-tab${petTab === 'timeline' ? ' active' : ''}`} onClick={() => setPetTab('timeline')}>
+            <span className="gm-tab-icon">📋</span>{t('guardian.tab.timeline', 'Timeline')}
+          </button>
+          <button className={`gm-tab${petTab === 'health' ? ' active' : ''}`} onClick={() => setPetTab('health')}>
+            <span className="gm-tab-icon">❤️</span>{t('guardian.tab.health', 'Health')}
+          </button>
+          <button className={`gm-tab${petTab === 'services' ? ' active' : ''}`} onClick={() => setPetTab('services')}>
+            <span className="gm-tab-icon">🛎️</span>{t('guardian.tab.services', 'Services')}
+          </button>
+          <button className={`gm-tab${petTab === 'gallery' ? ' active' : ''}`} onClick={() => setPetTab('gallery')}>
+            <span className="gm-tab-icon">🖼️</span>{t('guardian.tab.gallery', 'Gallery')}
+          </button>
+          <button className={`gm-tab${petTab === 'profile' ? ' active' : ''}`} onClick={() => setPetTab('profile')}>
+            <span className="gm-tab-icon">👤</span>{t('guardian.tab.profile', 'Profile')}
+          </button>
+          <button className={`gm-tab${petTab === 'report' ? ' active' : ''}`} onClick={() => setPetTab('report')}>
+            <span className="gm-tab-icon">📊</span>{t('guardian.tab.report', 'Report')}
+          </button>
+        </div>
+        {(tabScrollState === 'right' || tabScrollState === 'both') && (
+          <button className="gm-tabs-arrow right" onClick={() => tabsRef.current?.scrollBy({ left: 120, behavior: 'smooth' })} aria-label="scroll right">›</button>
+        )}
       </div>
 
       {error && <div className="alert alert-error" style={{ margin: '12px 24px 0' }}>{error}</div>}
@@ -701,31 +728,40 @@ export default function GuardianMainPage() {
               {petTab === 'gallery' && (
                 <>
                   {albumMedia.length > 0 ? (
-                    <div className="gm-gallery-grid">
-                      {albumMedia.map((item, idx) => (
-                        <div key={item.id} className="gm-gallery-tile" onClick={() => { setLightboxItems(albumMedia.map((m) => m.media_url)); setLightboxIndex(idx); }}>
-                          <img src={item.media_url} alt={item.caption || 'media'} loading="lazy" />
-                          <div className="gm-gallery-tile-overlay"><span>🖼️</span></div>
-                        </div>
-                      ))}
-                    </div>
+                    <>
+                      <div className="gm-gallery-grid">
+                        {albumMedia.map((item, idx) => (
+                          <div key={item.id} className="gm-gallery-tile" onClick={() => { setLightboxItems(albumMedia.map((m) => m.media_url)); setLightboxIndex(idx); }}>
+                            <img src={item.media_url} alt={item.caption || 'media'} loading="lazy" />
+                            <div className="gm-gallery-tile-overlay"><span>🖼️</span></div>
+                          </div>
+                        ))}
+                      </div>
+                      <PetGalleryPanel
+                        selectedPet={selectedPet}
+                        mediaItems={albumMedia}
+                        bookings={bookings}
+                        breedLabel={labelOf(optBreed, selectedPet?.breed_id, t('common.none', '-'))}
+                        genderLabel={labelOf(optGender, selectedPet?.gender_id, t('common.none', '-'))}
+                        lifeStageLabel={labelOf(optLifeStage, selectedPet?.life_stage_id, t('common.none', '-'))}
+                        isGuardian={isGuardian}
+                        setError={setError}
+                        onRefresh={() => loadAll(feedTab)}
+                      />
+                    </>
                   ) : (
-                    <div className="gm-empty" style={{ padding: 40 }}>
-                      <div className="gm-empty-icon">🖼️</div>
-                      <div className="gm-empty-title">{t('guardian.gallery.empty', '미디어가 없습니다')}</div>
-                    </div>
+                    <PetGalleryPanel
+                      selectedPet={selectedPet}
+                      mediaItems={albumMedia}
+                      bookings={bookings}
+                      breedLabel={labelOf(optBreed, selectedPet?.breed_id, t('common.none', '-'))}
+                      genderLabel={labelOf(optGender, selectedPet?.gender_id, t('common.none', '-'))}
+                      lifeStageLabel={labelOf(optLifeStage, selectedPet?.life_stage_id, t('common.none', '-'))}
+                      isGuardian={isGuardian}
+                      setError={setError}
+                      onRefresh={() => loadAll(feedTab)}
+                    />
                   )}
-                  <PetGalleryPanel
-                    selectedPet={selectedPet}
-                    mediaItems={albumMedia}
-                    bookings={bookings}
-                    breedLabel={labelOf(optBreed, selectedPet?.breed_id, t('common.none', '-'))}
-                    genderLabel={labelOf(optGender, selectedPet?.gender_id, t('common.none', '-'))}
-                    lifeStageLabel={labelOf(optLifeStage, selectedPet?.life_stage_id, t('common.none', '-'))}
-                    isGuardian={isGuardian}
-                    setError={setError}
-                    onRefresh={() => loadAll(feedTab)}
-                  />
                 </>
               )}
 

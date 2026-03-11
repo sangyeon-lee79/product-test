@@ -1605,14 +1605,40 @@ html[data-theme="dark"] .ig-filter-pill.active {
 .gm-header-actions { display: flex; gap: 8px; flex-shrink: 0; }
 
 /* Sticky tab bar */
-.gm-tabs {
-  display: flex;
+.gm-tabs-wrapper {
+  position: sticky; top: 0; z-index: 100;
+  display: flex; align-items: stretch;
   background: var(--surface);
   border-bottom: 1px solid var(--border);
-  position: sticky; top: 0; z-index: 100;
+}
+.gm-tabs {
+  display: flex; flex: 1; min-width: 0;
   overflow-x: auto; scrollbar-width: none;
 }
 .gm-tabs::-webkit-scrollbar { display: none; }
+.gm-tabs--scroll-right::after,
+.gm-tabs--scroll-both::after {
+  content: ''; position: sticky; right: 0; flex-shrink: 0;
+  width: 32px; margin-left: -32px;
+  background: linear-gradient(to right, transparent, var(--surface));
+  pointer-events: none; z-index: 1;
+}
+.gm-tabs--scroll-left::before,
+.gm-tabs--scroll-both::before {
+  content: ''; position: sticky; left: 0; flex-shrink: 0;
+  width: 32px; margin-right: -32px;
+  background: linear-gradient(to left, transparent, var(--surface));
+  pointer-events: none; z-index: 1;
+}
+.gm-tabs-arrow {
+  display: flex; align-items: center; justify-content: center;
+  width: 28px; flex-shrink: 0;
+  background: var(--surface); border: none;
+  color: var(--text-muted); font-size: 18px; font-weight: 700;
+  cursor: pointer; padding: 0;
+  transition: color .15s;
+}
+.gm-tabs-arrow:hover { color: var(--primary); }
 .gm-tab {
   display: flex; align-items: center; gap: 6px;
   padding: 12px 20px;
