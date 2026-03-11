@@ -42,6 +42,7 @@ import DeviceManageModal from './guardian/DeviceManageModal';
 import FeedManageModal from './guardian/FeedManageModal';
 import FeedingLogModal from './guardian/FeedingLogModal';
 import ExerciseLogModal from './guardian/ExerciseLogModal';
+import PetReportTab from './guardian/PetReportTab';
 import PetWizardModal from './guardian/PetWizardModal';
 import {
   type FeedTab,
@@ -1090,6 +1091,9 @@ export default function GuardianMainPage() {
         <button className={`gm-tab${petTab === 'profile' ? ' active' : ''}`} onClick={() => setPetTab('profile')}>
           <span className="gm-tab-icon">👤</span>{t('guardian.tab.profile', 'Profile')}
         </button>
+        <button className={`gm-tab${petTab === 'report' ? ' active' : ''}`} onClick={() => setPetTab('report')}>
+          <span className="gm-tab-icon">📊</span>{t('guardian.tab.report', 'Report')}
+        </button>
       </div>
 
       {error && <div className="alert alert-error" style={{ margin: '12px 24px 0' }}>{error}</div>}
@@ -1697,6 +1701,11 @@ export default function GuardianMainPage() {
                     </div>
                   </div>
                 </div>
+              )}
+
+              {/* ── Report ── */}
+              {petTab === 'report' && (
+                <PetReportTab selectedPet={selectedPet} lang={lang} locale={locale} t={t} setError={setError} />
               )}
             </main>
 

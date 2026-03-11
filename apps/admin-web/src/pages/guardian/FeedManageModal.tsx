@@ -44,8 +44,9 @@ function parseSupplementMeta(f: PetFeed): { ingredients?: string; dosage_unit?: 
 
 export default function FeedManageModal({
   open, selectedPet,
-  lang, t, setError, onClose, onChanged,
+  lang, t, setError: _setError, onClose, onChanged,
 }: Props) {
+  void _setError; // kept for interface compatibility
   const [activeTab, setActiveTab] = useState<Tab>('feed');
 
   // --- Feed state ---
@@ -61,6 +62,7 @@ export default function FeedManageModal({
   const [editingId, setEditingId] = useState<string | null>(null);
   const [form, setForm] = useState(EMPTY_FORM);
   const [saving, setSaving] = useState(false);
+  const [modalError, setModalError] = useState('');
 
   // cascade state
   const [feedTypes, setFeedTypes] = useState<FeedType[]>([]);
@@ -103,7 +105,7 @@ export default function FeedManageModal({
       setFeeds(res.feeds);
       onChanged(res.feeds);
     } catch (e) {
-      setError(uiErrorMessage(e, t('common.err.network', 'Failed to load data.')));
+      setModalError(uiErrorMessage(e, t('common.err.network', 'Failed to load data.')));
     } finally {
       setFeedLoading(false);
     }
@@ -116,7 +118,7 @@ export default function FeedManageModal({
       const res = await api.pets.petSupplements.list(petId);
       setSupplements(res.feeds);
     } catch (e) {
-      setError(uiErrorMessage(e, t('common.err.network', 'Failed to load data.')));
+      setModalError(uiErrorMessage(e, t('common.err.network', 'Failed to load data.')));
     } finally {
       setSuppLoading(false);
     }
@@ -323,10 +325,11 @@ export default function FeedManageModal({
 
   async function handleSave() {
     if (!petId || saving) return;
+    setModalError('');
     const modelRequiredMsg = isFeed
       ? t('guardian.feed.model_required', 'Please select a feed product.')
       : t('guardian.supplement.model_required', 'Please select a supplement product.');
-    if (!editingId && !form.model_id) { setError(modelRequiredMsg); return; }
+    if (!editingId && !form.model_id) { setModalError(modelRequiredMsg); return; }
     setSaving(true);
     try {
       if (editingId) {
@@ -340,7 +343,7 @@ export default function FeedManageModal({
       setForm(EMPTY_FORM);
       setNutrition(null);
     } catch (e) {
-      setError(uiErrorMessage(e, t('common.err.save', 'Failed to save.')));
+      setModalError(uiErrorMessage(e, t('common.err.save', 'Failed to save.')));
     } finally {
       setSaving(false);
     }
@@ -348,6 +351,7 @@ export default function FeedManageModal({
 
   async function handleDelete(id: string) {
     if (!petId || saving) return;
+    setModalError('');
     const msg = isFeed ? t('guardian.feed.delete_confirm', 'Delete this feed?') : t('guardian.supplement.delete_confirm', 'Delete this supplement?');
     if (!confirm(msg)) return;
     setSaving(true);
@@ -355,7 +359,7 @@ export default function FeedManageModal({
       await itemApi.remove(petId, id);
       if (isFeed) await loadFeeds(); else await loadSupplements();
     } catch (e) {
-      setError(uiErrorMessage(e, t('common.err.save', 'Failed to delete.')));
+      setModalError(uiErrorMessage(e, t('common.err.save', 'Failed to delete.')));
     } finally {
       setSaving(false);
     }
@@ -363,12 +367,13 @@ export default function FeedManageModal({
 
   async function handleSetPrimary(id: string) {
     if (!petId || saving) return;
+    setModalError('');
     setSaving(true);
     try {
       await itemApi.update(petId, id, { is_primary: true });
       if (isFeed) await loadFeeds(); else await loadSupplements();
     } catch (e) {
-      setError(uiErrorMessage(e, t('common.err.save', 'Failed to set primary.')));
+      setModalError(uiErrorMessage(e, t('common.err.save', 'Failed to set primary.')));
     } finally {
       setSaving(false);
     }
@@ -379,7 +384,7 @@ export default function FeedManageModal({
   async function handleSubmitRequest() {
     const feedName = requestForm.feed_name.trim();
     const nameLabel = isFeed ? t('guardian.feed.request_name', 'Feed Name') : t('guardian.supplement.request_name', 'Supplement Name');
-    if (!feedName) { setError(nameLabel + ' required'); return; }
+    if (!feedName) { setModalError(nameLabel + ' required'); return; }
     let mfrName = requestForm.manufacturer_name || undefined;
     if (requestForm.manufacturer_id && !requestForm.manufacturer_custom) {
       const m = allMfrOptions.find((x) => x.id === requestForm.manufacturer_id);
@@ -432,7 +437,7 @@ export default function FeedManageModal({
       alert(t('guardian.feed.request_submitted', 'Registration request submitted.'));
       if (isFeed) void loadMyRequests(); else void loadSuppRequests();
     } catch (e) {
-      setError(uiErrorMessage(e, t('common.err.save', 'Failed to save.')));
+      setModalError(uiErrorMessage(e, t('common.err.save', 'Failed to save.')));
     } finally {
       setRequestSaving(false);
     }
@@ -524,6 +529,14 @@ export default function FeedManageModal({
               </button>
             ))}
           </div>
+
+          {/* ── Error Banner ─────────────────────────────────────── */}
+          {modalError && (
+            <div className="alert alert-error" style={{ margin: '0 0 12px', padding: '8px 12px', fontSize: 13, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <span>{modalError}</span>
+              <button style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: 16, padding: '0 4px', color: 'inherit' }} onClick={() => setModalError('')}>&times;</button>
+            </div>
+          )}
 
           {loading && <p className="text-sm text-muted">{t('common.loading', 'Loading...')}</p>}
 
