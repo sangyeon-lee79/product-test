@@ -272,15 +272,20 @@ export default function PublicHome() {
   }
 
   function renderFriendButton(feed: FeedPost) {
-    if (!loggedIn || !friendDataLoaded || feed.author_user_id === myUserId) return null;
+    if (loggedIn && feed.author_user_id === myUserId) return null;
+    const isProvider = feed.author_role === 'provider';
+    const label = isProvider ? t('friend.btn.add_provider', '단골 맺기') : t('friend.btn.add_guardian', '친구 신청');
+    if (!loggedIn) {
+      return <button className="pf-friend-btn pf-friend-btn--add" onClick={() => openAuthModal('login')}>{label}</button>;
+    }
+    if (!friendDataLoaded) return null;
     const status = friendStatusMap.get(feed.author_user_id) || 'none';
     if (status === 'accepted') return <span className="pf-friend-btn pf-friend-btn--accepted">{t('friend.btn.accepted', '친구')}</span>;
     if (status === 'pending') return <span className="pf-friend-btn pf-friend-btn--pending">{t('friend.btn.pending', '신청 중')}</span>;
-    const isProvider = feed.author_role === 'provider';
     const requesting = requestingIds.has(feed.author_user_id);
     return (
       <button className="pf-friend-btn pf-friend-btn--add" disabled={requesting} onClick={() => sendFriendRequestFromCard(feed.author_user_id)}>
-        {requesting ? '…' : isProvider ? t('friend.btn.add_provider', '단골 맺기') : t('friend.btn.add_guardian', '친구 신청')}
+        {requesting ? '…' : label}
       </button>
     );
   }
