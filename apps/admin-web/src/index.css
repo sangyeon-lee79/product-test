@@ -1821,10 +1821,12 @@ html[data-theme="dark"] .gm-tile-feeds:hover .gm-tile-label { color: #f9a8d4; }
 .gm-tl-card[data-type="weight"]::before { background: #3B82F6; box-shadow: 0 0 0 2px #dbeafe; }
 .gm-tl-card[data-type="measurement"]::before { background: #D97706; box-shadow: 0 0 0 2px #fef3c7; }
 .gm-tl-card[data-type="feeding"]::before { background: #10B981; box-shadow: 0 0 0 2px #d1fae5; }
+.gm-tl-card[data-type="exercise"]::before { background: #8B5CF6; box-shadow: 0 0 0 2px #ede9fe; }
 /* Type-specific left accent */
 .gm-tl-card[data-type="weight"] { border-left: 3px solid #3B82F6; }
 .gm-tl-card[data-type="measurement"] { border-left: 3px solid #D97706; }
 .gm-tl-card[data-type="feeding"] { border-left: 3px solid #10B981; }
+.gm-tl-card[data-type="exercise"] { border-left: 3px solid #8B5CF6; }
 
 /* Icon circle */
 .gm-tl-icon {
@@ -1837,33 +1839,42 @@ html[data-theme="dark"] .gm-tile-feeds:hover .gm-tile-label { color: #f9a8d4; }
 .gm-tl-card[data-type="weight"] .gm-tl-icon { background: #eff6ff; }
 .gm-tl-card[data-type="measurement"] .gm-tl-icon { background: #fffbeb; }
 .gm-tl-card[data-type="feeding"] .gm-tl-icon { background: #ecfdf5; }
+.gm-tl-card[data-type="exercise"] .gm-tl-icon { background: #f5f3ff; }
 
-/* Horizontal chip row (replaces card body) */
-.gm-tl-row-scroll {
-  display: flex; gap: 0; overflow-x: auto; flex: 1; min-width: 0;
-  scrollbar-width: thin; align-items: center;
+.gm-tl-content {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
 }
-.gm-tl-row-scroll::-webkit-scrollbar { height: 4px; }
-.gm-tl-row-scroll::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
-.gm-tl-chip {
-  flex-shrink: 0; display: flex; align-items: center; gap: 4px;
-  padding: 4px 10px; font-size: 12px; white-space: nowrap;
-  cursor: pointer; border-radius: 6px; transition: background .15s;
-  position: relative;
+.gm-tl-main {
+  min-width: 0;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 6px;
+  font-size: 12px;
+  line-height: 1.5;
 }
-.gm-tl-chip:nth-child(odd) { background: var(--surface); }
-.gm-tl-chip:nth-child(even) { background: var(--bg); }
-.gm-tl-chip:hover { opacity: .85; }
-.gm-tl-chip-time { font-weight: 600; color: var(--text-muted); }
-.gm-tl-chip-dot { color: var(--text-muted); }
-.gm-tl-chip-note { color: var(--text-muted); font-style: italic; max-width: 120px; overflow: hidden; text-overflow: ellipsis; }
-.gm-tl-chip-actions {
-  display: none; gap: 2px; margin-left: 4px;
+.gm-tl-time { font-weight: 700; color: var(--text); }
+.gm-tl-sep { color: var(--text-muted); }
+.gm-tl-note {
+  color: var(--text-muted);
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
-.gm-tl-chip-actions button {
+.gm-tl-actions {
+  display: inline-flex;
+  gap: 2px;
+  margin-left: auto;
+  flex-shrink: 0;
+}
+.gm-tl-actions button {
   background: none; border: none; padding: 0 2px; cursor: pointer; font-size: 12px; line-height: 1;
 }
-.gm-tl-chip:hover .gm-tl-chip-actions { display: inline-flex; }
 
 /* Staggered reveal */
 @keyframes gm-tl-slide-in {
@@ -1891,9 +1902,11 @@ html[data-theme="dark"] .gm-tile-feeds:hover .gm-tile-label { color: #f9a8d4; }
 html[data-theme="dark"] .gm-tl-card[data-type="weight"]::before { box-shadow: 0 0 0 2px rgba(59,130,246,.2); }
 html[data-theme="dark"] .gm-tl-card[data-type="measurement"]::before { box-shadow: 0 0 0 2px rgba(217,119,6,.2); }
 html[data-theme="dark"] .gm-tl-card[data-type="feeding"]::before { box-shadow: 0 0 0 2px rgba(16,185,129,.2); }
+html[data-theme="dark"] .gm-tl-card[data-type="exercise"]::before { box-shadow: 0 0 0 2px rgba(139,92,246,.22); }
 html[data-theme="dark"] .gm-tl-card[data-type="weight"] .gm-tl-icon { background: rgba(59,130,246,.12); }
 html[data-theme="dark"] .gm-tl-card[data-type="measurement"] .gm-tl-icon { background: rgba(217,119,6,.12); }
 html[data-theme="dark"] .gm-tl-card[data-type="feeding"] .gm-tl-icon { background: rgba(16,185,129,.12); }
+html[data-theme="dark"] .gm-tl-card[data-type="exercise"] .gm-tl-icon { background: rgba(139,92,246,.14); }
 html[data-theme="dark"] .gm-tl-date::before { border-color: var(--surface); box-shadow: 0 0 0 2px rgba(217,119,6,.25); }
 html[data-theme="dark"] .gm-timeline::before { background: linear-gradient(to bottom, var(--border) 0%, rgba(217,119,6,.3) 40%, var(--border) 100%); }
 
