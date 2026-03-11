@@ -167,6 +167,12 @@ async function dispatch(request: Request, env: Env, url: URL): Promise<Response>
     return handleFriends(request, env, url);
   }
 
+  // Notifications
+  if (path.startsWith('/api/v1/notifications')) {
+    const { handleNotifications } = await import('./routes/notifications');
+    return handleNotifications(request, env, url);
+  }
+
   // S10: Pet Album
   if (path.startsWith('/api/v1/pet-album')) {
     const { handlePetAlbum } = await import('./routes/petAlbum');

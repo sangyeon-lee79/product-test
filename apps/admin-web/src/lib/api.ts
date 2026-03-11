@@ -8,7 +8,7 @@ import type {
   PetDiseaseHistory, PetDiseaseDevice,
   PetGlucoseLog, GlucoseSummary,
   PetHealthMeasurementLog, HealthMeasurementSummary,
-  PetExerciseLog, ExerciseSummary, FriendPet,
+  PetExerciseLog, ExerciseSummary, FriendPet, Notification,
   Booking, FeedPost, FeedComment, PetAlbumMedia,
   FriendRequest, FriendConnection,
   DeviceType, DeviceManufacturer, DeviceBrand, DeviceModel, MeasurementUnit, GuardianDevice,
@@ -28,7 +28,7 @@ export type {
   PetDiseaseHistory, PetDiseaseDevice,
   PetGlucoseLog, GlucoseSummary,
   PetHealthMeasurementLog, HealthMeasurementSummary,
-  PetExerciseLog, ExerciseSummary, FriendPet,
+  PetExerciseLog, ExerciseSummary, FriendPet, Notification,
   Booking, FeedPost, FeedComment, PetAlbumMedia,
   FriendRequest, FriendConnection,
   DeviceType, DeviceManufacturer, DeviceBrand, DeviceModel, MeasurementUnit, GuardianDevice,
@@ -516,6 +516,16 @@ export const api = {
           body: JSON.stringify({ action }),
         }),
     },
+    remove: (friendshipId: string) =>
+      request<{ deleted: boolean }>(`/api/v1/friends/${friendshipId}`, { method: 'DELETE' }),
+  },
+  notifications: {
+    list: (params?: { limit?: number }) =>
+      request<{ notifications: Notification[]; unread_count: number }>(`/api/v1/notifications${buildQuery({ limit: params?.limit })}`),
+    read: (id: string) =>
+      request<{ success: boolean }>(`/api/v1/notifications/${id}/read`, { method: 'POST' }),
+    readAll: () =>
+      request<{ success: boolean }>('/api/v1/notifications/read-all', { method: 'POST' }),
   },
   pets: {
     list: () => request<{ pets: Pet[] }>('/api/v1/pets'),

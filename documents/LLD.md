@@ -1,6 +1,6 @@
 # Pet Lifecycle SNS Platform — LLD.md
 # 저수준 설계서 (Low-Level Design)
-# Status: MVP In Progress (2026-03-07 동기화)
+# Status: MVP In Progress (2026-03-11 동기화)
 
 Petfolio
 Your pet's life portfolio
@@ -244,6 +244,73 @@ Frontend 변경:
   - 부모값 multi-select UI 추가
   - 영어 수동 입력 필드 제거
   - 저장 시 `api.i18n.translate(ko)` 호출로 translations 자동 생성 후 전송
+
+### 0.12 Catalog Factory 통합 아키텍처 (2026-03-10)
+
+세 카탈로그(사료/영양제/의약품)를 단일 팩토리로 통합:
+
+파일 구조:
+- `services/api/src/routes/catalogFactory.ts` (825줄) — `createCatalogHandler(cfg: CatalogConfig)` 팩토리
+- `services/api/src/routes/feedCatalog.ts` (30줄) — 사료 인스턴스
+- `services/api/src/routes/supplementCatalog.ts` (32줄) — 영양제 인스턴스
+- `services/api/src/routes/medicineCatalog.ts` (13줄) — 의약품 인스턴스
+- `services/api/src/helpers/sqlHelpers.ts` — 공통 DB 헬퍼 (resolveLang, hasColumn, syncParentMap, upsertI18n)
+- `apps/admin-web/src/hooks/useCatalogPage.ts` — 공통 페이지 상태 훅
+- `apps/admin-web/src/components/CatalogGrid.tsx` — 공통 UI 컴포넌트
+- `apps/admin-web/src/lib/catalogUtils.ts` — 정렬/번역/유틸
+
+CatalogConfig 핵심 파라미터:
+- `categoryType`: 'feed' | 'supplement' | 'medicine'
+- `masterCategoryCode`: 마스터 카테고리 코드
+- `hasNutrition`: 영양정보 엔드포인트 활성화 (feed/supplement=true, medicine=false)
+- `setCategoryTypeOnInsert`: INSERT 시 category_type 명시 설정 여부
+- `statsExtras`: 관리자 통계 추가 항목 콜백
+
+상세 문서: `docs/catalog-architecture.md`
+
+### 0.13 급여 시스템 구현 (2026-03-10)
+
+DB 테이블:
+- `pet_feeds`: 펫별 사료/영양제 등록 (pet_id, feed_model_id, category_type, is_primary, daily_amount_g, disease_item_id)
+- `pet_feeding_logs`: 급여 기록 (pet_id, pet_feed_id, feed_model_id, amount_g, feeding_time, is_mixed, memo)
+- `pet_feeding_log_items`: 혼합 급여 항목 (feeding_log_id, pet_feed_id, feed_model_id, amount_g)
+- `feeding_mix_favorites`: 즐겨찾기 (pet_id, name, items_json, sort_order)
+- `feed_nutrition`: 모델별 영양정보 (calories_per_100g, protein/fat/fiber/moisture/ash/calcium/phosphorus/omega/carbohydrate_pct)
+
+API:
+- `GET/POST/PUT/DELETE /api/v1/pets/:id/pet-feeds` — 사료/영양제 등록 관리
+- `GET/POST/PUT/DELETE /api/v1/pets/:id/pet-supplements` — 영양제 전용
+- `GET/POST/PUT/DELETE /api/v1/pets/:id/feeding-logs` — 급여 기록
+- `GET/POST/DELETE /api/v1/pets/:id/feeding-mix-favorites` — 즐겨찾기
+
+Frontend:
+- `FeedManageModal.tsx`: 사료/영양제 탭 분리, 등록/수정/삭제 + 등록 요청
+- `FeedingLogModal.tsx`: 단일/혼합 모드, 영양제 섹션, 칼로리 합산, 즐겨찾기
+
+### 0.14 Pet Report API (2026-03-10)
+
+엔드포인트: `GET /api/v1/pets/:petId/report?period=7d&lang=ko`
+
+응답 구조:
+- `feeding`: today_calories, target_calories, weekly_calories[], nutrient_ratio[], top3_feeds[], supplements[]
+- `exercise`: week_summary, weekly_calendar[], type_ratio[], monthly_trend[], recent[]
+- `health`: weight_trend[], current_weight, weight_delta, measurement_trends[], recent_records[]
+- `weekly_summary`: feeding_card(avg/delta), exercise_card(count/delta), health_card(weight/delta), alerts[]
+
+기간: today, 7d, 30d, 3m
+
+### 0.15 Provider 가입/프로필 (2026-03-10)
+
+API:
+- `GET /api/v1/providers/me` — Provider 프로필 (승인 상태, 업종 계층, 펫종류, 자격증, 운영시간, 주소)
+- 승인 워크플로우: pending → approved / rejected
+
+### 0.16 친구 시스템 (2026-03-10)
+
+API:
+- `GET /api/v1/friends` — 친구 목록
+- `POST /api/v1/friends/request` — 친구 요청
+- `PUT /api/v1/friends/:id/accept` / `PUT /api/v1/friends/:id/block` — 상태 변경
 
 ---
 

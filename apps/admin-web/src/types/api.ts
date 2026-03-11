@@ -700,6 +700,19 @@ export interface FriendPet {
   guardian_name?: string | null;
 }
 
+export interface Notification {
+  id: string;
+  user_id: string;
+  type: string;
+  actor_user_id: string;
+  actor_email?: string | null;
+  actor_name?: string | null;
+  reference_id: string;
+  reference_type: string;
+  is_read: boolean;
+  created_at: string;
+}
+
 export interface ExerciseSummary {
   total_count: number;
   total_duration_min: number;

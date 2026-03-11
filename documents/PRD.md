@@ -1,6 +1,6 @@
 # Pet Lifecycle SNS Platform — PRD.md
 # 제품 요구사항 정의서 (Product Requirements Document)
-# Status: MVP In Progress (2026-03-08 동기화)
+# Status: MVP In Progress (2026-03-11 동기화)
 
 Petfolio
 Your pet's life portfolio
@@ -152,6 +152,73 @@ Your pet's life portfolio
   - 저장은 stable id/key + mapping id 기반
   - 화면 표시는 현재 locale 번역값 기반
 
+### 0.15 Catalog Factory 통합 리팩토링 (2026-03-10)
+- 대상:
+  - 사료 카탈로그, 영양제 카탈로그, 의약품 카탈로그
+- 구조:
+  - `catalogFactory.ts` — 단일 팩토리 함수 `createCatalogHandler(cfg: CatalogConfig)` → CRUD 핸들러 자동 생성
+  - 인스턴스 파일은 10~30줄의 설정만 정의 (~1,600 LOC 절약)
+- API 클라이언트:
+  - `createCatalogApi()` 함수 오버로드로 `hasNutrition` 여부에 따라 타입 분기
+- Admin UI:
+  - `useCatalogPage` 훅 + `CatalogGrid` 공통 컴포넌트로 3개 페이지 통합
+- 아키텍처 문서: `docs/catalog-architecture.md`
+
+### 0.16 영양제 카탈로그 추가 (2026-03-09)
+- Admin에 영양제 카탈로그 관리 화면 추가:
+  - 유형(supplement_type) → 제조사 → 브랜드 → 모델
+  - 18개 모델 시드 (관절/소화/비타민/피부/면역/처방)
+  - 7개 제조사, 8개 브랜드 + 영양정보 + 처방 여부
+- 사료와 동일 DB 테이블 재사용 (`feed_manufacturers`, `feed_brands`, `feed_models`, `feed_nutrition`)
+  - `category_type = 'supplement'` 구분
+
+### 0.17 의약품 카탈로그 추가 (2026-03-10)
+- Admin에 의약품 카탈로그 관리 화면 추가:
+  - 유형(medicine_category) → 제조사 → 브랜드 → 모델
+  - 30개 모델 시드 (인슐린/항생제/진통/소화/심장/신장/피부/안이비/구충)
+  - 10개 유형, 9개 제조사, 30개 브랜드
+  - 영양정보 없음 (`hasNutrition: false`)
+  - 투여 경로(injection/oral/topical/eye-ear drops), 질병 태그, 보관 조건 메타데이터
+
+### 0.18 급여 시스템 (2026-03-10)
+- Guardian 급여 관리:
+  - `pet_feeds`: 펫별 사료/영양제 등록 (주사료 지정, daily_amount_g)
+  - `pet_feeding_logs`: 급여 기록 (단일/혼합 모드, 시간/메모)
+  - `pet_feeding_log_items`: 혼합 급여 시 개별 사료 항목
+  - `feeding_mix_favorites`: 혼합 급여 즐겨찾기 저장/불러오기
+- API:
+  - `GET/POST/PUT/DELETE /api/v1/pets/:id/pet-feeds`
+  - `GET/POST/PUT/DELETE /api/v1/pets/:id/feeding-logs`
+  - `GET/POST/DELETE /api/v1/pets/:id/feeding-mix-favorites`
+- Guardian Web UI:
+  - FeedManageModal: 사료/영양제 탭 분리 관리
+  - FeedingLogModal: 단일/혼합 모드, 영양제 섹션, 칼로리 합산, 즐겨찾기
+  - PetReportTab: 급여 리포트 (칼로리 추이, 영양비율, 상위 사료, 영양제 복용 현황)
+
+### 0.19 Pet Report 탭 (2026-03-10)
+- Guardian 대시보드 Report 탭 신규:
+  - 급여: 오늘 칼로리/목표 게이지, 주간 칼로리 차트, 영양비율 파이, Top 3 사료, 영양제 복용 현황
+  - 운동: 주간 요약(횟수/시간/강도), 캘린더 점, 유형비율, 월간 추이, 최근 5건
+  - 건강: 체중 추이, 측정값 추이, 최근 기록
+  - 주간 요약: 급여/운동/건강 비교 카드 + 돌봄 알림
+- API: `GET /api/v1/pets/:petId/report?period=7d&lang=ko`
+
+### 0.20 Provider 가입/프로필 (2026-03-10)
+- Provider 역할 신청 + 업종 선택 + 사업자 정보 + 자격증 + 운영시간 워크플로우
+- API: `GET /api/v1/providers/me` (승인 상태/업종 계층/펫종류/자격증/운영시간/주소)
+- Admin 승인 프로세스 (pending→approved→rejected)
+
+### 0.21 친구 시스템 (2026-03-10)
+- Guardian↔Provider 커넥션 관리
+- API: `GET /api/v1/friends` (목록/요청/수신함)
+- 상태: pending→active→blocked
+
+### 0.22 급여 기록 버그 수정 + 즐겨찾기 영양제 확장 (2026-03-11)
+- Bug 1: 영양제 "taken_today" SQL — mixed 모드 항목 JOIN 누락 수정
+- Bug 2: 주간 칼로리 차트 날짜 포맷 MM-DD → M/D
+- Bug 3: target_calories=0 시 Infinity% 방지 (API + UI)
+- Feature: 즐겨찾기에 영양제 포함 (저장/불러오기/뱃지 표시)
+
 ---
 
 ## 1. 제품 개요
@@ -285,6 +352,12 @@ Petfolio — Your pet's life portfolio
 **ADM-07: 통계 대시보드**
 > Admin으로서, 가입자(Guardian/Provider), 피드 수, 예약 수, 광고 노출(슬롯별)을 확인할 수 있다.
 
+**ADM-08: 제품 카탈로그 관리 (사료/영양제/의약품)**
+> Admin으로서, 사료/영양제/의약품 카탈로그를 유형→제조사→브랜드→모델 4단 계층으로 관리할 수 있다.
+- 3개 카탈로그가 동일한 팩토리 패턴(`catalogFactory.ts`)으로 통합
+- 각 단계에서 다중 부모 연결, i18n 자동번역, 영양정보(사료/영양제만)
+- 통계: 총 모델수, 활성 모델수, 사용자 등록수, 실사용수, 처방수(영양제)
+
 ---
 
 ### 3.2 Guardian 스토리 (Phase D/E)
@@ -327,6 +400,20 @@ Petfolio — Your pet's life portfolio
 
 **GRD-09: Pet Gallery (Instagram-style)**
 > Guardian으로서, 프로필/피드/예약완료/건강기록/수동업로드 미디어를 하나의 Gallery 탭에서 source_type 기반으로 필터링해 조회할 수 있다.
+
+**GRD-10: 급여 관리**
+> Guardian으로서, 펫의 사료/영양제를 등록하고 급여 기록(단일/혼합)을 남길 수 있다.
+- 주사료 지정, 일일 권장량 설정
+- 혼합 급여 모드: 여러 사료를 비율별로 기록
+- 영양제 동시 기록 (복용량 포함)
+- 즐겨찾기: 자주 쓰는 조합 저장/불러오기 (영양제 포함)
+
+**GRD-11: Pet Report**
+> Guardian으로서, 펫의 급여/운동/건강 통합 리포트를 기간별(오늘/7일/30일/3개월)로 확인할 수 있다.
+- 급여: 칼로리 게이지, 주간 추이, 영양비율, 상위 사료, 영양제 복용 현황
+- 운동: 주간 요약, 캘린더, 유형비율, 월간 추이
+- 건강: 체중 추이, 측정값 추이
+- 주간 요약: 전주 대비 비교 카드 + 돌봄 알림
 
 ---
 
@@ -509,13 +596,19 @@ Petfolio — Your pet's life portfolio
 로그인
 ├── 대시보드 (통계)
 ├── 마스터 데이터
-│   ├── 카테고리 관리
+│   ├── 카테고리 관리 (6컬럼: Category→L1→L2→L3→L4→L5)
 │   ├── 아이템 관리
 │   └── 질병 연결 관리 (Tree-view)
+├── 제품 카탈로그 (catalogFactory 기반)
+│   ├── 사료 카탈로그 (유형→제조사→브랜드→모델 + 영양정보)
+│   ├── 영양제 카탈로그 (유형→제조사→브랜드→모델 + 영양정보)
+│   └── 의약품 카탈로그 (유형→제조사→브랜드→모델)
+├── 장치관리 (유형→제조사→브랜드→모델 + 측정단위)
 ├── 언어관리
 │   ├── 키 목록 (페이지 필터)
 │   └── 13개국어 편집
 ├── 국가/통화 관리
+├── 회원관리
 ├── 광고 설정
 │   ├── 전역 On/Off
 │   └── 슬롯별 설정

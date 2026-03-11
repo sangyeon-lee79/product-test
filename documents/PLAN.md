@@ -11,6 +11,27 @@ Your pet's life portfolio
 
 ---
 
+## 0.0 개발 현황 업데이트 (2026-03-11)
+
+최근 코드 반영 기준 요약:
+
+- [x] **Catalog Factory 리팩토링**: 사료/영양제/의약품 카탈로그를 `catalogFactory.ts` 단일 팩토리로 통합 (~1,600 LOC 절약)
+  - `feedCatalog.ts` (30줄), `supplementCatalog.ts` (32줄), `medicineCatalog.ts` (13줄)
+  - 공통 UI 훅: `useCatalogPage.ts`, 공통 컴포넌트: `CatalogGrid.tsx`, 유틸: `catalogUtils.ts`
+  - 아키텍처 문서: `docs/catalog-architecture.md`
+- [x] **영양제 카탈로그**: 18개 모델 (관절/소화/비타민/피부/면역/처방) + 영양정보 + 7개 제조사
+- [x] **의약품 카탈로그**: 30개 모델 (인슐린/항생제/진통/소화/심장/신장/피부/안이비/구충) + 10개 유형 + 9개 제조사
+- [x] **급여 시스템**: pet_feeds(등록) + pet_feeding_logs(기록) + pet_feeding_log_items(혼합) + feeding_mix_favorites(즐겨찾기)
+- [x] **Pet Report 탭**: 급여/운동/건강/주간요약 통합 리포트 (차트 + 영양비율 + 알림)
+- [x] **급여 기록 버그 수정** (2026-03-11): 영양제 복용확인 SQL, 날짜 포맷 M/D, Infinity% 방지, 즐겨찾기 영양제 포함
+- [x] **Provider 가입/프로필**: 사업자 등록 + 업종 선택 + 자격증 + 운영시간 + 승인 워크플로우
+- [x] **친구 시스템**: Guardian↔Provider 커넥션 + 친구 요청/수락/차단
+- [x] **제품 이미지 URL**: 모델별 외부 이미지 URL + placeholder SVG + 관리자 입력 UI
+- [x] **Shared i18n 패키지**: `packages/shared/i18n/` — SUPPORTED_LANGS, Lang 타입, getTranslation() 등 앱 간 공유
+- [x] **코드 최적화**: sqlHelpers.ts(공통 DB 헬퍼), api.ts buildQuery(), GuardianMainPage 분할, pets.ts 분할, KV rate limiting
+
+---
+
 ## 0.1 개발 현황 업데이트 (2026-03-07)
 
 최근 코드 반영 기준 요약:
@@ -1077,18 +1098,21 @@ DB 테이블/마이그레이션
 [ ] S4: 국가/통화 — 매핑 동작
 [ ] S5: 인증(OAuth) + R2 스토리지 — 로그인 + 파일 업로드
 [x] S6: Guardian 프로필 + 펫 등록 — 질병 연결 포함
-[ ] S7: 질병 기록 7종 + 위험 경고 + 타임라인
+[x] S7: 질병 기록 7종 + 위험 경고 + 타임라인 + 운동 기록 + 급여 시스템 + Pet Report
 [ ] S8: 오프라인 기록 + 동기화
 [ ] S9: Provider 매장/서비스 등록
 [ ] S10: 예약 → 완료 → 1-click 피드 공유 바이럴 루프
 [ ] S11: 광고(건강 화면 미노출) + 통계 대시보드
 [ ] S12: OAuth 전환 + 하드코딩 제로 + E2E 통과
 
-진행 메모 (2026-03-08):
+진행 메모 (2026-03-11):
+- S7 DB/API/Guardian Web UI 완료 (질병 기록 + 타임라인 + 운동 기록 + 급여 시스템 + Pet Report).
 - S10은 DB/핵심 API(booking status, completion-request, approve, feed like/comment)가 선행 구현되어 "부분완료" 상태.
 - S6는 기본 완료 상태이며, `birthday/current_weight/weight logs/health chart` 확장 + GuardianMainPage 전면 리디자인(Instagram 프로필 스타일)까지 반영됨.
-- PublicHome(/), ExplorePage(/explore) 신규 구현 완료 (SNS public 피드 + 탐색 그리드).
-- 다음 단계: S7 질병 기록 + 타임라인 (logs/log_values/log_media DB + API + Mobile UI).
+- Admin 카탈로그: 사료/영양제/의약품 3개 카탈로그를 `catalogFactory.ts` 팩토리 패턴으로 통합 완료.
+- Provider 가입/프로필 + 친구 시스템 기본 구현 완료.
+- Shared i18n 패키지(`@petfolio/shared`) 도입으로 앱 간 언어 상수/유틸 공유.
+- 다음 단계: S8 오프라인 동기화 또는 S9 Provider 매장/서비스 본격 구현.
 
 ---
 

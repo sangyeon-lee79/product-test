@@ -1,8 +1,8 @@
 import { useEffect, useMemo, useState, useCallback } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { api, type FeedComment, type FeedPost } from '../lib/api';
+import { api, type FeedComment, type FeedPost, type GuardianProfile, type Pet, type Booking } from '../lib/api';
 import { getStoredRole, isLoggedIn } from '../lib/auth';
-import { LANG_LABELS, SUPPORTED_LANGS, useI18n, useT } from '../lib/i18n';
+import { useI18n, useT } from '../lib/i18n';
 import AuthModal from '../components/AuthModal';
 
 type FeedTab = 'all' | 'friends';
@@ -57,7 +57,7 @@ const IMG_PLACEHOLDER = 'data:image/svg+xml,' + encodeURIComponent('<svg xmlns="
 /* ── Component ────────────────────────────────────────────── */
 export default function PublicHome() {
   const t = useT();
-  const { lang, setLang } = useI18n();
+  const { lang } = useI18n();
 
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -79,6 +79,10 @@ export default function PublicHome() {
   const [authModalMode, setAuthModalMode] = useState<'login' | 'signup'>('login');
   const [brokenImages, setBrokenImages] = useState<Set<string>>(new Set());
   const [savedPosts, setSavedPosts] = useState<Set<string>>(new Set());
+  const [myProfile, setMyProfile] = useState<GuardianProfile | null>(null);
+  const [myPets, setMyPets] = useState<Pet[]>([]);
+  const [myBookings, setMyBookings] = useState<Booking[]>([]);
+  const [rightLoading, setRightLoading] = useState(false);
 
   const openAuthModal = (mode: 'login' | 'signup') => { setAuthModalMode(mode); setAuthModalOpen(true); };
   const handleImgError = useCallback((key: string) => { setBrokenImages(prev => { const n = new Set(prev); n.add(key); return n; }); }, []);
@@ -104,14 +108,6 @@ export default function PublicHome() {
     if (direct !== '__MISSING__') return direct;
     return t(`master.${key}`, safeFallback);
   };
-
-  const roleLabel = role === 'guardian'
-    ? t('public.role.guardian', 'Guardian')
-    : role === 'provider'
-      ? t('public.role.provider', 'Provider')
-      : role === 'admin'
-        ? t('public.role.admin', 'Admin')
-        : role;
 
   /* Dark mode */
   useEffect(() => {
@@ -156,6 +152,20 @@ export default function PublicHome() {
 
   useEffect(() => { loadFeed(); loadFilters(); }, []);
   useEffect(() => { void loadFeed(tab, businessCategoryId, petTypeId); loadFilters(); }, [lang]);
+
+  useEffect(() => {
+    if (!loggedIn) { setMyProfile(null); setMyPets([]); setMyBookings([]); return; }
+    setRightLoading(true);
+    Promise.allSettled([
+      api.guardians.me(),
+      api.pets.list(),
+      api.bookings.list(),
+    ]).then(([profRes, petsRes, bookRes]) => {
+      if (profRes.status === 'fulfilled') setMyProfile(profRes.value.profile ?? null);
+      if (petsRes.status === 'fulfilled') setMyPets(petsRes.value.pets || []);
+      if (bookRes.status === 'fulfilled') setMyBookings(bookRes.value.bookings || []);
+    }).finally(() => setRightLoading(false));
+  }, [loggedIn]);
 
   async function toggleLike(feed: FeedPost) {
     if (!loggedIn) return;
@@ -279,11 +289,6 @@ export default function PublicHome() {
           <span className="pf-nav-icon">{isDark ? '☀️' : '🌙'}</span>
           <span>{isDark ? t('public.theme.light', '라이트 모드') : t('public.theme.dark', '다크 모드')}</span>
         </button>
-        <div className="pf-sidebar-lang">
-          <select className="form-select" value={lang} onChange={(e) => setLang(e.target.value as typeof lang)} aria-label={t('admin.common.language', 'Language')}>
-            {SUPPORTED_LANGS.map((l) => <option key={l} value={l}>{LANG_LABELS[l]}</option>)}
-          </select>
-        </div>
         {!loggedIn && (
           <button className="pf-nav-item" onClick={() => openAuthModal('login')}>
             <span className="pf-nav-icon">🔑</span>
@@ -515,9 +520,6 @@ export default function PublicHome() {
           {/* Mobile header */}
           <div className="pf-mobile-lang">
             <span className="pf-mobile-logo">{t('platform.name', 'Petfolio')}</span>
-            <select className="form-select pf-mobile-lang-select" value={lang} onChange={(e) => setLang(e.target.value as typeof lang)} aria-label={t('admin.common.language', 'Language')}>
-              {SUPPORTED_LANGS.map((l) => <option key={l} value={l}>{LANG_LABELS[l]}</option>)}
-            </select>
           </div>
 
           {/* Story bar */}
@@ -537,12 +539,13 @@ export default function PublicHome() {
           {/* Feed tabs */}
           <div className="pf-feed-tabs">
             <button className={`pf-feed-tab${tab === 'all' ? ' active' : ''}`} onClick={() => { setTab('all'); loadFeed('all', businessCategoryId, petTypeId); }}>
-              {t('public.feed.all', '전체 피드')}
+              {loggedIn ? t('public.feed.my_feed', '내 피드') : t('public.feed.all', '전체 피드')}
             </button>
-            <button className={`pf-feed-tab${tab === 'friends' ? ' active' : ''}`} onClick={() => { setTab('friends'); loadFeed('friends', businessCategoryId, petTypeId); }}
-              disabled={!loggedIn} title={!loggedIn ? t('public.hint.login_required', '로그인 후 이용 가능') : ''}>
-              {t('public.feed.friends', '친구 피드')}
-            </button>
+            {loggedIn && (
+              <button className={`pf-feed-tab${tab === 'friends' ? ' active' : ''}`} onClick={() => { setTab('friends'); loadFeed('friends', businessCategoryId, petTypeId); }}>
+                {t('friend.section.title', '친구')}
+              </button>
+            )}
           </div>
 
           {/* Filter pills */}
@@ -594,30 +597,77 @@ export default function PublicHome() {
         {/* Right panel */}
         <aside className="pf-right-col">
           <div className="pf-pet-widget">
-            <div className="pf-pet-widget-header">
-              <div className="pf-pet-widget-avatar">🐕</div>
-              <div className="pf-pet-widget-info">
-                <span className="pf-pet-widget-name">{loggedIn ? roleLabel : t('platform.name', 'Petfolio')}</span>
-                <span className="pf-pet-widget-breed">{loggedIn ? t('public.account', 'Petfolio 계정') : t('public.hero.sub', 'SNS + 포트폴리오 아카이브')}</span>
-              </div>
-            </div>
-            <div className="pf-pet-widget-stats">
-              <div className="pf-pet-widget-stat"><span className="pf-pet-widget-stat-value">--</span><span className="pf-pet-widget-stat-label">{t('public.health.weight', '체중')} kg</span></div>
-              <div className="pf-pet-widget-stat"><span className="pf-pet-widget-stat-value">--</span><span className="pf-pet-widget-stat-label">{t('public.health.calories', '칼로리')}</span></div>
-              <div className="pf-pet-widget-stat"><span className="pf-pet-widget-stat-value">--</span><span className="pf-pet-widget-stat-label">{t('public.health.exercise', '운동')}</span></div>
-            </div>
-            <div className="pf-pet-widget-schedule">
-              <span>💉</span>
-              <span className="pf-pet-widget-schedule-text">{t('public.widget.next_schedule', '다음 예정 일정')}</span>
-              <span className="pf-pet-widget-schedule-date">--</span>
-            </div>
-            {!loggedIn && (
-              <div style={{ display: 'flex', gap: 8, marginTop: 12 }}>
-                <button className="pf-btn-outline" onClick={() => openAuthModal('login')}>{t('public.auth.login', '로그인')}</button>
-                <button className="pf-btn-start" style={{ flex: 1 }} onClick={() => openAuthModal('signup')}>{t('public.cta.start', '시작하기')}</button>
-              </div>
+            {rightLoading ? (
+              /* Skeleton placeholder */
+              <>
+                <div className="pf-pet-widget-header">
+                  <div className="pf-skeleton" style={{ width: 48, height: 48, borderRadius: '50%' }} />
+                  <div className="pf-pet-widget-info">
+                    <div className="pf-skeleton" style={{ width: 120, height: 16, marginBottom: 6 }} />
+                    <div className="pf-skeleton" style={{ width: 80, height: 12 }} />
+                  </div>
+                </div>
+                <div className="pf-skeleton" style={{ width: '100%', height: 40, marginTop: 12 }} />
+                <div className="pf-skeleton" style={{ width: '100%', height: 32, marginTop: 8 }} />
+              </>
+            ) : loggedIn && myProfile ? (
+              /* Logged-in: real profile data */
+              <>
+                <div className="pf-pet-widget-header">
+                  {myProfile.avatar_url ? (
+                    <img src={myProfile.avatar_url} alt="" className="pf-pet-widget-avatar-img" style={{ width: 48, height: 48, borderRadius: '50%', objectFit: 'cover' }} />
+                  ) : (
+                    <div className="pf-pet-widget-avatar">{(myProfile.display_name || myProfile.email || '?')[0].toUpperCase()}</div>
+                  )}
+                  <div className="pf-pet-widget-info">
+                    <span className="pf-pet-widget-name">{myProfile.display_name || myProfile.email?.split('@')[0] || '-'}</span>
+                    <span className="pf-pet-widget-breed">{role === 'guardian' ? t('public.widget.guardian_role', 'Petfolio Guardian') : t('public.widget.provider_role', 'Petfolio Provider')}</span>
+                  </div>
+                </div>
+                {/* Pet widget */}
+                <div className="pf-pet-widget-stats">
+                  <div className="pf-pet-widget-stat">
+                    <span className="pf-pet-widget-stat-label">{t('public.widget.my_pet', '내 반려동물')}</span>
+                    <span className="pf-pet-widget-stat-value">{myPets.length > 0 ? myPets[0].name : '--'}</span>
+                    {myPets.length > 0 && myPets[0].current_weight && (
+                      <span className="pf-pet-widget-stat-label">{myPets[0].current_weight} kg</span>
+                    )}
+                    {myPets.length === 0 && (
+                      <span className="pf-pet-widget-stat-label" style={{ fontSize: 11, color: 'var(--text-muted)' }}>{t('public.widget.no_pet', '등록된 반려동물이 없습니다')}</span>
+                    )}
+                  </div>
+                </div>
+                {/* Next booking */}
+                <div className="pf-pet-widget-schedule">
+                  <span>📅</span>
+                  <span className="pf-pet-widget-schedule-text">{t('public.widget.next_booking', '다음 예약')}</span>
+                  <span className="pf-pet-widget-schedule-date">
+                    {(() => {
+                      const today = new Date().toISOString().slice(0, 10);
+                      const upcoming = myBookings.find(b => b.requested_date && b.requested_date >= today && b.status !== 'cancelled');
+                      return upcoming?.requested_date || t('public.widget.no_booking', '예정된 일정 없음');
+                    })()}
+                  </span>
+                </div>
+                <button className="pf-pet-add-btn" onClick={() => navigate('/guardian')}>＋ {t('public.widget.add_pet', '반려동물 추가')}</button>
+              </>
+            ) : (
+              /* Not logged in */
+              <>
+                <div className="pf-pet-widget-header">
+                  <div className="pf-pet-widget-avatar">🐕</div>
+                  <div className="pf-pet-widget-info">
+                    <span className="pf-pet-widget-name">{t('platform.name', 'Petfolio')}</span>
+                    <span className="pf-pet-widget-breed">{t('public.hero.sub', 'SNS + 포트폴리오 아카이브')}</span>
+                  </div>
+                </div>
+                <p style={{ fontSize: 13, color: 'var(--text-muted)', marginTop: 12 }}>{t('public.widget.login_prompt', '로그인하고 반려동물을 등록하세요')}</p>
+                <div style={{ display: 'flex', gap: 8, marginTop: 12 }}>
+                  <button className="pf-btn-outline" onClick={() => openAuthModal('login')}>{t('public.auth.login', '로그인')}</button>
+                  <button className="pf-btn-start" style={{ flex: 1 }} onClick={() => openAuthModal('signup')}>{t('public.cta.start', '시작하기')}</button>
+                </div>
+              </>
             )}
-            {loggedIn && <button className="pf-pet-add-btn" onClick={() => navigate('/guardian')}>＋ {t('public.widget.add_pet', '반려동물 추가')}</button>}
           </div>
 
           {suggestedUsers.length > 0 && (
@@ -636,13 +686,13 @@ export default function PublicHome() {
             </div>
           )}
 
-          {loggedIn && (role === 'guardian' || role === 'provider') && (
+          {loggedIn && (
             <div className="pf-right-section">
-              <div className="pf-right-section-title">{t('public.friend.title', 'Guardian ↔ Supplier 연결')}</div>
+              <div className="pf-right-section-title">{t('friend.section.title', '친구')}</div>
               <div style={{ display: 'flex', gap: 6 }}>
                 <input className="form-input" style={{ fontSize: 12, padding: '8px 10px' }} placeholder={t('public.friend.email', '상대 이메일')}
                   value={friendEmail} onChange={(e) => setFriendEmail(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && sendFriendRequest()} />
-                <button className="pf-btn-outline" onClick={sendFriendRequest}>{t('public.friend.request', '요청')}</button>
+                <button className="pf-btn-outline" onClick={sendFriendRequest}>{t('friend.btn.add_guardian', '친구 신청')}</button>
               </div>
               {friendMessage && <p style={{ fontSize: 12, color: 'var(--amber)', marginTop: 6 }}>{friendMessage}</p>}
             </div>

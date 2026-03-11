@@ -27,10 +27,6 @@ async function userByEmail(env: Env, email: string): Promise<{ id: string; role:
   return { id: row.id, role: normalizeRole(row.role), email: row.email };
 }
 
-function canConnect(a: UserRole, b: UserRole): boolean {
-  return (a === 'guardian' && b === 'provider') || (a === 'provider' && b === 'guardian');
-}
-
 async function listFriends(env: Env, me: JwtPayload): Promise<Response> {
   const rows = await env.DB.prepare(
     `SELECT f.id, f.relation_type, f.status, f.created_at,
@@ -90,10 +86,6 @@ async function createRequest(request: Request, env: Env, me: JwtPayload): Promis
   if (!target) return err('receiver not found', 404);
   if (target.id === me.sub) return err('cannot request yourself');
 
-  if (!canConnect(meUser.role, target.role)) {
-    return err('only guardian and provider can connect');
-  }
-
   const existingFriend = await env.DB.prepare(
     `SELECT id FROM friendships
      WHERE status = 'active' AND ((user_a_id = ? AND user_b_id = ?) OR (user_a_id = ? AND user_b_id = ?))`
@@ -114,6 +106,12 @@ async function createRequest(request: Request, env: Env, me: JwtPayload): Promis
       id, requester_user_id, receiver_user_id, requester_role, receiver_role, status, created_at
     ) VALUES (?, ?, ?, ?, ?, 'request_sent', ?)`
   ).bind(id, me.sub, target.id, meUser.role, target.role, now()).run();
+
+  // Notify receiver
+  await env.DB.prepare(
+    `INSERT INTO notifications (id, user_id, type, actor_user_id, reference_id, reference_type, created_at)
+     VALUES (?, ?, 'friend_request', ?, ?, 'friend_request', ?)`
+  ).bind(newId(), target.id, me.sub, id, now()).run();
 
   return created({ request_id: id, status: 'request_sent' });
 }
@@ -145,9 +143,15 @@ async function respondRequest(request: Request, env: Env, me: JwtPayload, reques
     const ordered = pair(a, b);
     await env.DB.prepare(
       `INSERT INTO friendships (id, user_a_id, user_b_id, relation_type, status, created_at)
-       VALUES (?, ?, ?, 'guardian_supplier_connected', 'active', ?)
+       VALUES (?, ?, ?, 'friend', 'active', ?)
        ON CONFLICT DO NOTHING`
     ).bind(newId(), ordered.a, ordered.b, now()).run();
+
+    // Notify requester that their request was accepted
+    await env.DB.prepare(
+      `INSERT INTO notifications (id, user_id, type, actor_user_id, reference_id, reference_type, created_at)
+       VALUES (?, ?, 'friend_accepted', ?, ?, 'friend_request', ?)`
+    ).bind(newId(), a, me.sub, requestId, now()).run();
   }
 
   return ok({ request_id: requestId, status });
@@ -171,6 +175,19 @@ async function listFriendPets(env: Env, me: JwtPayload): Promise<Response> {
   return ok({ pets: rows.results });
 }
 
+async function deleteFriendship(env: Env, me: JwtPayload, friendshipId: string): Promise<Response> {
+  const row = await env.DB.prepare(
+    'SELECT id, user_a_id, user_b_id FROM friendships WHERE id = ?'
+  ).bind(friendshipId).first<{ id: string; user_a_id: string; user_b_id: string }>();
+  if (!row) return err('friendship not found', 404);
+
+  if (row.user_a_id !== me.sub && row.user_b_id !== me.sub) return err('forbidden', 403);
+
+  await env.DB.prepare('DELETE FROM friendships WHERE id = ?').bind(friendshipId).run();
+
+  return ok({ deleted: true });
+}
+
 export async function handleFriends(request: Request, env: Env, url: URL): Promise<Response> {
   const auth = await requireAuth(request, env);
   if (auth instanceof Response) return auth;
@@ -185,6 +202,9 @@ export async function handleFriends(request: Request, env: Env, url: URL): Promi
 
   const respond = sub.match(/^\/requests\/([^/]+)\/respond$/);
   if (respond && request.method === 'POST') return respondRequest(request, env, me, respond[1]);
+
+  const deleteFriend = sub.match(/^\/([^/]+)$/);
+  if (deleteFriend && request.method === 'DELETE') return deleteFriendship(env, me, deleteFriend[1]);
 
   return err('Not found', 404);
 }
