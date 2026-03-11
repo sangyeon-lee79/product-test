@@ -38,13 +38,14 @@ export async function handlePetFeeds(request: Request, env: Env, url: URL): Prom
     const hasFeedModels = await hasTable(env, 'feed_models');
     const hasNutrition = await hasTable(env, 'feed_nutrition');
 
-    // GET list
+    // GET list — cache-bust comment prevents Hyperdrive from serving stale reads after writes
     if (!feedId && method === 'GET') {
       const orderBy = 'pf.is_primary DESC, pf.created_at DESC';
+      const cb = `/* t${Date.now()} */`;
 
       if (!hasFeedModels) {
         const rows = await env.DB.prepare(
-          `SELECT * FROM pet_feeds pf WHERE pf.pet_id = ? AND pf.status != 'deleted' AND COALESCE(pf.category_type, 'feed') = ? ORDER BY ${orderBy}`
+          `${cb} SELECT * FROM pet_feeds pf WHERE pf.pet_id = ? AND pf.status != 'deleted' AND COALESCE(pf.category_type, 'feed') = ? ORDER BY ${orderBy}`
         ).bind(petId, category).all();
         return ok({ feeds: rows.results });
       }
@@ -65,7 +66,7 @@ export async function handlePetFeeds(request: Request, env: Env, url: URL): Prom
         }
 
         const rows = await env.DB.prepare(
-          `SELECT pf.*, fm.model_name, fm.model_code, fm.description AS model_description,
+          `${cb} SELECT pf.*, fm.model_name, fm.model_code, fm.description AS model_description,
                   mi.${codeCol} as type_key,
                   COALESCE(NULLIF(TRIM(tr_type.${langCol}), ''), NULLIF(TRIM(tr_type.en), ''), NULLIF(TRIM(tr_type.ko), ''), mi.${codeCol}) AS type_display_label,
                   mfr.name_ko as mfr_name_ko, mfr.name_en as mfr_name_en,
@@ -97,7 +98,7 @@ export async function handlePetFeeds(request: Request, env: Env, url: URL): Prom
       } catch {
         // Fallback: simple query without JOINs
         const rows = await env.DB.prepare(
-          `SELECT * FROM pet_feeds pf WHERE pf.pet_id = ? AND pf.status != 'deleted' AND COALESCE(pf.category_type, 'feed') = ? ORDER BY ${orderBy}`
+          `${cb} SELECT * FROM pet_feeds pf WHERE pf.pet_id = ? AND pf.status != 'deleted' AND COALESCE(pf.category_type, 'feed') = ? ORDER BY ${orderBy}`
         ).bind(petId, category).all();
         return ok({ feeds: rows.results });
       }

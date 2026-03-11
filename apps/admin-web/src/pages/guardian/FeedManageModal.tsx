@@ -334,14 +334,45 @@ export default function FeedManageModal({
     try {
       if (editingId) {
         await itemApi.update(petId, editingId, { nickname: form.nickname, is_primary: form.is_primary });
+        // Optimistic update for edit
+        const updater = (prev: PetFeed[]) => prev.map((f) =>
+          f.id === editingId
+            ? { ...f, nickname: form.nickname, is_primary: form.is_primary }
+            : form.is_primary ? { ...f, is_primary: false } : f,
+        );
+        if (isFeed) { setFeeds(updater); onChanged(updater(feeds)); } else setSupplements(updater);
       } else {
-        await itemApi.create(petId, { feed_model_id: form.model_id, nickname: form.nickname || undefined, is_primary: form.is_primary });
+        const res = await itemApi.create(petId, { feed_model_id: form.model_id, nickname: form.nickname || undefined, is_primary: form.is_primary });
+        // Optimistic update — build item from cascade data so it shows immediately
+        const selectedModel = models.find((m) => m.id === form.model_id);
+        const selectedType = currentTypes.find((ft) => ft.id === form.feed_type_item_id);
+        const selectedMfr = manufacturers.find((m) => m.id === form.manufacturer_id);
+        const selectedBrand = brands.find((b) => b.id === form.brand_id);
+        const optimistic: PetFeed = {
+          id: res.id, pet_id: petId, feed_model_id: form.model_id,
+          nickname: form.nickname || null, is_primary: form.is_primary,
+          status: 'active', category_type: isFeed ? 'feed' : 'supplement',
+          model_name: selectedModel?.model_name || '', model_code: selectedModel?.model_code || '',
+          model_display_label: selectedModel?.model_display_label || selectedModel?.model_name || '',
+          type_display_label: selectedType?.display_label || '',
+          mfr_display_label: selectedMfr?.display_label || '', mfr_name_ko: null, mfr_name_en: null,
+          brand_display_label: selectedBrand?.display_label || '', brand_name_ko: null, brand_name_en: null,
+          created_at: new Date().toISOString(), updated_at: new Date().toISOString(),
+        } as PetFeed;
+        if (isFeed) {
+          const next = form.is_primary ? [optimistic, ...feeds.map((f) => ({ ...f, is_primary: false }))] : [optimistic, ...feeds];
+          setFeeds(next);
+          onChanged(next);
+        } else {
+          setSupplements((prev) => form.is_primary ? [optimistic, ...prev.map((f) => ({ ...f, is_primary: false }))] : [optimistic, ...prev]);
+        }
       }
-      if (isFeed) await loadFeeds(); else await loadSupplements();
       setShowForm(false);
       setEditingId(null);
       setForm(EMPTY_FORM);
       setNutrition(null);
+      // Background refresh to get full server data (may be cached by Hyperdrive, but UI already updated)
+      if (isFeed) void loadFeeds(); else void loadSupplements();
     } catch (e) {
       setModalError(uiErrorMessage(e, t('common.err.save', 'Failed to save.')));
     } finally {
@@ -357,7 +388,16 @@ export default function FeedManageModal({
     setSaving(true);
     try {
       await itemApi.remove(petId, id);
-      if (isFeed) await loadFeeds(); else await loadSupplements();
+      // Optimistic remove — update local state immediately
+      if (isFeed) {
+        const next = feeds.filter((f) => f.id !== id);
+        setFeeds(next);
+        onChanged(next);
+      } else {
+        setSupplements((prev) => prev.filter((f) => f.id !== id));
+      }
+      // Background refresh
+      if (isFeed) void loadFeeds(); else void loadSupplements();
     } catch (e) {
       setModalError(uiErrorMessage(e, t('common.err.save', 'Failed to delete.')));
     } finally {
@@ -371,7 +411,11 @@ export default function FeedManageModal({
     setSaving(true);
     try {
       await itemApi.update(petId, id, { is_primary: true });
-      if (isFeed) await loadFeeds(); else await loadSupplements();
+      // Optimistic update
+      const updater = (prev: PetFeed[]) => prev.map((f) => ({ ...f, is_primary: f.id === id }));
+      if (isFeed) { const next = updater(feeds); setFeeds(next); onChanged(next); } else setSupplements(updater);
+      // Background refresh
+      if (isFeed) void loadFeeds(); else void loadSupplements();
     } catch (e) {
       setModalError(uiErrorMessage(e, t('common.err.save', 'Failed to set primary.')));
     } finally {
