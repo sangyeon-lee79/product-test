@@ -50,6 +50,7 @@ export function corsHeaders(request: Request, env: Env): Record<string, string> 
     'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
     'Access-Control-Allow-Headers': 'Content-Type, Authorization',
     'Access-Control-Max-Age': '86400',
+    'Cross-Origin-Opener-Policy': 'same-origin-allow-popups',
     'Vary': 'Origin',
   };
 }
