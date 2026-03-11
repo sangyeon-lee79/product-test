@@ -4,6 +4,8 @@ import { useI18n, useT, SUPPORTED_LANGS, LANG_LABELS } from '../lib/i18n';
 import { emptyTrans, itemLabel, sortCatalog, i18nRowToTranslations, autoTranslate, findMissingTranslationLangs, type CatalogSortMode } from '../lib/catalogUtils';
 import { TranslationFields } from '../components/TranslationFields';
 import { CatalogCol, CatalogStatusBadge, CatalogModelDetail, CatalogListThumb, type ModelDetailField } from '../components/CatalogGrid';
+import { CatalogStatsBar } from '../components/CatalogStatsBar';
+import type { CatalogStats } from '../types/api';
 
 type ModalTarget = 'manufacturer' | 'brand' | 'model';
 type FeedPageTab = 'catalog' | 'requests';
@@ -34,6 +36,9 @@ export default function FeedPage() {
   const [reqFeedTypes, setReqFeedTypes] = useState<FeedType[]>([]);
 
   const pendingCount = requests.filter((r) => r.status === 'pending').length;
+  const [stats, setStats] = useState<CatalogStats | null>(null);
+  const [statsLoading, setStatsLoading] = useState(true);
+  const [statsFilter, setStatsFilter] = useState<string | null>(null);
 
   const loadRequests = useCallback(async (status?: string) => {
     try {
@@ -56,13 +61,16 @@ export default function FeedPage() {
     }
   }, [pageTab, requestFilter, loadRequests, lang]);
 
-  // Load pending count on mount
+  // Load pending count + stats on mount
   useEffect(() => {
     void (async () => {
       try {
         const rows = await api.feedRequests.admin.list({ status: 'pending' });
         setRequests((prev) => prev.length ? prev : rows);
       } catch { /* ignore */ }
+    })();
+    void (async () => {
+      try { setStats(await api.feedCatalog.stats()); } catch { /* ignore */ } finally { setStatsLoading(false); }
     })();
   }, []);
 
@@ -545,6 +553,13 @@ export default function FeedPage() {
       <div className="content">
         {error && <div className="alert alert-error">{error}</div>}
         {success && <div className="alert alert-success">{success}</div>}
+
+        <CatalogStatsBar loading={statsLoading} cards={[
+          { label: t('admin.catalog.stats.total_models', '전체 모델'), value: stats?.total_models ?? 0, desc: t('admin.catalog.stats.total_models_desc', '등록된 모델'), active: statsFilter === 'total', onClick: () => setStatsFilter(statsFilter === 'total' ? null : 'total') },
+          { label: t('admin.catalog.stats.active', '활성'), value: stats?.active_models ?? 0, desc: t('admin.catalog.stats.active_desc', '활성 모델'), active: statsFilter === 'active', onClick: () => setStatsFilter(statsFilter === 'active' ? null : 'active') },
+          { label: t('admin.catalog.stats.user_registered', '유저 등록'), value: stats?.user_registered ?? 0, desc: t('admin.catalog.stats.user_registered_feed_desc', '등록된 급여 수'), active: statsFilter === 'registered', onClick: () => setStatsFilter(statsFilter === 'registered' ? null : 'registered') },
+          { label: t('admin.catalog.stats.actual_usage', '실사용'), value: stats?.actual_usage ?? 0, desc: t('admin.catalog.stats.actual_usage_feed_desc', '최근 30일 급여 기록'), active: statsFilter === 'usage', onClick: () => setStatsFilter(statsFilter === 'usage' ? null : 'usage') },
+        ]} />
 
         {/* ── Tab Bar ── */}
         <div style={{ display: 'flex', gap: 4, marginBottom: 16, borderBottom: '2px solid var(--border)', paddingBottom: 0 }}>

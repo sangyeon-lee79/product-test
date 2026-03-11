@@ -12,6 +12,7 @@ import CountriesPage from './pages/CountriesPage';
 import DevicePage from './pages/DevicePage';
 import FeedPage from './pages/FeedPage';
 import SupplementPage from './pages/SupplementPage';
+import MedicinePage from './pages/MedicinePage';
 import GuardianMainPage from './pages/GuardianMainPage';
 import SupplierDashboardPage from './pages/SupplierDashboardPage';
 import ExplorePage from './pages/ExplorePage';
@@ -71,6 +72,7 @@ export default function App() {
                 <Route path="devices" element={<DevicePage />} />
                 <Route path="feeds" element={<FeedPage />} />
                 <Route path="supplements" element={<SupplementPage />} />
+                <Route path="medicines" element={<MedicinePage />} />
                 <Route path="stores" element={<StorePage />} />
                 <Route path="members" element={<MembersPage />} />
                 <Route path="api-connections" element={<ApiConnectionsPage />} />

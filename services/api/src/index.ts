@@ -196,6 +196,12 @@ async function dispatch(request: Request, env: Env, url: URL): Promise<Response>
     return handleSupplementCatalog(request, env, url);
   }
 
+  // Medicine Catalog Management (public)
+  if (path.startsWith('/api/v1/medicine-catalog')) {
+    const { handleMedicineCatalog } = await import('./routes/medicineCatalog');
+    return handleMedicineCatalog(request, env, url);
+  }
+
   // ─── Admin 전용 (/api/v1/admin/*) ─────────────────────────────────
   if (path.startsWith('/api/v1/admin')) {
     return dispatchAdmin(request, env, url, path);
@@ -228,6 +234,10 @@ async function dispatchAdmin(request: Request, env: Env, url: URL, path: string)
   if (path.startsWith('/api/v1/admin/supplement-catalog')) {
     const { handleSupplementCatalog } = await import('./routes/supplementCatalog');
     return handleSupplementCatalog(request, env, url);
+  }
+  if (path.startsWith('/api/v1/admin/medicine-catalog')) {
+    const { handleMedicineCatalog } = await import('./routes/medicineCatalog');
+    return handleMedicineCatalog(request, env, url);
   }
   if (path.startsWith('/api/v1/admin/master')) {
     const { handleMaster } = await import('./routes/master');

@@ -4,6 +4,8 @@ import { useI18n, useT, SUPPORTED_LANGS, LANG_LABELS } from '../lib/i18n';
 import { emptyTrans, itemLabel, sortCatalog, i18nRowToTranslations, autoTranslate, findMissingTranslationLangs, type CatalogSortMode } from '../lib/catalogUtils';
 import { TranslationFields } from '../components/TranslationFields';
 import { CatalogCol, CatalogStatusBadge, CatalogModelDetail, CatalogListThumb, type ModelDetailField } from '../components/CatalogGrid';
+import { CatalogStatsBar } from '../components/CatalogStatsBar';
+import type { CatalogStats } from '../types/api';
 
 type ModalTarget = 'manufacturer' | 'brand' | 'model';
 
@@ -48,6 +50,9 @@ export default function SupplementPage() {
   const [, setNutrition] = useState<FeedNutrition | null>(null);
   const [nutritionForm, setNutritionForm] = useState<Record<string, string>>({});
   const [nutritionSaving, setNutritionSaving] = useState(false);
+  const [stats, setStats] = useState<CatalogStats | null>(null);
+  const [statsLoading, setStatsLoading] = useState(true);
+  const [statsFilter, setStatsFilter] = useState<string | null>(null);
 
   const loadTypes = useCallback(async () => {
     try {
@@ -87,7 +92,12 @@ export default function SupplementPage() {
     }
   }, []);
 
-  useEffect(() => { void loadTypes(); }, [loadTypes]);
+  useEffect(() => {
+    void loadTypes();
+    void (async () => {
+      try { setStats(await api.supplementCatalog.stats()); } catch { /* ignore */ } finally { setStatsLoading(false); }
+    })();
+  }, [loadTypes]);
 
   useEffect(() => { setTypes(prev => prev.length ? sortCatalog(prev, typeSort) : prev); }, [typeSort]);
   useEffect(() => { setManufacturers(prev => prev.length ? sortCatalog(prev, mfrSort) : prev); }, [mfrSort]);
@@ -431,6 +441,14 @@ export default function SupplementPage() {
       <div className="content">
         {error && <div className="alert alert-error">{error}</div>}
         {success && <div className="alert alert-success">{success}</div>}
+
+        <CatalogStatsBar loading={statsLoading} cards={[
+          { label: t('admin.catalog.stats.total_models', '전체 모델'), value: stats?.total_models ?? 0, desc: t('admin.catalog.stats.total_models_desc', '등록된 모델'), active: statsFilter === 'total', onClick: () => setStatsFilter(statsFilter === 'total' ? null : 'total') },
+          { label: t('admin.catalog.stats.active', '활성'), value: stats?.active_models ?? 0, desc: t('admin.catalog.stats.active_desc', '활성 모델'), active: statsFilter === 'active', onClick: () => setStatsFilter(statsFilter === 'active' ? null : 'active') },
+          { label: t('admin.catalog.stats.user_registered', '유저 등록'), value: stats?.user_registered ?? 0, desc: t('admin.catalog.stats.user_registered_feed_desc', '등록된 급여 수'), active: statsFilter === 'registered', onClick: () => setStatsFilter(statsFilter === 'registered' ? null : 'registered') },
+          { label: t('admin.catalog.stats.actual_usage', '실사용'), value: stats?.actual_usage ?? 0, desc: t('admin.catalog.stats.actual_usage_feed_desc', '최근 30일 급여 기록'), active: statsFilter === 'usage', onClick: () => setStatsFilter(statsFilter === 'usage' ? null : 'usage') },
+          { label: t('admin.catalog.stats.prescribed', '처방전용'), value: stats?.prescribed ?? 0, desc: t('admin.catalog.stats.prescribed_desc', '처방 연결 항목'), active: statsFilter === 'prescribed', onClick: () => setStatsFilter(statsFilter === 'prescribed' ? null : 'prescribed') },
+        ]} />
 
         <div className="alert" style={{ marginBottom: 12 }}>{t('admin.supplement.guide', 'Manage supplement catalog: Type > Manufacturer > Brand > Model')}</div>
 

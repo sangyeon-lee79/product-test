@@ -1,32 +1,27 @@
 import { useEffect, useState, useCallback } from 'react';
-import { api, type DeviceType, type DeviceManufacturer, type DeviceBrand, type DeviceModel, type MeasurementUnit } from '../lib/api';
-import { useI18n, useT, LANG_LABELS, SUPPORTED_LANGS } from '../lib/i18n';
+import { api, type FeedType, type FeedManufacturer, type FeedBrand, type FeedModel } from '../lib/api';
+import { useI18n, useT, SUPPORTED_LANGS, LANG_LABELS } from '../lib/i18n';
 import { emptyTrans, itemLabel, sortCatalog, i18nRowToTranslations, autoTranslate, findMissingTranslationLangs, type CatalogSortMode } from '../lib/catalogUtils';
 import { TranslationFields } from '../components/TranslationFields';
 import { CatalogCol, CatalogStatusBadge, CatalogModelDetail, CatalogListThumb, type ModelDetailField } from '../components/CatalogGrid';
-import { CatalogStatsBar } from '../components/CatalogStatsBar';
-import type { CatalogStats } from '../types/api';
 
-type Tab = 'devices' | 'units';
-type ModalTarget = 'manufacturer' | 'brand' | 'model' | 'unit';
+type ModalTarget = 'manufacturer' | 'brand' | 'model';
 
-export default function DevicePage() {
+export default function MedicinePage() {
   const t = useT();
   const { lang } = useI18n();
-  const [activeTab, setActiveTab] = useState<Tab>('devices');
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
 
-  const [types, setTypes] = useState<DeviceType[]>([]);
-  const [manufacturers, setManufacturers] = useState<DeviceManufacturer[]>([]);
-  const [brands, setBrands] = useState<DeviceBrand[]>([]);
-  const [models, setModels] = useState<DeviceModel[]>([]);
-  const [units, setUnits] = useState<MeasurementUnit[]>([]);
+  const [types, setTypes] = useState<FeedType[]>([]);
+  const [manufacturers, setManufacturers] = useState<FeedManufacturer[]>([]);
+  const [brands, setBrands] = useState<FeedBrand[]>([]);
+  const [models, setModels] = useState<FeedModel[]>([]);
 
-  const [selectedType, setSelectedType] = useState<DeviceType | null>(null);
-  const [selectedMfr, setSelectedMfr] = useState<DeviceManufacturer | null>(null);
-  const [selectedBrand, setSelectedBrand] = useState<DeviceBrand | null>(null);
-  const [selectedModel, setSelectedModel] = useState<DeviceModel | null>(null);
+  const [selectedType, setSelectedType] = useState<FeedType | null>(null);
+  const [selectedMfr, setSelectedMfr] = useState<FeedManufacturer | null>(null);
+  const [selectedBrand, setSelectedBrand] = useState<FeedBrand | null>(null);
+  const [selectedModel, setSelectedModel] = useState<FeedModel | null>(null);
 
   const [typeSort, setTypeSort] = useState<CatalogSortMode>('count_desc');
   const [mfrSort, setMfrSort] = useState<CatalogSortMode>('count_desc');
@@ -42,20 +37,16 @@ export default function DevicePage() {
   const [brandTrans, setBrandTrans] = useState<Record<string, string>>(emptyTrans());
   const [modelForm, setModelForm] = useState({ key: '', sort_order: '0', model_code: '', description: '' });
   const [modelTrans, setModelTrans] = useState<Record<string, string>>(emptyTrans());
-  const [unitForm, setUnitForm] = useState({ key: '', name: '', symbol: '', sort_order: '0' });
   const [mfrParentTypeIds, setMfrParentTypeIds] = useState<string[]>([]);
   const [brandParentTypeIds, setBrandParentTypeIds] = useState<string[]>([]);
   const [brandParentMfrIds, setBrandParentMfrIds] = useState<string[]>([]);
   const [modelParentTypeIds, setModelParentTypeIds] = useState<string[]>([]);
   const [modelParentMfrId, setModelParentMfrId] = useState<string>('');
   const [modelParentBrandIds, setModelParentBrandIds] = useState<string[]>([]);
-  const [stats, setStats] = useState<CatalogStats | null>(null);
-  const [statsLoading, setStatsLoading] = useState(true);
-  const [statsFilter, setStatsFilter] = useState<string | null>(null);
 
   const loadTypes = useCallback(async () => {
     try {
-      const rows = await api.devices.types.list(lang);
+      const rows = await api.medicineCatalog.types.list(lang);
       setTypes(sortCatalog(rows, typeSort));
     } catch (e) {
       setError(String(e));
@@ -65,7 +56,7 @@ export default function DevicePage() {
 
   const loadManufacturers = useCallback(async (typeId?: string) => {
     try {
-      const rows = await api.devices.manufacturers.list(lang, typeId);
+      const rows = await api.medicineCatalog.manufacturers.list(lang, typeId);
       setManufacturers(sortCatalog(rows, mfrSort));
     } catch (e) {
       setError(String(e));
@@ -75,7 +66,7 @@ export default function DevicePage() {
 
   const loadBrands = useCallback(async (mfrId?: string, typeId?: string) => {
     try {
-      const rows = await api.devices.brands.list(mfrId, typeId);
+      const rows = await api.medicineCatalog.brands.list(mfrId, typeId);
       setBrands(sortCatalog(rows, brandSort));
     } catch (e) {
       setError(String(e));
@@ -83,56 +74,46 @@ export default function DevicePage() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const loadModels = useCallback(async (filters?: { device_type_id?: string; manufacturer_id?: string; brand_id?: string }) => {
+  const loadModels = useCallback(async (filters?: { feed_type_id?: string; manufacturer_id?: string; brand_id?: string }) => {
     try {
-      setModels(await api.devices.models.list(filters));
+      setModels(await api.medicineCatalog.models.list(filters));
     } catch (e) {
       setError(String(e));
     }
   }, []);
 
-  const loadUnits = useCallback(async () => {
-    try {
-      setUnits(await api.devices.units.list());
-    } catch (e) {
-      setError(String(e));
-    }
-  }, []);
+  useEffect(() => { void loadTypes(); }, [loadTypes]);
 
-  useEffect(() => {
-    void loadTypes();
-    void loadUnits();
-    void (async () => {
-      try { setStats(await api.devices.stats()); } catch { /* ignore */ } finally { setStatsLoading(false); }
-    })();
-  }, [loadTypes, loadUnits]);
-
-  // Re-sort in place when sort mode changes (no re-fetch)
   useEffect(() => { setTypes(prev => prev.length ? sortCatalog(prev, typeSort) : prev); }, [typeSort]);
   useEffect(() => { setManufacturers(prev => prev.length ? sortCatalog(prev, mfrSort) : prev); }, [mfrSort]);
   useEffect(() => { setBrands(prev => prev.length ? sortCatalog(prev, brandSort) : prev); }, [brandSort]);
 
   useEffect(() => {
-    void loadManufacturers(selectedType?.id);
-    setSelectedMfr(null);
-    setSelectedBrand(null);
-    setSelectedModel(null);
-  }, [selectedType?.id, loadManufacturers]);
+    if (!selectedType) {
+      setManufacturers([]); setSelectedMfr(null); setSelectedBrand(null); setSelectedModel(null);
+      return;
+    }
+    void loadManufacturers(selectedType.id);
+    setSelectedMfr(null); setSelectedBrand(null); setSelectedModel(null);
+  }, [selectedType, loadManufacturers]);
 
   useEffect(() => {
-    void loadBrands(selectedMfr?.id, selectedType?.id);
-    setSelectedBrand(null);
-    setSelectedModel(null);
-  }, [selectedMfr?.id, selectedType?.id, loadBrands]);
+    if (!selectedMfr) {
+      setBrands([]); setSelectedBrand(null); setSelectedModel(null);
+      return;
+    }
+    void loadBrands(selectedMfr.id, selectedType?.id);
+    setSelectedBrand(null); setSelectedModel(null);
+  }, [selectedMfr, selectedType?.id, loadBrands]);
 
   useEffect(() => {
-    const filters: { device_type_id?: string; manufacturer_id?: string; brand_id?: string } = {};
-    if (selectedType) filters.device_type_id = selectedType.id;
-    if (selectedMfr) filters.manufacturer_id = selectedMfr.id;
-    if (selectedBrand) filters.brand_id = selectedBrand.id;
-    void loadModels(filters);
+    if (!selectedType || !selectedMfr || !selectedBrand) {
+      setModels([]); setSelectedModel(null);
+      return;
+    }
+    void loadModels({ feed_type_id: selectedType.id, manufacturer_id: selectedMfr.id, brand_id: selectedBrand.id });
     setSelectedModel(null);
-  }, [selectedType?.id, selectedMfr?.id, selectedBrand?.id, loadModels]);
+  }, [selectedType, selectedMfr, selectedBrand, loadModels]);
 
   function flash(msg: string) {
     setSuccess(msg);
@@ -146,13 +127,10 @@ export default function DevicePage() {
     setModal({ target: 'manufacturer', mode: 'create' });
   }
 
-  function openEditMfr(item: DeviceManufacturer) {
-    setMfrForm({
-      key: item.key || '',
-      country: item.country || '',
-      sort_order: String(item.sort_order || 0),
-    });
-    setMfrTrans({ ...emptyTrans(), ko: item.name_ko || '', en: item.name_en || '' });
+  function openEditMfr(item: FeedManufacturer) {
+    const fallback = { ...emptyTrans(), ko: item.name_ko || '', en: item.name_en || '' };
+    setMfrForm({ key: item.key || '', country: item.country || '', sort_order: String(item.sort_order || 0) });
+    setMfrTrans(fallback);
     setMfrParentTypeIds((item.parent_type_ids || '').split(',').map((v) => v.trim()).filter(Boolean));
     setModal({ target: 'manufacturer', mode: 'edit', id: item.id });
     if (item.name_key) {
@@ -172,7 +150,7 @@ export default function DevicePage() {
     setModal({ target: 'brand', mode: 'create' });
   }
 
-  function openEditBrand(item: DeviceBrand) {
+  function openEditBrand(item: FeedBrand) {
     setBrandForm({ key: item.key || '', sort_order: String(item.sort_order || 0) });
     setBrandTrans({ ...emptyTrans(), ko: item.name_ko || '', en: item.name_en || '' });
     setBrandParentTypeIds((item.parent_type_ids || '').split(',').map((v) => v.trim()).filter(Boolean));
@@ -198,13 +176,8 @@ export default function DevicePage() {
     setModal({ target: 'model', mode: 'create' });
   }
 
-  function openEditModel(item: DeviceModel) {
-    setModelForm({
-      key: item.key || '',
-      sort_order: String(item.sort_order || 0),
-      model_code: item.model_code ?? '',
-      description: item.description ?? '',
-    });
+  function openEditModel(item: FeedModel) {
+    setModelForm({ key: item.key || '', sort_order: String(item.sort_order || 0), model_code: item.model_code ?? '', description: item.description ?? '' });
     setModelTrans({ ...emptyTrans(), ko: item.model_name || '', en: item.model_name || '' });
     setModelParentTypeIds((item.parent_type_ids || '').split(',').map((v) => v.trim()).filter(Boolean));
     setModelParentMfrId(item.manufacturer_id || selectedMfr?.id || '');
@@ -221,23 +194,12 @@ export default function DevicePage() {
     else if (manufacturers.length === 0) void loadManufacturers();
   }
 
-  function openCreateUnit() {
-    setUnitForm({ key: '', name: '', symbol: '', sort_order: '0' });
-    setModal({ target: 'unit', mode: 'create' });
-  }
-
-  function openEditUnit(item: MeasurementUnit) {
-    setUnitForm({ key: item.key, name: item.name, symbol: item.symbol ?? '', sort_order: String(item.sort_order) });
-    setModal({ target: 'unit', mode: 'edit', id: item.id });
-  }
-
   async function handleSave() {
     if (!modal) return;
     setSaving(true);
     setError('');
     try {
       const { target, mode, id } = modal;
-
       if (target === 'manufacturer') {
         if (mfrParentTypeIds.length === 0) throw new Error(t('admin.master.err_required'));
         const ko = (mfrTrans.ko || '').trim();
@@ -263,11 +225,8 @@ export default function DevicePage() {
           parent_type_ids: mfrParentTypeIds,
           translations,
         };
-        if (mode === 'create') {
-          await api.devices.manufacturers.create(payload);
-        } else if (id) {
-          await api.devices.manufacturers.update(id, payload);
-        }
+        if (mode === 'create') await api.medicineCatalog.manufacturers.create(payload);
+        else if (id) await api.medicineCatalog.manufacturers.update(id, payload);
         await loadManufacturers();
       }
 
@@ -297,11 +256,8 @@ export default function DevicePage() {
           sort_order: parseInt(brandForm.sort_order, 10) || 0,
           translations,
         };
-        if (mode === 'create') {
-          await api.devices.brands.create(payload);
-        } else if (id) {
-          await api.devices.brands.update(id, payload);
-        }
+        if (mode === 'create') await api.medicineCatalog.brands.create(payload);
+        else if (id) await api.medicineCatalog.brands.update(id, payload);
         await loadBrands(brandParentMfrIds[0] || selectedMfr?.id, selectedType?.id);
       }
 
@@ -323,7 +279,7 @@ export default function DevicePage() {
         }
         const payload = {
           key: mode === 'create' ? key || undefined : undefined,
-          device_type_id: modelParentTypeIds[0],
+          feed_type_id: modelParentTypeIds[0],
           parent_type_ids: modelParentTypeIds,
           manufacturer_id: modelParentMfrId,
           brand_id: modelParentBrandIds[0],
@@ -336,26 +292,13 @@ export default function DevicePage() {
           model_code: modelForm.model_code || undefined,
           description: modelForm.description || undefined,
         };
-        if (mode === 'create') {
-          await api.devices.models.create(payload);
-        } else if (id) {
-          await api.devices.models.update(id, payload);
-        }
-        const filters: { device_type_id?: string; manufacturer_id?: string; brand_id?: string } = {};
-        filters.device_type_id = modelParentTypeIds[0] || selectedType?.id;
+        if (mode === 'create') await api.medicineCatalog.models.create(payload);
+        else if (id) await api.medicineCatalog.models.update(id, payload);
+        const filters: { feed_type_id?: string; manufacturer_id?: string; brand_id?: string } = {};
+        filters.feed_type_id = modelParentTypeIds[0] || selectedType?.id;
         filters.manufacturer_id = modelParentMfrId || selectedMfr?.id;
         filters.brand_id = modelParentBrandIds[0] || selectedBrand?.id;
         await loadModels(filters);
-      }
-
-      if (target === 'unit') {
-        if (!unitForm.key || !unitForm.name) throw new Error('key and name required');
-        if (mode === 'create') {
-          await api.devices.units.create({ key: unitForm.key, name: unitForm.name, symbol: unitForm.symbol || undefined, sort_order: parseInt(unitForm.sort_order, 10) || 0 });
-        } else if (id) {
-          await api.devices.units.update(id, { name: unitForm.name, symbol: unitForm.symbol || undefined, sort_order: parseInt(unitForm.sort_order, 10) || 0 });
-        }
-        await loadUnits();
       }
 
       flash(t('admin.master.msg_success'));
@@ -371,17 +314,17 @@ export default function DevicePage() {
     if (!confirm(t('admin.master.msg_confirm_delete', 'Delete this item?'))) return;
     try {
       if (target === 'manufacturer') {
-        await api.devices.manufacturers.delete(id);
+        await api.medicineCatalog.manufacturers.delete(id);
         await loadManufacturers();
       }
       if (target === 'brand') {
-        await api.devices.brands.delete(id);
+        await api.medicineCatalog.brands.delete(id);
         await loadBrands(selectedMfr?.id, selectedType?.id);
       }
       if (target === 'model') {
-        await api.devices.models.delete(id);
-        const f: { device_type_id?: string; manufacturer_id?: string; brand_id?: string } = {};
-        if (selectedType) f.device_type_id = selectedType.id;
+        await api.medicineCatalog.models.delete(id);
+        const f: { feed_type_id?: string; manufacturer_id?: string; brand_id?: string } = {};
+        if (selectedType) f.feed_type_id = selectedType.id;
         if (selectedMfr) f.manufacturer_id = selectedMfr.id;
         if (selectedBrand) f.brand_id = selectedBrand.id;
         await loadModels(f);
@@ -396,9 +339,9 @@ export default function DevicePage() {
     if (!selectedModel) return;
     try {
       const ext = file.type === 'image/png' ? 'png' : file.type === 'image/webp' ? 'webp' : 'jpg';
-      const presigned = await api.storage.presignedUrl({ type: 'product_image', ext, subdir: `device/${selectedModel.id}` });
+      const presigned = await api.storage.presignedUrl({ type: 'product_image', ext, subdir: `medicine/${selectedModel.id}` });
       await fetch(presigned.upload_url, { method: 'PUT', headers: { 'Content-Type': file.type || 'application/octet-stream' }, body: file });
-      await api.devices.models.update(selectedModel.id, { image_url: presigned.public_url });
+      await api.medicineCatalog.models.update(selectedModel.id, { image_url: presigned.public_url });
       setSelectedModel({ ...selectedModel, image_url: presigned.public_url });
       setModels((prev) => prev.map((m) => m.id === selectedModel.id ? { ...m, image_url: presigned.public_url } : m));
     } catch (e) { setError(String(e)); }
@@ -407,7 +350,7 @@ export default function DevicePage() {
   async function handleModelImageRemove() {
     if (!selectedModel) return;
     try {
-      await api.devices.models.update(selectedModel.id, { image_url: null });
+      await api.medicineCatalog.models.update(selectedModel.id, { image_url: null });
       setSelectedModel({ ...selectedModel, image_url: null });
       setModels((prev) => prev.map((m) => m.id === selectedModel.id ? { ...m, image_url: null } : m));
     } catch (e) { setError(String(e)); }
@@ -416,186 +359,171 @@ export default function DevicePage() {
   async function handleModelImageUrlChange(url: string) {
     if (!selectedModel) return;
     try {
-      await api.devices.models.update(selectedModel.id, { image_url: url });
+      await api.medicineCatalog.models.update(selectedModel.id, { image_url: url });
       setSelectedModel({ ...selectedModel, image_url: url });
       setModels((prev) => prev.map((m) => m.id === selectedModel.id ? { ...m, image_url: url } : m));
     } catch (e) { setError(String(e)); }
   }
 
-  const DEVICE_PLACEHOLDER = '/assets/images/placeholder_device.svg';
+  const MEDICINE_PLACEHOLDER = '/assets/images/placeholder_medicine.svg';
   const addLabel = t('admin.master.btn_add');
   function SBadge({ status }: { status: string }) { return <CatalogStatusBadge status={status} t={t} />; }
+
+  // Parse medicine-specific metadata from model description (JSON)
+  function parseModelMeta(model: FeedModel): {
+    administration_route?: string; dosage_unit?: string; species?: string;
+    disease_tags?: Record<string, boolean>; prescribed?: boolean;
+    storage_condition?: string; warnings?: string; product_name_ko?: string;
+  } {
+    try {
+      if (model.description) return JSON.parse(model.description);
+    } catch { /* ignore */ }
+    return {};
+  }
+
+  function StorageBadge({ condition }: { condition?: string }) {
+    if (!condition) return null;
+    if (condition === 'refrigerated') return <span style={{ background: '#e0f7fa', color: '#00838f', padding: '1px 6px', borderRadius: 4, fontSize: 10, whiteSpace: 'nowrap' }}>{t('admin.medicine.refrigerated_badge', '냉장')}</span>;
+    if (condition === 'frozen') return <span style={{ background: '#e3f2fd', color: '#1565c0', padding: '1px 6px', borderRadius: 4, fontSize: 10, whiteSpace: 'nowrap' }}>{t('admin.medicine.frozen_badge', '냉동')}</span>;
+    return null;
+  }
 
   return (
     <>
       <div className="topbar">
-        <div className="topbar-title">🔬 {t('admin.device.title')}</div>
+        <div className="topbar-title">{t('admin.medicine.title', 'Medicine Catalog')}</div>
       </div>
       <div className="content">
         {error && <div className="alert alert-error">{error}</div>}
         {success && <div className="alert alert-success">{success}</div>}
 
-        <CatalogStatsBar loading={statsLoading} cards={[
-          { label: t('admin.catalog.stats.total_models', '전체 모델'), value: stats?.total_models ?? 0, desc: t('admin.catalog.stats.total_models_desc', '등록된 모델'), active: statsFilter === 'total', onClick: () => setStatsFilter(statsFilter === 'total' ? null : 'total') },
-          { label: t('admin.catalog.stats.active', '활성'), value: stats?.active_models ?? 0, desc: t('admin.catalog.stats.active_desc', '활성 모델'), active: statsFilter === 'active', onClick: () => setStatsFilter(statsFilter === 'active' ? null : 'active') },
-          { label: t('admin.catalog.stats.user_registered', '유저 등록'), value: stats?.user_registered ?? 0, desc: t('admin.catalog.stats.user_registered_device_desc', '반려동물 연결'), active: statsFilter === 'registered', onClick: () => setStatsFilter(statsFilter === 'registered' ? null : 'registered') },
-          { label: t('admin.catalog.stats.actual_usage', '실사용'), value: stats?.actual_usage ?? 0, desc: t('admin.catalog.stats.actual_usage_device_desc', '최근 30일 기록'), active: statsFilter === 'usage', onClick: () => setStatsFilter(statsFilter === 'usage' ? null : 'usage') },
-        ]} />
+        <div className="alert" style={{ marginBottom: 12 }}>{t('admin.medicine.guide', 'Manage medicine catalog: Type > Manufacturer > Brand > Medicine')}</div>
 
-        <div style={{ display: 'flex', gap: 8, marginBottom: 16 }}>
-          <button className={`btn ${activeTab === 'devices' ? 'btn-primary' : 'btn-secondary'}`} onClick={() => setActiveTab('devices')}>{t('admin.device.title')}</button>
-          <button className={`btn ${activeTab === 'units' ? 'btn-primary' : 'btn-secondary'}`} onClick={() => setActiveTab('units')}>{t('admin.device.units')}</button>
+        <div className="master-explorer-grid" style={{ gridTemplateColumns: 'repeat(4, minmax(0, 1fr))' }}>
+          <CatalogCol title={t('admin.medicine.types', 'Medicine Types')} sortMode={typeSort} onSortChange={setTypeSort}>
+            {types.length === 0 && <div className="master-empty">{t('admin.feed.empty')}</div>}
+            {types.map((item) => (
+              <button
+                key={item.id}
+                className={`master-row-btn ${selectedType?.id === item.id ? 'active' : ''}`}
+                onClick={() => setSelectedType(item)}
+              >
+                <div>
+                  <div className="master-row-title">{itemLabel(item)}</div>
+                  <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>{item.key}</div>
+                </div>
+                <SBadge status={item.status} />
+              </button>
+            ))}
+          </CatalogCol>
+
+          <CatalogCol title={t('admin.medicine.manufacturers', 'Manufacturers')} onAdd={openCreateMfr} addLabel={addLabel} sortMode={mfrSort} onSortChange={setMfrSort}>
+            {manufacturers.length === 0 && <div className="master-empty">{t('admin.feed.empty')}</div>}
+            {manufacturers.map((item) => (
+              <button key={item.id} className={`master-row-btn ${selectedMfr?.id === item.id ? 'active' : ''}`} onClick={() => { setSelectedMfr(item); setSelectedBrand(null); setSelectedModel(null); }}>
+                <div>
+                  <div className="master-row-title">{itemLabel(item)}</div>
+                  <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>{item.country ?? ''}</div>
+                </div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 4, alignItems: 'flex-end' }}>
+                  <SBadge status={item.status} />
+                  <button className="btn btn-secondary btn-sm" style={{ fontSize: 10, padding: '1px 6px' }} title={t('common.edit', 'Edit')} aria-label={t('common.edit', 'Edit')} onClick={(e) => { e.stopPropagation(); openEditMfr(item); }}>&#9998;</button>
+                </div>
+              </button>
+            ))}
+          </CatalogCol>
+
+          <CatalogCol title={t('admin.medicine.brands', 'Brands')} onAdd={openCreateBrand} addLabel={addLabel} sortMode={brandSort} onSortChange={setBrandSort}>
+            {!selectedMfr && <div className="master-empty">{t('admin.feed.select_manufacturer')}</div>}
+            {selectedMfr && brands.length === 0 && <div className="master-empty">{t('admin.feed.empty')}</div>}
+            {selectedMfr && brands.map((item) => (
+              <button key={item.id} className={`master-row-btn ${selectedBrand?.id === item.id ? 'active' : ''}`} onClick={() => { setSelectedBrand(item); setSelectedModel(null); }}>
+                <div>
+                  <div className="master-row-title">{itemLabel(item)}</div>
+                  <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>{item.name_ko}</div>
+                </div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 4, alignItems: 'flex-end' }}>
+                  <SBadge status={item.status} />
+                  <button className="btn btn-secondary btn-sm" style={{ fontSize: 10, padding: '1px 6px' }} title={t('common.edit', 'Edit')} aria-label={t('common.edit', 'Edit')} onClick={(e) => { e.stopPropagation(); openEditBrand(item); }}>&#9998;</button>
+                </div>
+              </button>
+            ))}
+          </CatalogCol>
+
+          <CatalogCol title={t('admin.medicine.models', 'Medicines')} onAdd={openCreateModel} addLabel={addLabel}>
+            {!selectedType && <div className="master-empty">{t('admin.feed.select_type')}</div>}
+            {selectedType && models.length === 0 && <div className="master-empty">{t('admin.feed.empty')}</div>}
+            {selectedType && models.map((item) => {
+              const meta = parseModelMeta(item);
+              return (
+                <button key={item.id} className={`master-row-btn ${selectedModel?.id === item.id ? 'active' : ''}`} onClick={() => setSelectedModel(item)}>
+                  <CatalogListThumb src={item.image_url} fallbackSrc={MEDICINE_PLACEHOLDER} alt={item.model_name} />
+                  <div style={{ minWidth: 0, flex: 1 }}>
+                    <div className="master-row-title">{item.model_display_label || item.model_name}</div>
+                    <div style={{ fontSize: 11, color: 'var(--text-muted)', display: 'flex', gap: 4, alignItems: 'center', flexWrap: 'wrap' }}>
+                      {meta.dosage_unit ?? ''} {meta.species ? `(${meta.species})` : ''}
+                      {meta.prescribed && <span style={{ background: '#fff3e0', color: '#e65100', padding: '0 4px', borderRadius: 3, fontSize: 9, fontWeight: 700 }}>Rx</span>}
+                      <StorageBadge condition={meta.storage_condition} />
+                    </div>
+                  </div>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: 4, alignItems: 'flex-end' }}>
+                    <SBadge status={item.status} />
+                    <button className="btn btn-secondary btn-sm" style={{ fontSize: 10, padding: '1px 6px' }} title={t('common.edit', 'Edit')} aria-label={t('common.edit', 'Edit')} onClick={(e) => { e.stopPropagation(); openEditModel(item); }}>&#9998;</button>
+                  </div>
+                </button>
+              );
+            })}
+          </CatalogCol>
         </div>
 
-        {activeTab === 'devices' && (
-          <>
-            <div className="alert" style={{ marginBottom: 12 }}>{t('admin.device.guide')}</div>
-            <div className="master-explorer-grid" style={{ gridTemplateColumns: 'repeat(4, minmax(0, 1fr))' }}>
-              <CatalogCol title={t('admin.device.types')} sortMode={typeSort} onSortChange={setTypeSort}>
-                {types.length === 0 && <div className="master-empty">{t('admin.device.empty')}</div>}
-                {types.map((item) => (
-                  <button
-                    key={item.id}
-                    className={`master-row-btn ${selectedType?.id === item.id ? 'active' : ''}`}
-                    onClick={() => { setSelectedType(item); setSelectedMfr(null); setSelectedBrand(null); setSelectedModel(null); }}
-                  >
-                    <div>
-                      <div className="master-row-title">{itemLabel(item)}</div>
-                      <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>{item.key}</div>
-                    </div>
-                    <SBadge status={item.status} />
-                  </button>
-                ))}
-              </CatalogCol>
-
-              <CatalogCol title={t('admin.device.manufacturers')} onAdd={openCreateMfr} addLabel={addLabel} sortMode={mfrSort} onSortChange={setMfrSort}>
-                {manufacturers.length === 0 && <div className="master-empty">{t('admin.device.empty')}</div>}
-                {manufacturers.map((item) => (
-                  <button
-                    key={item.id}
-                    className={`master-row-btn ${selectedMfr?.id === item.id ? 'active' : ''}`}
-                    onClick={() => { setSelectedMfr(item); setSelectedBrand(null); setSelectedModel(null); }}
-                  >
-                    <div>
-                      <div className="master-row-title">{itemLabel(item)}</div>
-                      <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>{item.country ?? ''}</div>
-                    </div>
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: 4, alignItems: 'flex-end' }}>
-                      <SBadge status={item.status} />
-                      <button className="btn btn-secondary btn-sm" style={{ fontSize: 10, padding: '1px 6px' }} title={t('common.edit', 'Edit')} aria-label={t('common.edit', 'Edit')} onClick={(e) => { e.stopPropagation(); openEditMfr(item); }}>✏️</button>
-                    </div>
-                  </button>
-                ))}
-              </CatalogCol>
-
-              <CatalogCol title={t('admin.device.brands')} onAdd={openCreateBrand} addLabel={addLabel} sortMode={brandSort} onSortChange={setBrandSort}>
-                {!selectedMfr && <div className="master-empty">{t('admin.device.select_manufacturer')}</div>}
-                {selectedMfr && brands.length === 0 && <div className="master-empty">{t('admin.device.empty')}</div>}
-                {selectedMfr && brands.map((item) => (
-                  <button key={item.id} className={`master-row-btn ${selectedBrand?.id === item.id ? 'active' : ''}`} onClick={() => { setSelectedBrand(item); setSelectedModel(null); }}>
-                    <div>
-                      <div className="master-row-title">{itemLabel(item)}</div>
-                      <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>{item.name_ko}</div>
-                    </div>
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: 4, alignItems: 'flex-end' }}>
-                      <SBadge status={item.status} />
-                      <button className="btn btn-secondary btn-sm" style={{ fontSize: 10, padding: '1px 6px' }} title={t('common.edit', 'Edit')} aria-label={t('common.edit', 'Edit')} onClick={(e) => { e.stopPropagation(); openEditBrand(item); }}>✏️</button>
-                    </div>
-                  </button>
-                ))}
-              </CatalogCol>
-
-              <CatalogCol title={t('admin.device.models')} onAdd={openCreateModel} addLabel={addLabel}>
-                {!selectedType && <div className="master-empty">{t('admin.device.select_type')}</div>}
-                {selectedType && models.length === 0 && <div className="master-empty">{t('admin.device.empty')}</div>}
-                {selectedType && models.map((item) => (
-                  <button key={item.id} className={`master-row-btn ${selectedModel?.id === item.id ? 'active' : ''}`} onClick={() => setSelectedModel(item)}>
-                    <CatalogListThumb src={item.image_url} fallbackSrc={DEVICE_PLACEHOLDER} alt={item.model_name} />
-                    <div style={{ minWidth: 0, flex: 1 }}>
-                      <div className="master-row-title">{item.model_display_label || item.model_name}</div>
-                      <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>{item.model_code ?? ''} {item.mfr_display_label ?? item.mfr_name_en ?? ''}</div>
-                    </div>
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: 4, alignItems: 'flex-end' }}>
-                      <SBadge status={item.status} />
-                      <button className="btn btn-secondary btn-sm" style={{ fontSize: 10, padding: '1px 6px' }} title={t('common.edit', 'Edit')} aria-label={t('common.edit', 'Edit')} onClick={(e) => { e.stopPropagation(); openEditModel(item); }}>✏️</button>
-                    </div>
-                  </button>
-                ))}
-              </CatalogCol>
-            </div>
-
-            {selectedModel && (
-              <CatalogModelDetail
-                title={selectedModel.model_display_label || selectedModel.model_name}
-                onEdit={() => openEditModel(selectedModel)}
-                onDelete={() => void handleDelete('model', selectedModel.id)}
-                editLabel="✏️"
-                deleteLabel="🗑️"
-                imageUrl={selectedModel.image_url}
-                fallbackImageSrc={DEVICE_PLACEHOLDER}
-                onImageUpload={(file) => void handleModelImageUpload(file)}
-                onImageRemove={() => void handleModelImageRemove()}
-                onImageUrlChange={(url) => void handleModelImageUrlChange(url)}
-                t={t}
-                fields={[
-                  { label: t('admin.device.device_type'), value: selectedModel.type_display_label || selectedModel.type_name_en || selectedModel.type_name_ko || '—' },
-                  { label: t('admin.device.manufacturer'), value: selectedModel.mfr_display_label || selectedModel.mfr_name_en || selectedModel.mfr_name_ko || '—' },
-                  { label: t('admin.device.brand'), value: selectedModel.brand_display_label || selectedModel.brand_name_en || selectedModel.brand_name_ko || '—' },
-                  ...(selectedModel.model_code ? [{ label: t('admin.device.model_code'), value: selectedModel.model_code } satisfies ModelDetailField] : []),
-                  ...(selectedModel.description ? [{ label: t('admin.device.description'), value: selectedModel.description } satisfies ModelDetailField] : []),
-                ]}
-              />
-            )}
-          </>
-        )}
-
-        {activeTab === 'units' && (
-          <div className="card">
-            <div className="card-header">
-              <div className="card-title">{t('admin.device.units')}</div>
-              <button className="btn btn-primary btn-sm" onClick={openCreateUnit}>+ {t('admin.master.btn_add')}</button>
-            </div>
-            <table className="table">
-              <thead>
-                <tr>
-                  <th>{t('admin.device.key')}</th>
-                  <th>{t('admin.device.model_name')}</th>
-                  <th>{t('admin.device.symbol')}</th>
-                  <th>{t('admin.master.field_sort')}</th>
-                  <th>{t('admin.master.active')}</th>
-                  <th></th>
-                </tr>
-              </thead>
-              <tbody>
-                {units.map((u) => (
-                  <tr key={u.id}>
-                    <td style={{ fontFamily: 'monospace', fontSize: 12 }}>{u.key}</td>
-                    <td>{u.name}</td>
-                    <td>{u.symbol ?? '—'}</td>
-                    <td>{u.sort_order}</td>
-                    <td><CatalogStatusBadge status={u.status} t={t} /></td>
-                    <td><button className="btn btn-secondary btn-sm" title={t('common.edit', 'Edit')} aria-label={t('common.edit', 'Edit')} onClick={() => openEditUnit(u)}>✏️</button></td>
-                  </tr>
-                ))}
-                {units.length === 0 && <tr><td colSpan={6} style={{ textAlign: 'center', padding: 16 }}>{t('admin.device.empty')}</td></tr>}
-              </tbody>
-            </table>
-          </div>
-        )}
+        {/* Model detail */}
+        {selectedModel && (() => {
+          const meta = parseModelMeta(selectedModel);
+          const routeLabel = meta.administration_route ? t(`medicine.route.${meta.administration_route}`, meta.administration_route) : '-';
+          const storageLabel = meta.storage_condition ? t(`admin.medicine.${meta.storage_condition === 'refrigerated' ? 'refrigerated_badge' : meta.storage_condition === 'frozen' ? 'frozen_badge' : 'room_temp_badge'}`, meta.storage_condition) : '-';
+          const diseaseTags = meta.disease_tags ? Object.keys(meta.disease_tags).filter(k => meta.disease_tags![k]).join(', ') : '';
+          return (
+            <CatalogModelDetail
+              title={selectedModel.model_display_label || selectedModel.model_name}
+              onEdit={() => openEditModel(selectedModel)}
+              onDelete={() => void handleDelete('model', selectedModel.id)}
+              editLabel="&#9998;"
+              deleteLabel="&#128465;"
+              imageUrl={selectedModel.image_url}
+              fallbackImageSrc={MEDICINE_PLACEHOLDER}
+              onImageUpload={(file) => void handleModelImageUpload(file)}
+              onImageRemove={() => void handleModelImageRemove()}
+              onImageUrlChange={(url) => void handleModelImageUrlChange(url)}
+              t={t}
+              fields={[
+                { label: t('admin.medicine.type', 'Type'), value: selectedModel.type_display_label || selectedModel.type_name_en || selectedModel.type_name_ko || '-' },
+                { label: t('admin.medicine.manufacturer', 'Manufacturer'), value: selectedModel.mfr_display_label || selectedModel.mfr_name_en || selectedModel.mfr_name_ko || '-' },
+                { label: t('admin.medicine.brand', 'Brand'), value: selectedModel.brand_display_label || selectedModel.brand_name_en || selectedModel.brand_name_ko || '-' },
+                { label: t('admin.medicine.administration_route', 'Route'), value: routeLabel },
+                ...(meta.dosage_unit ? [{ label: t('admin.medicine.dosage_unit', 'Dosage Unit'), value: meta.dosage_unit } satisfies ModelDetailField] : []),
+                ...(meta.species ? [{ label: t('admin.medicine.species', 'Species'), value: meta.species } satisfies ModelDetailField] : []),
+                { label: t('admin.medicine.prescribed', 'Prescribed'), value: meta.prescribed ? 'Rx' : '-' },
+                { label: t('admin.medicine.storage_condition', 'Storage'), value: storageLabel },
+                ...(diseaseTags ? [{ label: t('admin.medicine.disease_tags', 'Disease Tags'), value: diseaseTags } satisfies ModelDetailField] : []),
+                ...(meta.warnings ? [{ label: t('admin.medicine.warnings', 'Warnings'), value: meta.warnings } satisfies ModelDetailField] : []),
+              ]}
+            />
+          );
+        })()}
       </div>
 
+      {/* ── Create/Edit Modal ── */}
       {modal && (
         <div className="modal-overlay" onClick={(e) => e.target === e.currentTarget && setModal(null)}>
           <div className="modal" style={{ maxWidth: 460 }}>
             <div className="modal-header">
               <div className="modal-title">
                 {modal.mode === 'create' ? t('admin.master.btn_add') : t('admin.master.btn_edit')} {' — '}
-                {modal.target === 'manufacturer' && t('admin.device.manufacturers')}
-                {modal.target === 'brand' && t('admin.device.brands')}
-                {modal.target === 'model' && t('admin.device.models')}
-                {modal.target === 'unit' && t('admin.device.units')}
+                {modal.target === 'manufacturer' && t('admin.medicine.manufacturers', 'Manufacturers')}
+                {modal.target === 'brand' && t('admin.medicine.brands', 'Brands')}
+                {modal.target === 'model' && t('admin.medicine.models', 'Medicines')}
               </div>
-              <button className="modal-close" onClick={() => setModal(null)}>×</button>
+              <button className="modal-close" onClick={() => setModal(null)}>&times;</button>
             </div>
             <div className="modal-body" style={{ maxHeight: '70vh', overflowY: 'auto' }}>
               {error && <div className="alert alert-error" style={{ marginBottom: 8 }}>{error}</div>}
@@ -603,15 +531,11 @@ export default function DevicePage() {
               {modal.target === 'manufacturer' && (
                 <>
                   <div className="form-group">
-                    <label className="form-label">{t('admin.device.device_type')} *</label>
+                    <label className="form-label">{t('admin.medicine.type', 'Medicine Type')} *</label>
                     <div style={{ display: 'grid', gap: 6, maxHeight: 140, overflowY: 'auto', border: '1px solid var(--border)', borderRadius: 8, padding: 8 }}>
                       {types.map((row) => (
                         <label key={row.id} style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 12 }}>
-                          <input
-                            type="checkbox"
-                            checked={mfrParentTypeIds.includes(row.id)}
-                            onChange={(e) => setMfrParentTypeIds((prev) => e.target.checked ? [...new Set([...prev, row.id])] : prev.filter((id) => id !== row.id))}
-                          />
+                          <input type="checkbox" checked={mfrParentTypeIds.includes(row.id)} onChange={(e) => setMfrParentTypeIds((prev) => e.target.checked ? [...new Set([...prev, row.id])] : prev.filter((id) => id !== row.id))} />
                           <span>{itemLabel(row)}</span>
                         </label>
                       ))}
@@ -630,7 +554,7 @@ export default function DevicePage() {
                     <input className="form-input" type="number" value={mfrForm.sort_order} onChange={(e) => setMfrForm((f) => ({ ...f, sort_order: e.target.value }))} />
                   </div>
                   <div className="form-group">
-                    <label className="form-label">{t('admin.device.country')}</label>
+                    <label className="form-label">{t('admin.feed.country')}</label>
                     <input className="form-input" value={mfrForm.country} onChange={(e) => setMfrForm((f) => ({ ...f, country: e.target.value }))} placeholder="US" />
                   </div>
                   <TranslationFields translations={mfrTrans} onChange={setMfrTrans} translating={translating} onAutoTranslate={() => void autoTranslate(mfrTrans.ko, mfrTrans, setMfrTrans, setTranslating, setError)} t={t} />
@@ -640,30 +564,22 @@ export default function DevicePage() {
               {modal.target === 'brand' && (
                 <>
                   <div className="form-group">
-                    <label className="form-label">{t('admin.device.device_type')} *</label>
+                    <label className="form-label">{t('admin.medicine.type', 'Medicine Type')} *</label>
                     <div style={{ display: 'grid', gap: 6, maxHeight: 140, overflowY: 'auto', border: '1px solid var(--border)', borderRadius: 8, padding: 8 }}>
                       {types.map((row) => (
                         <label key={row.id} style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 12 }}>
-                          <input
-                            type="checkbox"
-                            checked={brandParentTypeIds.includes(row.id)}
-                            onChange={(e) => setBrandParentTypeIds((prev) => e.target.checked ? [...new Set([...prev, row.id])] : prev.filter((id) => id !== row.id))}
-                          />
+                          <input type="checkbox" checked={brandParentTypeIds.includes(row.id)} onChange={(e) => setBrandParentTypeIds((prev) => e.target.checked ? [...new Set([...prev, row.id])] : prev.filter((id) => id !== row.id))} />
                           <span>{itemLabel(row)}</span>
                         </label>
                       ))}
                     </div>
                   </div>
                   <div className="form-group">
-                    <label className="form-label">{t('admin.device.manufacturer')} *</label>
+                    <label className="form-label">{t('admin.medicine.manufacturer', 'Manufacturer')} *</label>
                     <div style={{ display: 'grid', gap: 6, maxHeight: 140, overflowY: 'auto', border: '1px solid var(--border)', borderRadius: 8, padding: 8 }}>
                       {manufacturers.map((row) => (
                         <label key={row.id} style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 12 }}>
-                          <input
-                            type="checkbox"
-                            checked={brandParentMfrIds.includes(row.id)}
-                            onChange={(e) => setBrandParentMfrIds((prev) => e.target.checked ? [...new Set([...prev, row.id])] : prev.filter((id) => id !== row.id))}
-                          />
+                          <input type="checkbox" checked={brandParentMfrIds.includes(row.id)} onChange={(e) => setBrandParentMfrIds((prev) => e.target.checked ? [...new Set([...prev, row.id])] : prev.filter((id) => id !== row.id))} />
                           <span>{itemLabel(row)}</span>
                         </label>
                       ))}
@@ -688,22 +604,18 @@ export default function DevicePage() {
               {modal.target === 'model' && (
                 <>
                   <div className="form-group">
-                    <label className="form-label">{t('admin.device.device_type')} *</label>
+                    <label className="form-label">{t('admin.medicine.type', 'Medicine Type')} *</label>
                     <div style={{ display: 'grid', gap: 6, maxHeight: 120, overflowY: 'auto', border: '1px solid var(--border)', borderRadius: 8, padding: 8 }}>
                       {types.map((row) => (
                         <label key={row.id} style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 12 }}>
-                          <input
-                            type="checkbox"
-                            checked={modelParentTypeIds.includes(row.id)}
-                            onChange={(e) => setModelParentTypeIds((prev) => e.target.checked ? [...new Set([...prev, row.id])] : prev.filter((id) => id !== row.id))}
-                          />
+                          <input type="checkbox" checked={modelParentTypeIds.includes(row.id)} onChange={(e) => setModelParentTypeIds((prev) => e.target.checked ? [...new Set([...prev, row.id])] : prev.filter((id) => id !== row.id))} />
                           <span>{itemLabel(row)}</span>
                         </label>
                       ))}
                     </div>
                   </div>
                   <div className="form-group">
-                    <label className="form-label">{t('admin.device.manufacturer')} *</label>
+                    <label className="form-label">{t('admin.medicine.manufacturer', 'Manufacturer')} *</label>
                     <select
                       className="form-input"
                       value={modelParentMfrId}
@@ -714,20 +626,16 @@ export default function DevicePage() {
                         if (mfrId) void loadBrands(mfrId, selectedType?.id);
                       }}
                     >
-                      <option value="">{t('admin.device.select_manufacturer')}</option>
+                      <option value="">{t('admin.feed.select_manufacturer')}</option>
                       {manufacturers.map((row) => <option key={row.id} value={row.id}>{itemLabel(row)}</option>)}
                     </select>
                   </div>
                   <div className="form-group">
-                    <label className="form-label">{t('admin.device.brand')} *</label>
+                    <label className="form-label">{t('admin.medicine.brand', 'Brand')} *</label>
                     <div style={{ display: 'grid', gap: 6, maxHeight: 120, overflowY: 'auto', border: '1px solid var(--border)', borderRadius: 8, padding: 8 }}>
                       {brands.map((row) => (
                         <label key={row.id} style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 12 }}>
-                          <input
-                            type="checkbox"
-                            checked={modelParentBrandIds.includes(row.id)}
-                            onChange={(e) => setModelParentBrandIds((prev) => e.target.checked ? [...new Set([...prev, row.id])] : prev.filter((id) => id !== row.id))}
-                          />
+                          <input type="checkbox" checked={modelParentBrandIds.includes(row.id)} onChange={(e) => setModelParentBrandIds((prev) => e.target.checked ? [...new Set([...prev, row.id])] : prev.filter((id) => id !== row.id))} />
                           <span>{itemLabel(row)}</span>
                         </label>
                       ))}
@@ -746,46 +654,25 @@ export default function DevicePage() {
                     <input className="form-input" type="number" value={modelForm.sort_order} onChange={(e) => setModelForm((f) => ({ ...f, sort_order: e.target.value }))} />
                   </div>
                   <div className="form-group">
-                    <label className="form-label">{t('admin.device.model_code')}</label>
+                    <label className="form-label">{t('admin.feed.model_code')}</label>
                     <input className="form-input font-mono" value={modelForm.model_code} onChange={(e) => setModelForm((f) => ({ ...f, model_code: e.target.value }))} />
                   </div>
                   <div className="form-group">
-                    <label className="form-label">{t('admin.device.description')}</label>
+                    <label className="form-label">{t('admin.feed.description')}</label>
                     <input className="form-input" value={modelForm.description} onChange={(e) => setModelForm((f) => ({ ...f, description: e.target.value }))} />
                   </div>
                   <TranslationFields translations={modelTrans} onChange={setModelTrans} translating={translating} onAutoTranslate={() => void autoTranslate(modelTrans.ko, modelTrans, setModelTrans, setTranslating, setError)} t={t} />
                 </>
               )}
-
-              {modal.target === 'unit' && (
-                <>
-                  {modal.mode === 'create' && (
-                    <div className="form-group">
-                      <label className="form-label">{t('admin.device.key')} *</label>
-                      <input className="form-input font-mono" value={unitForm.key} onChange={(e) => setUnitForm((f) => ({ ...f, key: e.target.value }))} placeholder="mg_dl" />
-                    </div>
-                  )}
-                  <div className="form-group">
-                    <label className="form-label">{t('admin.device.model_name')} *</label>
-                    <input className="form-input" value={unitForm.name} onChange={(e) => setUnitForm((f) => ({ ...f, name: e.target.value }))} />
-                  </div>
-                  <div className="form-group">
-                    <label className="form-label">{t('admin.device.symbol')}</label>
-                    <input className="form-input" value={unitForm.symbol} onChange={(e) => setUnitForm((f) => ({ ...f, symbol: e.target.value }))} placeholder="mg/dL" />
-                  </div>
-                  <div className="form-group">
-                    <label className="form-label">{t('admin.master.field_sort')}</label>
-                    <input className="form-input" type="number" value={unitForm.sort_order} onChange={(e) => setUnitForm((f) => ({ ...f, sort_order: e.target.value }))} />
-                  </div>
-                </>
-              )}
             </div>
             <div className="modal-footer">
-              {modal.mode === 'edit' && modal.id && modal.target !== 'unit' && (
-                <button className="btn btn-danger" style={{ marginRight: 'auto' }} title={t('common.delete', 'Delete')} aria-label={t('common.delete', 'Delete')} onClick={() => void handleDelete(modal.target, modal.id!).then(() => setModal(null))}>🗑️</button>
+              {modal.mode === 'edit' && modal.id && (
+                <button className="btn btn-danger" style={{ marginRight: 'auto' }} title={t('common.delete', 'Delete')} aria-label={t('common.delete', 'Delete')} onClick={() => void handleDelete(modal.target, modal.id!).then(() => setModal(null))}>&#128465;</button>
               )}
-              <button className="btn btn-secondary" onClick={() => setModal(null)}>{t('admin.master.btn_cancel')}</button>
-              <button className="btn btn-primary" onClick={() => void handleSave()} disabled={saving}>{t('admin.master.btn_save')}</button>
+              <button className="btn" onClick={() => setModal(null)}>{t('common.cancel', 'Cancel')}</button>
+              <button className="btn btn-primary" disabled={saving} onClick={() => void handleSave()}>
+                {saving ? t('common.saving', 'Saving...') : t('common.save', 'Save')}
+              </button>
             </div>
           </div>
         </div>

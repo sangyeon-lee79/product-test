@@ -820,6 +820,16 @@ export interface PetLog {
   updated_at: string;
 }
 
+// ─── Catalog Stats ───────────────────────────────────────────────────────────
+
+export interface CatalogStats {
+  total_models: number;
+  active_models: number;
+  user_registered: number;
+  actual_usage: number;
+  prescribed?: number;
+}
+
 // ─── S9: Store / Service / Discount ─────────────────────────────────────────
 export interface Store {
   id: string;
