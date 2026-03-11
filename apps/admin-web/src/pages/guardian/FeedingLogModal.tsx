@@ -1,5 +1,5 @@
 // 급여 기록 모달 — 단일 사료 또는 혼합 급여 (multi-feed mixing)
-// + 중복 사료 선택 방지, 즐겨찾기 저장/불러오기
+// + 중복 사료 선택 방지, 즐겨찾기 저장/불러오기, 영양제 선택
 import { useEffect, useMemo, useState } from 'react';
 import { api, type FeedingLog, type FeedingMixFavorite, type Pet, type PetFeed } from '../../lib/api';
 import { toDatetimeLocal, uiErrorMessage } from './guardianTypes';
@@ -9,6 +9,7 @@ interface Props {
   editingLog: FeedingLog | null;
   selectedPet: Pet | null;
   petFeeds: PetFeed[];
+  petSupplements: PetFeed[];
   t: (key: string, fallback?: string) => string;
   setError: (msg: string) => void;
   onClose: () => void;
@@ -21,6 +22,11 @@ interface MixedRow {
   amount_g: string;
 }
 
+interface SupplementRow {
+  pet_feed_id: string;
+  dosage: string;
+}
+
 const EMPTY_FORM = {
   pet_feed_id: '',
   amount_g: '',
@@ -28,14 +34,23 @@ const EMPTY_FORM = {
   memo: '',
 };
 
+function parseSupplementMeta(f: PetFeed): { ingredients?: string; dosage_unit?: string; calories_per_serving?: number; species_key?: string; prescribed?: boolean } {
+  try {
+    const desc = (f as unknown as Record<string, unknown>).model_description;
+    if (desc && typeof desc === 'string') return JSON.parse(desc);
+  } catch { /* ignore */ }
+  return {};
+}
+
 export default function FeedingLogModal({
-  open, editingLog, selectedPet, petFeeds,
+  open, editingLog, selectedPet, petFeeds, petSupplements,
   t, setError, onClose, onSuccess, onOpenFeedManage,
 }: Props) {
   const [form, setForm] = useState(EMPTY_FORM);
   const [initialized, setInitialized] = useState(false);
   const [isMixed, setIsMixed] = useState(false);
   const [mixedRows, setMixedRows] = useState<MixedRow[]>([{ pet_feed_id: '', amount_g: '' }]);
+  const [supplementRows, setSupplementRows] = useState<SupplementRow[]>([]);
 
   // Favorites state
   const [favorites, setFavorites] = useState<FeedingMixFavorite[]>([]);
@@ -59,6 +74,15 @@ export default function FeedingLogModal({
     }
     return s;
   }, [mixedRows]);
+
+  // Set of supplement ids already selected (for duplicate prevention)
+  const selectedSupplementIds = useMemo(() => {
+    const s = new Set<string>();
+    for (const row of supplementRows) {
+      if (row.pet_feed_id) s.add(row.pet_feed_id);
+    }
+    return s;
+  }, [supplementRows]);
 
   // Load favorites when modal opens in mixed mode
   useEffect(() => {
@@ -102,6 +126,7 @@ export default function FeedingLogModal({
         feeding_time: toDatetimeLocal(),
       });
     }
+    setSupplementRows([]);
     setInitialized(true);
   }
   if (!open && initialized) {
@@ -138,11 +163,38 @@ export default function FeedingLogModal({
   // Single mode calorie display
   const singleCalories = !isMixed ? calcCalories(form.pet_feed_id, form.amount_g) : 0;
 
+  // Supplement calorie calculation
+  const supplementCalorieDetails = useMemo(() => {
+    const details: { name: string; kcal: number }[] = [];
+    let total = 0;
+    for (const row of supplementRows) {
+      if (!row.pet_feed_id) continue;
+      const supp = petSupplements.find((s) => s.id === row.pet_feed_id);
+      if (!supp) continue;
+      const meta = parseSupplementMeta(supp);
+      const dosage = Number(row.dosage);
+      if (!meta.calories_per_serving || !Number.isFinite(dosage) || dosage <= 0) continue;
+      const kcal = meta.calories_per_serving * dosage;
+      details.push({ name: feedLabel(supp), kcal });
+      total += kcal;
+    }
+    return { details, total };
+  }, [supplementRows, petSupplements]);
+
+  // Total calories across feed + supplements
+  const feedCalories = isMixed ? (mixedSummary?.totalCal ?? 0) : singleCalories;
+  const totalCaloriesAll = feedCalories + supplementCalorieDetails.total;
+
   // Valid mixed rows count (for save favorite button)
   const validMixedRowCount = mixedRows.filter((r) => r.pet_feed_id).length;
 
   async function handleSave() {
     if (!petId) return;
+
+    // Build supplement items for the payload
+    const suppItems = supplementRows
+      .filter((r) => r.pet_feed_id && Number(r.dosage) > 0)
+      .map((r) => ({ pet_feed_id: r.pet_feed_id, amount_g: Number(r.dosage) || undefined }));
 
     if (isMixed) {
       const validRows = mixedRows.filter((r) => r.pet_feed_id);
@@ -150,16 +202,17 @@ export default function FeedingLogModal({
         setError(t('guardian.feeding.select_feed', 'Please select a feed'));
         return;
       }
+      const allItems = [
+        ...validRows.map((r) => ({ pet_feed_id: r.pet_feed_id, amount_g: Number(r.amount_g) || undefined })),
+        ...suppItems,
+      ];
       const totalG = validRows.reduce((sum, r) => sum + (Number(r.amount_g) || 0), 0);
       const payload = {
         is_mixed: true,
         amount_g: totalG > 0 ? totalG : undefined,
         feeding_time: form.feeding_time || undefined,
         memo: form.memo || undefined,
-        items: validRows.map((r) => ({
-          pet_feed_id: r.pet_feed_id,
-          amount_g: Number(r.amount_g) || undefined,
-        })),
+        items: allItems,
       };
       try {
         if (editingLog) {
@@ -177,26 +230,51 @@ export default function FeedingLogModal({
         setError(t('guardian.feeding.select_feed', 'Please select a feed'));
         return;
       }
-      const selectedFeed = petFeeds.find((f) => f.id === form.pet_feed_id);
-      const feedModelId = selectedFeed?.feed_model_id || undefined;
-      const payload = {
-        pet_feed_id: form.pet_feed_id,
-        feed_model_id: feedModelId,
-        amount_g: form.amount_g ? Number(form.amount_g) : undefined,
-        feeding_time: form.feeding_time || undefined,
-        memo: form.memo || undefined,
-        is_mixed: false,
-      };
-      try {
-        if (editingLog) {
-          await api.pets.feedingLogs.update(petId, editingLog.id, payload);
-        } else {
-          await api.pets.feedingLogs.create(petId, payload);
+
+      // If supplements are added, save as mixed to include them
+      if (suppItems.length > 0) {
+        const feedItem = { pet_feed_id: form.pet_feed_id, amount_g: form.amount_g ? Number(form.amount_g) : undefined };
+        const allItems = [feedItem, ...suppItems];
+        const payload = {
+          is_mixed: true,
+          amount_g: form.amount_g ? Number(form.amount_g) : undefined,
+          feeding_time: form.feeding_time || undefined,
+          memo: form.memo || undefined,
+          items: allItems,
+        };
+        try {
+          if (editingLog) {
+            await api.pets.feedingLogs.update(petId, editingLog.id, payload);
+          } else {
+            await api.pets.feedingLogs.create(petId, payload);
+          }
+          onSuccess();
+          onClose();
+        } catch (e) {
+          setError(uiErrorMessage(e, t('common.err.save', 'Failed to save.')));
         }
-        onSuccess();
-        onClose();
-      } catch (e) {
-        setError(uiErrorMessage(e, t('common.err.save', 'Failed to save.')));
+      } else {
+        const selectedFeed = petFeeds.find((f) => f.id === form.pet_feed_id);
+        const feedModelId = selectedFeed?.feed_model_id || undefined;
+        const payload = {
+          pet_feed_id: form.pet_feed_id,
+          feed_model_id: feedModelId,
+          amount_g: form.amount_g ? Number(form.amount_g) : undefined,
+          feeding_time: form.feeding_time || undefined,
+          memo: form.memo || undefined,
+          is_mixed: false,
+        };
+        try {
+          if (editingLog) {
+            await api.pets.feedingLogs.update(petId, editingLog.id, payload);
+          } else {
+            await api.pets.feedingLogs.create(petId, payload);
+          }
+          onSuccess();
+          onClose();
+        } catch (e) {
+          setError(uiErrorMessage(e, t('common.err.save', 'Failed to save.')));
+        }
       }
     }
   }
@@ -216,6 +294,19 @@ export default function FeedingLogModal({
 
   function updateRow(idx: number, field: keyof MixedRow, value: string) {
     setMixedRows((prev) => prev.map((r, i) => i === idx ? { ...r, [field]: value } : r));
+  }
+
+  // Supplement row helpers
+  function addSupplementRow() {
+    setSupplementRows((prev) => [...prev, { pet_feed_id: '', dosage: '1' }]);
+  }
+
+  function removeSupplementRow(idx: number) {
+    setSupplementRows((prev) => prev.filter((_, i) => i !== idx));
+  }
+
+  function updateSupplementRow(idx: number, field: keyof SupplementRow, value: string) {
+    setSupplementRows((prev) => prev.map((r, i) => i === idx ? { ...r, [field]: value } : r));
   }
 
   // Load a favorite into mixedRows
@@ -265,24 +356,27 @@ export default function FeedingLogModal({
 
   if (!open) return null;
 
+  // Whether to show the combined nutrition summary box (single mode with data, or always for mixed)
+  const showNutritionSummary = (isMixed && mixedSummary && mixedSummary.totalG > 0) || (!isMixed && singleCalories > 0) || supplementCalorieDetails.total > 0;
+
   return (
     <div className="modal-overlay">
       <div className="modal" style={{ maxWidth: 520 }}>
         <div className="modal-header">
           <h3 className="modal-title">
             {editingLog
-              ? t('guardian.feeding.edit', '급여 기록 수정')
-              : t('guardian.feeding.add', '급여 기록 추가')}
+              ? t('guardian.feeding.edit', 'Edit Feeding Log')
+              : t('guardian.feeding.add', 'Add Feeding Log')}
           </h3>
           <button className="modal-close" onClick={onClose}>&times;</button>
         </div>
         <div className="modal-body">
           {petFeeds.length === 0 ? (
             <div style={{ textAlign: 'center', padding: '24px 0' }}>
-              <p className="text-sm text-muted">{t('guardian.feeding.no_feeds_registered', '등록된 사료가 없습니다')}</p>
+              <p className="text-sm text-muted">{t('guardian.feeding.no_feeds_registered', 'No feeds registered')}</p>
               {onOpenFeedManage && (
                 <button className="btn btn-primary btn-sm" style={{ marginTop: 8 }} onClick={() => { onClose(); onOpenFeedManage(); }}>
-                  {t('guardian.feed.manage_title', '사료 관리')}
+                  {t('guardian.feed.manage_title', 'Feed Management')}
                 </button>
               )}
             </div>
@@ -295,13 +389,13 @@ export default function FeedingLogModal({
                     className={`gm-period-chip${!isMixed ? ' active' : ''}`}
                     onClick={() => setIsMixed(false)}
                   >
-                    {t('guardian.feeding.single_mode', '단일 사료')}
+                    {t('guardian.feeding.single_mode', 'Single Feed')}
                   </button>
                   <button
                     className={`gm-period-chip${isMixed ? ' active' : ''}`}
                     onClick={() => setIsMixed(true)}
                   >
-                    {t('guardian.feeding.mixed_feed', '혼합급여')}
+                    {t('guardian.feeding.mixed_feed', 'Mixed Feed')}
                   </button>
                 </div>
               )}
@@ -310,7 +404,7 @@ export default function FeedingLogModal({
               {!isMixed && (
                 <>
                   <div className="form-group">
-                    <label className="form-label" htmlFor="flog-feed">{t('guardian.feeding.select_feed', '사료 선택')} *</label>
+                    <label className="form-label" htmlFor="flog-feed">{t('guardian.feeding.select_feed', 'Select Feed')} *</label>
                     <select
                       id="flog-feed"
                       name="flog-feed"
@@ -323,13 +417,13 @@ export default function FeedingLogModal({
                       {petFeeds.map((f) => (
                         <option key={f.id} value={f.id}>
                           {feedLabel(f)}
-                          {f.is_primary ? ` (${t('guardian.feed.is_primary', '기본')})` : ''}
+                          {f.is_primary ? ` (${t('guardian.feed.is_primary', 'Primary')})` : ''}
                         </option>
                       ))}
                     </select>
                   </div>
                   <div className="form-group">
-                    <label className="form-label" htmlFor="flog-amount">{t('guardian.feeding.amount', '급여량 (g)')}</label>
+                    <label className="form-label" htmlFor="flog-amount">{t('guardian.feeding.amount', 'Amount (g)')}</label>
                     <input
                       id="flog-amount"
                       name="flog-amount"
@@ -340,7 +434,7 @@ export default function FeedingLogModal({
                       value={form.amount_g}
                       onChange={(e) => setForm((p) => ({ ...p, amount_g: e.target.value }))}
                     />
-                    {singleCalories > 0 && (
+                    {singleCalories > 0 && supplementCalorieDetails.total === 0 && (
                       <span style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 2, display: 'block' }}>
                         ≈ {singleCalories.toFixed(0)} kcal
                       </span>
@@ -356,7 +450,7 @@ export default function FeedingLogModal({
                   {favorites.length > 0 && (
                     <div style={{ marginBottom: 10, padding: '8px 10px', background: 'var(--bg)', borderRadius: 6, border: '1px solid var(--border)' }}>
                       <label className="form-label" style={{ fontSize: 12, marginBottom: 4 }}>
-                        {t('guardian.feeding.load_favorite', '즐겨찾기 불러오기')}
+                        {t('guardian.feeding.load_favorite', 'Load Favorite')}
                       </label>
                       <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
                         {favorites.map((fav) => (
@@ -371,7 +465,7 @@ export default function FeedingLogModal({
                             <button
                               style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)', fontSize: 12, padding: 0 }}
                               onClick={() => void handleDeleteFavorite(fav.id)}
-                              title={t('guardian.feeding.delete_favorite', '삭제')}
+                              title={t('guardian.feeding.delete_favorite', 'Delete')}
                             >
                               &times;
                             </button>
@@ -386,7 +480,7 @@ export default function FeedingLogModal({
                     return (
                       <div key={idx} style={{ display: 'flex', gap: 8, alignItems: 'flex-end', marginBottom: 8 }}>
                         <div style={{ flex: 2 }}>
-                          {idx === 0 && <label className="form-label" style={{ fontSize: 12 }}>{t('guardian.feeding.select_feed', '사료')}</label>}
+                          {idx === 0 && <label className="form-label" style={{ fontSize: 12 }}>{t('guardian.feeding.select_feed', 'Feed')}</label>}
                           <select
                             className="form-select"
                             value={row.pet_feed_id}
@@ -405,7 +499,7 @@ export default function FeedingLogModal({
                           </select>
                         </div>
                         <div style={{ flex: 1 }}>
-                          {idx === 0 && <label className="form-label" style={{ fontSize: 12 }}>{t('guardian.feeding.amount', '급여량(g)')}</label>}
+                          {idx === 0 && <label className="form-label" style={{ fontSize: 12 }}>{t('guardian.feeding.amount', 'Amount(g)')}</label>}
                           <input
                             className="form-input"
                             type="number"
@@ -422,7 +516,7 @@ export default function FeedingLogModal({
                           className="btn btn-danger btn-sm"
                           style={{ flexShrink: 0, marginBottom: 2 }}
                           onClick={() => removeRow(idx)}
-                          title={t('guardian.feeding.remove_feed_row', '삭제')}
+                          title={t('guardian.feeding.remove_feed_row', 'Remove')}
                           disabled={mixedRows.length <= 1}
                         >
                           −
@@ -438,7 +532,7 @@ export default function FeedingLogModal({
                       style={{ fontSize: 12 }}
                       disabled={mixedRows.length >= petFeeds.length}
                     >
-                      + {t('guardian.feeding.add_feed_row', '사료 추가')}
+                      + {t('guardian.feeding.add_feed_row', 'Add Feed')}
                     </button>
 
                     {/* Save favorite button — show when 2+ valid rows */}
@@ -448,7 +542,7 @@ export default function FeedingLogModal({
                         onClick={() => setShowSaveFav(true)}
                         style={{ fontSize: 12 }}
                       >
-                        {t('guardian.feeding.save_favorite', '즐겨찾기 저장')}
+                        {t('guardian.feeding.save_favorite', 'Save Favorite')}
                       </button>
                     )}
                   </div>
@@ -462,7 +556,7 @@ export default function FeedingLogModal({
                         type="text"
                         value={saveFavName}
                         onChange={(e) => setSaveFavName(e.target.value)}
-                        placeholder={t('guardian.feeding.favorite_name_placeholder', '예: 방울이 아침 식단')}
+                        placeholder={t('guardian.feeding.favorite_name_placeholder', 'e.g. Morning meal')}
                       />
                       <button
                         className="btn btn-primary btn-sm"
@@ -470,7 +564,7 @@ export default function FeedingLogModal({
                         disabled={!saveFavName.trim()}
                         onClick={() => void handleSaveFavorite()}
                       >
-                        {t('guardian.feeding.save', '저장')}
+                        {t('guardian.feeding.save', 'Save')}
                       </button>
                       <button
                         className="btn btn-secondary btn-sm"
@@ -481,19 +575,134 @@ export default function FeedingLogModal({
                       </button>
                     </div>
                   )}
+                </div>
+              )}
 
-                  {/* Total nutrition summary */}
-                  {mixedSummary && mixedSummary.totalG > 0 && (
-                    <div style={{ marginTop: 10, padding: '8px 10px', background: 'var(--bg)', borderRadius: 6, border: '1px solid var(--border)', fontSize: 12 }}>
-                      <div style={{ fontWeight: 600, marginBottom: 4 }}>{t('nutrition.total', '총 영양 합계')}</div>
-                      <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', color: 'var(--text-secondary)' }}>
-                        <span>{t('guardian.feeding.total_amount', '총 급여량')}: {mixedSummary.totalG.toFixed(0)}g</span>
-                        <span>{t('guardian.feeding.total_calories', '총 칼로리')}: {mixedSummary.totalCal.toFixed(0)} kcal</span>
-                        {mixedSummary.totalProtein > 0 && <span>{t('nutrition.protein', '단백질')}: {mixedSummary.totalProtein.toFixed(1)}g</span>}
-                        {mixedSummary.totalFat > 0 && <span>{t('nutrition.fat', '지방')}: {mixedSummary.totalFat.toFixed(1)}g</span>}
-                        {mixedSummary.totalCarbs > 0 && <span>{t('nutrition.carbohydrate', '탄수화물')}: {mixedSummary.totalCarbs.toFixed(1)}g</span>}
-                        {mixedSummary.totalFiber > 0 && <span>{t('nutrition.fiber', '식이섬유')}: {mixedSummary.totalFiber.toFixed(1)}g</span>}
-                      </div>
+              {/* ── Supplement section ── */}
+              <div style={{ borderTop: '1px solid var(--border)', margin: '12px 0', paddingTop: 12 }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+                  <span style={{ fontSize: 13, fontWeight: 600 }}>
+                    {t('guardian.feeding.supplement_section', 'Supplements (optional)')}
+                  </span>
+                  {petSupplements.length > 0 && (
+                    <button
+                      className="btn btn-secondary btn-sm"
+                      style={{ fontSize: 12 }}
+                      onClick={addSupplementRow}
+                      disabled={supplementRows.length >= petSupplements.length}
+                    >
+                      + {t('guardian.feeding.add_supplement', 'Add Supplement')}
+                    </button>
+                  )}
+                </div>
+
+                {petSupplements.length === 0 ? (
+                  <div style={{ fontSize: 12, color: 'var(--text-muted)', padding: '8px 0' }}>
+                    <p style={{ margin: '0 0 6px' }}>{t('guardian.feeding.no_supplements', 'No supplements registered. Please add them in Feed/Supplement management first.')}</p>
+                    {onOpenFeedManage && (
+                      <button
+                        className="btn btn-secondary btn-sm"
+                        style={{ fontSize: 11 }}
+                        onClick={() => { onClose(); onOpenFeedManage(); }}
+                      >
+                        {t('guardian.feed.manage_title', 'Feed Management')}
+                      </button>
+                    )}
+                  </div>
+                ) : (
+                  <>
+                    {supplementRows.map((row, idx) => {
+                      const supp = petSupplements.find((s) => s.id === row.pet_feed_id);
+                      const meta = supp ? parseSupplementMeta(supp) : {};
+                      const dosageUnit = meta.dosage_unit || 'tablet';
+                      const rowCal = meta.calories_per_serving && Number(row.dosage) > 0
+                        ? meta.calories_per_serving * Number(row.dosage) : 0;
+                      return (
+                        <div key={idx} style={{ display: 'flex', gap: 8, alignItems: 'flex-end', marginBottom: 8 }}>
+                          <div style={{ flex: 2 }}>
+                            {idx === 0 && <label className="form-label" style={{ fontSize: 12 }}>{t('guardian.feeding.supplement_select', 'Supplement')}</label>}
+                            <select
+                              className="form-select"
+                              value={row.pet_feed_id}
+                              onChange={(e) => updateSupplementRow(idx, 'pet_feed_id', e.target.value)}
+                            >
+                              <option value="">{t('common.select', 'Select')}</option>
+                              {petSupplements.map((s) => {
+                                const sMeta = parseSupplementMeta(s);
+                                return (
+                                  <option
+                                    key={s.id}
+                                    value={s.id}
+                                    disabled={s.id !== row.pet_feed_id && selectedSupplementIds.has(s.id)}
+                                  >
+                                    {feedLabel(s)}{sMeta.prescribed ? ` (${t('guardian.feeding.prescribed_badge', 'Rx')})` : ''}
+                                  </option>
+                                );
+                              })}
+                            </select>
+                          </div>
+                          <div style={{ flex: 1 }}>
+                            {idx === 0 && <label className="form-label" style={{ fontSize: 12 }}>{t('guardian.feeding.supplement_dosage', 'Dosage')}</label>}
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
+                              <input
+                                className="form-input"
+                                type="number"
+                                step="0.5"
+                                min="0"
+                                value={row.dosage}
+                                onChange={(e) => updateSupplementRow(idx, 'dosage', e.target.value)}
+                                style={{ flex: 1 }}
+                              />
+                              <span style={{ fontSize: 11, color: 'var(--text-muted)', whiteSpace: 'nowrap' }}>{dosageUnit}</span>
+                            </div>
+                          </div>
+                          <div style={{ width: 60, textAlign: 'right', fontSize: 11, color: 'var(--text-muted)', paddingBottom: 6 }}>
+                            {rowCal > 0 ? `${rowCal.toFixed(0)} kcal` : ''}
+                          </div>
+                          <button
+                            className="btn btn-danger btn-sm"
+                            style={{ flexShrink: 0, marginBottom: 2 }}
+                            onClick={() => removeSupplementRow(idx)}
+                            title={t('common.delete', 'Delete')}
+                          >
+                            −
+                          </button>
+                        </div>
+                      );
+                    })}
+                  </>
+                )}
+              </div>
+
+              {/* ── Total nutrition summary (feed + supplement) ── */}
+              {showNutritionSummary && (
+                <div style={{ padding: '8px 10px', background: 'var(--bg)', borderRadius: 6, border: '1px solid var(--border)', fontSize: 12, marginBottom: 12 }}>
+                  <div style={{ fontWeight: 600, marginBottom: 4 }}>{t('nutrition.total', 'Nutrition Summary')}</div>
+                  <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', color: 'var(--text-secondary)' }}>
+                    {isMixed && mixedSummary && mixedSummary.totalG > 0 && (
+                      <span>{t('guardian.feeding.total_amount', 'Total Amount')}: {mixedSummary.totalG.toFixed(0)}g</span>
+                    )}
+                    {!isMixed && form.amount_g && Number(form.amount_g) > 0 && (
+                      <span>{t('guardian.feeding.total_amount', 'Total Amount')}: {Number(form.amount_g).toFixed(0)}g</span>
+                    )}
+                    <span>
+                      {t('guardian.feeding.total_calories', 'Total Calories')}: {totalCaloriesAll.toFixed(0)} kcal
+                      {supplementCalorieDetails.total > 0 && (
+                        <> ({t('guardian.feeding.feed_calories', 'Feed')}: {feedCalories.toFixed(0)} + {t('guardian.feeding.supplement_calories', 'Supplements')}: {supplementCalorieDetails.total.toFixed(0)})</>
+                      )}
+                    </span>
+                  </div>
+                  {isMixed && mixedSummary && (
+                    <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', color: 'var(--text-secondary)', marginTop: 2 }}>
+                      {mixedSummary.totalProtein > 0 && <span>{t('nutrition.protein', 'Protein')}: {mixedSummary.totalProtein.toFixed(1)}g</span>}
+                      {mixedSummary.totalFat > 0 && <span>{t('nutrition.fat', 'Fat')}: {mixedSummary.totalFat.toFixed(1)}g</span>}
+                      {mixedSummary.totalCarbs > 0 && <span>{t('nutrition.carbohydrate', 'Carbs')}: {mixedSummary.totalCarbs.toFixed(1)}g</span>}
+                      {mixedSummary.totalFiber > 0 && <span>{t('nutrition.fiber', 'Fiber')}: {mixedSummary.totalFiber.toFixed(1)}g</span>}
+                    </div>
+                  )}
+                  {supplementCalorieDetails.details.length > 0 && (
+                    <div style={{ marginTop: 4, color: 'var(--text-muted)' }}>
+                      {t('guardian.feeding.supplement_calories', 'Supplement Calories')}: {supplementCalorieDetails.total.toFixed(0)} kcal ({supplementCalorieDetails.details.map((d) => `${d.name} ${d.kcal.toFixed(0)}kcal`).join(' + ')})
                     </div>
                   )}
                 </div>
@@ -501,7 +710,7 @@ export default function FeedingLogModal({
 
               {/* Feeding time */}
               <div className="form-group">
-                <label className="form-label" htmlFor="flog-time">{t('guardian.feeding.time', '급여 시간')}</label>
+                <label className="form-label" htmlFor="flog-time">{t('guardian.feeding.time', 'Feeding Time')}</label>
                 <input
                   id="flog-time"
                   name="flog-time"
@@ -515,7 +724,7 @@ export default function FeedingLogModal({
 
               {/* Memo */}
               <div className="form-group">
-                <label className="form-label" htmlFor="flog-memo">{t('guardian.feeding.memo', '메모')}</label>
+                <label className="form-label" htmlFor="flog-memo">{t('guardian.feeding.memo', 'Memo')}</label>
                 <textarea
                   id="flog-memo"
                   name="flog-memo"
@@ -532,7 +741,7 @@ export default function FeedingLogModal({
           <button className="btn btn-secondary" onClick={onClose}>{t('common.cancel', 'Cancel')}</button>
           {petFeeds.length > 0 && (
             <button className="btn btn-primary" onClick={() => void handleSave()}>
-              {t('guardian.feeding.save', '저장')}
+              {t('guardian.feeding.save', 'Save')}
             </button>
           )}
         </div>
