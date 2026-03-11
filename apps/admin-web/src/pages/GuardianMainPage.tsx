@@ -29,7 +29,6 @@ import {
 import { useI18n, useT } from '../lib/i18n';
 import { BCP47_LOCALE_MAP, LANG_LABELS, type Lang } from '@petfolio/shared';
 import { getStoredRole, logout } from '../lib/auth';
-import PetGalleryPanel from '../components/PetGalleryPanel';
 import ComposeModal from './guardian/ComposeModal';
 import WeightModal from './guardian/WeightModal';
 import MeasurementModal from './guardian/MeasurementModal';
@@ -41,6 +40,7 @@ import PetReportTab from './guardian/PetReportTab';
 import PetWizardModal from './guardian/PetWizardModal';
 import GuardianProfileEditModal from './guardian/GuardianProfileEditModal';
 import MedicationLogModal from './guardian/MedicationLogModal';
+import FriendsModal from './guardian/FriendsModal';
 import {
   type FeedTab,
   type Mode,
@@ -147,6 +147,8 @@ export default function GuardianMainPage() {
 
   const [friendCount, setFriendCount] = useState(0);
   const [pendingRequests, setPendingRequests] = useState<FriendRequest[]>([]);
+  const [friendsModalOpen, setFriendsModalOpen] = useState(false);
+  const [friendsModalTab, setFriendsModalTab] = useState<'friends' | 'pending'>('friends');
 
   const [optPetType, setOptPetType] = useState<Option[]>([]);
   const [optBreed, setOptBreed] = useState<Option[]>([]);
@@ -647,7 +649,10 @@ export default function GuardianMainPage() {
             <div className="pf-gd-hero-stats">
               <div className="pf-gd-hero-stat"><strong>{feeds.length}</strong><span>{t('guardian.stats.posts', 'Posts')}</span></div>
               <div className="pf-gd-hero-stat"><strong>{albumMedia.length}</strong><span>{t('guardian.stats.media', 'Media')}</span></div>
-              <div className="pf-gd-hero-stat"><strong>{friendCount}</strong><span>{t('guardian.stats.friends', 'Friends')}</span></div>
+              <div className="pf-gd-hero-stat pf-gd-hero-stat--clickable" onClick={() => { setFriendsModalTab('friends'); setFriendsModalOpen(true); }}>
+                <strong>{friendCount}</strong><span>{t('guardian.stats.friends', 'Friends')}</span>
+                {pendingRequests.length > 0 && <span className="pf-gd-pending-badge">{pendingRequests.length}</span>}
+              </div>
             </div>
           )}
           <div className="pf-gd-hero-actions">
@@ -735,45 +740,25 @@ export default function GuardianMainPage() {
                 </div>
               )}
 
-              {/* ── Gallery ── */}
-              {petTab === 'gallery' && (
-                <>
-                  {albumMedia.length > 0 ? (
-                    <>
-                      <div className="pf-gd-gallery">
-                        {albumMedia.map((item, idx) => (
-                          <div key={item.id} className="pf-gd-gallery-tile" onClick={() => { setLightboxItems(albumMedia.map((m) => m.media_url)); setLightboxIndex(idx); }}>
-                            <img src={item.media_url} alt={item.caption || 'media'} loading="lazy" />
-                          </div>
-                        ))}
+              {/* ── Gallery (images only) ── */}
+              {petTab === 'gallery' && (() => {
+                const images = albumMedia.filter(m => m.media_type === 'image');
+                return images.length > 0 ? (
+                  <div className="pf-gd-gallery">
+                    {images.map((item, idx) => (
+                      <div key={item.id} className="pf-gd-gallery-tile" onClick={() => { setLightboxItems(images.map((m) => m.media_url)); setLightboxIndex(idx); }}>
+                        <img src={item.media_url} alt={item.caption || 'media'} loading="lazy" />
                       </div>
-                      <PetGalleryPanel
-                        selectedPet={selectedPet}
-                        mediaItems={albumMedia}
-                        bookings={bookings}
-                        breedLabel={labelOf(optBreed, selectedPet?.breed_id, t('common.none', '-'))}
-                        genderLabel={labelOf(optGender, selectedPet?.gender_id, t('common.none', '-'))}
-                        lifeStageLabel={labelOf(optLifeStage, selectedPet?.life_stage_id, t('common.none', '-'))}
-                        isGuardian={isGuardian}
-                        setError={setError}
-                        onRefresh={() => loadAll(feedTab)}
-                      />
-                    </>
-                  ) : (
-                    <PetGalleryPanel
-                      selectedPet={selectedPet}
-                      mediaItems={albumMedia}
-                      bookings={bookings}
-                      breedLabel={labelOf(optBreed, selectedPet?.breed_id, t('common.none', '-'))}
-                      genderLabel={labelOf(optGender, selectedPet?.gender_id, t('common.none', '-'))}
-                      lifeStageLabel={labelOf(optLifeStage, selectedPet?.life_stage_id, t('common.none', '-'))}
-                      isGuardian={isGuardian}
-                      setError={setError}
-                      onRefresh={() => loadAll(feedTab)}
-                    />
-                  )}
-                </>
-              )}
+                    ))}
+                  </div>
+                ) : (
+                  <div className="gallery-empty" style={{ padding: '48px 0', textAlign: 'center' }}>
+                    <div style={{ fontSize: 48, marginBottom: 12 }}>📷</div>
+                    <h4>{t('guardian.gallery.empty.title', 'No photos yet.')}</h4>
+                    <p>{t('guardian.gallery.empty.desc', 'Upload your first profile or pet photo.')}</p>
+                  </div>
+                );
+              })()}
 
               {/* ── Timeline ── */}
               {petTab === 'timeline' && (
@@ -1211,8 +1196,10 @@ export default function GuardianMainPage() {
               <div className="pf-gd-aside-section">
                 <div className="pf-gd-aside-header">{t('guardian.connections.title', 'Connections')}</div>
                 <div className="pf-gd-aside-body">
-                  <p className="pf-gd-aside-stat">{t('guardian.connections.connected_suppliers', 'Connected')}: <strong>{friendCount}</strong></p>
-                  <p className="pf-gd-aside-stat">{t('guardian.connections.pending_friend_requests', 'Pending')}: <strong>{pendingRequests.length}</strong></p>
+                  <p className="pf-gd-aside-stat pf-gd-aside-stat--clickable" onClick={() => { setFriendsModalTab('friends'); setFriendsModalOpen(true); }}>{t('guardian.connections.connected_suppliers', 'Connected')}: <strong>{friendCount}</strong></p>
+                  <p className="pf-gd-aside-stat pf-gd-aside-stat--clickable" onClick={() => { setFriendsModalTab('pending'); setFriendsModalOpen(true); }}>
+                    {t('guardian.connections.pending_friend_requests', 'Pending')}: <strong style={pendingRequests.length > 0 ? { color: '#EF4444' } : undefined}>{pendingRequests.length}</strong>
+                  </p>
                 </div>
               </div>
             </aside>
@@ -1363,6 +1350,16 @@ export default function GuardianMainPage() {
           onSaved={(updated) => setGuardianProfile(updated)}
         />
       )}
+
+      <FriendsModal
+        open={friendsModalOpen}
+        initialTab={friendsModalTab}
+        pendingRequests={pendingRequests}
+        t={t}
+        setError={setError}
+        onClose={() => setFriendsModalOpen(false)}
+        onSuccess={() => void loadAll(feedTab, { silent: true })}
+      />
     </div>
   );
 }

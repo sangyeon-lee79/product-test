@@ -63,6 +63,7 @@ export default function PetWizardModal({ open, mode, editingPetId, locale, optio
   const [microchipStatus, setMicrochipStatus] = useState<MicrochipStatus>('idle');
   const [microchipMessage, setMicrochipMessage] = useState('');
   const [lastCheckedMicrochip, setLastCheckedMicrochip] = useState('');
+  const [saving, setSaving] = useState(false);
 
   const defaultCountryCode = useMemo(() => localeCountryCode(locale), [locale]);
   const immutableFieldHelp = {
@@ -346,6 +347,7 @@ export default function PetWizardModal({ open, mode, editingPetId, locale, optio
   }
 
   async function savePet() {
+    if (saving) return;
     const stablePetTypeId = normalizeSingleStableId(petForm.pet_type_id, options.optPetType, false);
     if (!petForm.name.trim()) {
       setError(t('guardian.alert.name_required', '반려동물 이름은 필수입니다.'));
@@ -402,6 +404,7 @@ export default function PetWizardModal({ open, mode, editingPetId, locale, optio
       grooming_cycle_id: normalizeSingleStableId(petForm.grooming_cycle_id, options.optGrooming, false) || null,
     };
 
+    setSaving(true);
     try {
       let savedPet: Pet | null = null;
       if (mode === 'create') {
@@ -427,6 +430,8 @@ export default function PetWizardModal({ open, mode, editingPetId, locale, optio
       }
     } catch (e) {
       setError(uiErrorMessage(e, t('guardian.alert.pet_save_failed', '반려동물 저장에 실패했습니다.')));
+    } finally {
+      setSaving(false);
     }
   }
 
@@ -666,8 +671,8 @@ export default function PetWizardModal({ open, mode, editingPetId, locale, optio
           <button className="btn btn-secondary" onClick={gotoNextPetStep} disabled={petWizardStep === 6}>
             {t('common.next', '다음')}
           </button>
-          <button className="btn btn-primary" onClick={() => void savePet()} disabled={!canSave}>
-            {t('common.save', '저장')}
+          <button className="btn btn-primary" onClick={() => void savePet()} disabled={saving || !canSave}>
+            {saving ? t('common.saving', 'Saving...') : t('common.save', '저장')}
           </button>
         </div>
       </div>

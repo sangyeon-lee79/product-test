@@ -232,7 +232,7 @@ export default function MedicationLogModal({
       onSuccess();
       onClose();
     } catch (e) {
-      setError(uiErrorMessage(e, 'Failed to save medication log'));
+      setError(uiErrorMessage(e, t('common.err.save', 'Failed to save.')));
     } finally {
       setSaving(false);
     }
@@ -247,7 +247,7 @@ export default function MedicationLogModal({
       onSuccess();
       onClose();
     } catch (e) {
-      setError(uiErrorMessage(e, 'Failed to delete'));
+      setError(uiErrorMessage(e, t('common.err.save', 'Failed to delete.')));
     } finally {
       setSaving(false);
     }
@@ -397,7 +397,7 @@ export default function MedicationLogModal({
             {t('common.cancel', '취소')}
           </button>
           <button className="btn btn-primary" onClick={handleSave} disabled={saving}>
-            {saving ? '...' : t('guardian.medication.save', '저장')}
+            {saving ? t('common.saving', 'Saving...') : t('guardian.medication.save', '저장')}
           </button>
         </div>
       </div>

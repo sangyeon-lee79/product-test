@@ -20,6 +20,7 @@ export default function WeightModal({ open, editingLog, selectedPet, t, setError
     notes: '',
   });
   const [initialized, setInitialized] = useState(false);
+  const [saving, setSaving] = useState(false);
 
   // Initialize form when opening
   if (open && !initialized) {
@@ -41,12 +42,13 @@ export default function WeightModal({ open, editingLog, selectedPet, t, setError
   if (!open) return null;
 
   async function handleSave() {
-    if (!selectedPet?.id) return;
+    if (!selectedPet?.id || saving) return;
     const value = Number(weightForm.value);
     if (!Number.isFinite(value) || value <= 0) {
       setError(t('guardian.health.weight_invalid', 'Please enter a valid weight.'));
       return;
     }
+    setSaving(true);
     try {
       if (editingLog) {
         await api.pets.weightLogs.update(selectedPet.id, editingLog.id, {
@@ -65,6 +67,8 @@ export default function WeightModal({ open, editingLog, selectedPet, t, setError
       onClose();
     } catch (e) {
       setError(uiErrorMessage(e, t('guardian.health.weight_create_failed', 'Failed to save weight log.')));
+    } finally {
+      setSaving(false);
     }
   }
 
@@ -116,8 +120,8 @@ export default function WeightModal({ open, editingLog, selectedPet, t, setError
           </div>
         </div>
         <div className="modal-footer">
-          <button className="btn btn-secondary" onClick={onClose}>{t('common.cancel', 'Cancel')}</button>
-          <button className="btn btn-primary" onClick={() => void handleSave()}>{t('common.save', 'Save')}</button>
+          <button className="btn btn-secondary" onClick={onClose} disabled={saving}>{t('common.cancel', 'Cancel')}</button>
+          <button className="btn btn-primary" onClick={() => void handleSave()} disabled={saving}>{saving ? t('common.saving', 'Saving...') : t('common.save', 'Save')}</button>
         </div>
       </div>
     </div>

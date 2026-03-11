@@ -67,6 +67,7 @@ export default function ExerciseLogModal({
   const [initialized, setInitialized] = useState(false);
   const [companionSearch, setCompanionSearch] = useState('');
   const [fieldErrors, setFieldErrors] = useState<{ exercise_type?: string; duration_min?: string }>({});
+  const [saving, setSaving] = useState(false);
 
   if (open && !initialized) {
     if (editingLog) {
@@ -160,7 +161,7 @@ export default function ExerciseLogModal({
   }
 
   async function handleSave() {
-    if (!selectedPet?.id) return;
+    if (!selectedPet?.id || saving) return;
     const errors: { exercise_type?: string; duration_min?: string } = {};
     if (!form.exercise_type) errors.exercise_type = t('guardian.exercise.err_type_required', 'Please select an exercise type.');
     const duration = Number(form.duration_min);
@@ -176,6 +177,7 @@ export default function ExerciseLogModal({
       return;
     }
 
+    setSaving(true);
     try {
       if (editingLog) {
         await api.pets.exerciseLogs.update(selectedPet.id, editingLog.id, {
@@ -209,6 +211,8 @@ export default function ExerciseLogModal({
       onClose();
     } catch (e) {
       setError(uiErrorMessage(e, t('guardian.exercise.create_failed', 'Failed to save exercise log.')));
+    } finally {
+      setSaving(false);
     }
   }
 
@@ -410,8 +414,8 @@ export default function ExerciseLogModal({
           </div>
         </div>
         <div className="modal-footer">
-          <button className="btn btn-secondary" onClick={onClose}>{t('common.cancel', 'Cancel')}</button>
-          <button className="btn btn-primary" disabled={!form.exercise_type || !form.duration_min || Number(form.duration_min) <= 0} onClick={() => void handleSave()}>{t('common.save', 'Save')}</button>
+          <button className="btn btn-secondary" onClick={onClose} disabled={saving}>{t('common.cancel', 'Cancel')}</button>
+          <button className="btn btn-primary" disabled={saving || !form.exercise_type || !form.duration_min || Number(form.duration_min) <= 0} onClick={() => void handleSave()}>{saving ? t('common.saving', 'Saving...') : t('common.save', 'Save')}</button>
         </div>
       </div>
     </div>

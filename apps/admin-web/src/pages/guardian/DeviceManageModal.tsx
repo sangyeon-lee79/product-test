@@ -29,6 +29,7 @@ export default function DeviceManageModal({
 }: Props) {
   const [devices, setDevices] = useState<GuardianDevice[]>([]);
   const [loading, setLoading] = useState(false);
+  const [saving, setSaving] = useState(false);
   const [showForm, setShowForm] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [form, setForm] = useState(EMPTY_FORM);
@@ -110,8 +111,9 @@ export default function DeviceManageModal({
   }
 
   async function handleSave() {
-    if (!petId) return;
+    if (!petId || saving) return;
     if (!editingId && !form.model_id) { setError(t('guardian.health.model_required', 'Please select a device model.')); return; }
+    setSaving(true);
     try {
       if (editingId) {
         await api.pets.guardianDevices.update(petId, editingId, {
@@ -133,6 +135,8 @@ export default function DeviceManageModal({
       await loadDevices();
     } catch (e) {
       setError(uiErrorMessage(e, t('common.err.save', 'Failed to save.')));
+    } finally {
+      setSaving(false);
     }
   }
 
@@ -313,11 +317,11 @@ export default function DeviceManageModal({
                 {t('guardian.device.set_default', '기본 설정')}
               </label>
               <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end', marginTop: 12 }}>
-                <button className="btn btn-secondary btn-sm" onClick={() => { setShowForm(false); setEditingId(null); setSearchTerm(''); setAllModels([]); }}>
+                <button className="btn btn-secondary btn-sm" disabled={saving} onClick={() => { setShowForm(false); setEditingId(null); setSearchTerm(''); setAllModels([]); }}>
                   {t('common.cancel', 'Cancel')}
                 </button>
-                <button className="btn btn-primary btn-sm" onClick={() => void handleSave()}>
-                  {t('common.save', 'Save')}
+                <button className="btn btn-primary btn-sm" disabled={saving} onClick={() => void handleSave()}>
+                  {saving ? t('common.saving', 'Saving...') : t('common.save', 'Save')}
                 </button>
               </div>
             </div>

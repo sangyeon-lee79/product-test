@@ -35,6 +35,7 @@ export default function MeasurementModal({
   lang, t, setError, onClose, onSuccess, onOpenDeviceManage,
 }: Props) {
   const [measurementForm, setMeasurementForm] = useState<MeasurementForm>(EMPTY_MEASUREMENT_FORM);
+  const [saving, setSaving] = useState(false);
   // Fallback cascade state (for manual entry when no registered devices)
   const [deviceManufacturers, setDeviceManufacturers] = useState<DeviceManufacturer[]>([]);
   const [deviceBrands, setDeviceBrands] = useState<DeviceBrand[]>([]);
@@ -329,7 +330,7 @@ export default function MeasurementModal({
   }, [diseaseAutoMapped, measurementForm.disease_item_id, diseaseOptionsForHealth]);
 
   async function saveMeasurement() {
-    if (!selectedPet?.id) return;
+    if (!selectedPet?.id || saving) return;
     // When disease is auto-mapped from a device, the ID comes from the master
     // hierarchy (device type → parentId) and is already a valid master_item ID.
     // normalizeSingleStableId may fail because optDisease only contains items
@@ -347,6 +348,7 @@ export default function MeasurementModal({
     if (!measurementForm.measured_at) { setError(t('guardian.health.measured_at_required', 'Please enter measured date/time.')); return; }
     if (!Number.isFinite(value)) { setError(t('guardian.health.measurement_value_invalid', 'Please enter a valid measurement value.')); return; }
 
+    setSaving(true);
     try {
       const payload = {
         disease_item_id: stableDiseaseId,
@@ -372,6 +374,8 @@ export default function MeasurementModal({
       setError(uiErrorMessage(e, editingLog
         ? t('guardian.health.measurement_update_failed', 'Failed to update health measurement log.')
         : t('guardian.health.measurement_create_failed', 'Failed to add health measurement log.')));
+    } finally {
+      setSaving(false);
     }
   }
 
@@ -570,9 +574,9 @@ export default function MeasurementModal({
           </div>
         </div>
         <div className="modal-footer">
-          <button className="btn btn-secondary" onClick={() => { resetMeasurementForm(); onClose(); }}>{t('common.cancel', 'Cancel')}</button>
-          <button className="btn btn-primary" onClick={() => void saveMeasurement()}>
-            {t('common.save', 'Save')}
+          <button className="btn btn-secondary" onClick={() => { resetMeasurementForm(); onClose(); }} disabled={saving}>{t('common.cancel', 'Cancel')}</button>
+          <button className="btn btn-primary" onClick={() => void saveMeasurement()} disabled={saving}>
+            {saving ? t('common.saving', 'Saving...') : t('common.save', 'Save')}
           </button>
         </div>
       </div>

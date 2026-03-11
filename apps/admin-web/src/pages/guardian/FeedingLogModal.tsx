@@ -48,6 +48,7 @@ export default function FeedingLogModal({
 }: Props) {
   const [form, setForm] = useState(EMPTY_FORM);
   const [initialized, setInitialized] = useState(false);
+  const [saving, setSaving] = useState(false);
   const [isMixed, setIsMixed] = useState(false);
   const [mixedRows, setMixedRows] = useState<MixedRow[]>([{ pet_feed_id: '', amount_g: '' }]);
   const [supplementRows, setSupplementRows] = useState<SupplementRow[]>([]);
@@ -189,7 +190,7 @@ export default function FeedingLogModal({
   const validMixedRowCount = mixedRows.filter((r) => r.pet_feed_id).length;
 
   async function handleSave() {
-    if (!petId) return;
+    if (!petId || saving) return;
 
     // Build supplement items for the payload
     const suppItems = supplementRows
@@ -202,37 +203,34 @@ export default function FeedingLogModal({
         setError(t('guardian.feeding.select_feed', 'Please select a feed'));
         return;
       }
-      const allItems = [
-        ...validRows.map((r) => ({ pet_feed_id: r.pet_feed_id, amount_g: Number(r.amount_g) || undefined })),
-        ...suppItems,
-      ];
-      const totalG = validRows.reduce((sum, r) => sum + (Number(r.amount_g) || 0), 0);
-      const payload = {
-        is_mixed: true,
-        amount_g: totalG > 0 ? totalG : undefined,
-        feeding_time: form.feeding_time || undefined,
-        memo: form.memo || undefined,
-        items: allItems,
-      };
-      try {
+    } else if (!form.pet_feed_id) {
+      setError(t('guardian.feeding.select_feed', 'Please select a feed'));
+      return;
+    }
+
+    setSaving(true);
+    try {
+      if (isMixed) {
+        const validRows = mixedRows.filter((r) => r.pet_feed_id);
+        const allItems = [
+          ...validRows.map((r) => ({ pet_feed_id: r.pet_feed_id, amount_g: Number(r.amount_g) || undefined })),
+          ...suppItems,
+        ];
+        const totalG = validRows.reduce((sum, r) => sum + (Number(r.amount_g) || 0), 0);
+        const payload = {
+          is_mixed: true,
+          amount_g: totalG > 0 ? totalG : undefined,
+          feeding_time: form.feeding_time || undefined,
+          memo: form.memo || undefined,
+          items: allItems,
+        };
         if (editingLog) {
           await api.pets.feedingLogs.update(petId, editingLog.id, payload);
         } else {
           await api.pets.feedingLogs.create(petId, payload);
         }
-        onSuccess();
-        onClose();
-      } catch (e) {
-        setError(uiErrorMessage(e, t('common.err.save', 'Failed to save.')));
-      }
-    } else {
-      if (!form.pet_feed_id) {
-        setError(t('guardian.feeding.select_feed', 'Please select a feed'));
-        return;
-      }
-
-      // If supplements are added, save as mixed to include them
-      if (suppItems.length > 0) {
+      } else if (suppItems.length > 0) {
+        // If supplements are added, save as mixed to include them
         const feedItem = { pet_feed_id: form.pet_feed_id, amount_g: form.amount_g ? Number(form.amount_g) : undefined };
         const allItems = [feedItem, ...suppItems];
         const payload = {
@@ -242,16 +240,10 @@ export default function FeedingLogModal({
           memo: form.memo || undefined,
           items: allItems,
         };
-        try {
-          if (editingLog) {
-            await api.pets.feedingLogs.update(petId, editingLog.id, payload);
-          } else {
-            await api.pets.feedingLogs.create(petId, payload);
-          }
-          onSuccess();
-          onClose();
-        } catch (e) {
-          setError(uiErrorMessage(e, t('common.err.save', 'Failed to save.')));
+        if (editingLog) {
+          await api.pets.feedingLogs.update(petId, editingLog.id, payload);
+        } else {
+          await api.pets.feedingLogs.create(petId, payload);
         }
       } else {
         const selectedFeed = petFeeds.find((f) => f.id === form.pet_feed_id);
@@ -264,18 +256,18 @@ export default function FeedingLogModal({
           memo: form.memo || undefined,
           is_mixed: false,
         };
-        try {
-          if (editingLog) {
-            await api.pets.feedingLogs.update(petId, editingLog.id, payload);
-          } else {
-            await api.pets.feedingLogs.create(petId, payload);
-          }
-          onSuccess();
-          onClose();
-        } catch (e) {
-          setError(uiErrorMessage(e, t('common.err.save', 'Failed to save.')));
+        if (editingLog) {
+          await api.pets.feedingLogs.update(petId, editingLog.id, payload);
+        } else {
+          await api.pets.feedingLogs.create(petId, payload);
         }
       }
+      onSuccess();
+      onClose();
+    } catch (e) {
+      setError(uiErrorMessage(e, t('common.err.save', 'Failed to save.')));
+    } finally {
+      setSaving(false);
     }
   }
 
@@ -767,10 +759,10 @@ export default function FeedingLogModal({
           )}
         </div>
         <div className="modal-footer">
-          <button className="btn btn-secondary" onClick={onClose}>{t('common.cancel', 'Cancel')}</button>
+          <button className="btn btn-secondary" onClick={onClose} disabled={saving}>{t('common.cancel', 'Cancel')}</button>
           {petFeeds.length > 0 && (
-            <button className="btn btn-primary" onClick={() => void handleSave()}>
-              {t('guardian.feeding.save', 'Save')}
+            <button className="btn btn-primary" onClick={() => void handleSave()} disabled={saving}>
+              {saving ? t('common.saving', 'Saving...') : t('guardian.feeding.save', 'Save')}
             </button>
           )}
         </div>
