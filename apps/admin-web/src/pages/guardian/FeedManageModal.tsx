@@ -371,8 +371,6 @@ export default function FeedManageModal({
       setEditingId(null);
       setForm(EMPTY_FORM);
       setNutrition(null);
-      // Background refresh to get full server data (may be cached by Hyperdrive, but UI already updated)
-      if (isFeed) void loadFeeds(); else void loadSupplements();
     } catch (e) {
       setModalError(uiErrorMessage(e, t('common.err.save', 'Failed to save.')));
     } finally {
@@ -396,8 +394,6 @@ export default function FeedManageModal({
       } else {
         setSupplements((prev) => prev.filter((f) => f.id !== id));
       }
-      // Background refresh
-      if (isFeed) void loadFeeds(); else void loadSupplements();
     } catch (e) {
       setModalError(uiErrorMessage(e, t('common.err.save', 'Failed to delete.')));
     } finally {
@@ -414,8 +410,6 @@ export default function FeedManageModal({
       // Optimistic update
       const updater = (prev: PetFeed[]) => prev.map((f) => ({ ...f, is_primary: f.id === id }));
       if (isFeed) { const next = updater(feeds); setFeeds(next); onChanged(next); } else setSupplements(updater);
-      // Background refresh
-      if (isFeed) void loadFeeds(); else void loadSupplements();
     } catch (e) {
       setModalError(uiErrorMessage(e, t('common.err.save', 'Failed to set primary.')));
     } finally {
