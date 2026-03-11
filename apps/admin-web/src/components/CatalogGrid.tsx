@@ -1,6 +1,6 @@
 // Shared components for catalog hierarchy pages (DevicePage, FeedPage)
 
-import type { ReactNode } from 'react';
+import { type ReactNode, useRef } from 'react';
 import type { CatalogSortMode } from '../lib/catalogUtils';
 
 // ─── Col ─────────────────────────────────────────────────────────────────────
@@ -79,9 +79,15 @@ interface CatalogModelDetailProps {
   onDelete: () => void;
   editLabel: string;
   deleteLabel: string;
+  imageUrl?: string | null;
+  onImageUpload?: (file: File) => void;
+  onImageRemove?: () => void;
+  t?: (key: string, fallback?: string) => string;
 }
 
-export function CatalogModelDetail({ title, fields, onEdit, onDelete, editLabel, deleteLabel }: CatalogModelDetailProps) {
+export function CatalogModelDetail({ title, fields, onEdit, onDelete, editLabel, deleteLabel, imageUrl, onImageUpload, onImageRemove, t }: CatalogModelDetailProps) {
+  const fileRef = useRef<HTMLInputElement>(null);
+
   return (
     <div className="card" style={{ marginTop: 12 }}>
       <div className="card-header">
@@ -91,10 +97,59 @@ export function CatalogModelDetail({ title, fields, onEdit, onDelete, editLabel,
           <button className="btn btn-danger btn-sm" title="Delete" aria-label="Delete" onClick={onDelete}>{deleteLabel}</button>
         </div>
       </div>
-      <div style={{ padding: '8px 12px', fontSize: 13, color: 'var(--text-muted)' }}>
-        {fields.map(({ label, value }) => (
-          <div key={label}>{label}: {value}</div>
-        ))}
+      <div style={{ padding: '8px 12px', fontSize: 13, color: 'var(--text-muted)', display: 'flex', gap: 12 }}>
+        {/* Image area */}
+        {onImageUpload && (
+          <div className="catalog-model-image-wrap">
+            <input
+              ref={fileRef}
+              type="file"
+              accept="image/jpeg,image/png,image/webp"
+              hidden
+              onChange={(e) => {
+                const f = e.target.files?.[0];
+                if (f) onImageUpload(f);
+                e.target.value = '';
+              }}
+            />
+            {imageUrl ? (
+              <div className="catalog-model-image-box">
+                <img
+                  src={imageUrl}
+                  alt={title}
+                  className="catalog-model-image"
+                  onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
+                />
+                <div className="catalog-model-image-actions">
+                  <button className="btn btn-secondary btn-xs" onClick={() => fileRef.current?.click()}>
+                    {t?.('admin.catalog.change_image', 'Change') ?? 'Change'}
+                  </button>
+                  {onImageRemove && (
+                    <button className="btn btn-danger btn-xs" onClick={onImageRemove}>
+                      {t?.('admin.catalog.remove_image', 'Remove') ?? 'Remove'}
+                    </button>
+                  )}
+                </div>
+              </div>
+            ) : (
+              <div
+                className="catalog-model-image-placeholder"
+                onClick={() => fileRef.current?.click()}
+                title={t?.('admin.catalog.upload_image', 'Upload Image') ?? 'Upload Image'}
+              >
+                <span style={{ fontSize: 24, opacity: 0.4 }}>&#128247;</span>
+                <span style={{ fontSize: 11 }}>{t?.('admin.catalog.upload_image', 'Upload') ?? 'Upload'}</span>
+                <span style={{ fontSize: 10, opacity: 0.5 }}>{t?.('admin.catalog.image_upload_hint', '200×200') ?? '200×200'}</span>
+              </div>
+            )}
+          </div>
+        )}
+        {/* Fields */}
+        <div style={{ flex: 1, minWidth: 0 }}>
+          {fields.map(({ label, value }) => (
+            <div key={label}>{label}: {value}</div>
+          ))}
+        </div>
       </div>
     </div>
   );

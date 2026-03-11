@@ -394,7 +394,7 @@ export interface DeviceBrand {
 
 export interface DeviceModel {
   id: string; key?: string | null; device_type_id: string | null; device_type_item_id?: string | null; manufacturer_id: string; brand_id: string | null; name_key?: string | null;
-  model_name: string; model_code: string | null; description: string | null;
+  model_name: string; model_code: string | null; description: string | null; image_url?: string | null;
   parent_type_ids?: string | null;
   parent_brand_ids?: string | null;
   sort_order?: number;
@@ -418,7 +418,7 @@ export interface GuardianDevice {
   disease_item_id?: string | null; is_default?: number;
   nickname: string | null; serial_number: string | null;
   start_date: string | null; notes: string | null; status: string;
-  model_name?: string; model_code?: string | null;
+  model_name?: string; model_code?: string | null; model_image_url?: string | null;
   type_name_ko?: string | null; type_name_en?: string | null; type_key?: string | null;
   type_display_label?: string | null;
   mfr_name_ko?: string | null; mfr_name_en?: string | null; mfr_display_label?: string | null;
@@ -454,7 +454,7 @@ export interface FeedBrand {
 
 export interface FeedModel {
   id: string; key?: string | null; feed_type_item_id: string; manufacturer_id: string; brand_id: string | null; name_key?: string | null;
-  model_name: string; model_code: string | null; description: string | null;
+  model_name: string; model_code: string | null; description: string | null; image_url?: string | null;
   parent_type_ids?: string | null;
   parent_brand_ids?: string | null;
   sort_order?: number;
@@ -486,6 +486,7 @@ export interface PetFeed {
   status: string;
   model_name?: string | null;
   model_code?: string | null;
+  image_url?: string | null;
   type_key?: string | null;
   type_display_label?: string | null;
   mfr_name_ko?: string | null;

@@ -66,7 +66,7 @@ export async function handlePetFeeds(request: Request, env: Env, url: URL): Prom
         }
 
         const rows = await env.DB.prepare(
-          `${cb} SELECT pf.*, fm.model_name, fm.model_code, fm.description AS model_description,
+          `${cb} SELECT pf.*, fm.model_name, fm.model_code, fm.description AS model_description, fm.image_url,
                   mi.${codeCol} as type_key,
                   COALESCE(NULLIF(TRIM(tr_type.${langCol}), ''), NULLIF(TRIM(tr_type.en), ''), NULLIF(TRIM(tr_type.ko), ''), mi.${codeCol}) AS type_display_label,
                   mfr.name_ko as mfr_name_ko, mfr.name_en as mfr_name_en,

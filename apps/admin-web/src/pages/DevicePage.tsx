@@ -384,6 +384,27 @@ export default function DevicePage() {
     }
   }
 
+  async function handleModelImageUpload(file: File) {
+    if (!selectedModel) return;
+    try {
+      const ext = file.type === 'image/png' ? 'png' : file.type === 'image/webp' ? 'webp' : 'jpg';
+      const presigned = await api.storage.presignedUrl({ type: 'product_image', ext, subdir: `device/${selectedModel.id}` });
+      await fetch(presigned.upload_url, { method: 'PUT', headers: { 'Content-Type': file.type || 'application/octet-stream' }, body: file });
+      await api.devices.models.update(selectedModel.id, { image_url: presigned.public_url });
+      setSelectedModel({ ...selectedModel, image_url: presigned.public_url });
+      setModels((prev) => prev.map((m) => m.id === selectedModel.id ? { ...m, image_url: presigned.public_url } : m));
+    } catch (e) { setError(String(e)); }
+  }
+
+  async function handleModelImageRemove() {
+    if (!selectedModel) return;
+    try {
+      await api.devices.models.update(selectedModel.id, { image_url: null });
+      setSelectedModel({ ...selectedModel, image_url: null });
+      setModels((prev) => prev.map((m) => m.id === selectedModel.id ? { ...m, image_url: null } : m));
+    } catch (e) { setError(String(e)); }
+  }
+
   const addLabel = t('admin.master.btn_add');
   function SBadge({ status }: { status: string }) { return <CatalogStatusBadge status={status} t={t} />; }
 
@@ -484,6 +505,10 @@ export default function DevicePage() {
                 onDelete={() => void handleDelete('model', selectedModel.id)}
                 editLabel="✏️"
                 deleteLabel="🗑️"
+                imageUrl={selectedModel.image_url}
+                onImageUpload={(file) => void handleModelImageUpload(file)}
+                onImageRemove={() => void handleModelImageRemove()}
+                t={t}
                 fields={[
                   { label: t('admin.device.device_type'), value: selectedModel.type_display_label || selectedModel.type_name_en || selectedModel.type_name_ko || '—' },
                   { label: t('admin.device.manufacturer'), value: selectedModel.mfr_display_label || selectedModel.mfr_name_en || selectedModel.mfr_name_ko || '—' },

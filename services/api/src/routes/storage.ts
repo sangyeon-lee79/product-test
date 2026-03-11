@@ -16,6 +16,7 @@ const TYPE_PATHS: Record<string, string> = {
   completion_photo: 'completions',
   store_photo:      'stores',
   service_photo:    'services',
+  product_image:    'products',
 };
 
 // ─────────────────────────────────────────────────────────────────────────────

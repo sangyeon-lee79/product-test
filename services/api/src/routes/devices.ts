@@ -408,7 +408,7 @@ export async function handleDevices(request: Request, env: Env, url: URL): Promi
           const normalized = await hasColumn(env, 'master_items', 'code');
           const codeCol = normalized ? 'code' : 'key';
           const rows = await env.DB.prepare(
-            `SELECT gd.*, dm.model_name, dm.model_code,
+            `SELECT gd.*, dm.model_name, dm.model_code, dm.image_url AS model_image_url,
                     mi.${codeCol} as type_key,
                     tr_type.ko as type_name_ko, tr_type.en as type_name_en,
                     COALESCE(NULLIF(TRIM(tr_type.${langCol}), ''), NULLIF(TRIM(tr_type.en), ''), NULLIF(TRIM(tr_type.ko), ''), mi.${codeCol}) AS type_display_label,
@@ -935,7 +935,7 @@ export async function handleDevices(request: Request, env: Env, url: URL): Promi
     return ok(rows.results);
   }
   if (path === '/api/v1/admin/devices/models' && method === 'POST') {
-    const body = await request.json<{ device_type_id: string; manufacturer_id: string; brand_id?: string; brand_ids?: string[]; model_name?: string; model_code?: string; description?: string; translations?: Record<string, string>; name_ko?: string; name_en?: string }>();
+    const body = await request.json<{ device_type_id: string; manufacturer_id: string; brand_id?: string; brand_ids?: string[]; model_name?: string; model_code?: string; description?: string; image_url?: string; translations?: Record<string, string>; name_ko?: string; name_en?: string }>();
     const ko = (body.translations?.ko || body.name_ko || body.model_name || '').trim();
     const en = (body.translations?.en || body.name_en || ko || body.model_name || '').trim();
     if (!body.device_type_id || !body.manufacturer_id || !ko) return err('device_type_id, manufacturer_id, ko required', 400, 'missing_field');
@@ -946,9 +946,9 @@ export async function handleDevices(request: Request, env: Env, url: URL): Promi
     const id = newId();
     const modelName = en || ko;
     await env.DB.prepare(
-      `INSERT INTO device_models (id, device_type_item_id, device_type_id, manufacturer_id, brand_id, name_key, model_name, model_code, description, status, created_at, updated_at)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'active', ?, ?)`
-    ).bind(id, body.device_type_id, legacyTypeId, body.manufacturer_id, body.brand_id ?? null, nameKey, modelName, body.model_code ?? null, body.description ?? null, now(), now()).run();
+      `INSERT INTO device_models (id, device_type_item_id, device_type_id, manufacturer_id, brand_id, name_key, model_name, model_code, description, image_url, status, created_at, updated_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'active', ?, ?)`
+    ).bind(id, body.device_type_id, legacyTypeId, body.manufacturer_id, body.brand_id ?? null, nameKey, modelName, body.model_code ?? null, body.description ?? null, body.image_url ?? null, now(), now()).run();
     await upsertI18n(env, nameKey, translations, 'device');
     const brandIds = Array.from(new Set([...(body.brand_ids ?? []), ...(body.brand_id ? [body.brand_id] : [])].filter(Boolean)));
     if (brandIds.length > 0 && await hasTable(env, 'device_model_brand_map')) {
@@ -990,7 +990,7 @@ export async function handleDevices(request: Request, env: Env, url: URL): Promi
   if (modelIdMatch) {
     const modelId = modelIdMatch[1];
     if (method === 'PUT') {
-      const body = await request.json<{ model_name?: string; model_code?: string; description?: string; status?: string; device_type_id?: string; manufacturer_id?: string; brand_id?: string | null; brand_ids?: string[]; translations?: Record<string, string>; name_ko?: string; name_en?: string }>();
+      const body = await request.json<{ model_name?: string; model_code?: string; description?: string; image_url?: string | null; status?: string; device_type_id?: string; manufacturer_id?: string; brand_id?: string | null; brand_ids?: string[]; translations?: Record<string, string>; name_ko?: string; name_en?: string }>();
       const existing = await env.DB.prepare('SELECT name_key, model_name FROM device_models WHERE id = ?').bind(modelId).first<{ name_key?: string | null; model_name?: string | null }>();
       if (!existing) return err('model not found', 404, 'not_found');
       const sets: string[] = ['updated_at = ?'];
@@ -1002,6 +1002,7 @@ export async function handleDevices(request: Request, env: Env, url: URL): Promi
       if (nextModelName) { sets.push('model_name = ?'); vals.push(nextModelName); }
       if ('model_code' in body) { sets.push('model_code = ?'); vals.push(body.model_code ?? null); }
       if ('description' in body) { sets.push('description = ?'); vals.push(body.description ?? null); }
+      if ('image_url' in body) { sets.push('image_url = ?'); vals.push(body.image_url ?? null); }
       if (body.status) { sets.push('status = ?'); vals.push(body.status); }
       if (body.device_type_id) {
         sets.push('device_type_item_id = ?');

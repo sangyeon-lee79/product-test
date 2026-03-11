@@ -606,7 +606,12 @@ export default function FeedManageModal({
                 border: '1px solid var(--border)', borderRadius: 8, padding: '12px 14px', marginBottom: 8,
                 background: f.is_primary ? 'var(--primary-light, #fffbeb)' : 'var(--surface)',
               }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 10 }}>
+                  {f.image_url ? (
+                    <img src={f.image_url} alt="" className="gm-feed-card-thumb" onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }} />
+                  ) : (
+                    <div className="gm-feed-card-thumb-placeholder">{isFeed ? '\u{1F37D}' : '\u{1F48A}'}</div>
+                  )}
                   <div style={{ minWidth: 0, flex: 1 }}>
                     <div style={{ fontWeight: 600, fontSize: 15 }}>
                       {itemLabel(f)}

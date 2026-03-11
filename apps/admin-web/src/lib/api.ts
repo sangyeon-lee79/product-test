@@ -622,7 +622,7 @@ export const api = {
       request<{ available: boolean; reason?: string; pet_id?: string }>(`/api/v1/pets/check-microchip${buildQuery({ microchip_no: microchipNo, exclude_pet_id: excludePetId })}`),
   },
   storage: {
-    presignedUrl: (params: { type: 'user_avatar' | 'pet_avatar' | 'log_media' | 'feed_media' | 'completion_photo' | 'store_photo' | 'service_photo'; ext: string; subdir?: string }) =>
+    presignedUrl: (params: { type: 'user_avatar' | 'pet_avatar' | 'log_media' | 'feed_media' | 'completion_photo' | 'store_photo' | 'service_photo' | 'product_image'; ext: string; subdir?: string }) =>
       request<{ upload_url: string; file_key: string; public_url: string; expires_in: number }>(`/api/v1/storage/presigned-url${buildQuery({ type: params.type, ext: params.ext, subdir: params.subdir })}`),
   },
   providers: {
@@ -846,9 +846,9 @@ export const api = {
     models: {
       list: (filters?: { device_type_id?: string; manufacturer_id?: string; brand_id?: string }) =>
         request<DeviceModel[]>(`/api/v1/admin/devices/models${buildQuery({ device_type_id: filters?.device_type_id, manufacturer_id: filters?.manufacturer_id, brand_id: filters?.brand_id })}`),
-      create: (data: { key?: string; device_type_id: string; parent_type_ids?: string[]; manufacturer_id: string; brand_id?: string; brand_ids?: string[]; model_name?: string; model_code?: string; description?: string; sort_order?: number; name_ko?: string; name_en?: string; translations?: Record<string, string> }) =>
+      create: (data: { key?: string; device_type_id: string; parent_type_ids?: string[]; manufacturer_id: string; brand_id?: string; brand_ids?: string[]; model_name?: string; model_code?: string; description?: string; image_url?: string; sort_order?: number; name_ko?: string; name_en?: string; translations?: Record<string, string> }) =>
         request<DeviceModel>('/api/v1/admin/devices/models', { method: 'POST', body: JSON.stringify(data) }),
-      update: (id: string, data: Partial<{ key: string; model_name: string; model_code: string; description: string; status: string; device_type_id: string; parent_type_ids: string[]; manufacturer_id: string; brand_id: string | null; brand_ids: string[]; sort_order: number; name_ko: string; name_en: string; translations: Record<string, string> }>) =>
+      update: (id: string, data: Partial<{ key: string; model_name: string; model_code: string; description: string; image_url: string | null; status: string; device_type_id: string; parent_type_ids: string[]; manufacturer_id: string; brand_id: string | null; brand_ids: string[]; sort_order: number; name_ko: string; name_en: string; translations: Record<string, string> }>) =>
         request<DeviceModel>(`/api/v1/admin/devices/models/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
       delete: (id: string) =>
         request<{ id: string; deleted: boolean }>(`/api/v1/admin/devices/models/${id}`, { method: 'DELETE' }),
@@ -904,9 +904,9 @@ export const api = {
     models: {
       list: (filters?: { feed_type_id?: string; manufacturer_id?: string; brand_id?: string }) =>
         request<FeedModel[]>(`/api/v1/admin/feed-catalog/models${buildQuery({ feed_type_id: filters?.feed_type_id, manufacturer_id: filters?.manufacturer_id, brand_id: filters?.brand_id })}`),
-      create: (data: { key?: string; feed_type_id: string; parent_type_ids?: string[]; manufacturer_id: string; brand_id?: string; brand_ids?: string[]; model_name?: string; model_code?: string; description?: string; sort_order?: number; name_ko?: string; name_en?: string; translations?: Record<string, string> }) =>
+      create: (data: { key?: string; feed_type_id: string; parent_type_ids?: string[]; manufacturer_id: string; brand_id?: string; brand_ids?: string[]; model_name?: string; model_code?: string; description?: string; image_url?: string; sort_order?: number; name_ko?: string; name_en?: string; translations?: Record<string, string> }) =>
         request<FeedModel>('/api/v1/admin/feed-catalog/models', { method: 'POST', body: JSON.stringify(data) }),
-      update: (id: string, data: Partial<{ key: string; model_name: string; model_code: string; description: string; status: string; feed_type_id: string; parent_type_ids: string[]; manufacturer_id: string; brand_id: string | null; brand_ids: string[]; sort_order: number; name_ko: string; name_en: string; translations: Record<string, string> }>) =>
+      update: (id: string, data: Partial<{ key: string; model_name: string; model_code: string; description: string; image_url: string | null; status: string; feed_type_id: string; parent_type_ids: string[]; manufacturer_id: string; brand_id: string | null; brand_ids: string[]; sort_order: number; name_ko: string; name_en: string; translations: Record<string, string> }>) =>
         request<FeedModel>(`/api/v1/admin/feed-catalog/models/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
       delete: (id: string) =>
         request<{ id: string; deleted: boolean }>(`/api/v1/admin/feed-catalog/models/${id}`, { method: 'DELETE' }),
@@ -963,9 +963,9 @@ export const api = {
     models: {
       list: (filters?: { feed_type_id?: string; manufacturer_id?: string; brand_id?: string }) =>
         request<FeedModel[]>(`/api/v1/admin/supplement-catalog/models${buildQuery({ feed_type_id: filters?.feed_type_id, manufacturer_id: filters?.manufacturer_id, brand_id: filters?.brand_id })}`),
-      create: (data: { key?: string; feed_type_id: string; parent_type_ids?: string[]; manufacturer_id: string; brand_id?: string; brand_ids?: string[]; model_name?: string; model_code?: string; description?: string; sort_order?: number; name_ko?: string; name_en?: string; translations?: Record<string, string> }) =>
+      create: (data: { key?: string; feed_type_id: string; parent_type_ids?: string[]; manufacturer_id: string; brand_id?: string; brand_ids?: string[]; model_name?: string; model_code?: string; description?: string; image_url?: string; sort_order?: number; name_ko?: string; name_en?: string; translations?: Record<string, string> }) =>
         request<FeedModel>('/api/v1/admin/supplement-catalog/models', { method: 'POST', body: JSON.stringify(data) }),
-      update: (id: string, data: Partial<{ key: string; model_name: string; model_code: string; description: string; status: string; feed_type_id: string; parent_type_ids: string[]; manufacturer_id: string; brand_id: string | null; brand_ids: string[]; sort_order: number; name_ko: string; name_en: string; translations: Record<string, string> }>) =>
+      update: (id: string, data: Partial<{ key: string; model_name: string; model_code: string; description: string; image_url: string | null; status: string; feed_type_id: string; parent_type_ids: string[]; manufacturer_id: string; brand_id: string | null; brand_ids: string[]; sort_order: number; name_ko: string; name_en: string; translations: Record<string, string> }>) =>
         request<FeedModel>(`/api/v1/admin/supplement-catalog/models/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
       delete: (id: string) =>
         request<{ id: string; deleted: boolean }>(`/api/v1/admin/supplement-catalog/models/${id}`, { method: 'DELETE' }),
