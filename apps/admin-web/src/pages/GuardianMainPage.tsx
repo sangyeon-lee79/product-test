@@ -3,12 +3,13 @@ import { Link, useParams } from 'react-router-dom';
 import {
   api,
   type Booking,
+  type Country,
   type FeedingLog,
   type FeedingMixFavorite,
   type FeedPost,
   type FriendPet,
   type FriendRequest,
-
+  type GuardianProfile,
   type GuardianDevice,
   type HealthMeasurementSummary,
   type PetFeed,
@@ -20,11 +21,12 @@ import {
 
   type PetWeightLog,
   type WeightSummary,
+  type Store,
 } from '../lib/api';
 
 
 import { useI18n, useT } from '../lib/i18n';
-import { BCP47_LOCALE_MAP, type Lang } from '@petfolio/shared';
+import { BCP47_LOCALE_MAP, LANG_LABELS, type Lang } from '@petfolio/shared';
 import { getStoredRole } from '../lib/auth';
 import PetGalleryPanel from '../components/PetGalleryPanel';
 import ComposeModal from './guardian/ComposeModal';
@@ -36,6 +38,7 @@ import FeedingLogModal from './guardian/FeedingLogModal';
 import ExerciseLogModal from './guardian/ExerciseLogModal';
 import PetReportTab from './guardian/PetReportTab';
 import PetWizardModal from './guardian/PetWizardModal';
+import GuardianProfileEditModal from './guardian/GuardianProfileEditModal';
 import {
   type FeedTab,
   type Mode,
@@ -74,6 +77,7 @@ export default function GuardianMainPage() {
   const [bookings, setBookings] = useState<Booking[]>([]);
   const [feeds, setFeeds] = useState<FeedPost[]>([]);
   const [albumMedia, setAlbumMedia] = useState<PetAlbumMedia[]>([]);
+  const [nearbyStores, setNearbyStores] = useState<Store[]>([]);
   const [weightLogs, setWeightLogs] = useState<PetWeightLog[]>([]);
   const [measurementLogs, setMeasurementLogs] = useState<PetHealthMeasurementLog[]>([]);
   const [, setWeightSummary] = useState<WeightSummary | null>(null);
@@ -99,6 +103,9 @@ export default function GuardianMainPage() {
   const [exerciseIntensityItems, setExerciseIntensityItems] = useState<MasterItem[]>([]);
   const [exerciseLocationItems, setExerciseLocationItems] = useState<MasterItem[]>([]);
   const [friendPets, setFriendPets] = useState<FriendPet[]>([]);
+  const [guardianProfile, setGuardianProfile] = useState<GuardianProfile | null>(null);
+  const [guardianCountries, setGuardianCountries] = useState<Country[]>([]);
+  const [guardianProfileEditOpen, setGuardianProfileEditOpen] = useState(false);
   const [feedTab, setFeedTab] = useState<FeedTab>('all');
   const [petTab, setPetTab] = useState<PetProfileTab>('health');
   const [composeModalOpen, setComposeModalOpen] = useState(false);
@@ -246,6 +253,8 @@ export default function GuardianMainPage() {
         requestsRes,
         feedsRes,
         albumRes,
+        guardianProfileRes,
+        countriesRes,
         petTypeRows,
         breedRows,
         genderRows,
@@ -277,6 +286,8 @@ export default function GuardianMainPage() {
         safe(api.friends.requests.list('inbox'), { requests: [], scope: 'inbox' }, 'friends.requests'),
         safe(api.feeds.list({ tab, limit: 30 }), { feeds: [] }, 'feeds.list'),
         safe(api.petAlbum.list({ include_pending: true, limit: 400 }), { media: [] }, 'petAlbum.list'),
+        safe(api.guardians.me(), { profile: null }, 'guardians.me'),
+        safe(api.countries.list(), [] as Country[], 'countries.list'),
         loadCategoryItems(CATEGORY_KEYS.pet_type, lang),
         loadCategoryItems(CATEGORY_KEYS.pet_breed, lang),
         loadCategoryItems(CATEGORY_KEYS.pet_gender, lang),
@@ -310,6 +321,8 @@ export default function GuardianMainPage() {
       setPendingRequests((requestsRes.requests || []).filter((r) => r.status === 'request_sent'));
       setFeeds(feedsRes.feeds || []);
       setAlbumMedia(albumRes.media || []);
+      setGuardianProfile(guardianProfileRes.profile || null);
+      setGuardianCountries(countriesRes || []);
 
       setOptPetType(toOption(petTypeRows, lang, t, CATEGORY_KEYS.pet_type[0]).filter((item) => !item.parentId));
       setOptBreed(toOption(breedRows, lang, t, CATEGORY_KEYS.pet_breed[0]).filter((item) => Boolean(item.parentId)));
@@ -995,33 +1008,59 @@ export default function GuardianMainPage() {
               )}
 
               {/* ── Profile ── */}
-              {petTab === 'profile' && selectedPet && (
-                <div className="gm-section">
-                  <div className="gm-section-header">
-                    <span className="gm-section-title">{t('guardian.tab.profile', 'Pet Profile')}</span>
-                    <button className="btn btn-secondary btn-sm" title={t('common.edit', 'Edit')} aria-label={t('common.edit', 'Edit')} onClick={() => openEditPet(selectedPet.id)}>✏️</button>
-                  </div>
-                  <div className="gm-section-body">
-                    <div className="gm-info-grid" style={{ marginBottom: 16 }}>
-                      <div className="gm-info-item"><div className="gm-info-label">{t('guardian.form.name', 'Name')}</div><div className="gm-info-value">{selectedPet.name}</div></div>
-                      <div className="gm-info-item"><div className="gm-info-label">{t('master.pet_type', 'Pet Type')}</div><div className="gm-info-value">{labelOf(optPetType, selectedPet.pet_type_id, t('common.none', '-'))}</div></div>
-                      <div className="gm-info-item"><div className="gm-info-label">{t('master.pet_breed', 'Breed')}</div><div className="gm-info-value">{labelOf(optBreed, selectedPet.breed_id, t('common.none', '-'))}</div></div>
-                      <div className="gm-info-item"><div className="gm-info-label">{t('master.pet_gender', 'Gender')}</div><div className="gm-info-value">{labelOf(optGender, selectedPet.gender_id, t('common.none', '-'))}</div></div>
-                      <div className="gm-info-item"><div className="gm-info-label">{t('master.life_stage', 'Life Stage')}</div><div className="gm-info-value">{labelOf(optLifeStage, selectedPet.life_stage_id, t('common.none', '-'))}</div></div>
-                      <div className="gm-info-item"><div className="gm-info-label">{t('guardian.form.birthday', 'Birthday')}</div><div className="gm-info-value">{selectedPet.birthday || selectedPet.birth_date || t('common.none', '-')}</div></div>
-                      <div className="gm-info-item"><div className="gm-info-label">{t('guardian.form.current_weight', 'Weight')}</div><div className="gm-info-value">{selectedPet.current_weight ?? selectedPet.weight_kg ?? t('common.none', '-')}</div></div>
-                      <div className="gm-info-item"><div className="gm-info-label">{t('master.health_condition_level', 'Health Level')}</div><div className="gm-info-value">{labelOf(optHealthLevel, selectedPet.health_condition_level_id, t('common.none', '-'))}</div></div>
+              {petTab === 'profile' && (
+                <>
+                  {/* Guardian Profile — 항상 고정 */}
+                  {guardianProfile && (
+                    <div className="gm-section" style={{ marginBottom: 16 }}>
+                      <div className="gm-section-header">
+                        <span className="gm-section-title">{t('guardian.profile.title', 'Guardian Profile')}</span>
+                        <button className="btn btn-secondary btn-sm" title={t('guardian.profile.edit_profile', 'Edit Profile')} aria-label={t('guardian.profile.edit_profile', 'Edit Profile')} onClick={() => setGuardianProfileEditOpen(true)}>✏️</button>
+                      </div>
+                      <div className="gm-section-body">
+                        <div className="gm-info-grid">
+                          <div className="gm-info-item"><div className="gm-info-label">{t('guardian.form.name', 'Name')}</div><div className="gm-info-value">{guardianProfile.display_name || guardianProfile.full_name || t('common.none', '-')}</div></div>
+                          <div className="gm-info-item"><div className="gm-info-label">{t('guardian.profile.email', 'Email')}</div><div className="gm-info-value">{guardianProfile.email || t('common.none', '-')}</div></div>
+                          <div className="gm-info-item"><div className="gm-info-label">{t('guardian.profile.country', 'Country')}</div><div className="gm-info-value">{(() => { const c = guardianCountries.find((x) => x.id === guardianProfile.country_id); if (!c) return t('common.none', '-'); const lbl = c[lang as keyof Country]; return (typeof lbl === 'string' && lbl.trim()) ? lbl.trim() : c.ko_name || c.code; })()}</div></div>
+                          <div className="gm-info-item"><div className="gm-info-label">{t('guardian.profile.language', 'Language')}</div><div className="gm-info-value">{LANG_LABELS[guardianProfile.language as Lang] || guardianProfile.language || t('common.none', '-')}</div></div>
+                          <div className="gm-info-item"><div className="gm-info-label">{t('guardian.profile.phone', 'Phone')}</div><div className="gm-info-value">{guardianProfile.phone || t('common.none', '-')}</div></div>
+                          <div className="gm-info-item"><div className="gm-info-label">{t('guardian.profile.auth_method', 'Sign-up Method')}</div><div className="gm-info-value">{guardianProfile.oauth_provider ? guardianProfile.oauth_provider.charAt(0).toUpperCase() + guardianProfile.oauth_provider.slice(1) : 'Email'}</div></div>
+                          <div className="gm-info-item" style={{ gridColumn: '1 / -1' }}><div className="gm-info-label">{t('guardian.profile.joined_date', 'Joined')}</div><div className="gm-info-value">{guardianProfile.user_created_at ? fmtDate(guardianProfile.user_created_at, '-', locale) : t('common.none', '-')}</div></div>
+                        </div>
+                      </div>
                     </div>
-                    <div className="gm-health-tags">
-                      {petSummaryDetails?.diet.text && <span className="gm-health-tag" title={petSummaryDetails.diet.tooltip}>{t('master.diet_type', 'Diet')}: {petSummaryDetails.diet.text}</span>}
-                      {petSummaryDetails?.disease.text && <span className="gm-health-tag" title={petSummaryDetails.disease.tooltip}>{t('master.disease_type', 'Disease')}: {petSummaryDetails.disease.text}</span>}
-                      {petSummaryDetails?.vaccination.text && <span className="gm-health-tag" title={petSummaryDetails.vaccination.tooltip}>{t('master.vaccination_type', 'Vaccination')}: {petSummaryDetails.vaccination.text}</span>}
-                      {petSummaryDetails?.temperament.text && <span className="gm-health-tag" title={petSummaryDetails.temperament.tooltip}>{t('master.temperament_type', 'Temperament')}: {petSummaryDetails.temperament.text}</span>}
-                      {petSummaryDetails?.color.text && <span className="gm-health-tag" title={petSummaryDetails.color.tooltip}>{t('master.pet_color', 'Color')}: {petSummaryDetails.color.text}</span>}
-                      {petSummaryDetails?.grooming.text && <span className="gm-health-tag" title={petSummaryDetails.grooming.tooltip}>{t('master.grooming_cycle', 'Grooming')}: {petSummaryDetails.grooming.text}</span>}
+                  )}
+
+                  {/* Pet Profile — 사이드바 선택된 펫 기준 */}
+                  {selectedPet && (
+                    <div className="gm-section">
+                      <div className="gm-section-header">
+                        <span className="gm-section-title">{t('guardian.profile.pet_profile', 'Pet Profile')}</span>
+                        <button className="btn btn-secondary btn-sm" title={t('common.edit', 'Edit')} aria-label={t('common.edit', 'Edit')} onClick={() => openEditPet(selectedPet.id)}>✏️</button>
+                      </div>
+                      <div className="gm-section-body">
+                        <div className="gm-info-grid" style={{ marginBottom: 16 }}>
+                          <div className="gm-info-item"><div className="gm-info-label">{t('guardian.form.name', 'Name')}</div><div className="gm-info-value">{selectedPet.name}</div></div>
+                          <div className="gm-info-item"><div className="gm-info-label">{t('master.pet_type', 'Pet Type')}</div><div className="gm-info-value">{labelOf(optPetType, selectedPet.pet_type_id, t('common.none', '-'))}</div></div>
+                          <div className="gm-info-item"><div className="gm-info-label">{t('master.pet_breed', 'Breed')}</div><div className="gm-info-value">{labelOf(optBreed, selectedPet.breed_id, t('common.none', '-'))}</div></div>
+                          <div className="gm-info-item"><div className="gm-info-label">{t('master.pet_gender', 'Gender')}</div><div className="gm-info-value">{labelOf(optGender, selectedPet.gender_id, t('common.none', '-'))}</div></div>
+                          <div className="gm-info-item"><div className="gm-info-label">{t('master.life_stage', 'Life Stage')}</div><div className="gm-info-value">{labelOf(optLifeStage, selectedPet.life_stage_id, t('common.none', '-'))}</div></div>
+                          <div className="gm-info-item"><div className="gm-info-label">{t('guardian.form.birthday', 'Birthday')}</div><div className="gm-info-value">{selectedPet.birthday || selectedPet.birth_date || t('common.none', '-')}</div></div>
+                          <div className="gm-info-item"><div className="gm-info-label">{t('guardian.form.current_weight', 'Weight')}</div><div className="gm-info-value">{selectedPet.current_weight ?? selectedPet.weight_kg ?? t('common.none', '-')}</div></div>
+                          <div className="gm-info-item"><div className="gm-info-label">{t('master.health_condition_level', 'Health Level')}</div><div className="gm-info-value">{labelOf(optHealthLevel, selectedPet.health_condition_level_id, t('common.none', '-'))}</div></div>
+                        </div>
+                        <div className="gm-health-tags">
+                          {petSummaryDetails?.diet.text && <span className="gm-health-tag" title={petSummaryDetails.diet.tooltip}>{t('master.diet_type', 'Diet')}: {petSummaryDetails.diet.text}</span>}
+                          {petSummaryDetails?.disease.text && <span className="gm-health-tag" title={petSummaryDetails.disease.tooltip}>{t('master.disease_type', 'Disease')}: {petSummaryDetails.disease.text}</span>}
+                          {petSummaryDetails?.vaccination.text && <span className="gm-health-tag" title={petSummaryDetails.vaccination.tooltip}>{t('master.vaccination_type', 'Vaccination')}: {petSummaryDetails.vaccination.text}</span>}
+                          {petSummaryDetails?.temperament.text && <span className="gm-health-tag" title={petSummaryDetails.temperament.tooltip}>{t('master.temperament_type', 'Temperament')}: {petSummaryDetails.temperament.text}</span>}
+                          {petSummaryDetails?.color.text && <span className="gm-health-tag" title={petSummaryDetails.color.tooltip}>{t('master.pet_color', 'Color')}: {petSummaryDetails.color.text}</span>}
+                          {petSummaryDetails?.grooming.text && <span className="gm-health-tag" title={petSummaryDetails.grooming.tooltip}>{t('master.grooming_cycle', 'Grooming')}: {petSummaryDetails.grooming.text}</span>}
+                        </div>
+                      </div>
                     </div>
-                  </div>
-                </div>
+                  )}
+                </>
               )}
 
               {/* ── Report ── */}
@@ -1207,6 +1246,17 @@ export default function GuardianMainPage() {
           void loadAll(feedTab, { silent: true });
         }}
       />
+
+      {guardianProfile && (
+        <GuardianProfileEditModal
+          open={guardianProfileEditOpen}
+          profile={guardianProfile}
+          countries={guardianCountries}
+          lang={lang as Lang}
+          onClose={() => setGuardianProfileEditOpen(false)}
+          onSaved={(updated) => setGuardianProfile(updated)}
+        />
+      )}
     </div>
   );
 }

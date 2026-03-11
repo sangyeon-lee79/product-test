@@ -47,6 +47,27 @@ export interface Currency {
   decimal_places: number; is_active: number; created_at: string;
 }
 
+export interface GuardianProfile {
+  id?: string;
+  user_id: string;
+  handle?: string | null;
+  display_name?: string | null;
+  full_name?: string | null;
+  bio?: string | null;
+  bio_translations?: Record<string, string>;
+  country_id?: string | null;
+  language?: string | null;
+  timezone?: string | null;
+  interests?: string[];
+  avatar_url?: string | null;
+  email?: string | null;
+  oauth_provider?: string | null;
+  phone?: string | null;
+  user_created_at?: string | null;
+  created_at?: string | null;
+  updated_at?: string | null;
+}
+
 export interface Pet {
   id: string;
   guardian_id: string;
@@ -797,4 +818,67 @@ export interface PetLog {
   alert?: GlucoseAlert | null;
   created_at: string;
   updated_at: string;
+}
+
+// ─── S9: Store / Service / Discount ─────────────────────────────────────────
+export interface Store {
+  id: string;
+  owner_id: string;
+  name: string;
+  name_translations: Record<string, string>;
+  description: string | null;
+  description_translations: Record<string, string>;
+  address: string | null;
+  phone: string | null;
+  country_id: string | null;
+  currency_id: string | null;
+  latitude: number | null;
+  longitude: number | null;
+  avatar_url: string | null;
+  status: string;
+  created_at: string;
+  updated_at: string;
+  // Joined
+  display_name?: string;
+  display_description?: string;
+  country_name?: string;
+  currency_code?: string;
+  owner_email?: string;
+  owner_name?: string;
+  service_count?: number;
+}
+
+export interface StoreIndustry {
+  industry_id: string;
+  industry_key: string;
+  display_label: string;
+}
+
+export interface StoreService {
+  id: string;
+  store_id: string;
+  name: string;
+  name_translations: Record<string, string>;
+  description: string | null;
+  description_translations: Record<string, string>;
+  price: number | null;
+  currency_id: string | null;
+  currency_code?: string;
+  photo_urls: string[];
+  sort_order: number;
+  is_active: boolean;
+  display_name?: string;
+  display_description?: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface ServiceDiscount {
+  id: string;
+  service_id: string;
+  discount_rate: number;
+  start_date: string | null;
+  end_date: string | null;
+  is_active: boolean;
+  created_at: string;
 }

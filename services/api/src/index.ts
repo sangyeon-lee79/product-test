@@ -143,8 +143,14 @@ async function dispatch(request: Request, env: Env, url: URL): Promise<Response>
     return handleFeeds(request, env, url);
   }
 
-  // S9: Provider (매장/서비스/프로필)
-  if (path.startsWith('/api/v1/stores') || path.startsWith('/api/v1/services') || path.startsWith('/api/v1/providers')) {
+  // S9: Stores + Services
+  if (path.startsWith('/api/v1/stores') || path.startsWith('/api/v1/services')) {
+    const { handleStores } = await import('./routes/stores');
+    return handleStores(request, env, url);
+  }
+
+  // S9: Provider profile
+  if (path.startsWith('/api/v1/providers')) {
     const { handleProviders } = await import('./routes/providers');
     return handleProviders(request, env, url);
   }
@@ -202,6 +208,10 @@ async function dispatchAdmin(request: Request, env: Env, url: URL, path: string)
   if (path.startsWith('/api/v1/admin/dashboard')) {
     const { handleDashboard } = await import('./routes/dashboard');
     return handleDashboard(request, env, url);
+  }
+  if (path.startsWith('/api/v1/admin/stores')) {
+    const { handleStores } = await import('./routes/stores');
+    return handleStores(request, env, url);
   }
   if (path.startsWith('/api/v1/admin/devices')) {
     const { handleDevices } = await import('./routes/devices');

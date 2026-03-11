@@ -631,7 +631,7 @@ export async function handleSupplementCatalog(request: Request, env: Env, url: U
   }
 
   if (path === '/api/v1/admin/supplement-catalog/models' && method === 'POST') {
-    const body = await request.json<{ feed_type_id: string; manufacturer_id: string; brand_id?: string; brand_ids?: string[]; model_name?: string; model_code?: string; description?: string; translations?: Record<string, string>; name_ko?: string; name_en?: string }>();
+    const body = await request.json<{ feed_type_id: string; manufacturer_id: string; brand_id?: string; brand_ids?: string[]; model_name?: string; model_code?: string; description?: string; image_url?: string; translations?: Record<string, string>; name_ko?: string; name_en?: string }>();
     const ko = (body.translations?.ko || body.name_ko || body.model_name || '').trim();
     const en = (body.translations?.en || body.name_en || ko || body.model_name || '').trim();
     if (!body.feed_type_id || !body.manufacturer_id || !ko) return err('feed_type_id, manufacturer_id, ko required', 400, 'missing_field');
@@ -639,8 +639,8 @@ export async function handleSupplementCatalog(request: Request, env: Env, url: U
     const nameKey = `supplement.model.${key}`;
     const id = newId();
     await env.DB.prepare(
-      `INSERT INTO feed_models (id, feed_type_item_id, manufacturer_id, brand_id, name_key, model_name, model_code, description, status, category_type, created_at, updated_at)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'active', '${CAT}', ?, ?)`
+      `INSERT INTO feed_models (id, feed_type_item_id, manufacturer_id, brand_id, name_key, model_name, model_code, description, image_url, status, category_type, created_at, updated_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'active', '${CAT}', ?, ?)`
     ).bind(
       id,
       body.feed_type_id,
@@ -650,6 +650,7 @@ export async function handleSupplementCatalog(request: Request, env: Env, url: U
       en || ko,
       body.model_code ?? null,
       body.description ?? null,
+      body.image_url ?? null,
       now(),
       now()
     ).run();
@@ -665,7 +666,7 @@ export async function handleSupplementCatalog(request: Request, env: Env, url: U
   if (modelIdMatch) {
     const modelId = modelIdMatch[1];
     if (method === 'PUT') {
-      const body = await request.json<{ model_name?: string; model_code?: string; description?: string; status?: string; feed_type_id?: string; manufacturer_id?: string; brand_id?: string | null; brand_ids?: string[]; translations?: Record<string, string>; name_ko?: string; name_en?: string }>();
+      const body = await request.json<{ model_name?: string; model_code?: string; description?: string; image_url?: string | null; status?: string; feed_type_id?: string; manufacturer_id?: string; brand_id?: string | null; brand_ids?: string[]; translations?: Record<string, string>; name_ko?: string; name_en?: string }>();
       const existing = await env.DB.prepare('SELECT name_key, model_name FROM feed_models WHERE id = ?').bind(modelId).first<{ name_key?: string | null; model_name?: string | null }>();
       if (!existing) return err('model not found', 404, 'not_found');
       const sets: string[] = [];
@@ -680,6 +681,7 @@ export async function handleSupplementCatalog(request: Request, env: Env, url: U
       else if (brandIds.length > 0) { sets.push('brand_id = ?'); vals.push(brandIds[0]); }
       if (body.model_code !== undefined) { sets.push('model_code = ?'); vals.push(body.model_code || null); }
       if (body.description !== undefined) { sets.push('description = ?'); vals.push(body.description || null); }
+      if (body.image_url !== undefined) { sets.push('image_url = ?'); vals.push(body.image_url || null); }
       if (body.status !== undefined) { sets.push('status = ?'); vals.push(body.status); }
       if (nextName) { sets.push('model_name = ?'); vals.push(nextName); }
       sets.push('updated_at = ?');

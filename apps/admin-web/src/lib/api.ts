@@ -3,6 +3,7 @@
 import { getApiBase } from './apiBase';
 export type {
   I18nRow, MasterCategory, MasterItem, Country, Currency,
+  GuardianProfile,
   Pet, PetWeightLog, WeightSummary,
   PetDiseaseHistory, PetDiseaseDevice,
   PetGlucoseLog, GlucoseSummary,
@@ -17,9 +18,11 @@ export type {
   PetLog, GlucoseAlert, MemberSummary, MemberRecord, GoogleSettingItem, PublicGoogleConfig, OAuthLoginResponse,
   PublicKakaoConfig, PublicAppleConfig, PlatformSettingItem,
   ProviderProfile, DashboardStats, PetReport,
+  Store, StoreIndustry, StoreService, ServiceDiscount,
 } from '../types/api';
 import type {
   I18nRow, MasterCategory, MasterItem, Country, Currency,
+  GuardianProfile,
   Pet, PetWeightLog, WeightSummary,
   PetDiseaseHistory, PetDiseaseDevice,
   PetGlucoseLog, GlucoseSummary,
@@ -34,6 +37,7 @@ import type {
   PetLog, GlucoseAlert, MemberSummary, MemberRecord, GoogleSettingItem, PublicGoogleConfig, OAuthLoginResponse,
   PublicKakaoConfig, PublicAppleConfig, PlatformSettingItem,
   ProviderProfile, DashboardStats, PetReport,
+  Store, StoreIndustry, StoreService, ServiceDiscount,
 } from '../types/api';
 
 const API_BASE = getApiBase();
@@ -251,6 +255,18 @@ export const api = {
     method: 'POST',
     body: JSON.stringify(payload),
   }),
+
+  // Guardians
+  guardians: {
+    me: () => request<{ profile: GuardianProfile | null }>('/api/v1/guardians/me'),
+    updateMe: (data: {
+      display_name?: string; phone?: string; country_id?: string; language?: string;
+      handle?: string; bio?: string; bio_translations?: Record<string, string>;
+      timezone?: string; interests?: string[]; avatar_url?: string;
+    }) => request<{ profile: GuardianProfile }>('/api/v1/guardians/me', {
+      method: 'PUT', body: JSON.stringify(data),
+    }),
+  },
 
   // Health
   health: () => request<{ status: string; environment: string; version?: string; timestamp?: string; services: Record<string, string> }>('/api/v1/health'),
@@ -1032,5 +1048,48 @@ export const api = {
       request<FeedRegistrationRequest>('/api/v1/feed-requests', { method: 'POST', body: JSON.stringify({ ...data, category_type: 'supplement' }) }),
     list: () =>
       request<FeedRegistrationRequest[]>('/api/v1/feed-requests?category_type=supplement'),
+  },
+
+  stores: {
+    list: (params?: { q?: string; country_id?: string; industry_id?: string; status?: string; limit?: number; offset?: number; lang?: string }) =>
+      request<{ items: Store[]; total: number }>(`/api/v1/stores${buildQuery(params || {})}`),
+    my: (lang?: string) =>
+      request<{ items: Store[] }>(`/api/v1/stores/my${buildQuery({ lang })}`),
+    get: (id: string, lang?: string) =>
+      request<Store & { industries: StoreIndustry[]; services: StoreService[] }>(`/api/v1/stores/${id}${buildQuery({ lang })}`),
+    create: (data: Record<string, unknown>) =>
+      request<{ id: string }>('/api/v1/stores', { method: 'POST', body: JSON.stringify(data) }),
+    update: (id: string, data: Record<string, unknown>) =>
+      request<{ updated: boolean }>(`/api/v1/stores/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
+    delete: (id: string) =>
+      request<{ deleted: boolean }>(`/api/v1/stores/${id}`, { method: 'DELETE' }),
+    admin: {
+      list: (params?: { q?: string; status?: string; limit?: number; offset?: number; lang?: string }) =>
+        request<{ items: Store[]; total: number }>(`/api/v1/admin/stores${buildQuery(params || {})}`),
+      get: (id: string, lang?: string) =>
+        request<Store & { industries: StoreIndustry[]; services: StoreService[] }>(`/api/v1/admin/stores/${id}${buildQuery({ lang })}`),
+      update: (id: string, data: Record<string, unknown>) =>
+        request<{ updated: boolean }>(`/api/v1/admin/stores/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
+      delete: (id: string) =>
+        request<{ deleted: boolean }>(`/api/v1/admin/stores/${id}`, { method: 'DELETE' }),
+    },
+    services: {
+      list: (storeId: string, lang?: string) =>
+        request<{ items: StoreService[] }>(`/api/v1/stores/${storeId}/services${buildQuery({ lang })}`),
+      create: (storeId: string, data: Record<string, unknown>) =>
+        request<{ id: string }>(`/api/v1/stores/${storeId}/services`, { method: 'POST', body: JSON.stringify(data) }),
+      update: (serviceId: string, data: Record<string, unknown>) =>
+        request<{ updated: boolean }>(`/api/v1/services/${serviceId}`, { method: 'PUT', body: JSON.stringify(data) }),
+      delete: (serviceId: string) =>
+        request<{ deleted: boolean }>(`/api/v1/services/${serviceId}`, { method: 'DELETE' }),
+    },
+    discounts: {
+      list: (serviceId: string) =>
+        request<{ items: ServiceDiscount[] }>(`/api/v1/services/${serviceId}/discounts`),
+      create: (serviceId: string, data: { discount_rate: number; start_date?: string; end_date?: string }) =>
+        request<{ id: string }>(`/api/v1/services/${serviceId}/discounts`, { method: 'POST', body: JSON.stringify(data) }),
+      delete: (discountId: string) =>
+        request<{ deleted: boolean }>(`/api/v1/services/discounts/${discountId}`, { method: 'DELETE' }),
+    },
   },
 };

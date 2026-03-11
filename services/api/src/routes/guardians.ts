@@ -26,11 +26,28 @@ export async function handleGuardians(request: Request, env: Env, url: URL): Pro
 // ─── GET /me ──────────────────────────────────────────────────────────────────
 
 async function getMe(env: Env, payload: JwtPayload): Promise<Response> {
-  const profile = await env.DB.prepare(
-    'SELECT * FROM user_profiles WHERE user_id = ?'
-  ).bind(payload.sub).first<Record<string, unknown>>();
+  const profile = await env.DB.prepare(`
+    SELECT up.*,
+           u.email, u.oauth_provider, u.created_at AS user_created_at,
+           uad.phone, uad.full_name
+    FROM user_profiles up
+    JOIN users u ON u.id = up.user_id
+    LEFT JOIN user_account_details uad ON uad.user_id = up.user_id
+    WHERE up.user_id = ?
+  `).bind(payload.sub).first<Record<string, unknown>>();
 
-  if (!profile) return ok({ profile: null });
+  if (!profile) {
+    // user_profiles가 없어도 users 기본 정보는 반환
+    const user = await env.DB.prepare(`
+      SELECT u.id AS user_id, u.email, u.oauth_provider, u.created_at AS user_created_at,
+             uad.phone, uad.full_name
+      FROM users u
+      LEFT JOIN user_account_details uad ON uad.user_id = u.id
+      WHERE u.id = ?
+    `).bind(payload.sub).first<Record<string, unknown>>();
+    if (!user) return ok({ profile: null });
+    return ok({ profile: user });
+  }
 
   return ok({ profile: normalizeProfile(profile) });
 }
@@ -98,6 +115,23 @@ async function updateMe(request: Request, env: Env, payload: JwtPayload): Promis
       now(),
       now(),
     ).run();
+  }
+
+  // phone → user_account_details (upsert)
+  if (body.phone !== undefined) {
+    const uad = await env.DB.prepare(
+      'SELECT id FROM user_account_details WHERE user_id = ?'
+    ).bind(payload.sub).first<{ id: string }>();
+    if (uad) {
+      await env.DB.prepare(
+        'UPDATE user_account_details SET phone = ?, updated_at = ? WHERE user_id = ?'
+      ).bind(body.phone ?? null, now(), payload.sub).run();
+    } else {
+      await env.DB.prepare(`
+        INSERT INTO user_account_details (id, user_id, phone, created_at, updated_at)
+        VALUES (?, ?, ?, ?, ?)
+      `).bind(newId(), payload.sub, body.phone ?? null, now(), now()).run();
+    }
   }
 
   return getMe(env, payload);

@@ -17,6 +17,7 @@ import SupplierDashboardPage from './pages/SupplierDashboardPage';
 import ExplorePage from './pages/ExplorePage';
 import MembersPage from './pages/MembersPage';
 import ApiConnectionsPage from './pages/ApiConnectionsPage';
+import StorePage from './pages/StorePage';
 import './index.css';
 
 function AuthRoute() {
@@ -70,6 +71,7 @@ export default function App() {
                 <Route path="devices" element={<DevicePage />} />
                 <Route path="feeds" element={<FeedPage />} />
                 <Route path="supplements" element={<SupplementPage />} />
+                <Route path="stores" element={<StorePage />} />
                 <Route path="members" element={<MembersPage />} />
                 <Route path="api-connections" element={<ApiConnectionsPage />} />
                 <Route path="*" element={<Navigate to="/admin" replace />} />

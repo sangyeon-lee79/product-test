@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { api, type Booking, type ProviderProfile } from '../lib/api';
+import { api, type Booking, type ProviderProfile, type Store } from '../lib/api';
 import { logout } from '../lib/auth';
 import { useI18n, useT } from '../lib/i18n';
 
@@ -165,6 +165,7 @@ export default function SupplierDashboardPage() {
   const [selectedId, setSelectedId] = useState('');
   const [completionMemo, setCompletionMemo] = useState('');
   const [completionMedia, setCompletionMedia] = useState('');
+  const [myStores, setMyStores] = useState<Store[]>([]);
 
   const me = useMemo(() => decodeToken(), []);
   const locale = LANG_TO_LOCALE[lang] || 'en-US';
@@ -204,12 +205,13 @@ export default function SupplierDashboardPage() {
     void loadApprovalStatus();
   }, []);
 
-  // Load bookings only when approved
+  // Load bookings + stores only when approved
   useEffect(() => {
     if (approvalStatus === 'approved') {
       void loadBookings();
+      api.stores.my(lang).then(res => setMyStores(res.items || [])).catch(() => {});
     }
-  }, [approvalStatus]);
+  }, [approvalStatus, lang]);
 
   const filteredBookings = useMemo(() => {
     const sorted = [...bookings].sort((a, b) => new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime());
@@ -374,6 +376,32 @@ export default function SupplierDashboardPage() {
         <div className="card"><div className="card-body"><div className="text-muted">{t('admin.provider.stats.pending')}</div><div style={{ fontSize: 28, fontWeight: 700 }}>{stats.pending}</div></div></div>
         <div className="card"><div className="card-body"><div className="text-muted">{t('admin.provider.stats.active')}</div><div style={{ fontSize: 28, fontWeight: 700 }}>{stats.active}</div></div></div>
         <div className="card"><div className="card-body"><div className="text-muted">{t('admin.provider.stats.approval')}</div><div style={{ fontSize: 28, fontWeight: 700 }}>{stats.approval}</div></div></div>
+      </section>
+
+      {/* My Stores */}
+      <section className="card">
+        <div className="card-header">
+          <div className="card-title">{t('provider.store.my_stores', 'My Stores')}</div>
+        </div>
+        <div className="card-body">
+          {myStores.length === 0 ? (
+            <p style={{ color: 'var(--text-muted)', fontSize: 14 }}>{t('provider.store.no_stores', 'No stores yet.')}</p>
+          ) : (
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(240px, 1fr))', gap: 12 }}>
+              {myStores.map(s => (
+                <div key={s.id} className="card" style={{ padding: 12, border: '1px solid var(--border)' }}>
+                  <strong>{s.display_name || s.name}</strong>
+                  <div className="text-muted" style={{ fontSize: 12 }}>
+                    {s.address || '-'} &middot; {t('provider.store.services_count', '{count} services').replace('{count}', String(s.service_count || 0))}
+                  </div>
+                  <span className={`badge ${s.status === 'active' ? 'badge-green' : 'badge-gray'}`} style={{ fontSize: 10, marginTop: 4 }}>
+                    {s.status}
+                  </span>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
       </section>
 
       <section className="provider-booking-layout" style={{ display: 'grid', gridTemplateColumns: 'minmax(360px, 1.1fr) minmax(320px, 0.9fr)', gap: 20, alignItems: 'start' }}>
