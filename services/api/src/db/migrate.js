@@ -42,7 +42,7 @@ function parseStatements(content) {
     const content = fs.readFileSync(path.join(dir, file), 'utf-8');
     const stmts = parseStatements(content);
     for (const stmt of stmts) {
-      await sql(stmt + ';');
+      await sql.query(stmt + ';');
     }
     console.log('Done:', file);
   }
