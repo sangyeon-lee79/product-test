@@ -12,6 +12,7 @@ interface Props {
   setError: (msg: string) => void;
   onClose: () => void;
   onChanged: (feeds: PetFeed[]) => void;
+  onSupplementsChanged?: (supplements: PetFeed[]) => void;
 }
 
 type Tab = 'feed' | 'supplement';
@@ -44,7 +45,7 @@ function parseSupplementMeta(f: PetFeed): { ingredients?: string; dosage_unit?: 
 
 export default function FeedManageModal({
   open, selectedPet,
-  lang, t, setError: _setError, onClose, onChanged,
+  lang, t, setError: _setError, onClose, onChanged, onSupplementsChanged,
 }: Props) {
   void _setError; // kept for interface compatibility
   const [activeTab, setActiveTab] = useState<Tab>('feed');
@@ -340,7 +341,7 @@ export default function FeedManageModal({
             ? { ...f, nickname: form.nickname, is_primary: form.is_primary }
             : form.is_primary ? { ...f, is_primary: false } : f,
         );
-        if (isFeed) { setFeeds(updater); onChanged(updater(feeds)); } else setSupplements(updater);
+        if (isFeed) { setFeeds(updater); onChanged(updater(feeds)); } else { const next = updater(supplements); setSupplements(next); onSupplementsChanged?.(next); }
       } else {
         const res = await itemApi.create(petId, { feed_model_id: form.model_id, nickname: form.nickname || undefined, is_primary: form.is_primary });
         // Optimistic update — build item from cascade data so it shows immediately
@@ -364,7 +365,9 @@ export default function FeedManageModal({
           setFeeds(next);
           onChanged(next);
         } else {
-          setSupplements((prev) => form.is_primary ? [optimistic, ...prev.map((f) => ({ ...f, is_primary: false }))] : [optimistic, ...prev]);
+          const next = form.is_primary ? [optimistic, ...supplements.map((f) => ({ ...f, is_primary: false }))] : [optimistic, ...supplements];
+          setSupplements(next);
+          onSupplementsChanged?.(next);
         }
       }
       setShowForm(false);
@@ -392,7 +395,9 @@ export default function FeedManageModal({
         setFeeds(next);
         onChanged(next);
       } else {
-        setSupplements((prev) => prev.filter((f) => f.id !== id));
+        const next = supplements.filter((f) => f.id !== id);
+        setSupplements(next);
+        onSupplementsChanged?.(next);
       }
     } catch (e) {
       setModalError(uiErrorMessage(e, t('common.err.save', 'Failed to delete.')));
@@ -409,7 +414,7 @@ export default function FeedManageModal({
       await itemApi.update(petId, id, { is_primary: true });
       // Optimistic update
       const updater = (prev: PetFeed[]) => prev.map((f) => ({ ...f, is_primary: f.id === id }));
-      if (isFeed) { const next = updater(feeds); setFeeds(next); onChanged(next); } else setSupplements(updater);
+      if (isFeed) { const next = updater(feeds); setFeeds(next); onChanged(next); } else { const next = updater(supplements); setSupplements(next); onSupplementsChanged?.(next); }
     } catch (e) {
       setModalError(uiErrorMessage(e, t('common.err.save', 'Failed to set primary.')));
     } finally {

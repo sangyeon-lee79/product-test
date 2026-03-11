@@ -1157,7 +1157,7 @@ export default function GuardianMainPage() {
         setError={setError}
         onClose={() => setFeedManageModalOpen(false)}
         onChanged={(feeds) => setPetFeeds(feeds)}
-        onSupplementsChanged={(supps) => setPetSupplements(supps)}
+        onSupplementsChanged={(supps: PetFeed[]) => setPetSupplements(supps)}
       />
       <FeedingLogModal
         open={feedingLogModalOpen}
