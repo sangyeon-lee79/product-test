@@ -94,12 +94,12 @@ export type GuardianPetOptions = {
 
 // ── 상수 ──────────────────────────────────────────────────
 export const PET_WIZARD_STEPS: Array<{ step: PetWizardStep; labelKey: string; fallback: string }> = [
-  { step: 1, labelKey: 'guardian.pet_wizard.basic_info', fallback: 'Basic Info' },
-  { step: 2, labelKey: 'master.pet_type', fallback: 'Pet Type' },
-  { step: 3, labelKey: 'master.pet_gender', fallback: 'Gender' },
-  { step: 4, labelKey: 'master.vaccination_type', fallback: 'Vaccination' },
-  { step: 5, labelKey: 'master.temperament_type', fallback: 'Temperament' },
-  { step: 6, labelKey: 'master.coat_length', fallback: 'Coat Length' },
+  { step: 1, labelKey: 'guardian.pet_wizard.basic_info', fallback: '기본정보' },
+  { step: 2, labelKey: 'master.pet_type', fallback: '펫종류' },
+  { step: 3, labelKey: 'master.pet_gender', fallback: '성별' },
+  { step: 4, labelKey: 'master.vaccination_type', fallback: '예방접종' },
+  { step: 5, labelKey: 'master.temperament_type', fallback: '성격기질' },
+  { step: 6, labelKey: 'master.coat_length', fallback: '털길이' },
 ];
 
 export const DEFAULT_PET_FORM: PetForm = {

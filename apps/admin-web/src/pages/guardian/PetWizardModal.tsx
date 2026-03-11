@@ -66,10 +66,10 @@ export default function PetWizardModal({ open, mode, editingPetId, locale, optio
 
   const defaultCountryCode = useMemo(() => localeCountryCode(locale), [locale]);
   const immutableFieldHelp = {
-    name: t('guardian.pet_form.name_locked_help', 'Name cannot be changed after registration.'),
-    petType: t('guardian.pet_form.pet_type_locked_help', 'Pet type cannot be changed after registration.'),
-    breed: t('guardian.pet_form.breed_locked_help', 'Breed cannot be changed after registration.'),
-    gender: t('guardian.pet_form.gender_locked_help', 'Gender cannot be changed after registration.'),
+    name: t('guardian.pet_form.name_locked_help', '이름은 등록 후 변경할 수 없습니다.'),
+    petType: t('guardian.pet_form.pet_type_locked_help', '펫종류는 등록 후 변경할 수 없습니다.'),
+    breed: t('guardian.pet_form.breed_locked_help', '품종은 등록 후 변경할 수 없습니다.'),
+    gender: t('guardian.pet_form.gender_locked_help', '성별은 등록 후 변경할 수 없습니다.'),
   };
 
   const optionLabel = (option: Option | undefined, fallback: string): string => {
@@ -112,7 +112,7 @@ export default function PetWizardModal({ open, mode, editingPetId, locale, optio
         setMicrochipCountryCode(splitMicrochip.countryCode);
         setMicrochipUnknown(!splitMicrochip.localValue);
         setMicrochipStatus(splitMicrochip.normalizedValue ? 'available' : 'idle');
-        setMicrochipMessage(splitMicrochip.normalizedValue ? t('guardian.pet_form.microchip_available', 'This number is available for registration.') : '');
+        setMicrochipMessage(splitMicrochip.normalizedValue ? t('guardian.pet_form.microchip_available', '등록 가능한 번호입니다.') : '');
         setLastCheckedMicrochip(splitMicrochip.normalizedValue);
         setPetForm({
           name: p.name || '',
@@ -228,17 +228,17 @@ export default function PetWizardModal({ open, mode, editingPetId, locale, optio
       );
       if (dup.available) {
         setMicrochipStatus('available');
-        setMicrochipMessage(t('guardian.pet_form.microchip_available', 'This number is available for registration.'));
+        setMicrochipMessage(t('guardian.pet_form.microchip_available', '등록 가능한 번호입니다.'));
         setLastCheckedMicrochip(splitMicrochip.normalizedValue);
         return true;
       }
       setMicrochipStatus('duplicate');
-      setMicrochipMessage(t('guardian.alert.microchip_duplicate', 'This microchip number is already registered.'));
+      setMicrochipMessage(t('guardian.alert.microchip_duplicate', '이미 등록된 마이크로칩 번호입니다.'));
       setLastCheckedMicrochip(splitMicrochip.normalizedValue);
       return false;
     } catch (e) {
       setMicrochipStatus('error');
-      setMicrochipMessage(t('guardian.alert.microchip_check_failed', 'Microchip duplicate check failed.'));
+      setMicrochipMessage(t('guardian.alert.microchip_check_failed', '마이크로칩 중복 확인에 실패했습니다.'));
       setLastCheckedMicrochip('');
       setError(uiErrorMessage(e, t('guardian.alert.microchip_check_failed', '마이크로칩 중복 확인에 실패했습니다.')));
       return false;
@@ -259,7 +259,7 @@ export default function PetWizardModal({ open, mode, editingPetId, locale, optio
       <div className="form-group">
         <label className="form-label" htmlFor={name}>{label}{required ? ' *' : ''}</label>
         <select id={name} name={name} className="form-select" value={value} onChange={(e) => onChange(e.target.value)} disabled={disabled}>
-          <option value="">{t('common.select', 'Select')}</option>
+          <option value="">{t('common.select', '선택')}</option>
           {opts.map((o) => <option key={o.id} value={o.id}>{optionLabel(o, t('common.none', '-'))}</option>)}
         </select>
         {helpText ? renderFieldHelp(helpText) : null}
@@ -302,7 +302,7 @@ export default function PetWizardModal({ open, mode, editingPetId, locale, optio
                     onChange(normalizeUniqueIds(next));
                   }}
                 >
-                  <option value="">{t('common.select', 'Select')}</option>
+                  <option value="">{t('common.select', '선택')}</option>
                   {rowOptions.map((o) => <option key={o.id} value={o.id}>{optionLabel(o, t('common.none', '-'))}</option>)}
                 </select>
                 <button
@@ -310,8 +310,8 @@ export default function PetWizardModal({ open, mode, editingPetId, locale, optio
                   className="btn btn-danger"
                   onClick={() => onChange(selected.filter((_, i) => i !== index))}
                   disabled={!rowValue}
-                  aria-label={t('common.delete', 'Delete')}
-                  title={t('common.delete', 'Delete')}
+                  aria-label={t('common.delete', '삭제')}
+                  title={t('common.delete', '삭제')}
                 >
                   <svg width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden="true">
                     <path d="M3 6h18" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
@@ -332,8 +332,8 @@ export default function PetWizardModal({ open, mode, editingPetId, locale, optio
                 onChange(normalizeUniqueIds([...selected, remaining[0].id]));
               }}
               disabled={remaining.length === 0}
-              aria-label={t('common.add', 'Add')}
-              title={t('common.add', 'Add')}
+              aria-label={t('common.add', '추가')}
+              title={t('common.add', '추가')}
             >
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" aria-hidden="true">
                 <path d="M12 5v14M5 12h14" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
@@ -348,15 +348,15 @@ export default function PetWizardModal({ open, mode, editingPetId, locale, optio
   async function savePet() {
     const stablePetTypeId = normalizeSingleStableId(petForm.pet_type_id, options.optPetType, false);
     if (!petForm.name.trim()) {
-      setError(t('guardian.alert.name_required', 'Pet name is required.'));
+      setError(t('guardian.alert.name_required', '반려동물 이름은 필수입니다.'));
       return;
     }
     if (!stablePetTypeId) {
-      setError(t('guardian.alert.pet_type_required', 'Pet type is required.'));
+      setError(t('guardian.alert.pet_type_required', '펫 종류는 필수입니다.'));
       return;
     }
     if (!petForm.gender_id) {
-      setError(t('guardian.alert.gender_required', 'Gender is required.'));
+      setError(t('guardian.alert.gender_required', '성별은 필수입니다.'));
       return;
     }
     if (microchipNeedsValidation && !microchipValidationPassed) {
@@ -364,7 +364,7 @@ export default function PetWizardModal({ open, mode, editingPetId, locale, optio
       if (!checked) return;
     }
     if (petForm.current_weight.trim() && !Number.isFinite(Number(petForm.current_weight))) {
-      setError('Current weight must be a valid number.');
+      setError(t('guardian.alert.current_weight_invalid', '현재 체중은 올바른 숫자여야 합니다.'));
       return;
     }
 
@@ -410,7 +410,7 @@ export default function PetWizardModal({ open, mode, editingPetId, locale, optio
       } else {
         const targetPetId = editingPetId || activePet?.id || '';
         if (!targetPetId) {
-          setError(t('guardian.alert.pet_edit_target_not_found', 'Cannot find target pet for edit. Please try again.'));
+          setError(t('guardian.alert.pet_edit_target_not_found', '수정할 반려동물을 찾을 수 없습니다. 다시 시도해주세요.'));
           return;
         }
         const updatePayload = Object.fromEntries(
@@ -448,15 +448,15 @@ export default function PetWizardModal({ open, mode, editingPetId, locale, optio
 
   function gotoNextPetStep() {
     if (petWizardStep === 1 && !petForm.name.trim()) {
-      setError(t('guardian.alert.name_required', 'Pet name is required.'));
+      setError(t('guardian.alert.name_required', '반려동물 이름은 필수입니다.'));
       return;
     }
     if (petWizardStep === 2 && !petForm.pet_type_id) {
-      setError(t('guardian.alert.pet_type_required', 'Pet type is required.'));
+      setError(t('guardian.alert.pet_type_required', '펫 종류는 필수입니다.'));
       return;
     }
     if (petWizardStep === 3 && !petForm.gender_id) {
-      setError(t('guardian.alert.gender_required', 'Gender is required.'));
+      setError(t('guardian.alert.gender_required', '성별은 필수입니다.'));
       return;
     }
     setError('');
@@ -474,7 +474,7 @@ export default function PetWizardModal({ open, mode, editingPetId, locale, optio
     <div className="modal-overlay">
       <div className="modal guardian-pet-modal">
         <div className="modal-header">
-          <h3 className="modal-title">{mode === 'create' ? t('guardian.modal.add_pet', 'Add Pet') : t('guardian.modal.edit_pet', 'Edit Pet')}</h3>
+          <h3 className="modal-title">{mode === 'create' ? t('guardian.modal.add_pet', '반려동물 추가') : t('guardian.modal.edit_pet', '반려동물 수정')}</h3>
           <button className="modal-close" onClick={handleClose}>&times;</button>
         </div>
         <div className="modal-body guardian-modal-body">
@@ -484,7 +484,7 @@ export default function PetWizardModal({ open, mode, editingPetId, locale, optio
             <>
               <div className="form-row col2">
                 <div className="form-group">
-                  <label className="form-label" htmlFor="pet-name">{t('guardian.form.name', 'Name')} *</label>
+                  <label className="form-label" htmlFor="pet-name">{t('guardian.form.name', '이름')} *</label>
                   <input
                     id="pet-name"
                     name="pet-name"
@@ -496,9 +496,9 @@ export default function PetWizardModal({ open, mode, editingPetId, locale, optio
                   {renderFieldHelp(immutableFieldHelp.name)}
                 </div>
                 <div className="form-group">
-                  <label className="form-label" htmlFor="pet-microchip">{t('guardian.form.microchip', 'Microchip Number')}</label>
+                  <label className="form-label" htmlFor="pet-microchip">{t('guardian.form.microchip', '마이크로칩 번호')}</label>
                   <div className="pet-microchip-row">
-                    <span className="pet-microchip-prefix" aria-label={t('guardian.pet_form.microchip_country_code', 'Country code')}>
+                    <span className="pet-microchip-prefix" aria-label={t('guardian.pet_form.microchip_country_code', '국가 코드')}>
                       {microchipCountryCode}
                     </span>
                     <input
@@ -515,10 +515,10 @@ export default function PetWizardModal({ open, mode, editingPetId, locale, optio
                       }}
                       onBlur={() => { void runMicrochipCheck(); }}
                       disabled={microchipUnknown}
-                      placeholder={t('guardian.pet_form.microchip_placeholder', 'Enter microchip number')}
+                      placeholder={t('guardian.pet_form.microchip_placeholder', '마이크로칩 번호를 입력하세요')}
                     />
                     <button type="button" className="btn btn-secondary pet-microchip-check-btn" onClick={() => void runMicrochipCheck()} disabled={microchipUnknown || !petForm.microchip_no.trim() || microchipStatus === 'checking'}>
-                      {microchipStatus === 'checking' ? t('guardian.pet_form.microchip_checking', 'Checking...') : t('guardian.pet_form.microchip_check', 'Check')}
+                      {microchipStatus === 'checking' ? t('guardian.pet_form.microchip_checking', '확인 중...') : t('guardian.pet_form.microchip_check', '중복 확인')}
                     </button>
                   </div>
                   <label className="pet-microchip-unknown">
@@ -537,7 +537,7 @@ export default function PetWizardModal({ open, mode, editingPetId, locale, optio
                         resetMicrochipFeedback('');
                       }}
                     />
-                    <span>{t('guardian.pet_form.microchip_unknown', 'I do not know')}</span>
+                    <span>{t('guardian.pet_form.microchip_unknown', '모름')}</span>
                   </label>
                   {microchipMessage
                     ? renderFieldHelp(
@@ -549,11 +549,11 @@ export default function PetWizardModal({ open, mode, editingPetId, locale, optio
               </div>
               <div className="form-row col2">
                 <div className="form-group">
-                  <label className="form-label" htmlFor="pet-birthday">{t('guardian.form.birthday', 'Birthday')}</label>
+                  <label className="form-label" htmlFor="pet-birthday">{t('guardian.form.birthday', '생일')}</label>
                   <input id="pet-birthday" name="pet-birthday" className="form-input" type="date" value={petForm.birthday} onChange={(e) => setPetForm((p) => ({ ...p, birthday: e.target.value }))} />
                 </div>
                 <div className="form-group">
-                  <label className="form-label" htmlFor="pet-weight">{t('guardian.form.current_weight', 'Current Weight')}</label>
+                  <label className="form-label" htmlFor="pet-weight">{t('guardian.form.current_weight', '현재 체중')}</label>
                   <input id="pet-weight" name="pet-weight" className="form-input" type="number" step="0.01" value={petForm.current_weight} onChange={(e) => setPetForm((p) => ({ ...p, current_weight: e.target.value }))} />
                 </div>
               </div>
@@ -562,16 +562,16 @@ export default function PetWizardModal({ open, mode, editingPetId, locale, optio
 
           {petWizardStep === 2 && (
             <div className="form-row col2">
-              {renderSelect(t('master.pet_type', 'Pet Type'), petForm.pet_type_id, options.optPetType, (v) => setPetForm((p) => ({ ...p, pet_type_id: v, breed_id: '' })), true, 'pet-type', mode === 'edit', immutableFieldHelp.petType)}
-              {renderSelect(t('master.pet_breed', 'Breed'), petForm.breed_id, breedOptionsFiltered, (v) => setPetForm((p) => ({ ...p, breed_id: v })), false, 'pet-breed', mode === 'edit', immutableFieldHelp.breed)}
+              {renderSelect(t('master.pet_type', '펫종류'), petForm.pet_type_id, options.optPetType, (v) => setPetForm((p) => ({ ...p, pet_type_id: v, breed_id: '' })), true, 'pet-type', mode === 'edit', immutableFieldHelp.petType)}
+              {renderSelect(t('master.pet_breed', '품종'), petForm.breed_id, breedOptionsFiltered, (v) => setPetForm((p) => ({ ...p, breed_id: v })), false, 'pet-breed', mode === 'edit', immutableFieldHelp.breed)}
             </div>
           )}
 
           {petWizardStep === 3 && (
             <div className="form-row col2">
-              {renderSelect(t('master.pet_gender', 'Gender'), petForm.gender_id, options.optGender, (v) => setPetForm((p) => ({ ...p, gender_id: v })), true, 'pet-gender', mode === 'edit', immutableFieldHelp.gender)}
+              {renderSelect(t('master.pet_gender', '성별'), petForm.gender_id, options.optGender, (v) => setPetForm((p) => ({ ...p, gender_id: v })), true, 'pet-gender', mode === 'edit', immutableFieldHelp.gender)}
               {renderDropdownRows(
-                t('master.pet_color', 'Primary Color'),
+                t('master.pet_color', '대표 색상'),
                 petForm.color_ids,
                 options.optColor,
                 (next) => setPetForm((p) => ({ ...p, color_ids: normalizeUniqueIds(next) })),
@@ -583,7 +583,7 @@ export default function PetWizardModal({ open, mode, editingPetId, locale, optio
           {petWizardStep === 4 && (
             <div className="form-row col1">
               {renderDropdownRows(
-                t('master.vaccination_type', 'Vaccination'),
+                t('master.vaccination_type', '예방접종'),
                 petForm.vaccination_ids,
                 options.optVaccination,
                 (next) => setPetForm((p) => ({ ...p, vaccination_ids: normalizeUniqueIds(next) })),
@@ -596,18 +596,18 @@ export default function PetWizardModal({ open, mode, editingPetId, locale, optio
             <>
               <div className="form-row col2">
                 {renderDropdownRows(
-                  t('master.temperament_type', 'Temperament'),
+                  t('master.temperament_type', '성격기질'),
                   petForm.temperament_ids,
                   options.optTemperament,
                   (next) => setPetForm((p) => ({ ...p, temperament_ids: normalizeUniqueIds(next) })),
                   'pet-temperament',
                 )}
-                {renderSelect(t('master.activity_level', 'Activity Level'), petForm.activity_level_id, options.optActivity, (v) => setPetForm((p) => ({ ...p, activity_level_id: v })), false, 'pet-activity')}
+                {renderSelect(t('master.activity_level', '활동량'), petForm.activity_level_id, options.optActivity, (v) => setPetForm((p) => ({ ...p, activity_level_id: v })), false, 'pet-activity')}
               </div>
               <div className="form-row col2">
-                {renderSelect(t('master.diet_type', 'Diet Type'), petForm.diet_type_id, options.optDiet, (v) => setPetForm((p) => ({ ...p, diet_type_id: v })), false, 'pet-diet')}
+                {renderSelect(t('master.diet_type', '식단 유형'), petForm.diet_type_id, options.optDiet, (v) => setPetForm((p) => ({ ...p, diet_type_id: v })), false, 'pet-diet')}
                 {renderDropdownRows(
-                  t('master.allergy_type', 'Allergy'),
+                  t('master.allergy_type', '알레르기'),
                   petForm.allergy_ids,
                   options.optAllergy,
                   (next) => setPetForm((p) => ({ ...p, allergy_ids: normalizeUniqueIds(next) })),
@@ -616,7 +616,7 @@ export default function PetWizardModal({ open, mode, editingPetId, locale, optio
               </div>
               <div className="form-row col1">
                 {renderDropdownRows(
-                  t('master.symptom_type', 'Symptom'),
+                  t('master.symptom_type', '증상'),
                   petForm.symptom_tag_ids,
                   options.optSymptom,
                   (next) => setPetForm((p) => ({ ...p, symptom_tag_ids: normalizeUniqueIds(next) })),
@@ -629,12 +629,12 @@ export default function PetWizardModal({ open, mode, editingPetId, locale, optio
           {petWizardStep === 6 && (
             <>
               <div className="form-row col2">
-                {renderSelect(t('master.coat_length', 'Coat Length'), petForm.coat_length_id, options.optCoatLength, (v) => setPetForm((p) => ({ ...p, coat_length_id: v })), false, 'pet-coat-length')}
-                {renderSelect(t('master.grooming_cycle', 'Grooming Cycle'), petForm.grooming_cycle_id, options.optGrooming, (v) => setPetForm((p) => ({ ...p, grooming_cycle_id: v })), false, 'pet-grooming')}
+                {renderSelect(t('master.coat_length', '털 길이'), petForm.coat_length_id, options.optCoatLength, (v) => setPetForm((p) => ({ ...p, coat_length_id: v })), false, 'pet-coat-length')}
+                {renderSelect(t('master.grooming_cycle', '그루밍 주기'), petForm.grooming_cycle_id, options.optGrooming, (v) => setPetForm((p) => ({ ...p, grooming_cycle_id: v })), false, 'pet-grooming')}
               </div>
               <div className="form-row col1">
                 <div className="form-group">
-                  <label className="form-label" htmlFor="pet-notes">{t('guardian.form.notes', 'Notes')}</label>
+                  <label className="form-label" htmlFor="pet-notes">{t('guardian.form.notes', '메모')}</label>
                   <textarea id="pet-notes" name="pet-notes" className="form-textarea" value={petForm.notes} onChange={(e) => setPetForm((p) => ({ ...p, notes: e.target.value }))} />
                 </div>
               </div>
@@ -658,15 +658,15 @@ export default function PetWizardModal({ open, mode, editingPetId, locale, optio
               );
             })}
           </div>
-          <button className="btn btn-secondary" onClick={handleClose}>{t('common.cancel', 'Cancel')}</button>
+          <button className="btn btn-secondary" onClick={handleClose}>{t('common.cancel', '취소')}</button>
           <button className="btn btn-secondary" onClick={gotoPrevPetStep} disabled={petWizardStep === 1}>
-            {t('common.previous', 'Previous')}
+            {t('common.previous', '이전')}
           </button>
           <button className="btn btn-secondary" onClick={gotoNextPetStep} disabled={petWizardStep === 6}>
-            {t('common.next', 'Next')}
+            {t('common.next', '다음')}
           </button>
           <button className="btn btn-primary" onClick={() => void savePet()} disabled={!canSave}>
-            {t('common.save', 'Save')}
+            {t('common.save', '저장')}
           </button>
         </div>
       </div>
