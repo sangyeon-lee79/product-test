@@ -20,7 +20,7 @@ export async function listExerciseLogs(env: Env, payload: JwtPayload, petId: str
   const rows = await env.DB.prepare(
     `SELECT id, pet_id, exercise_type, exercise_subtype, exercise_date,
             duration_min, distance_km, intensity, leash, location_type,
-            with_other_pets, note, recorded_by_user_id, created_at, updated_at
+            with_other_pets, companion_pet_ids, note, recorded_by_user_id, created_at, updated_at
      FROM pet_exercise_logs
      WHERE ${where.join(' AND ')}
      ORDER BY exercise_date DESC, created_at DESC, id DESC`
@@ -69,6 +69,10 @@ export async function createExerciseLog(request: Request, env: Env, payload: Jwt
   const locationType = typeof body.location_type === 'string' && body.location_type.trim()
     ? body.location_type.trim() : 'outdoor';
 
+  const companionPetIds: string[] = Array.isArray(body.companion_pet_ids)
+    ? (body.companion_pet_ids as unknown[]).filter((x): x is string => typeof x === 'string')
+    : [];
+
   const id = newId();
   const ts = now();
   const exerciseDate = normalizeMeasuredAt(body.exercise_date);
@@ -77,14 +81,15 @@ export async function createExerciseLog(request: Request, env: Env, payload: Jwt
     `INSERT INTO pet_exercise_logs (
       id, pet_id, exercise_type, exercise_subtype, exercise_date,
       duration_min, distance_km, intensity, leash, location_type,
-      with_other_pets, note, recorded_by_user_id, created_at, updated_at
-    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+      with_other_pets, companion_pet_ids, note, recorded_by_user_id, created_at, updated_at
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?::jsonb, ?, ?, ?, ?)`
   ).bind(
     id, petId, exerciseType, exerciseSubtype, exerciseDate,
     durationMin, distanceKm, intensity,
     body.leash === true || body.leash === 'true' ? true : body.leash === false || body.leash === 'false' ? false : null,
     locationType,
     body.with_other_pets ? true : false,
+    JSON.stringify(companionPetIds),
     typeof body.note === 'string' ? body.note.trim() : null,
     payload.sub,
     ts, ts,
@@ -156,6 +161,13 @@ export async function updateExerciseLog(request: Request, env: Env, payload: Jwt
   if (Object.prototype.hasOwnProperty.call(body, 'with_other_pets')) {
     sets.push('with_other_pets = ?');
     vals.push(body.with_other_pets ? true : false);
+  }
+  if (Object.prototype.hasOwnProperty.call(body, 'companion_pet_ids')) {
+    const parsed: string[] = Array.isArray(body.companion_pet_ids)
+      ? (body.companion_pet_ids as unknown[]).filter((x): x is string => typeof x === 'string')
+      : [];
+    sets.push('companion_pet_ids = ?::jsonb');
+    vals.push(JSON.stringify(parsed));
   }
   if (Object.prototype.hasOwnProperty.call(body, 'note')) {
     sets.push('note = ?');

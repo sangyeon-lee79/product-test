@@ -7,7 +7,7 @@ export type {
   PetDiseaseHistory, PetDiseaseDevice,
   PetGlucoseLog, GlucoseSummary,
   PetHealthMeasurementLog, HealthMeasurementSummary,
-  PetExerciseLog, ExerciseSummary,
+  PetExerciseLog, ExerciseSummary, FriendPet,
   Booking, FeedPost, FeedComment, PetAlbumMedia,
   FriendRequest, FriendConnection,
   DeviceType, DeviceManufacturer, DeviceBrand, DeviceModel, MeasurementUnit, GuardianDevice,
@@ -24,7 +24,7 @@ import type {
   PetDiseaseHistory, PetDiseaseDevice,
   PetGlucoseLog, GlucoseSummary,
   PetHealthMeasurementLog, HealthMeasurementSummary,
-  PetExerciseLog, ExerciseSummary,
+  PetExerciseLog, ExerciseSummary, FriendPet,
   Booking, FeedPost, FeedComment, PetAlbumMedia,
   FriendRequest, FriendConnection,
   DeviceType, DeviceManufacturer, DeviceBrand, DeviceModel, MeasurementUnit, GuardianDevice,
@@ -385,6 +385,8 @@ export const api = {
   friends: {
     list: () =>
       request<{ friends: FriendConnection[] }>('/api/v1/friends'),
+    pets: () =>
+      request<{ pets: FriendPet[] }>('/api/v1/friends/pets'),
     requests: {
       list: (scope: 'inbox' | 'outbox' | 'all' = 'inbox') =>
         request<{ requests: FriendRequest[]; scope: string }>(`/api/v1/friends/requests?scope=${scope}`),
@@ -560,12 +562,14 @@ export const api = {
       create: (petId: string, data: {
         exercise_type: string; exercise_subtype: string; exercise_date?: string;
         duration_min: number; distance_km?: number | null; intensity?: string;
-        leash?: boolean | null; location_type?: string; with_other_pets?: boolean; note?: string | null;
+        leash?: boolean | null; location_type?: string; with_other_pets?: boolean;
+        companion_pet_ids?: string[]; note?: string | null;
       }) => request<{ id: string }>(`/api/v1/pets/${petId}/exercise-logs`, { method: 'POST', body: JSON.stringify(data) }),
       update: (petId: string, logId: string, data: Partial<{
         exercise_type: string; exercise_subtype: string; exercise_date: string;
         duration_min: number; distance_km: number | null; intensity: string;
-        leash: boolean | null; location_type: string; with_other_pets: boolean; note: string | null;
+        leash: boolean | null; location_type: string; with_other_pets: boolean;
+        companion_pet_ids: string[]; note: string | null;
       }>) => request<{ updated: boolean; id: string }>(`/api/v1/pets/${petId}/exercise-logs/${logId}`, { method: 'PUT', body: JSON.stringify(data) }),
       remove: (petId: string, logId: string) =>
         request<{ deleted: boolean; id: string }>(`/api/v1/pets/${petId}/exercise-logs/${logId}`, { method: 'DELETE' }),

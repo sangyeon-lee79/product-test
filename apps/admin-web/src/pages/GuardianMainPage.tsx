@@ -6,6 +6,7 @@ import {
   type FeedingLog,
   type FeedingMixFavorite,
   type FeedPost,
+  type FriendPet,
   type FriendRequest,
   type GlucoseAlert,
   type GuardianDevice,
@@ -103,6 +104,7 @@ export default function GuardianMainPage() {
   const [exerciseTypeItems, setExerciseTypeItems] = useState<MasterItem[]>([]);
   const [exerciseIntensityItems, setExerciseIntensityItems] = useState<MasterItem[]>([]);
   const [exerciseLocationItems, setExerciseLocationItems] = useState<MasterItem[]>([]);
+  const [friendPets, setFriendPets] = useState<FriendPet[]>([]);
   const [feedTab, setFeedTab] = useState<FeedTab>('all');
   const [petTab, setPetTab] = useState<PetProfileTab>('health');
   const [composeModalOpen, setComposeModalOpen] = useState(false);
@@ -297,6 +299,7 @@ export default function GuardianMainPage() {
         exerciseTypeRows,
         exerciseIntensityRows,
         exerciseLocationRows,
+        friendPetsRes,
       ] = await Promise.all([
         safe(api.pets.list(), { pets: [] }, 'pets.list'),
         safe(api.bookings.list(), { bookings: [] }, 'bookings.list'),
@@ -329,6 +332,7 @@ export default function GuardianMainPage() {
         loadCategoryItems(CATEGORY_KEYS.exercise_type, lang),
         loadCategoryItems(CATEGORY_KEYS.exercise_intensity, lang),
         loadCategoryItems(CATEGORY_KEYS.exercise_location, lang),
+        safe(api.friends.pets(), { pets: [] }, 'friends.pets'),
       ]);
 
       setPets(petsRes.pets || []);
@@ -368,6 +372,7 @@ export default function GuardianMainPage() {
       setExerciseTypeItems(exerciseTypeRows);
       setExerciseIntensityItems(exerciseIntensityRows);
       setExerciseLocationItems(exerciseLocationRows);
+      setFriendPets(friendPetsRes.pets || []);
 
       if (!silent && failedApis.length > 0) {
         setError(t('guardian.alert.partial_load_failed', 'Some data could not be loaded. Please try again shortly.'));
@@ -1820,6 +1825,7 @@ export default function GuardianMainPage() {
         exerciseIntensityItems={exerciseIntensityItems}
         exerciseLocationItems={exerciseLocationItems}
         petTypeOptions={optPetType}
+        friendPets={friendPets}
         lang={lang}
         t={t}
         setError={setError}

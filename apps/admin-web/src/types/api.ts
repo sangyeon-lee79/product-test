@@ -661,10 +661,20 @@ export interface PetExerciseLog {
   leash?: boolean | null;
   location_type?: string | null;
   with_other_pets?: boolean;
+  companion_pet_ids?: string[] | null;
   note?: string | null;
   recorded_by_user_id?: string | null;
   created_at: string;
   updated_at: string;
+}
+
+export interface FriendPet {
+  pet_id: string;
+  pet_name: string;
+  pet_type_code?: string | null;
+  guardian_user_id: string;
+  guardian_email: string;
+  guardian_name?: string | null;
 }
 
 export interface ExerciseSummary {

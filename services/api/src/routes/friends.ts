@@ -153,6 +153,24 @@ async function respondRequest(request: Request, env: Env, me: JwtPayload, reques
   return ok({ request_id: requestId, status });
 }
 
+async function listFriendPets(env: Env, me: JwtPayload): Promise<Response> {
+  const rows = await env.DB.prepare(
+    `SELECT p.id AS pet_id, p.name AS pet_name,
+            mi.code AS pet_type_code,
+            u.id AS guardian_user_id, u.email AS guardian_email,
+            COALESCE(up.display_name, u.email) AS guardian_name
+     FROM friendships f
+     JOIN users u ON u.id = CASE WHEN f.user_a_id = ? THEN f.user_b_id ELSE f.user_a_id END
+     JOIN pets p ON p.guardian_user_id = u.id AND p.status = 'active'
+     LEFT JOIN master_items mi ON mi.id = p.pet_type_id
+     LEFT JOIN user_profiles up ON up.user_id = u.id
+     WHERE f.status = 'active' AND (f.user_a_id = ? OR f.user_b_id = ?)
+     ORDER BY u.email, p.name`
+  ).bind(me.sub, me.sub, me.sub).all<Record<string, unknown>>();
+
+  return ok({ pets: rows.results });
+}
+
 export async function handleFriends(request: Request, env: Env, url: URL): Promise<Response> {
   const auth = await requireAuth(request, env);
   if (auth instanceof Response) return auth;
@@ -161,6 +179,7 @@ export async function handleFriends(request: Request, env: Env, url: URL): Promi
   const sub = url.pathname.replace('/api/v1/friends', '');
 
   if ((sub === '' || sub === '/') && request.method === 'GET') return listFriends(env, me);
+  if ((sub === '/pets' || sub === '/pets/') && request.method === 'GET') return listFriendPets(env, me);
   if ((sub === '/requests' || sub === '/requests/') && request.method === 'GET') return listRequests(env, me, url);
   if ((sub === '/requests' || sub === '/requests/') && request.method === 'POST') return createRequest(request, env, me);
 
