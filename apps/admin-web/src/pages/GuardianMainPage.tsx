@@ -1819,6 +1819,7 @@ export default function GuardianMainPage() {
         exerciseTypeItems={exerciseTypeItems}
         exerciseIntensityItems={exerciseIntensityItems}
         exerciseLocationItems={exerciseLocationItems}
+        petTypeOptions={optPetType}
         lang={lang}
         t={t}
         setError={setError}

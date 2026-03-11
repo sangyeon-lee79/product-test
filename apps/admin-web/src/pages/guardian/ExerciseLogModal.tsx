@@ -4,12 +4,6 @@ import { api, type Pet, type PetExerciseLog, type MasterItem } from '../../lib/a
 import { toDatetimeLocal, uiErrorMessage, toOption, type Option } from './guardianTypes';
 import type { Lang } from '@petfolio/shared';
 
-const SPECIES_EXERCISE_MAP: Record<string, string[]> = {
-  dog: ['walking', 'running', 'swimming', 'play', 'training', 'rehabilitation'],
-  cat: ['play', 'training', 'rehabilitation'],
-};
-const DEFAULT_EXERCISE_TYPES = ['play', 'rehabilitation'];
-
 interface Props {
   open: boolean;
   editingLog: PetExerciseLog | null;
@@ -17,6 +11,7 @@ interface Props {
   exerciseTypeItems: MasterItem[];
   exerciseIntensityItems: MasterItem[];
   exerciseLocationItems: MasterItem[];
+  petTypeOptions: Option[];
   lang: Lang;
   t: (key: string, fallback?: string) => string;
   setError: (msg: string) => void;
@@ -50,7 +45,7 @@ const EMPTY_FORM: ExerciseForm = {
   note: '',
 };
 
-export default function ExerciseLogModal({ open, editingLog, selectedPet, exerciseTypeItems, exerciseIntensityItems, exerciseLocationItems, lang, t, setError, onClose, onSuccess }: Props) {
+export default function ExerciseLogModal({ open, editingLog, selectedPet, exerciseTypeItems, exerciseIntensityItems, exerciseLocationItems, petTypeOptions, lang, t, setError, onClose, onSuccess }: Props) {
   const [form, setForm] = useState<ExerciseForm>(EMPTY_FORM);
   const [initialized, setInitialized] = useState(false);
 
@@ -79,19 +74,24 @@ export default function ExerciseLogModal({ open, editingLog, selectedPet, exerci
 
   if (!open) return null;
 
-  // Resolve pet species code for filtering
-  let speciesCode = 'other';
-  if (selectedPet) {
-    const rawType = (selectedPet as unknown as Record<string, unknown>).species_legacy as string | undefined;
-    if (rawType) {
-      speciesCode = rawType.toLowerCase();
-    }
+  // Resolve pet species code from pet_type_id via master options
+  let speciesCode = '';
+  if (selectedPet?.pet_type_id) {
+    const matched = petTypeOptions.find((o) => o.id === selectedPet.pet_type_id);
+    if (matched) speciesCode = matched.key.toLowerCase();
   }
 
-  const allowedTypes = SPECIES_EXERCISE_MAP[speciesCode] || DEFAULT_EXERCISE_TYPES;
-
-  // L1 items (no parent)
-  const l1Items = exerciseTypeItems.filter((item) => !item.parent_id && allowedTypes.includes(item.key));
+  // L1 items — filter by metadata.species (from master data)
+  const l1Items = exerciseTypeItems.filter((item) => {
+    if (item.parent_id) return false;
+    try {
+      const meta = typeof item.metadata === 'string' ? JSON.parse(item.metadata || '{}') as Record<string, unknown> : {};
+      const species = Array.isArray(meta.species) ? meta.species as string[] : [];
+      return species.length === 0 || !speciesCode || species.includes(speciesCode);
+    } catch {
+      return true;
+    }
+  });
   const l1Options: Option[] = toOption(l1Items, lang, t, 'exercise_type');
 
   // L2 items filtered by selected L1
