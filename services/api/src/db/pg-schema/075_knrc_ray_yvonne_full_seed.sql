@@ -272,4 +272,4 @@ ON CONFLICT (id) DO NOTHING;
 INSERT INTO feed_manufacturer_type_map (id, manufacturer_id, type_item_id, created_at)
 VALUES
   ('f4a6c8e0d2b4a6c8e0f2a4c6e8b0d2f4', '5147d84c6992d4248142d3bc8e74a571', 'mi-diet-feed-snack-treat-core', NOW())
-ON CONFLICT (id) DO NOTHING;
+ON CONFLICT DO NOTHING;
