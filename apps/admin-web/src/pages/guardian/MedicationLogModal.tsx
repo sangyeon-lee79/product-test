@@ -1,6 +1,6 @@
 // 약품 투여 기록 추가/수정 모달 — GuardianMainPage Health 탭에서 사용
 // Search-first UI: 검색 → 약품 선택 → 투여 정보 입력
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { api, type FeedModel, type FeedType, type Pet, type PetLog } from '../../lib/api';
 import { uiErrorMessage } from './guardianTypes';
 import type { Lang } from '@petfolio/shared';
