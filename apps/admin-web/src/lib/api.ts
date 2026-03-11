@@ -1,26 +1,6 @@
 // Admin Web API 클라이언트
 
 import { getApiBase } from './apiBase';
-export type {
-  I18nRow, MasterCategory, MasterItem, Country, Currency,
-  GuardianProfile,
-  Pet, PetWeightLog, WeightSummary,
-  PetDiseaseHistory, PetDiseaseDevice,
-  PetGlucoseLog, GlucoseSummary,
-  PetHealthMeasurementLog, HealthMeasurementSummary,
-  PetExerciseLog, ExerciseSummary, FriendPet,
-  Booking, FeedPost, FeedComment, PetAlbumMedia,
-  FriendRequest, FriendConnection,
-  DeviceType, DeviceManufacturer, DeviceBrand, DeviceModel, MeasurementUnit, GuardianDevice,
-  FeedType, FeedManufacturer, FeedBrand, FeedModel,
-  PetFeed, FeedNutrition, FeedingLog, FeedingMixFavorite,
-  FeedRegistrationRequest,
-  PetLog, GlucoseAlert, MemberSummary, MemberRecord, GoogleSettingItem, PublicGoogleConfig, OAuthLoginResponse,
-  PublicKakaoConfig, PublicAppleConfig, PlatformSettingItem,
-  ProviderProfile, DashboardStats, PetReport,
-  Store, StoreIndustry, StoreService, ServiceDiscount, StoreStats,
-  CatalogStats,
-} from '../types/api';
 import type {
   I18nRow, MasterCategory, MasterItem, Country, Currency,
   GuardianProfile,
@@ -41,6 +21,26 @@ import type {
   Store, StoreIndustry, StoreService, ServiceDiscount, StoreStats,
   CatalogStats,
 } from '../types/api';
+export type {
+  I18nRow, MasterCategory, MasterItem, Country, Currency,
+  GuardianProfile,
+  Pet, PetWeightLog, WeightSummary,
+  PetDiseaseHistory, PetDiseaseDevice,
+  PetGlucoseLog, GlucoseSummary,
+  PetHealthMeasurementLog, HealthMeasurementSummary,
+  PetExerciseLog, ExerciseSummary, FriendPet,
+  Booking, FeedPost, FeedComment, PetAlbumMedia,
+  FriendRequest, FriendConnection,
+  DeviceType, DeviceManufacturer, DeviceBrand, DeviceModel, MeasurementUnit, GuardianDevice,
+  FeedType, FeedManufacturer, FeedBrand, FeedModel,
+  PetFeed, FeedNutrition, FeedingLog, FeedingMixFavorite,
+  FeedRegistrationRequest,
+  PetLog, GlucoseAlert, MemberSummary, MemberRecord, GoogleSettingItem, PublicGoogleConfig, OAuthLoginResponse,
+  PublicKakaoConfig, PublicAppleConfig, PlatformSettingItem,
+  ProviderProfile, DashboardStats, PetReport,
+  Store, StoreIndustry, StoreService, ServiceDiscount, StoreStats,
+  CatalogStats,
+};
 
 const API_BASE = getApiBase();
 const TIMEOUT_MS = 15_000;
@@ -155,6 +155,78 @@ function buildQuery(params: Record<string, string | number | boolean | undefined
   }
   const s = q.toString();
   return s ? `?${s}` : '';
+}
+
+/* ── Catalog API factory ── */
+function createCatalogApi(adminPrefix: string, publicPrefix: string, hasNutrition: boolean) {
+  const base = {
+    stats: () => request<CatalogStats>(`${adminPrefix}/stats`),
+    types: {
+      list: (lang?: string) => {
+        const q = lang ? `?lang=${encodeURIComponent(lang)}` : '';
+        return request<FeedType[]>(`${adminPrefix}/types${q}`);
+      },
+    },
+    manufacturers: {
+      list: (lang?: string, typeItemId?: string) =>
+        request<FeedManufacturer[]>(`${adminPrefix}/manufacturers${buildQuery({ lang, type_item_id: typeItemId })}`),
+      create: (data: { key?: string; country?: string; sort_order?: number; name_ko: string; name_en?: string; parent_type_ids?: string[]; translations?: Record<string, string> }) =>
+        request<FeedManufacturer>(`${adminPrefix}/manufacturers`, { method: 'POST', body: JSON.stringify(data) }),
+      update: (id: string, data: Partial<{ key: string; name_ko: string; name_en: string; country: string; sort_order: number; status: string; parent_type_ids: string[]; translations: Record<string, string> }>) =>
+        request<FeedManufacturer>(`${adminPrefix}/manufacturers/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
+      delete: (id: string) =>
+        request<{ id: string; deleted: boolean }>(`${adminPrefix}/manufacturers/${id}`, { method: 'DELETE' }),
+    },
+    brands: {
+      list: (manufacturerId?: string, typeItemId?: string) =>
+        request<FeedBrand[]>(`${adminPrefix}/brands${buildQuery({ manufacturer_id: manufacturerId, type_item_id: typeItemId })}`),
+      create: (data: { key?: string; manufacturer_id?: string; manufacturer_ids?: string[]; parent_type_ids?: string[]; sort_order?: number; name_ko: string; name_en?: string; translations?: Record<string, string> }) =>
+        request<FeedBrand>(`${adminPrefix}/brands`, { method: 'POST', body: JSON.stringify(data) }),
+      update: (id: string, data: Partial<{ key: string; name_ko: string; name_en: string; status: string; manufacturer_id: string; manufacturer_ids: string[]; parent_type_ids: string[]; sort_order: number; translations: Record<string, string> }>) =>
+        request<FeedBrand>(`${adminPrefix}/brands/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
+      delete: (id: string) =>
+        request<{ id: string; deleted: boolean }>(`${adminPrefix}/brands/${id}`, { method: 'DELETE' }),
+    },
+    models: {
+      list: (filters?: { feed_type_id?: string; manufacturer_id?: string; brand_id?: string }) =>
+        request<FeedModel[]>(`${adminPrefix}/models${buildQuery({ feed_type_id: filters?.feed_type_id, manufacturer_id: filters?.manufacturer_id, brand_id: filters?.brand_id })}`),
+      create: (data: { key?: string; feed_type_id: string; parent_type_ids?: string[]; manufacturer_id: string; brand_id?: string; brand_ids?: string[]; model_name?: string; model_code?: string; description?: string; image_url?: string; sort_order?: number; name_ko?: string; name_en?: string; translations?: Record<string, string> }) =>
+        request<FeedModel>(`${adminPrefix}/models`, { method: 'POST', body: JSON.stringify(data) }),
+      update: (id: string, data: Partial<{ key: string; model_name: string; model_code: string; description: string; image_url: string | null; status: string; feed_type_id: string; parent_type_ids: string[]; manufacturer_id: string; brand_id: string | null; brand_ids: string[]; sort_order: number; name_ko: string; name_en: string; translations: Record<string, string> }>) =>
+        request<FeedModel>(`${adminPrefix}/models/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
+      delete: (id: string) =>
+        request<{ id: string; deleted: boolean }>(`${adminPrefix}/models/${id}`, { method: 'DELETE' }),
+    },
+    public: {
+      types: (lang?: string) => {
+        const q = lang ? `?lang=${encodeURIComponent(lang)}` : '';
+        return request<FeedType[]>(`${publicPrefix}/types${q}`);
+      },
+      manufacturers: (feedTypeId?: string, lang?: string) =>
+        request<FeedManufacturer[]>(`${publicPrefix}/manufacturers${buildQuery({ feed_type_id: feedTypeId, lang })}`),
+      brands: (manufacturerId?: string, feedTypeId?: string) =>
+        request<FeedBrand[]>(`${publicPrefix}/brands${buildQuery({ manufacturer_id: manufacturerId, feed_type_id: feedTypeId })}`),
+      models: (filters?: { feed_type_id?: string; manufacturer_id?: string; brand_id?: string }, lang?: string) =>
+        request<FeedModel[]>(`${publicPrefix}/models${buildQuery({ feed_type_id: filters?.feed_type_id, manufacturer_id: filters?.manufacturer_id, brand_id: filters?.brand_id, lang })}`),
+    },
+  };
+  if (hasNutrition) {
+    return {
+      ...base,
+      nutrition: {
+        get: (modelId: string) =>
+          request<FeedNutrition | null>(`${adminPrefix}/models/${modelId}/nutrition`),
+        upsert: (modelId: string, data: Partial<Omit<FeedNutrition, 'id' | 'feed_model_id' | 'status' | 'created_at' | 'updated_at'>>) =>
+          request<FeedNutrition>(`${adminPrefix}/models/${modelId}/nutrition`, { method: 'PUT', body: JSON.stringify(data) }),
+      },
+      public: {
+        ...base.public,
+        nutrition: (modelId: string) =>
+          request<FeedNutrition | null>(`${publicPrefix}/models/${modelId}/nutrition`),
+      },
+    };
+  }
+  return base;
 }
 
 export const api = {
@@ -894,177 +966,9 @@ export const api = {
       units: () => request<MeasurementUnit[]>('/api/v1/devices/units'),
     },
   },
-  feedCatalog: {
-    stats: () => request<CatalogStats>('/api/v1/admin/feed-catalog/stats'),
-    types: {
-      list: (lang?: string) => {
-        const q = lang ? `?lang=${encodeURIComponent(lang)}` : '';
-        return request<FeedType[]>(`/api/v1/admin/feed-catalog/types${q}`);
-      },
-    },
-    manufacturers: {
-      list: (lang?: string, typeItemId?: string) =>
-        request<FeedManufacturer[]>(`/api/v1/admin/feed-catalog/manufacturers${buildQuery({ lang, type_item_id: typeItemId })}`),
-      create: (data: { key?: string; country?: string; sort_order?: number; name_ko: string; name_en?: string; parent_type_ids?: string[]; translations?: Record<string, string> }) =>
-        request<FeedManufacturer>('/api/v1/admin/feed-catalog/manufacturers', { method: 'POST', body: JSON.stringify(data) }),
-      update: (id: string, data: Partial<{ key: string; name_ko: string; name_en: string; country: string; sort_order: number; status: string; parent_type_ids: string[]; translations: Record<string, string> }>) =>
-        request<FeedManufacturer>(`/api/v1/admin/feed-catalog/manufacturers/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
-      delete: (id: string) =>
-        request<{ id: string; deleted: boolean }>(`/api/v1/admin/feed-catalog/manufacturers/${id}`, { method: 'DELETE' }),
-    },
-    brands: {
-      list: (manufacturerId?: string, typeItemId?: string) =>
-        request<FeedBrand[]>(`/api/v1/admin/feed-catalog/brands${buildQuery({ manufacturer_id: manufacturerId, type_item_id: typeItemId })}`),
-      create: (data: { key?: string; manufacturer_id?: string; manufacturer_ids?: string[]; parent_type_ids?: string[]; sort_order?: number; name_ko: string; name_en?: string; translations?: Record<string, string> }) =>
-        request<FeedBrand>('/api/v1/admin/feed-catalog/brands', { method: 'POST', body: JSON.stringify(data) }),
-      update: (id: string, data: Partial<{ key: string; name_ko: string; name_en: string; status: string; manufacturer_id: string; manufacturer_ids: string[]; parent_type_ids: string[]; sort_order: number; translations: Record<string, string> }>) =>
-        request<FeedBrand>(`/api/v1/admin/feed-catalog/brands/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
-      delete: (id: string) =>
-        request<{ id: string; deleted: boolean }>(`/api/v1/admin/feed-catalog/brands/${id}`, { method: 'DELETE' }),
-    },
-    models: {
-      list: (filters?: { feed_type_id?: string; manufacturer_id?: string; brand_id?: string }) =>
-        request<FeedModel[]>(`/api/v1/admin/feed-catalog/models${buildQuery({ feed_type_id: filters?.feed_type_id, manufacturer_id: filters?.manufacturer_id, brand_id: filters?.brand_id })}`),
-      create: (data: { key?: string; feed_type_id: string; parent_type_ids?: string[]; manufacturer_id: string; brand_id?: string; brand_ids?: string[]; model_name?: string; model_code?: string; description?: string; image_url?: string; sort_order?: number; name_ko?: string; name_en?: string; translations?: Record<string, string> }) =>
-        request<FeedModel>('/api/v1/admin/feed-catalog/models', { method: 'POST', body: JSON.stringify(data) }),
-      update: (id: string, data: Partial<{ key: string; model_name: string; model_code: string; description: string; image_url: string | null; status: string; feed_type_id: string; parent_type_ids: string[]; manufacturer_id: string; brand_id: string | null; brand_ids: string[]; sort_order: number; name_ko: string; name_en: string; translations: Record<string, string> }>) =>
-        request<FeedModel>(`/api/v1/admin/feed-catalog/models/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
-      delete: (id: string) =>
-        request<{ id: string; deleted: boolean }>(`/api/v1/admin/feed-catalog/models/${id}`, { method: 'DELETE' }),
-    },
-    nutrition: {
-      get: (modelId: string) =>
-        request<FeedNutrition | null>(`/api/v1/admin/feed-catalog/models/${modelId}/nutrition`),
-      upsert: (modelId: string, data: Partial<Omit<FeedNutrition, 'id' | 'feed_model_id' | 'status' | 'created_at' | 'updated_at'>>) =>
-        request<FeedNutrition>(`/api/v1/admin/feed-catalog/models/${modelId}/nutrition`, { method: 'PUT', body: JSON.stringify(data) }),
-    },
-    public: {
-      types: (lang?: string) => {
-        const q = lang ? `?lang=${encodeURIComponent(lang)}` : '';
-        return request<FeedType[]>(`/api/v1/feed-catalog/types${q}`);
-      },
-      manufacturers: (feedTypeId?: string, lang?: string) =>
-        request<FeedManufacturer[]>(`/api/v1/feed-catalog/manufacturers${buildQuery({ feed_type_id: feedTypeId, lang })}`),
-      brands: (manufacturerId?: string, feedTypeId?: string) =>
-        request<FeedBrand[]>(`/api/v1/feed-catalog/brands${buildQuery({ manufacturer_id: manufacturerId, feed_type_id: feedTypeId })}`),
-      models: (filters?: { feed_type_id?: string; manufacturer_id?: string; brand_id?: string }, lang?: string) =>
-        request<FeedModel[]>(`/api/v1/feed-catalog/models${buildQuery({ feed_type_id: filters?.feed_type_id, manufacturer_id: filters?.manufacturer_id, brand_id: filters?.brand_id, lang })}`),
-      nutrition: (modelId: string) =>
-        request<FeedNutrition | null>(`/api/v1/feed-catalog/models/${modelId}/nutrition`),
-    },
-  },
-
-  supplementCatalog: {
-    stats: () => request<CatalogStats>('/api/v1/admin/supplement-catalog/stats'),
-    types: {
-      list: (lang?: string) => {
-        const q = lang ? `?lang=${encodeURIComponent(lang)}` : '';
-        return request<FeedType[]>(`/api/v1/admin/supplement-catalog/types${q}`);
-      },
-    },
-    manufacturers: {
-      list: (lang?: string, typeItemId?: string) =>
-        request<FeedManufacturer[]>(`/api/v1/admin/supplement-catalog/manufacturers${buildQuery({ lang, type_item_id: typeItemId })}`),
-      create: (data: { key?: string; country?: string; sort_order?: number; name_ko: string; name_en?: string; parent_type_ids?: string[]; translations?: Record<string, string> }) =>
-        request<FeedManufacturer>('/api/v1/admin/supplement-catalog/manufacturers', { method: 'POST', body: JSON.stringify(data) }),
-      update: (id: string, data: Partial<{ key: string; name_ko: string; name_en: string; country: string; sort_order: number; status: string; parent_type_ids: string[]; translations: Record<string, string> }>) =>
-        request<FeedManufacturer>(`/api/v1/admin/supplement-catalog/manufacturers/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
-      delete: (id: string) =>
-        request<{ id: string; deleted: boolean }>(`/api/v1/admin/supplement-catalog/manufacturers/${id}`, { method: 'DELETE' }),
-    },
-    brands: {
-      list: (manufacturerId?: string, typeItemId?: string) =>
-        request<FeedBrand[]>(`/api/v1/admin/supplement-catalog/brands${buildQuery({ manufacturer_id: manufacturerId, type_item_id: typeItemId })}`),
-      create: (data: { key?: string; manufacturer_id?: string; manufacturer_ids?: string[]; parent_type_ids?: string[]; sort_order?: number; name_ko: string; name_en?: string; translations?: Record<string, string> }) =>
-        request<FeedBrand>('/api/v1/admin/supplement-catalog/brands', { method: 'POST', body: JSON.stringify(data) }),
-      update: (id: string, data: Partial<{ key: string; name_ko: string; name_en: string; status: string; manufacturer_id: string; manufacturer_ids: string[]; parent_type_ids: string[]; sort_order: number; translations: Record<string, string> }>) =>
-        request<FeedBrand>(`/api/v1/admin/supplement-catalog/brands/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
-      delete: (id: string) =>
-        request<{ id: string; deleted: boolean }>(`/api/v1/admin/supplement-catalog/brands/${id}`, { method: 'DELETE' }),
-    },
-    models: {
-      list: (filters?: { feed_type_id?: string; manufacturer_id?: string; brand_id?: string }) =>
-        request<FeedModel[]>(`/api/v1/admin/supplement-catalog/models${buildQuery({ feed_type_id: filters?.feed_type_id, manufacturer_id: filters?.manufacturer_id, brand_id: filters?.brand_id })}`),
-      create: (data: { key?: string; feed_type_id: string; parent_type_ids?: string[]; manufacturer_id: string; brand_id?: string; brand_ids?: string[]; model_name?: string; model_code?: string; description?: string; image_url?: string; sort_order?: number; name_ko?: string; name_en?: string; translations?: Record<string, string> }) =>
-        request<FeedModel>('/api/v1/admin/supplement-catalog/models', { method: 'POST', body: JSON.stringify(data) }),
-      update: (id: string, data: Partial<{ key: string; model_name: string; model_code: string; description: string; image_url: string | null; status: string; feed_type_id: string; parent_type_ids: string[]; manufacturer_id: string; brand_id: string | null; brand_ids: string[]; sort_order: number; name_ko: string; name_en: string; translations: Record<string, string> }>) =>
-        request<FeedModel>(`/api/v1/admin/supplement-catalog/models/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
-      delete: (id: string) =>
-        request<{ id: string; deleted: boolean }>(`/api/v1/admin/supplement-catalog/models/${id}`, { method: 'DELETE' }),
-    },
-    nutrition: {
-      get: (modelId: string) =>
-        request<FeedNutrition | null>(`/api/v1/admin/supplement-catalog/models/${modelId}/nutrition`),
-      upsert: (modelId: string, data: Partial<Omit<FeedNutrition, 'id' | 'feed_model_id' | 'status' | 'created_at' | 'updated_at'>>) =>
-        request<FeedNutrition>(`/api/v1/admin/supplement-catalog/models/${modelId}/nutrition`, { method: 'PUT', body: JSON.stringify(data) }),
-    },
-    public: {
-      types: (lang?: string) => {
-        const q = lang ? `?lang=${encodeURIComponent(lang)}` : '';
-        return request<FeedType[]>(`/api/v1/supplement-catalog/types${q}`);
-      },
-      manufacturers: (feedTypeId?: string, lang?: string) =>
-        request<FeedManufacturer[]>(`/api/v1/supplement-catalog/manufacturers${buildQuery({ feed_type_id: feedTypeId, lang })}`),
-      brands: (manufacturerId?: string, feedTypeId?: string) =>
-        request<FeedBrand[]>(`/api/v1/supplement-catalog/brands${buildQuery({ manufacturer_id: manufacturerId, feed_type_id: feedTypeId })}`),
-      models: (filters?: { feed_type_id?: string; manufacturer_id?: string; brand_id?: string }, lang?: string) =>
-        request<FeedModel[]>(`/api/v1/supplement-catalog/models${buildQuery({ feed_type_id: filters?.feed_type_id, manufacturer_id: filters?.manufacturer_id, brand_id: filters?.brand_id, lang })}`),
-      nutrition: (modelId: string) =>
-        request<FeedNutrition | null>(`/api/v1/supplement-catalog/models/${modelId}/nutrition`),
-    },
-  },
-
-  medicineCatalog: {
-    stats: () => request<CatalogStats>('/api/v1/admin/medicine-catalog/stats'),
-    types: {
-      list: (lang?: string) => {
-        const q = lang ? `?lang=${encodeURIComponent(lang)}` : '';
-        return request<FeedType[]>(`/api/v1/admin/medicine-catalog/types${q}`);
-      },
-    },
-    manufacturers: {
-      list: (lang?: string, typeItemId?: string) =>
-        request<FeedManufacturer[]>(`/api/v1/admin/medicine-catalog/manufacturers${buildQuery({ lang, type_item_id: typeItemId })}`),
-      create: (data: { key?: string; country?: string; sort_order?: number; name_ko: string; name_en?: string; parent_type_ids?: string[]; translations?: Record<string, string> }) =>
-        request<FeedManufacturer>('/api/v1/admin/medicine-catalog/manufacturers', { method: 'POST', body: JSON.stringify(data) }),
-      update: (id: string, data: Partial<{ key: string; name_ko: string; name_en: string; country: string; sort_order: number; status: string; parent_type_ids: string[]; translations: Record<string, string> }>) =>
-        request<FeedManufacturer>(`/api/v1/admin/medicine-catalog/manufacturers/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
-      delete: (id: string) =>
-        request<{ id: string; deleted: boolean }>(`/api/v1/admin/medicine-catalog/manufacturers/${id}`, { method: 'DELETE' }),
-    },
-    brands: {
-      list: (manufacturerId?: string, typeItemId?: string) =>
-        request<FeedBrand[]>(`/api/v1/admin/medicine-catalog/brands${buildQuery({ manufacturer_id: manufacturerId, type_item_id: typeItemId })}`),
-      create: (data: { key?: string; manufacturer_id?: string; manufacturer_ids?: string[]; parent_type_ids?: string[]; sort_order?: number; name_ko: string; name_en?: string; translations?: Record<string, string> }) =>
-        request<FeedBrand>('/api/v1/admin/medicine-catalog/brands', { method: 'POST', body: JSON.stringify(data) }),
-      update: (id: string, data: Partial<{ key: string; name_ko: string; name_en: string; status: string; manufacturer_id: string; manufacturer_ids: string[]; parent_type_ids: string[]; sort_order: number; translations: Record<string, string> }>) =>
-        request<FeedBrand>(`/api/v1/admin/medicine-catalog/brands/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
-      delete: (id: string) =>
-        request<{ id: string; deleted: boolean }>(`/api/v1/admin/medicine-catalog/brands/${id}`, { method: 'DELETE' }),
-    },
-    models: {
-      list: (filters?: { feed_type_id?: string; manufacturer_id?: string; brand_id?: string }) =>
-        request<FeedModel[]>(`/api/v1/admin/medicine-catalog/models${buildQuery({ feed_type_id: filters?.feed_type_id, manufacturer_id: filters?.manufacturer_id, brand_id: filters?.brand_id })}`),
-      create: (data: { key?: string; feed_type_id: string; parent_type_ids?: string[]; manufacturer_id: string; brand_id?: string; brand_ids?: string[]; model_name?: string; model_code?: string; description?: string; image_url?: string; sort_order?: number; name_ko?: string; name_en?: string; translations?: Record<string, string> }) =>
-        request<FeedModel>('/api/v1/admin/medicine-catalog/models', { method: 'POST', body: JSON.stringify(data) }),
-      update: (id: string, data: Partial<{ key: string; model_name: string; model_code: string; description: string; image_url: string | null; status: string; feed_type_id: string; parent_type_ids: string[]; manufacturer_id: string; brand_id: string | null; brand_ids: string[]; sort_order: number; name_ko: string; name_en: string; translations: Record<string, string> }>) =>
-        request<FeedModel>(`/api/v1/admin/medicine-catalog/models/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
-      delete: (id: string) =>
-        request<{ id: string; deleted: boolean }>(`/api/v1/admin/medicine-catalog/models/${id}`, { method: 'DELETE' }),
-    },
-    public: {
-      types: (lang?: string) => {
-        const q = lang ? `?lang=${encodeURIComponent(lang)}` : '';
-        return request<FeedType[]>(`/api/v1/medicine-catalog/types${q}`);
-      },
-      manufacturers: (feedTypeId?: string, lang?: string) =>
-        request<FeedManufacturer[]>(`/api/v1/medicine-catalog/manufacturers${buildQuery({ feed_type_id: feedTypeId, lang })}`),
-      brands: (manufacturerId?: string, feedTypeId?: string) =>
-        request<FeedBrand[]>(`/api/v1/medicine-catalog/brands${buildQuery({ manufacturer_id: manufacturerId, feed_type_id: feedTypeId })}`),
-      models: (filters?: { feed_type_id?: string; manufacturer_id?: string; brand_id?: string }, lang?: string) =>
-        request<FeedModel[]>(`/api/v1/medicine-catalog/models${buildQuery({ feed_type_id: filters?.feed_type_id, manufacturer_id: filters?.manufacturer_id, brand_id: filters?.brand_id, lang })}`),
-    },
-  },
+  feedCatalog: createCatalogApi('/api/v1/admin/feed-catalog', '/api/v1/feed-catalog', true),
+  supplementCatalog: createCatalogApi('/api/v1/admin/supplement-catalog', '/api/v1/supplement-catalog', true),
+  medicineCatalog: createCatalogApi('/api/v1/admin/medicine-catalog', '/api/v1/medicine-catalog', false),
 
   feedRequests: {
     create: (data: {
