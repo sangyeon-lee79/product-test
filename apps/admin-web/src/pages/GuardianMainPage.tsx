@@ -18,7 +18,8 @@ import {
   type PetAlbumMedia,
   type PetHealthMeasurementLog,
   type PetExerciseLog,
-
+  type PetLog,
+  type FeedType,
   type PetWeightLog,
   type WeightSummary,
   type Store,
@@ -39,6 +40,7 @@ import ExerciseLogModal from './guardian/ExerciseLogModal';
 import PetReportTab from './guardian/PetReportTab';
 import PetWizardModal from './guardian/PetWizardModal';
 import GuardianProfileEditModal from './guardian/GuardianProfileEditModal';
+import MedicationLogModal from './guardian/MedicationLogModal';
 import {
   type FeedTab,
   type Mode,
@@ -99,6 +101,9 @@ export default function GuardianMainPage() {
   const [exerciseLogs, setExerciseLogs] = useState<PetExerciseLog[]>([]);
   const [exerciseLogModalOpen, setExerciseLogModalOpen] = useState(false);
   const [editingExerciseLog, setEditingExerciseLog] = useState<PetExerciseLog | null>(null);
+  const [medicationLogModalOpen, setMedicationLogModalOpen] = useState(false);
+  const [editingMedicationLog, setEditingMedicationLog] = useState<PetLog | null>(null);
+  const [medicineTypes, setMedicineTypes] = useState<FeedType[]>([]);
   const [exerciseTypeItems, setExerciseTypeItems] = useState<MasterItem[]>([]);
   const [exerciseIntensityItems, setExerciseIntensityItems] = useState<MasterItem[]>([]);
   const [exerciseLocationItems, setExerciseLocationItems] = useState<MasterItem[]>([]);
@@ -279,6 +284,7 @@ export default function GuardianMainPage() {
         exerciseIntensityRows,
         exerciseLocationRows,
         friendPetsRes,
+        medicineTypesRes,
       ] = await Promise.all([
         safe(api.pets.list(), { pets: [] }, 'pets.list'),
         safe(api.bookings.list(), { bookings: [] }, 'bookings.list'),
@@ -312,6 +318,7 @@ export default function GuardianMainPage() {
         loadCategoryItems(CATEGORY_KEYS.exercise_intensity, lang),
         loadCategoryItems(CATEGORY_KEYS.exercise_location, lang),
         safe(api.friends.pets(), { pets: [] }, 'friends.pets'),
+        safe(api.medicineCatalog.public.types(lang), [] as FeedType[], 'medicineCatalog.types'),
       ]);
 
       setPets(petsRes.pets || []);
@@ -348,6 +355,7 @@ export default function GuardianMainPage() {
       setExerciseIntensityItems(exerciseIntensityRows);
       setExerciseLocationItems(exerciseLocationRows);
       setFriendPets(friendPetsRes.pets || []);
+      setMedicineTypes(medicineTypesRes || []);
 
       if (!silent && failedApis.length > 0) {
         setError(t('guardian.alert.partial_load_failed', 'Some data could not be loaded. Please try again shortly.'));
@@ -798,30 +806,34 @@ export default function GuardianMainPage() {
                         <div className="gm-toolbar-group gm-toolbar-record">
                           <button className="gm-toolbar-tile gm-tile-weight" onClick={() => { setEditingWeightLog(null); setWeightModalOpen(true); }}>
                             <span className="gm-tile-icon">⚖️</span>
-                            <span className="gm-tile-label">{t('guardian.health.add_weight', '몸무게')}</span>
+                            <span className="gm-tile-label">{t('guardian.health.weight_log', '체중 기록')}</span>
                           </button>
                           <button className="gm-toolbar-tile gm-tile-measure" onClick={openCreateHealthMeasurementModal}>
                             <span className="gm-tile-icon">📊</span>
-                            <span className="gm-tile-label">{t('guardian.health.add_measurement', '수치 추가')}</span>
+                            <span className="gm-tile-label">{t('guardian.health.measure_log', '수치 기록')}</span>
                           </button>
                           <button className="gm-toolbar-tile gm-tile-feed" onClick={() => { setEditingFeedingLog(null); setFeedingLogModalOpen(true); }}>
                             <span className="gm-tile-icon">🍽️</span>
-                            <span className="gm-tile-label">{t('guardian.feeding.add', '급여 기록')}</span>
+                            <span className="gm-tile-label">{t('guardian.health.feeding_log', '급여 기록')}</span>
                           </button>
                           <button className="gm-toolbar-tile gm-tile-exercise" onClick={() => { setEditingExerciseLog(null); setExerciseLogModalOpen(true); }}>
                             <span className="gm-tile-icon">🏃</span>
-                            <span className="gm-tile-label">{t('guardian.exercise.add', '운동 추가')}</span>
+                            <span className="gm-tile-label">{t('guardian.health.exercise_log', '운동 기록')}</span>
+                          </button>
+                          <button className="gm-toolbar-tile gm-tile-medication" onClick={() => { setEditingMedicationLog(null); setMedicationLogModalOpen(true); }}>
+                            <span className="gm-tile-icon">💉</span>
+                            <span className="gm-tile-label">{t('guardian.health.medication_log', '약품 기록')}</span>
                           </button>
                         </div>
                         <div className="gm-toolbar-divider" />
                         <div className="gm-toolbar-group gm-toolbar-manage">
                           <button className="gm-toolbar-tile gm-tile-devices" onClick={() => setDeviceManageModalOpen(true)}>
                             <span className="gm-tile-icon">🩺</span>
-                            <span className="gm-tile-label">{t('guardian.device.manage_title', '측정 장비')}</span>
+                            <span className="gm-tile-label">{t('guardian.health.device_manage', '장비 관리')}</span>
                           </button>
                           <button className="gm-toolbar-tile gm-tile-feeds" onClick={() => setFeedManageModalOpen(true)}>
                             <span className="gm-tile-icon">🥣</span>
-                            <span className="gm-tile-label">{t('guardian.feed.manage_title', '사료 관리')}</span>
+                            <span className="gm-tile-label">{t('guardian.health.feed_manage', '사료 관리')}</span>
                           </button>
                         </div>
                       </div>
@@ -1251,6 +1263,17 @@ export default function GuardianMainPage() {
         setError={setError}
         onClose={() => { setExerciseLogModalOpen(false); setEditingExerciseLog(null); }}
         onSuccess={() => { if (selectedPet?.id) void loadExerciseLogs(selectedPet.id); }}
+      />
+      <MedicationLogModal
+        open={medicationLogModalOpen}
+        editingLog={editingMedicationLog}
+        selectedPet={selectedPet}
+        medicineTypes={medicineTypes}
+        lang={lang}
+        t={t}
+        setError={setError}
+        onClose={() => { setMedicationLogModalOpen(false); setEditingMedicationLog(null); }}
+        onSuccess={() => { void loadAll(undefined, { silent: true }); }}
       />
       <PetWizardModal
         open={petModalOpen}

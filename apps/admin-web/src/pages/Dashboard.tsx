@@ -1,6 +1,6 @@
 import { useEffect, useState, type ReactNode } from 'react';
 import { api } from '../lib/api';
-import type { DashboardStats } from '../types/api';
+import type { DashboardStats, StoreStats } from '../types/api';
 import { useT, useI18n } from '../lib/i18n';
 import {
   BarChart, Bar, PieChart, Pie, Cell, LineChart, Line,
@@ -22,9 +22,11 @@ export default function Dashboard() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [health, setHealth] = useState<{ status: string; environment: string; services: Record<string, string> } | null>(null);
+  const [storeStats, setStoreStats] = useState<StoreStats | null>(null);
 
   useEffect(() => {
     api.health().then(setHealth).catch(() => {});
+    api.stores.admin.stats().then(setStoreStats).catch(() => {});
   }, []);
 
   useEffect(() => {
@@ -247,6 +249,23 @@ export default function Dashboard() {
                 </ChartCard>
               </div>
             </SectionCard>
+
+            {/* Section 5: Store Stats */}
+            {storeStats && (
+              <SectionCard title={t('admin.dashboard.stores.title', '매장 통계')}>
+                <div className="form-row col3">
+                  <ChartCard title={t('admin.dashboard.stores.total', '전체 매장')}>
+                    <KpiValue value={storeStats.total} unit={t('admin.dashboard.stores_unit', '개')} />
+                  </ChartCard>
+                  <ChartCard title={t('admin.dashboard.stores.active', '활성 매장')}>
+                    <KpiValue value={storeStats.active} unit={t('admin.dashboard.stores_unit', '개')} color="#38A169" />
+                  </ChartCard>
+                  <ChartCard title={t('admin.dashboard.stores.new', '신규 매장 (30일)')}>
+                    <KpiValue value={storeStats.new_30d} unit={t('admin.dashboard.stores_unit', '개')} color="#3B82F6" />
+                  </ChartCard>
+                </div>
+              </SectionCard>
+            )}
           </>
         )}
       </div>

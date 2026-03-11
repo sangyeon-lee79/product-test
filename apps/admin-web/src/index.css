@@ -1720,11 +1720,14 @@ html[data-theme="dark"] .ig-filter-pill.active {
   padding: 6px;
   margin-bottom: 4px;
   box-shadow: 0 1px 3px rgba(0,0,0,.04);
+  overflow-x: auto; -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
 }
+.gm-health-toolbar::-webkit-scrollbar { display: none; }
 .gm-toolbar-group {
-  display: flex; gap: 4px; flex: 1;
+  display: flex; gap: 4px; flex: 1; flex-shrink: 0;
 }
-.gm-toolbar-record { flex: 3; }
+.gm-toolbar-record { flex: 5; }
 .gm-toolbar-manage { flex: 2; }
 .gm-toolbar-divider {
   width: 1px; background: var(--border); margin: 4px 6px;
@@ -1772,6 +1775,14 @@ html[data-theme="dark"] .ig-filter-pill.active {
 .gm-tile-feed:hover { border-color: #6ee7b7; }
 .gm-tile-feed:hover .gm-tile-label { color: #047857; }
 
+.gm-tile-exercise::before { background: linear-gradient(135deg, #e0e7ff 0%, #eef2ff 100%); }
+.gm-tile-exercise:hover { border-color: #a5b4fc; }
+.gm-tile-exercise:hover .gm-tile-label { color: #4338ca; }
+
+.gm-tile-medication::before { background: linear-gradient(135deg, #ffe4e6 0%, #fff1f2 100%); }
+.gm-tile-medication:hover { border-color: #fda4af; }
+.gm-tile-medication:hover .gm-tile-label { color: #be123c; }
+
 /* Manage tiles — subtle outlined style */
 .gm-tile-devices::before { background: linear-gradient(135deg, #f3e8ff 0%, #faf5ff 100%); }
 .gm-tile-devices:hover { border-color: #c084fc; }
@@ -1786,11 +1797,15 @@ html[data-theme="dark"] .gm-health-toolbar { background: var(--surface); border-
 html[data-theme="dark"] .gm-tile-weight::before { background: linear-gradient(135deg, rgba(59,130,246,.12) 0%, rgba(59,130,246,.05) 100%); }
 html[data-theme="dark"] .gm-tile-measure::before { background: linear-gradient(135deg, rgba(217,119,6,.12) 0%, rgba(217,119,6,.05) 100%); }
 html[data-theme="dark"] .gm-tile-feed::before { background: linear-gradient(135deg, rgba(16,185,129,.12) 0%, rgba(16,185,129,.05) 100%); }
+html[data-theme="dark"] .gm-tile-exercise::before { background: linear-gradient(135deg, rgba(99,102,241,.12) 0%, rgba(99,102,241,.05) 100%); }
+html[data-theme="dark"] .gm-tile-medication::before { background: linear-gradient(135deg, rgba(244,63,94,.12) 0%, rgba(244,63,94,.05) 100%); }
 html[data-theme="dark"] .gm-tile-devices::before { background: linear-gradient(135deg, rgba(139,92,246,.12) 0%, rgba(139,92,246,.05) 100%); }
 html[data-theme="dark"] .gm-tile-feeds::before { background: linear-gradient(135deg, rgba(236,72,153,.12) 0%, rgba(236,72,153,.05) 100%); }
 html[data-theme="dark"] .gm-tile-weight:hover .gm-tile-label { color: #93c5fd; }
 html[data-theme="dark"] .gm-tile-measure:hover .gm-tile-label { color: #fbbf24; }
 html[data-theme="dark"] .gm-tile-feed:hover .gm-tile-label { color: #6ee7b7; }
+html[data-theme="dark"] .gm-tile-exercise:hover .gm-tile-label { color: #a5b4fc; }
+html[data-theme="dark"] .gm-tile-medication:hover .gm-tile-label { color: #fda4af; }
 html[data-theme="dark"] .gm-tile-devices:hover .gm-tile-label { color: #c084fc; }
 html[data-theme="dark"] .gm-tile-feeds:hover .gm-tile-label { color: #f9a8d4; }
 

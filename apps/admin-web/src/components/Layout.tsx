@@ -19,7 +19,6 @@ export default function Layout({ children }: { children: React.ReactNode }) {
       { to: '/admin/feeds',     icon: '🥣', label: t('admin.nav.feeds',         '사료 관리') },
       { to: '/admin/supplements', icon: '💊', label: t('admin.nav.supplements', '영양제 관리') },
       { to: '/admin/medicines',   icon: '💉', label: t('admin.nav.medicines',    '약품 관리') },
-      { to: '/admin/stores',    icon: '🏪', label: t('admin.nav.stores',        '매장 관리') },
       { to: '/admin/members',   icon: '👥', label: t('admin.nav.members',       '회원 관리') },
       { to: '/admin/api-connections', icon: '🔗', label: t('admin.nav.api_connections', 'API 연결') },
     ]},
