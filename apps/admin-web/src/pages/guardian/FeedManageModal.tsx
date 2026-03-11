@@ -211,11 +211,8 @@ export default function FeedManageModal({
           .some(s => s?.toLowerCase().includes(term))
       );
     }
-    if (form.feed_type_item_id) result = result.filter(m => m.feed_type_item_id === form.feed_type_item_id);
-    if (form.manufacturer_id) result = result.filter(m => m.manufacturer_id === form.manufacturer_id);
-    if (form.brand_id) result = result.filter(m => m.brand_id === form.brand_id);
     return result;
-  }, [allModels, searchTerm, form.feed_type_item_id, form.manufacturer_id, form.brand_id]);
+  }, [allModels, searchTerm]);
 
   function handleSelectModel(model: FeedModel) {
     if (form.model_id === model.id) {
@@ -244,13 +241,6 @@ export default function FeedManageModal({
   }, [form.model_id, activeTab]);
 
   // --- Options ---
-  const typeOptions = useMemo(
-    () => currentTypes
-      .filter((ft) => (ft.model_count ?? 0) > 0)
-      .map((ft) => ({ id: ft.id, key: ft.key, label: `${(ft.display_label || ft.key).trim()} (${ft.model_count})` })),
-    [currentTypes],
-  );
-
   const allTypeOptions = useMemo(
     () => currentTypes.map((ft) => ({ id: ft.id, key: ft.key, label: (ft.display_label || ft.key).trim() })),
     [currentTypes],
@@ -272,44 +262,9 @@ export default function FeedManageModal({
     [allBrands, lang],
   );
 
-  const mfrOptions = useMemo(
-    () => manufacturers
-      .filter((r) => r.status === 'active' && (r.model_count ?? 0) > 0)
-      .map((r) => ({
-        id: r.id, key: r.key,
-        label: `${((r.display_label || '').trim() || (lang === 'ko' ? (r.name_ko || r.name_en || r.key) : (r.name_en || r.name_ko || r.key)))} (${r.model_count ?? 0})`,
-      })),
-    [manufacturers, lang],
-  );
-
-  const brandOptions = useMemo(
-    () => brands
-      .filter((r) => r.status === 'active' && (r.model_count ?? 0) > 0)
-      .map((r) => ({
-        id: r.id, key: r.name_en || r.name_ko || r.id,
-        label: `${((r.display_label || '').trim() || (lang === 'ko' ? (r.name_ko || r.name_en || r.id) : (r.name_en || r.name_ko || r.id)))} (${r.model_count ?? 0})`,
-      })),
-    [brands, lang],
-  );
 
 
   // --- Helpers ---
-  function renderSelect(
-    label: string, value: string, options: Array<{ id: string; key: string; label: string }>,
-    onChange: (v: string) => void, required = false, name?: string, placeholder?: string, disabled = false,
-  ) {
-    return (
-      <div className="form-group">
-        <label className="form-label" htmlFor={name}>{label}{required ? ' *' : ''}</label>
-        <select id={name} name={name} className="form-select" value={value}
-          onChange={(e) => onChange(e.target.value)} disabled={disabled}>
-          <option value="">{placeholder || t('common.select', 'Select')}</option>
-          {options.map((o) => <option key={o.id} value={o.id}>{o.label}</option>)}
-        </select>
-      </div>
-    );
-  }
-
   function resetFormState() {
     setShowForm(false);
     setShowRequestForm(false);
@@ -743,18 +698,6 @@ export default function FeedManageModal({
                     </div>
                   )}
 
-                  {/* Filter dropdowns (auto-filled & disabled when model selected) */}
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
-                    {renderSelect(tabLabels.typeLabel, form.feed_type_item_id, typeOptions,
-                      (v) => { if (!form.model_id) setForm(p => ({ ...p, feed_type_item_id: v })); },
-                      false, 'cat-type', undefined, !!form.model_id)}
-                    {renderSelect(t('admin.feed.manufacturer', '제조사'), form.manufacturer_id, mfrOptions,
-                      (v) => { if (!form.model_id) setForm(p => ({ ...p, manufacturer_id: v })); },
-                      false, 'cat-manufacturer', undefined, !!form.model_id)}
-                  </div>
-                  {renderSelect(t('admin.feed.brand', '브랜드'), form.brand_id, brandOptions,
-                    (v) => { if (!form.model_id) setForm(p => ({ ...p, brand_id: v })); },
-                    false, 'cat-brand', undefined, !!form.model_id)}
                 </>
               )}
               <div className="form-group">

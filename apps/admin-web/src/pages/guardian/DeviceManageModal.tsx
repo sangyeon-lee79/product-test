@@ -1,6 +1,6 @@
 // 장비 관리 모달 — 등록된 측정 장비 목록, 추가, 수정, 삭제
 import { useEffect, useMemo, useState } from 'react';
-import { api, type DeviceBrand, type DeviceManufacturer, type DeviceModel, type DeviceType, type GuardianDevice, type Pet } from '../../lib/api';
+import { api, type DeviceModel, type GuardianDevice, type Pet } from '../../lib/api';
 import type { Lang } from '../../lib/i18n';
 import { uiErrorMessage } from './guardianTypes';
 
@@ -33,11 +33,6 @@ export default function DeviceManageModal({
   const [editingId, setEditingId] = useState<string | null>(null);
   const [form, setForm] = useState(EMPTY_FORM);
 
-  // cascade state
-  const [deviceTypes, setDeviceTypes] = useState<DeviceType[]>([]);
-  const [manufacturers, setManufacturers] = useState<DeviceManufacturer[]>([]);
-  const [brands, setBrands] = useState<DeviceBrand[]>([]);
-
   // Search-first state
   const [searchTerm, setSearchTerm] = useState('');
   const [allModels, setAllModels] = useState<DeviceModel[]>([]);
@@ -63,33 +58,14 @@ export default function DeviceManageModal({
     if (open && petId) void loadDevices();
   }, [open, petId]);
 
-  // Load device types
-  useEffect(() => {
-    if (!open) return;
-    const run = async () => {
-      try {
-        const types = await api.devices.public.types(lang);
-        setDeviceTypes(types);
-      } catch { setDeviceTypes([]); }
-    };
-    void run();
-  }, [open, lang]);
-
-  // Load ALL models + manufacturers + brands when add form opens (search-first)
+  // Load ALL models when add form opens (search-first)
   useEffect(() => {
     if (!open || !showForm || editingId) return;
     setAllModelsLoading(true);
     void (async () => {
       try {
-        const [m, mfrs, brs] = await Promise.all([
-          api.devices.public.models({}, lang),
-          api.devices.public.manufacturers(undefined, lang),
-          api.devices.public.brands(),
-        ]);
-        setAllModels(m);
-        setManufacturers(mfrs);
-        setBrands(brs);
-      } catch { setAllModels([]); setManufacturers([]); setBrands([]); }
+        setAllModels(await api.devices.public.models({}, lang));
+      } catch { setAllModels([]); }
       finally { setAllModelsLoading(false); }
     })();
   }, [open, showForm, editingId, lang]);
@@ -104,93 +80,11 @@ export default function DeviceManageModal({
           .some(s => s?.toLowerCase().includes(term))
       );
     }
-    if (form.device_type_item_id) result = result.filter(m => m.device_type_item_id === form.device_type_item_id || m.device_type_id === form.device_type_item_id);
-    if (form.manufacturer_id) result = result.filter(m => m.manufacturer_id === form.manufacturer_id);
-    if (form.brand_id) result = result.filter(m => m.brand_id === form.brand_id);
     return result;
-  }, [allModels, searchTerm, form.device_type_item_id, form.manufacturer_id, form.brand_id]);
+  }, [allModels, searchTerm]);
 
   function handleSelectModel(model: DeviceModel) {
-    if (form.model_id === model.id) {
-      // Deselect
-      setForm(p => ({ ...p, model_id: '', device_type_item_id: '', manufacturer_id: '', brand_id: '' }));
-    } else {
-      // Select → auto-fill
-      setForm(p => ({
-        ...p, model_id: model.id,
-        device_type_item_id: model.device_type_item_id || model.device_type_id || '',
-        manufacturer_id: model.manufacturer_id || '',
-        brand_id: model.brand_id || '',
-      }));
-    }
-  }
-
-  // Device type options: only types with model_count > 0, showing count
-  const deviceTypeOptions = useMemo(
-    () => deviceTypes
-      .filter((dt) => (dt.model_count ?? 0) > 0)
-      .map((dt) => ({
-        id: dt.id,
-        key: dt.key,
-        label: `${(dt.display_label || dt.key).trim()} (${dt.model_count})`,
-      })),
-    [deviceTypes],
-  );
-
-  const mfrOptions = useMemo(
-    () => manufacturers
-      .filter((r) => r.status === 'active' && (r.model_count ?? 0) > 0)
-      .map((r) => {
-        const baseLabel = (r.display_label || '').trim() || (lang === 'ko' ? (r.name_ko || r.name_en || r.key) : (r.name_en || r.name_ko || r.key));
-        return {
-          id: r.id,
-          key: r.key,
-          label: `${baseLabel} (${r.model_count ?? 0})`,
-        };
-      }),
-    [manufacturers, lang],
-  );
-
-  const brandOptions = useMemo(
-    () => brands
-      .filter((r) => r.status === 'active' && (r.model_count ?? 0) > 0)
-      .map((r) => {
-        const baseLabel = (r.display_label || '').trim() || (lang === 'ko' ? (r.name_ko || r.name_en || r.id) : (r.name_en || r.name_ko || r.id));
-        return {
-          id: r.id,
-          key: r.name_en || r.name_ko || r.id,
-          label: `${baseLabel} (${r.model_count ?? 0})`,
-        };
-      }),
-    [brands, lang],
-  );
-
-  function renderSelect(
-    label: string,
-    value: string,
-    options: Array<{ id: string; key: string; label: string }>,
-    onChange: (v: string) => void,
-    required = false,
-    name?: string,
-    placeholder?: string,
-    disabled = false,
-  ) {
-    return (
-      <div className="form-group">
-        <label className="form-label" htmlFor={name}>{label}{required ? ' *' : ''}</label>
-        <select
-          id={name}
-          name={name}
-          className="form-select"
-          value={value}
-          onChange={(e) => onChange(e.target.value)}
-          disabled={disabled}
-        >
-          <option value="">{placeholder || t('common.select', 'Select')}</option>
-          {options.map((o) => <option key={o.id} value={o.id}>{o.label}</option>)}
-        </select>
-      </div>
-    );
+    setForm(p => ({ ...p, model_id: form.model_id === model.id ? '' : model.id }));
   }
 
   function openAddForm() {
@@ -391,18 +285,6 @@ export default function DeviceManageModal({
                     </div>
                   )}
 
-                  {/* Filter dropdowns (auto-filled & disabled when model selected) */}
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
-                    {renderSelect(t('guardian.health.measurement.device_type', '장치 유형'), form.device_type_item_id, deviceTypeOptions,
-                      (v) => { if (!form.model_id) setForm(p => ({ ...p, device_type_item_id: v })); },
-                      false, 'device-type', undefined, !!form.model_id)}
-                    {renderSelect(t('guardian.health.measurement.manufacturer', '제조사'), form.manufacturer_id, mfrOptions,
-                      (v) => { if (!form.model_id) setForm(p => ({ ...p, manufacturer_id: v })); },
-                      false, 'device-manufacturer', undefined, !!form.model_id)}
-                  </div>
-                  {renderSelect(t('guardian.health.measurement.brand', '브랜드'), form.brand_id, brandOptions,
-                    (v) => { if (!form.model_id) setForm(p => ({ ...p, brand_id: v })); },
-                    false, 'device-brand', undefined, !!form.model_id)}
                 </>
               )}
               <div className="form-group">
