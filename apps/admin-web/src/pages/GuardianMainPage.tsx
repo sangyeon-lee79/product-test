@@ -28,7 +28,7 @@ import {
 
 import { useI18n, useT } from '../lib/i18n';
 import { BCP47_LOCALE_MAP, LANG_LABELS, type Lang } from '@petfolio/shared';
-import { getStoredRole, logout } from '../lib/auth';
+import { logout } from '../lib/auth';
 import ComposeModal from './guardian/ComposeModal';
 import WeightModal from './guardian/WeightModal';
 import MeasurementModal from './guardian/MeasurementModal';
@@ -66,8 +66,6 @@ export default function GuardianMainPage() {
   const { lang } = useI18n();
   const locale = BCP47_LOCALE_MAP[lang as Lang] || 'en-US';
   const navigate = useNavigate();
-  const role = getStoredRole();
-  const isGuardian = role === 'guardian';
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
