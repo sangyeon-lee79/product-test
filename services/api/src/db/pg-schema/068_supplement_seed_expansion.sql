@@ -15,7 +15,7 @@ VALUES
   ('b1c3d4e5f6a7b8c9d0e1f2a3b4c5d6e7', 'kyoritsu_seiyaku',   'supplement.manufacturer.kyoritsu_seiyaku',   '쿄리쯔제약',       'Kyoritsu Seiyaku',      'JP', 'active', 118, 'supplement', NOW(), NOW()),
   ('b1d4e5f6a7b8c9d0e1f2a3b4c5d6e7f8', 'vetplus',            'supplement.manufacturer.vetplus',            '벳플러스',         'VetPlus',               'UK', 'active', 119, 'supplement', NOW(), NOW()),
   ('b1e5f6a7b8c9d0e1f2a3b4c5d6e7f8a9', 'phibro',             'supplement.manufacturer.phibro',             '피브로',           'Phibro Animal Health',  'US', 'active', 120, 'supplement', NOW(), NOW())
-ON CONFLICT (id) DO NOTHING;
+ON CONFLICT DO NOTHING;
 
 -- ===== 2. BRANDS (15 신규) =====
 INSERT INTO feed_brands (id, manufacturer_id, name_key, name_ko, name_en, status, category_type, created_at, updated_at)
