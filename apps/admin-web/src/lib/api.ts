@@ -618,8 +618,8 @@ export const api = {
       }>) => request<{ updated: boolean; id: string }>(`/api/v1/pets/${petId}/logs/${logId}`, { method: 'PUT', body: JSON.stringify(data) }),
       remove: (petId: string, logId: string) => request<{ deleted: boolean; id: string }>(`/api/v1/pets/${petId}/logs/${logId}`, { method: 'DELETE' }),
     },
-    checkMicrochip: (microchipNo: string, excludePetId?: string) =>
-      request<{ available: boolean; reason?: string; pet_id?: string }>(`/api/v1/pets/check-microchip${buildQuery({ microchip_no: microchipNo, exclude_pet_id: excludePetId })}`),
+    checkMicrochip: (microchipNo: string, excludePetId?: string, countryCode?: string) =>
+      request<{ available: boolean; reason?: string; pet_id?: string }>(`/api/v1/pets/check-microchip${buildQuery({ microchip_no: microchipNo, exclude_pet_id: excludePetId, country_code: countryCode })}`),
   },
   storage: {
     presignedUrl: (params: { type: 'user_avatar' | 'pet_avatar' | 'log_media' | 'feed_media' | 'completion_photo' | 'store_photo' | 'service_photo' | 'product_image'; ext: string; subdir?: string }) =>

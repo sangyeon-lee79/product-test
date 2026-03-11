@@ -58,6 +58,7 @@ export interface Pet {
   life_stage_id?: string | null;
   body_size_id?: string | null;
   country_id?: string | null;
+  country_code?: string | null;
   medication_status_id?: string | null;
   weight_unit_id?: string | null;
   health_condition_level_id?: string | null;

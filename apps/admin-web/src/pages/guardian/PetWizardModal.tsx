@@ -19,6 +19,7 @@ interface Props {
   open: boolean;
   mode: Mode;
   editingPetId: string;
+  locale: string;
   options: GuardianPetOptions;
   t: (key: string, fallback?: string) => string;
   setError: (msg: string) => void;
@@ -26,10 +27,50 @@ interface Props {
   onSuccess: (savedPet: Pet) => void;
 }
 
-export default function PetWizardModal({ open, mode, editingPetId, options, t, setError, onClose, onSuccess }: Props) {
+type MicrochipStatus = 'idle' | 'checking' | 'available' | 'duplicate' | 'error';
+
+const MICROCHIP_PREFIX_RE = /^([A-Za-z]{2})(.+)$/;
+
+function localeCountryCode(locale: string): string {
+  const matched = locale.match(/-([A-Za-z]{2})$/);
+  return matched?.[1]?.toUpperCase() || 'KR';
+}
+
+function splitMicrochipValue(rawValue: string | null | undefined, fallbackCountryCode: string) {
+  const compact = String(rawValue || '').trim().replace(/\s+/g, '');
+  if (!compact) return { countryCode: fallbackCountryCode, localValue: '', normalizedValue: '' };
+  const prefixed = compact.match(MICROCHIP_PREFIX_RE);
+  if (prefixed) {
+    return {
+      countryCode: prefixed[1].toUpperCase(),
+      localValue: prefixed[2],
+      normalizedValue: `${prefixed[1].toUpperCase()}${prefixed[2]}`,
+    };
+  }
+  return {
+    countryCode: fallbackCountryCode,
+    localValue: compact,
+    normalizedValue: `${fallbackCountryCode}${compact}`,
+  };
+}
+
+export default function PetWizardModal({ open, mode, editingPetId, locale, options, t, setError, onClose, onSuccess }: Props) {
   const [petForm, setPetForm] = useState<PetForm>(DEFAULT_PET_FORM);
   const [petWizardStep, setPetWizardStep] = useState<PetWizardStep>(1);
   const [activePet, setActivePet] = useState<Pet | null>(null);
+  const [microchipCountryCode, setMicrochipCountryCode] = useState(() => localeCountryCode(locale));
+  const [microchipUnknown, setMicrochipUnknown] = useState(false);
+  const [microchipStatus, setMicrochipStatus] = useState<MicrochipStatus>('idle');
+  const [microchipMessage, setMicrochipMessage] = useState('');
+  const [lastCheckedMicrochip, setLastCheckedMicrochip] = useState('');
+
+  const defaultCountryCode = useMemo(() => localeCountryCode(locale), [locale]);
+  const immutableFieldHelp = {
+    name: t('guardian.pet_form.name_locked_help', 'Name cannot be changed after registration.'),
+    petType: t('guardian.pet_form.pet_type_locked_help', 'Pet type cannot be changed after registration.'),
+    breed: t('guardian.pet_form.breed_locked_help', 'Breed cannot be changed after registration.'),
+    gender: t('guardian.pet_form.gender_locked_help', 'Gender cannot be changed after registration.'),
+  };
 
   const optionLabel = (option: Option | undefined, fallback: string): string => {
     if (!option) return fallback;
@@ -53,6 +94,11 @@ export default function PetWizardModal({ open, mode, editingPetId, options, t, s
       setPetForm(DEFAULT_PET_FORM);
       setPetWizardStep(1);
       setActivePet(null);
+      setMicrochipCountryCode(defaultCountryCode);
+      setMicrochipUnknown(false);
+      setMicrochipStatus('idle');
+      setMicrochipMessage('');
+      setLastCheckedMicrochip('');
       return;
     }
     if (!editingPetId) return;
@@ -60,11 +106,17 @@ export default function PetWizardModal({ open, mode, editingPetId, options, t, s
       try {
         const res = await api.pets.detail(editingPetId);
         const p = res.pet;
+        const splitMicrochip = splitMicrochipValue(p.microchip_no, defaultCountryCode);
         setActivePet(p);
         setPetWizardStep(1);
+        setMicrochipCountryCode(splitMicrochip.countryCode);
+        setMicrochipUnknown(!splitMicrochip.localValue);
+        setMicrochipStatus(splitMicrochip.normalizedValue ? 'available' : 'idle');
+        setMicrochipMessage(splitMicrochip.normalizedValue ? t('guardian.pet_form.microchip_available', 'This number is available for registration.') : '');
+        setLastCheckedMicrochip(splitMicrochip.normalizedValue);
         setPetForm({
           name: p.name || '',
-          microchip_no: p.microchip_no || '',
+          microchip_no: splitMicrochip.localValue,
           birthday: p.birthday || p.birth_date || '',
           current_weight: p.current_weight != null ? String(p.current_weight) : (p.weight_kg != null ? String(p.weight_kg) : ''),
           current_weight_measured_at: '',
@@ -97,7 +149,7 @@ export default function PetWizardModal({ open, mode, editingPetId, options, t, s
       }
     };
     void run();
-  }, [editingPetId, mode, open, options.optDisease]);
+  }, [defaultCountryCode, editingPetId, mode, open, options.optDisease, t]);
 
   const breedOptionsFiltered = useMemo(() => {
     if (!petForm.pet_type_id) return options.optBreed;
@@ -131,14 +183,86 @@ export default function PetWizardModal({ open, mode, editingPetId, options, t, s
     return `${t('master.coat_length', '털길이')} - ${labelOf(options.optCoatLength, petForm.coat_length_id, dash)} - ${labelOf(options.optGrooming, petForm.grooming_cycle_id, dash)}`;
   }, [breedOptionsFiltered, options, petForm, petWizardStep, t]);
 
-  function renderSelect(label: string, value: string, opts: Option[], onChange: (v: string) => void, required = false, name?: string) {
+  const normalizedMicrochip = useMemo(
+    () => (microchipUnknown ? '' : splitMicrochipValue(petForm.microchip_no, microchipCountryCode).normalizedValue),
+    [microchipCountryCode, microchipUnknown, petForm.microchip_no],
+  );
+
+  const microchipNeedsValidation = !microchipUnknown && Boolean(petForm.microchip_no.trim());
+  const microchipValidationPassed = !microchipNeedsValidation || (microchipStatus === 'available' && lastCheckedMicrochip === normalizedMicrochip);
+  const canSave = Boolean(
+    petForm.name.trim()
+      && petForm.pet_type_id
+      && petForm.gender_id
+      && microchipValidationPassed
+      && microchipStatus !== 'checking',
+  );
+
+  function renderFieldHelp(text: string, tone: 'warning' | 'success' | 'danger' = 'warning') {
+    return <p className={`pet-form-help ${tone}`}>{text}</p>;
+  }
+
+  function resetMicrochipFeedback(nextMessage = '') {
+    setMicrochipStatus('idle');
+    setMicrochipMessage(nextMessage);
+    setLastCheckedMicrochip('');
+  }
+
+  async function runMicrochipCheck() {
+    if (microchipUnknown || !petForm.microchip_no.trim()) {
+      resetMicrochipFeedback('');
+      return true;
+    }
+
+    const splitMicrochip = splitMicrochipValue(petForm.microchip_no, microchipCountryCode);
+    setMicrochipCountryCode(splitMicrochip.countryCode);
+    setPetForm((prev) => (prev.microchip_no === splitMicrochip.localValue ? prev : { ...prev, microchip_no: splitMicrochip.localValue }));
+    setMicrochipStatus('checking');
+    setMicrochipMessage('');
+
+    try {
+      const dup = await api.pets.checkMicrochip(
+        splitMicrochip.normalizedValue,
+        mode === 'edit' ? (editingPetId || activePet?.id) : undefined,
+        splitMicrochip.countryCode,
+      );
+      if (dup.available) {
+        setMicrochipStatus('available');
+        setMicrochipMessage(t('guardian.pet_form.microchip_available', 'This number is available for registration.'));
+        setLastCheckedMicrochip(splitMicrochip.normalizedValue);
+        return true;
+      }
+      setMicrochipStatus('duplicate');
+      setMicrochipMessage(t('guardian.alert.microchip_duplicate', 'This microchip number is already registered.'));
+      setLastCheckedMicrochip(splitMicrochip.normalizedValue);
+      return false;
+    } catch (e) {
+      setMicrochipStatus('error');
+      setMicrochipMessage(t('guardian.alert.microchip_check_failed', 'Microchip duplicate check failed.'));
+      setLastCheckedMicrochip('');
+      setError(uiErrorMessage(e, t('guardian.alert.microchip_check_failed', '마이크로칩 중복 확인에 실패했습니다.')));
+      return false;
+    }
+  }
+
+  function renderSelect(
+    label: string,
+    value: string,
+    opts: Option[],
+    onChange: (v: string) => void,
+    required = false,
+    name?: string,
+    disabled = false,
+    helpText?: string,
+  ) {
     return (
       <div className="form-group">
         <label className="form-label" htmlFor={name}>{label}{required ? ' *' : ''}</label>
-        <select id={name} name={name} className="form-select" value={value} onChange={(e) => onChange(e.target.value)}>
+        <select id={name} name={name} className="form-select" value={value} onChange={(e) => onChange(e.target.value)} disabled={disabled}>
           <option value="">{t('common.select', 'Select')}</option>
           {opts.map((o) => <option key={o.id} value={o.id}>{optionLabel(o, t('common.none', '-'))}</option>)}
         </select>
+        {helpText ? renderFieldHelp(helpText) : null}
       </div>
     );
   }
@@ -231,17 +355,13 @@ export default function PetWizardModal({ open, mode, editingPetId, options, t, s
       setError(t('guardian.alert.pet_type_required', 'Pet type is required.'));
       return;
     }
-    if (petForm.microchip_no.trim()) {
-      try {
-        const dup = await api.pets.checkMicrochip(petForm.microchip_no.trim(), mode === 'edit' ? (editingPetId || activePet?.id) : undefined);
-        if (!dup.available) {
-          setError(dup.reason || t('guardian.alert.microchip_duplicate', 'This microchip number is already registered.'));
-          return;
-        }
-      } catch (e) {
-        setError(uiErrorMessage(e, t('guardian.alert.microchip_check_failed', '마이크로칩 중복 확인에 실패했습니다.')));
-        return;
-      }
+    if (!petForm.gender_id) {
+      setError(t('guardian.alert.gender_required', 'Gender is required.'));
+      return;
+    }
+    if (microchipNeedsValidation && !microchipValidationPassed) {
+      const checked = await runMicrochipCheck();
+      if (!checked) return;
     }
     if (petForm.current_weight.trim() && !Number.isFinite(Number(petForm.current_weight))) {
       setError('Current weight must be a valid number.');
@@ -256,7 +376,8 @@ export default function PetWizardModal({ open, mode, editingPetId, options, t, s
       symptom_tag_ids: normalizeMultiStableIds(petForm.symptom_tag_ids, options.optSymptom, false),
       vaccination_ids: normalizeMultiStableIds(petForm.vaccination_ids, options.optVaccination, false),
       temperament_ids: normalizeMultiStableIds(petForm.temperament_ids, options.optTemperament, false),
-      microchip_no: petForm.microchip_no.trim() || null,
+      microchip_no: normalizedMicrochip || null,
+      country_code: microchipCountryCode,
       birthday: petForm.birthday || null,
       birth_date: petForm.birthday || null,
       current_weight: petForm.current_weight.trim() ? Number(petForm.current_weight) : null,
@@ -292,7 +413,10 @@ export default function PetWizardModal({ open, mode, editingPetId, options, t, s
           setError(t('guardian.alert.pet_edit_target_not_found', 'Cannot find target pet for edit. Please try again.'));
           return;
         }
-        const res = await api.pets.update(targetPetId, payload);
+        const updatePayload = Object.fromEntries(
+          Object.entries(payload).filter(([key]) => !['name', 'pet_type_id', 'breed_id', 'gender_id'].includes(key)),
+        ) as Partial<Pet>;
+        const res = await api.pets.update(targetPetId, updatePayload);
         savedPet = res.pet;
       }
       if (savedPet) {
@@ -309,6 +433,11 @@ export default function PetWizardModal({ open, mode, editingPetId, options, t, s
   function handleClose() {
     setActivePet(null);
     setPetWizardStep(1);
+    setMicrochipCountryCode(defaultCountryCode);
+    setMicrochipUnknown(false);
+    setMicrochipStatus('idle');
+    setMicrochipMessage('');
+    setLastCheckedMicrochip('');
     onClose();
   }
 
@@ -356,11 +485,66 @@ export default function PetWizardModal({ open, mode, editingPetId, options, t, s
               <div className="form-row col2">
                 <div className="form-group">
                   <label className="form-label" htmlFor="pet-name">{t('guardian.form.name', 'Name')} *</label>
-                  <input id="pet-name" name="pet-name" className="form-input" value={petForm.name} onChange={(e) => setPetForm((p) => ({ ...p, name: e.target.value }))} />
+                  <input
+                    id="pet-name"
+                    name="pet-name"
+                    className="form-input"
+                    value={petForm.name}
+                    onChange={(e) => setPetForm((p) => ({ ...p, name: e.target.value }))}
+                    disabled={mode === 'edit'}
+                  />
+                  {renderFieldHelp(immutableFieldHelp.name)}
                 </div>
                 <div className="form-group">
                   <label className="form-label" htmlFor="pet-microchip">{t('guardian.form.microchip', 'Microchip Number')}</label>
-                  <input id="pet-microchip" name="pet-microchip" className="form-input" value={petForm.microchip_no} onChange={(e) => setPetForm((p) => ({ ...p, microchip_no: e.target.value }))} />
+                  <div className="pet-microchip-row">
+                    <span className="pet-microchip-prefix" aria-label={t('guardian.pet_form.microchip_country_code', 'Country code')}>
+                      {microchipCountryCode}
+                    </span>
+                    <input
+                      id="pet-microchip"
+                      name="pet-microchip"
+                      className="form-input"
+                      value={petForm.microchip_no}
+                      onChange={(e) => {
+                        const nextValue = e.target.value;
+                        const splitMicrochip = splitMicrochipValue(nextValue, microchipCountryCode);
+                        setMicrochipCountryCode(splitMicrochip.countryCode);
+                        setPetForm((p) => ({ ...p, microchip_no: nextValue }));
+                        resetMicrochipFeedback('');
+                      }}
+                      onBlur={() => { void runMicrochipCheck(); }}
+                      disabled={microchipUnknown}
+                      placeholder={t('guardian.pet_form.microchip_placeholder', 'Enter microchip number')}
+                    />
+                    <button type="button" className="btn btn-secondary pet-microchip-check-btn" onClick={() => void runMicrochipCheck()} disabled={microchipUnknown || !petForm.microchip_no.trim() || microchipStatus === 'checking'}>
+                      {microchipStatus === 'checking' ? t('guardian.pet_form.microchip_checking', 'Checking...') : t('guardian.pet_form.microchip_check', 'Check')}
+                    </button>
+                  </div>
+                  <label className="pet-microchip-unknown">
+                    <input
+                      type="checkbox"
+                      checked={microchipUnknown}
+                      onChange={(e) => {
+                        const checked = e.target.checked;
+                        setMicrochipUnknown(checked);
+                        if (checked) {
+                          setPetForm((p) => ({ ...p, microchip_no: '' }));
+                          resetMicrochipFeedback('');
+                          return;
+                        }
+                        setMicrochipCountryCode(defaultCountryCode);
+                        resetMicrochipFeedback('');
+                      }}
+                    />
+                    <span>{t('guardian.pet_form.microchip_unknown', 'I do not know')}</span>
+                  </label>
+                  {microchipMessage
+                    ? renderFieldHelp(
+                      microchipMessage,
+                      microchipStatus === 'available' ? 'success' : (microchipStatus === 'duplicate' || microchipStatus === 'error' ? 'danger' : 'warning'),
+                    )
+                    : null}
                 </div>
               </div>
               <div className="form-row col2">
@@ -378,14 +562,14 @@ export default function PetWizardModal({ open, mode, editingPetId, options, t, s
 
           {petWizardStep === 2 && (
             <div className="form-row col2">
-              {renderSelect(t('master.pet_type', 'Pet Type'), petForm.pet_type_id, options.optPetType, (v) => setPetForm((p) => ({ ...p, pet_type_id: v, breed_id: '' })), true, 'pet-type')}
-              {renderSelect(t('master.pet_breed', 'Breed'), petForm.breed_id, breedOptionsFiltered, (v) => setPetForm((p) => ({ ...p, breed_id: v })), false, 'pet-breed')}
+              {renderSelect(t('master.pet_type', 'Pet Type'), petForm.pet_type_id, options.optPetType, (v) => setPetForm((p) => ({ ...p, pet_type_id: v, breed_id: '' })), true, 'pet-type', mode === 'edit', immutableFieldHelp.petType)}
+              {renderSelect(t('master.pet_breed', 'Breed'), petForm.breed_id, breedOptionsFiltered, (v) => setPetForm((p) => ({ ...p, breed_id: v })), false, 'pet-breed', mode === 'edit', immutableFieldHelp.breed)}
             </div>
           )}
 
           {petWizardStep === 3 && (
             <div className="form-row col2">
-              {renderSelect(t('master.pet_gender', 'Gender'), petForm.gender_id, options.optGender, (v) => setPetForm((p) => ({ ...p, gender_id: v })), true, 'pet-gender')}
+              {renderSelect(t('master.pet_gender', 'Gender'), petForm.gender_id, options.optGender, (v) => setPetForm((p) => ({ ...p, gender_id: v })), true, 'pet-gender', mode === 'edit', immutableFieldHelp.gender)}
               {renderDropdownRows(
                 t('master.pet_color', 'Primary Color'),
                 petForm.color_ids,
@@ -481,7 +665,7 @@ export default function PetWizardModal({ open, mode, editingPetId, options, t, s
           <button className="btn btn-secondary" onClick={gotoNextPetStep} disabled={petWizardStep === 6}>
             {t('common.next', 'Next')}
           </button>
-          <button className="btn btn-primary" onClick={() => void savePet()}>
+          <button className="btn btn-primary" onClick={() => void savePet()} disabled={!canSave}>
             {t('common.save', 'Save')}
           </button>
         </div>

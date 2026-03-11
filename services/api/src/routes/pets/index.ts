@@ -7,7 +7,7 @@ import { ok, created, err, newId, now } from '../../types';
 import { requireAuth } from '../../middleware/auth';
 import {
   ARRAY_COLUMNS,
-  parseIdArray, parseJsonArrayString, parseOptionalNumber, normalizeMicrochip,
+  parseIdArray, parseJsonArrayString, parseOptionalNumber, normalizeCountryCode, normalizeMicrochipWithCountry,
   normalizeMeasuredAt, normalizePetRecord,
   hasTable, hasColumn,
   replaceRelationRows, ensurePetItemRelationTable, upsertSinglePetItemRelation,
@@ -186,7 +186,10 @@ export async function handlePets(request: Request, env: Env, url: URL): Promise<
 // ─── Core CRUD handlers ───────────────────────────────────────────────────────
 
 async function checkMicrochip(env: Env, payload: JwtPayload, url: URL): Promise<Response> {
-  const microchipNo = normalizeMicrochip(url.searchParams.get('microchip_no'));
+  const microchipNo = normalizeMicrochipWithCountry(
+    url.searchParams.get('microchip_no'),
+    normalizeCountryCode(url.searchParams.get('country_code')),
+  );
   const excludePetId = (url.searchParams.get('exclude_pet_id') || '').trim() || undefined;
 
   if (!microchipNo) return err('microchip_no required');
@@ -231,7 +234,7 @@ async function createPet(request: Request, env: Env, payload: JwtPayload): Promi
   if (!body.name || typeof body.name !== 'string' || !body.name.trim()) return err('name required');
   if (!body.pet_type_id || typeof body.pet_type_id !== 'string') return err('pet_type_id required');
 
-  const microchipNo = normalizeMicrochip(body.microchip_no);
+  const microchipNo = normalizeMicrochipWithCountry(body.microchip_no, normalizeCountryCode(body.country_code));
   if (microchipNo) {
     const dup = await findMicrochipOwner(env, microchipNo);
     if (dup) return err('이미 등록된 마이크로칩 번호입니다.', 409, 'microchip_duplicate');
@@ -361,7 +364,7 @@ async function updatePet(request: Request, env: Env, payload: JwtPayload, petId:
     return err('Invalid JSON body');
   }
 
-  const microchipNo = normalizeMicrochip(body.microchip_no);
+  const microchipNo = normalizeMicrochipWithCountry(body.microchip_no, normalizeCountryCode(body.country_code));
   if (microchipNo) {
     const dup = await findMicrochipOwner(env, microchipNo, petId);
     if (dup) return err('이미 등록된 마이크로칩 번호입니다.', 409, 'microchip_duplicate');
@@ -376,7 +379,6 @@ async function updatePet(request: Request, env: Env, payload: JwtPayload, petId:
   ]);
 
   const scalarMap: Record<string, string> = {
-    name: 'name', pet_type_id: 'pet_type_id', breed_id: 'breed_id', gender_id: 'gender_id',
     life_stage_id: 'life_stage_id', body_size_id: 'body_size_id', country_id: 'country_id',
     health_condition_level_id: 'health_level_id', activity_level_id: 'activity_level_id',
     diet_type_id: 'diet_type_id', coat_length_id: 'coat_length_id', coat_type_id: 'coat_type_id',

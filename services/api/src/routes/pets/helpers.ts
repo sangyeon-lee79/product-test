@@ -22,8 +22,28 @@ export function parseIdArray(value: unknown): string[] {
 
 export function normalizeMicrochip(value: unknown): string | null {
   if (typeof value !== 'string') return null;
-  const trimmed = value.trim();
+  const trimmed = value.trim().replace(/\s+/g, '');
   return trimmed ? trimmed : null;
+}
+
+export function normalizeCountryCode(value: unknown): string | null {
+  if (typeof value !== 'string') return null;
+  const normalized = value.trim().toUpperCase();
+  return /^[A-Z]{2}$/.test(normalized) ? normalized : null;
+}
+
+export function normalizeMicrochipWithCountry(value: unknown, countryCode?: unknown): string | null {
+  const normalized = normalizeMicrochip(value);
+  if (!normalized) return null;
+
+  const prefixed = normalized.match(/^([A-Za-z]{2})(.+)$/);
+  if (prefixed) {
+    return `${prefixed[1].toUpperCase()}${prefixed[2]}`;
+  }
+
+  const fallbackCountryCode = normalizeCountryCode(countryCode);
+  if (!fallbackCountryCode) return normalized;
+  return `${fallbackCountryCode}${normalized}`;
 }
 
 export function parseJsonArrayString(value: unknown): string[] {
