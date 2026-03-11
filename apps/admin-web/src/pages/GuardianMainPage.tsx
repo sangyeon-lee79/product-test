@@ -101,6 +101,8 @@ export default function GuardianMainPage() {
   const [exerciseLogModalOpen, setExerciseLogModalOpen] = useState(false);
   const [editingExerciseLog, setEditingExerciseLog] = useState<PetExerciseLog | null>(null);
   const [exerciseTypeItems, setExerciseTypeItems] = useState<MasterItem[]>([]);
+  const [exerciseIntensityItems, setExerciseIntensityItems] = useState<MasterItem[]>([]);
+  const [exerciseLocationItems, setExerciseLocationItems] = useState<MasterItem[]>([]);
   const [feedTab, setFeedTab] = useState<FeedTab>('all');
   const [petTab, setPetTab] = useState<PetProfileTab>('health');
   const [composeModalOpen, setComposeModalOpen] = useState(false);
@@ -293,6 +295,8 @@ export default function GuardianMainPage() {
         metricRows,
         unitRows,
         exerciseTypeRows,
+        exerciseIntensityRows,
+        exerciseLocationRows,
       ] = await Promise.all([
         safe(api.pets.list(), { pets: [] }, 'pets.list'),
         safe(api.bookings.list(), { bookings: [] }, 'bookings.list'),
@@ -323,6 +327,8 @@ export default function GuardianMainPage() {
         loadCategoryItems(['metric'], lang),
         loadCategoryItems(['unit'], lang),
         loadCategoryItems(CATEGORY_KEYS.exercise_type, lang),
+        loadCategoryItems(CATEGORY_KEYS.exercise_intensity, lang),
+        loadCategoryItems(CATEGORY_KEYS.exercise_location, lang),
       ]);
 
       setPets(petsRes.pets || []);
@@ -360,6 +366,8 @@ export default function GuardianMainPage() {
       setOptMetric(metricRows);
       setOptUnit(unitRows);
       setExerciseTypeItems(exerciseTypeRows);
+      setExerciseIntensityItems(exerciseIntensityRows);
+      setExerciseLocationItems(exerciseLocationRows);
 
       if (!silent && failedApis.length > 0) {
         setError(t('guardian.alert.partial_load_failed', 'Some data could not be loaded. Please try again shortly.'));
@@ -1809,6 +1817,8 @@ export default function GuardianMainPage() {
         editingLog={editingExerciseLog}
         selectedPet={selectedPet}
         exerciseTypeItems={exerciseTypeItems}
+        exerciseIntensityItems={exerciseIntensityItems}
+        exerciseLocationItems={exerciseLocationItems}
         lang={lang}
         t={t}
         setError={setError}

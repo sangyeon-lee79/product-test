@@ -64,10 +64,10 @@ export async function createExerciseLog(request: Request, env: Env, payload: Jwt
     ? Number(body.distance_km) : null;
   if (distanceKm !== null && !Number.isFinite(distanceKm)) return err('invalid distance_km');
 
-  const intensity = typeof body.intensity === 'string' && ['low', 'medium', 'high'].includes(body.intensity)
-    ? body.intensity : 'medium';
-  const locationType = typeof body.location_type === 'string' && ['indoor', 'outdoor', 'park', 'beach', 'other'].includes(body.location_type)
-    ? body.location_type : 'outdoor';
+  const intensity = typeof body.intensity === 'string' && body.intensity.trim()
+    ? body.intensity.trim() : 'medium';
+  const locationType = typeof body.location_type === 'string' && body.location_type.trim()
+    ? body.location_type.trim() : 'outdoor';
 
   const id = newId();
   const ts = now();
@@ -142,20 +142,16 @@ export async function updateExerciseLog(request: Request, env: Env, payload: Jwt
     vals.push(v);
   }
   if (Object.prototype.hasOwnProperty.call(body, 'intensity')) {
-    if (typeof body.intensity === 'string' && ['low', 'medium', 'high'].includes(body.intensity)) {
-      sets.push('intensity = ?');
-      vals.push(body.intensity);
-    }
+    const v = typeof body.intensity === 'string' ? body.intensity.trim() : '';
+    if (v) { sets.push('intensity = ?'); vals.push(v); }
   }
   if (Object.prototype.hasOwnProperty.call(body, 'leash')) {
     sets.push('leash = ?');
     vals.push(body.leash === true || body.leash === 'true' ? true : body.leash === false || body.leash === 'false' ? false : null);
   }
   if (Object.prototype.hasOwnProperty.call(body, 'location_type')) {
-    if (typeof body.location_type === 'string' && ['indoor', 'outdoor', 'park', 'beach', 'other'].includes(body.location_type)) {
-      sets.push('location_type = ?');
-      vals.push(body.location_type);
-    }
+    const v = typeof body.location_type === 'string' ? body.location_type.trim() : '';
+    if (v) { sets.push('location_type = ?'); vals.push(v); }
   }
   if (Object.prototype.hasOwnProperty.call(body, 'with_other_pets')) {
     sets.push('with_other_pets = ?');

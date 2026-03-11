@@ -15,6 +15,8 @@ interface Props {
   editingLog: PetExerciseLog | null;
   selectedPet: Pet | null;
   exerciseTypeItems: MasterItem[];
+  exerciseIntensityItems: MasterItem[];
+  exerciseLocationItems: MasterItem[];
   lang: Lang;
   t: (key: string, fallback?: string) => string;
   setError: (msg: string) => void;
@@ -48,7 +50,7 @@ const EMPTY_FORM: ExerciseForm = {
   note: '',
 };
 
-export default function ExerciseLogModal({ open, editingLog, selectedPet, exerciseTypeItems, lang, t, setError, onClose, onSuccess }: Props) {
+export default function ExerciseLogModal({ open, editingLog, selectedPet, exerciseTypeItems, exerciseIntensityItems, exerciseLocationItems, lang, t, setError, onClose, onSuccess }: Props) {
   const [form, setForm] = useState<ExerciseForm>(EMPTY_FORM);
   const [initialized, setInitialized] = useState(false);
 
@@ -98,6 +100,10 @@ export default function ExerciseLogModal({ open, editingLog, selectedPet, exerci
     ? exerciseTypeItems.filter((item) => item.parent_id === selectedL1Item.id)
     : [];
   const l2Options: Option[] = toOption(l2Items, lang, t, 'exercise_type');
+
+  // Intensity & location options from master data
+  const intensityOptions: Option[] = toOption(exerciseIntensityItems, lang, t, 'exercise_intensity');
+  const locationOptions: Option[] = toOption(exerciseLocationItems, lang, t, 'exercise_location');
 
   const showDistanceLeash = form.exercise_type === 'walking' || form.exercise_type === 'running';
 
@@ -215,9 +221,14 @@ export default function ExerciseLogModal({ open, editingLog, selectedPet, exerci
             <label className="form-label" htmlFor="ex-intensity">{t('guardian.exercise.intensity', 'Intensity')}</label>
             <select id="ex-intensity" className="form-input" value={form.intensity}
               onChange={(e) => update('intensity', e.target.value)}>
-              <option value="low">{t('guardian.exercise.intensity_low', 'Low')}</option>
-              <option value="medium">{t('guardian.exercise.intensity_medium', 'Medium')}</option>
-              <option value="high">{t('guardian.exercise.intensity_high', 'High')}</option>
+              {intensityOptions.length > 0
+                ? intensityOptions.map((o) => <option key={o.id} value={o.key}>{o.label}</option>)
+                : <>
+                    <option value="low">{t('guardian.exercise.intensity_low', 'Low')}</option>
+                    <option value="medium">{t('guardian.exercise.intensity_medium', 'Medium')}</option>
+                    <option value="high">{t('guardian.exercise.intensity_high', 'High')}</option>
+                  </>
+              }
             </select>
           </div>
 
@@ -235,11 +246,16 @@ export default function ExerciseLogModal({ open, editingLog, selectedPet, exerci
             <label className="form-label" htmlFor="ex-location">{t('guardian.exercise.location', 'Location')}</label>
             <select id="ex-location" className="form-input" value={form.location_type}
               onChange={(e) => update('location_type', e.target.value)}>
-              <option value="indoor">{t('guardian.exercise.location_indoor', 'Indoor')}</option>
-              <option value="outdoor">{t('guardian.exercise.location_outdoor', 'Outdoor')}</option>
-              <option value="park">{t('guardian.exercise.location_park', 'Park')}</option>
-              <option value="beach">{t('guardian.exercise.location_beach', 'Beach')}</option>
-              <option value="other">{t('guardian.exercise.location_other', 'Other')}</option>
+              {locationOptions.length > 0
+                ? locationOptions.map((o) => <option key={o.id} value={o.key}>{o.label}</option>)
+                : <>
+                    <option value="indoor">{t('guardian.exercise.location_indoor', 'Indoor')}</option>
+                    <option value="outdoor">{t('guardian.exercise.location_outdoor', 'Outdoor')}</option>
+                    <option value="park">{t('guardian.exercise.location_park', 'Park')}</option>
+                    <option value="beach">{t('guardian.exercise.location_beach', 'Beach')}</option>
+                    <option value="other">{t('guardian.exercise.location_other', 'Other')}</option>
+                  </>
+              }
             </select>
           </div>
 

@@ -657,7 +657,7 @@ export interface PetExerciseLog {
   exercise_date: string;
   duration_min: number;
   distance_km?: number | null;
-  intensity: 'low' | 'medium' | 'high';
+  intensity: string;
   leash?: boolean | null;
   location_type?: string | null;
   with_other_pets?: boolean;
