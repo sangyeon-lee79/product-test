@@ -1,5 +1,6 @@
 import { loadScript } from './scriptLoader';
 import { api, type PublicKakaoConfig } from './api';
+import { buildOAuthState, type OAuthMode } from './oauthRedirect';
 
 declare global {
   interface Window {
@@ -7,7 +8,7 @@ declare global {
       isInitialized: () => boolean;
       init: (key: string) => void;
       Auth?: {
-        authorize: (options: { redirectUri: string; scope?: string }) => void;
+        authorize: (options: { redirectUri: string; scope?: string; state?: string }) => void;
       };
     };
   }
@@ -41,7 +42,7 @@ export async function ensureKakaoSdk(): Promise<PublicKakaoConfig> {
   return config;
 }
 
-export async function loginWithKakao(): Promise<void> {
+export async function loginWithKakao(mode: OAuthMode = 'login'): Promise<void> {
   const config = await ensureKakaoSdk();
   if (!config.kakao_redirect_uri) {
     throw new Error('Kakao Redirect URI is not configured');
@@ -50,21 +51,6 @@ export async function loginWithKakao(): Promise<void> {
   window.Kakao?.Auth?.authorize({
     redirectUri: config.kakao_redirect_uri,
     scope: 'profile_nickname,profile_image,account_email',
+    state: buildOAuthState('kakao', mode),
   });
-}
-
-/**
- * Check if the current URL has a Kakao auth code (from redirect).
- * HashRouter: URL looks like `https://domain/?code=xxx#/login`
- */
-export function getKakaoCodeFromUrl(): string | null {
-  const params = new URL(window.location.href).searchParams;
-  return params.get('code');
-}
-
-/** Remove the ?code= param from the URL without a page reload */
-export function clearKakaoCodeFromUrl(): void {
-  const url = new URL(window.location.href);
-  url.searchParams.delete('code');
-  window.history.replaceState({}, '', url.toString());
 }

@@ -1,5 +1,6 @@
 import { loadScript } from './scriptLoader';
 import { api, type PublicGoogleConfig } from './api';
+import { buildOAuthState, type OAuthMode } from './oauthRedirect';
 
 declare global {
   interface Window {
@@ -50,6 +51,8 @@ export function getGoogleConfig(): Promise<PublicGoogleConfig> {
   return googleConfigCache;
 }
 
+// ─── Google Places (unchanged) ──────────────────────────────────────────────
+
 export async function ensureGoogleIdentityScript(): Promise<PublicGoogleConfig> {
   const config = await getGoogleConfig();
   await testGoogleIdentityClient(config.google_oauth_client_id);
@@ -87,4 +90,28 @@ export async function testGooglePlacesKey(apiKey: string): Promise<void> {
   if (!window.google?.maps?.places?.Autocomplete) {
     throw new Error('Google Places 스크립트 로드에 실패했습니다.');
   }
+}
+
+// ─── Google OAuth Redirect (authorization code flow) ────────────────────────
+
+export async function loginWithGoogle(mode: OAuthMode = 'login'): Promise<void> {
+  const config = await getGoogleConfig();
+  if (!config.google_oauth_client_id) {
+    throw new Error('Google OAuth Client ID가 설정되지 않았습니다.');
+  }
+  if (!config.google_oauth_redirect_uri) {
+    throw new Error('Google OAuth Redirect URI가 설정되지 않았습니다.');
+  }
+
+  const params = new URLSearchParams({
+    client_id: config.google_oauth_client_id,
+    redirect_uri: config.google_oauth_redirect_uri,
+    response_type: 'code',
+    scope: 'openid email profile',
+    access_type: 'online',
+    state: buildOAuthState('google', mode),
+    prompt: 'select_account',
+  });
+
+  window.location.href = `https://accounts.google.com/o/oauth2/v2/auth?${params.toString()}`;
 }

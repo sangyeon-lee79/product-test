@@ -106,6 +106,130 @@ function parseJsonPart<T>(value: string): T {
   return JSON.parse(decodeBase64Url(value)) as T;
 }
 
+function base64UrlEncode(str: string): string {
+  return btoa(str).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+}
+
+function base64UrlEncodeBytes(bytes: Uint8Array): string {
+  let binary = '';
+  for (const byte of bytes) binary += String.fromCharCode(byte);
+  return btoa(binary).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+}
+
+// ─── Google OAuth code exchange ───────────────────────────────────────────────
+
+type GoogleTokenResponse = {
+  id_token?: string;
+  access_token?: string;
+  error?: string;
+  error_description?: string;
+};
+
+async function exchangeGoogleCode(
+  code: string,
+  clientId: string,
+  clientSecret: string,
+  redirectUri: string,
+): Promise<string> {
+  const body = new URLSearchParams({
+    grant_type: 'authorization_code',
+    client_id: clientId,
+    client_secret: clientSecret,
+    redirect_uri: redirectUri,
+    code,
+  });
+
+  const response = await fetch('https://oauth2.googleapis.com/token', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+    body: body.toString(),
+  });
+
+  const json = await response.json() as GoogleTokenResponse;
+  if (!response.ok || !json.id_token) {
+    throw new Error(json.error_description || json.error || 'Failed to exchange Google auth code');
+  }
+  return json.id_token;
+}
+
+// ─── Apple OAuth code exchange ────────────────────────────────────────────────
+
+type AppleTokenResponse = {
+  id_token?: string;
+  access_token?: string;
+  error?: string;
+};
+
+async function generateAppleClientSecret(
+  teamId: string,
+  keyId: string,
+  privateKey: string,
+  serviceId: string,
+): Promise<string> {
+  const normalizedKey = privateKey.replace(/\\n/g, '\n').trim();
+  const keyBody = normalizedKey
+    .replace('-----BEGIN PRIVATE KEY-----', '')
+    .replace('-----END PRIVATE KEY-----', '')
+    .replace(/\s+/g, '');
+  const keyBinary = atob(keyBody);
+  const keyBytes = new Uint8Array(keyBinary.length);
+  for (let i = 0; i < keyBinary.length; i++) keyBytes[i] = keyBinary.charCodeAt(i);
+
+  const signingKey = await crypto.subtle.importKey(
+    'pkcs8',
+    keyBytes.buffer,
+    { name: 'ECDSA', namedCurve: 'P-256' },
+    false,
+    ['sign'],
+  );
+
+  const nowSec = Math.floor(Date.now() / 1000);
+  const headerB64 = base64UrlEncode(JSON.stringify({ alg: 'ES256', kid: keyId }));
+  const payloadB64 = base64UrlEncode(JSON.stringify({
+    iss: teamId,
+    iat: nowSec,
+    exp: nowSec + 15552000, // 180 days
+    aud: 'https://appleid.apple.com',
+    sub: serviceId,
+  }));
+
+  const unsigned = `${headerB64}.${payloadB64}`;
+  const signature = await crypto.subtle.sign(
+    { name: 'ECDSA', hash: 'SHA-256' },
+    signingKey,
+    new TextEncoder().encode(unsigned),
+  );
+
+  return `${unsigned}.${base64UrlEncodeBytes(new Uint8Array(signature))}`;
+}
+
+async function exchangeAppleCode(
+  code: string,
+  clientSecret: string,
+  clientId: string,
+  redirectUri: string,
+): Promise<string> {
+  const body = new URLSearchParams({
+    grant_type: 'authorization_code',
+    client_id: clientId,
+    client_secret: clientSecret,
+    redirect_uri: redirectUri,
+    code,
+  });
+
+  const response = await fetch('https://appleid.apple.com/auth/token', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+    body: body.toString(),
+  });
+
+  const json = await response.json() as AppleTokenResponse;
+  if (!response.ok || !json.id_token) {
+    throw new Error(json.error || 'Failed to exchange Apple auth code');
+  }
+  return json.id_token;
+}
+
 async function getGoogleCerts(): Promise<GoogleJwk[]> {
   if (googleCertCache && googleCertCache.expiresAt > Date.now()) {
     return googleCertCache.keys;
@@ -371,12 +495,32 @@ async function upsertOAuthUser(
   return { id: userId, role: 'guardian', email };
 }
 
-async function googleOAuthLogin(idToken: string, env: Env): Promise<Response> {
-  const clientIdRow = await env.DB.prepare(
-    `SELECT setting_value FROM platform_settings WHERE setting_key = 'google_oauth_client_id' LIMIT 1`
-  ).first<{ setting_value: string | null }>();
-  const clientId = String(clientIdRow?.setting_value || '').trim();
+async function googleOAuthLogin(credential: string, isCode: boolean, env: Env): Promise<Response> {
+  const rows = await env.DB.prepare(
+    `SELECT setting_key, setting_value FROM platform_settings
+     WHERE setting_key IN ('google_oauth_client_id', 'google_oauth_client_secret', 'google_oauth_redirect_uri')`
+  ).all<{ setting_key: string; setting_value: string | null }>();
+
+  const settings: Record<string, string> = {};
+  for (const row of rows.results || []) settings[row.setting_key] = String(row.setting_value || '').trim();
+
+  const clientId = settings.google_oauth_client_id || '';
   if (!clientId) return err('google oauth client id is not configured', 503);
+
+  let idToken: string;
+  if (isCode) {
+    const clientSecret = settings.google_oauth_client_secret || '';
+    const redirectUri = settings.google_oauth_redirect_uri || '';
+    if (!clientSecret) return err('google oauth client secret is not configured', 503);
+    if (!redirectUri) return err('google oauth redirect uri is not configured', 503);
+    try {
+      idToken = await exchangeGoogleCode(credential, clientId, clientSecret, redirectUri);
+    } catch (e) {
+      return err(e instanceof Error ? e.message : 'google auth code exchange failed', 401, 'google_code_exchange_failed');
+    }
+  } else {
+    idToken = credential;
+  }
 
   let googleUser: GoogleTokenPayload;
   try {
@@ -434,12 +578,35 @@ async function kakaoOAuthLogin(code: string, env: Env): Promise<Response> {
   return created({ user_id: user.id, role: user.role, email: user.email, provider: 'kakao', ...tokens });
 }
 
-async function appleOAuthLogin(idToken: string, userName: string | undefined, env: Env): Promise<Response> {
-  const serviceIdRow = await env.DB.prepare(
-    `SELECT setting_value FROM platform_settings WHERE setting_key = 'apple_service_id' LIMIT 1`
-  ).first<{ setting_value: string | null }>();
-  const serviceId = String(serviceIdRow?.setting_value || '').trim();
+async function appleOAuthLogin(credential: string, isCode: boolean, userName: string | undefined, env: Env): Promise<Response> {
+  const appleRows = await env.DB.prepare(
+    `SELECT setting_key, setting_value FROM platform_settings
+     WHERE setting_key IN ('apple_service_id', 'apple_team_id', 'apple_key_id', 'apple_private_key', 'apple_redirect_uri')`
+  ).all<{ setting_key: string; setting_value: string | null }>();
+
+  const settings: Record<string, string> = {};
+  for (const row of appleRows.results || []) settings[row.setting_key] = String(row.setting_value || '').trim();
+
+  const serviceId = settings.apple_service_id || '';
   if (!serviceId) return err('apple service id is not configured', 503);
+
+  let idToken: string;
+  if (isCode) {
+    const teamId = settings.apple_team_id || '';
+    const keyId = settings.apple_key_id || '';
+    const privateKey = settings.apple_private_key || '';
+    const redirectUri = settings.apple_redirect_uri || '';
+    if (!teamId || !keyId || !privateKey) return err('apple signing keys not configured', 503);
+    if (!redirectUri) return err('apple redirect uri not configured', 503);
+    try {
+      const clientSecret = await generateAppleClientSecret(teamId, keyId, privateKey, serviceId);
+      idToken = await exchangeAppleCode(credential, clientSecret, serviceId, redirectUri);
+    } catch (e) {
+      return err(e instanceof Error ? e.message : 'apple auth code exchange failed', 401, 'apple_code_exchange_failed');
+    }
+  } else {
+    idToken = credential;
+  }
 
   let applePayload: AppleTokenPayload;
   try {
@@ -475,9 +642,11 @@ async function oauthLogin(request: Request, env: Env): Promise<Response> {
   const provider = (body.provider || '').trim().toLowerCase();
 
   if (provider === 'google') {
+    const code = String(body.code || '').trim();
     const idToken = String(body.id_token || '').trim();
-    if (!idToken) return err('id_token required');
-    return googleOAuthLogin(idToken, env);
+    if (code) return googleOAuthLogin(code, true, env);
+    if (idToken) return googleOAuthLogin(idToken, false, env);
+    return err('code or id_token required');
   }
 
   if (provider === 'kakao') {
@@ -487,9 +656,11 @@ async function oauthLogin(request: Request, env: Env): Promise<Response> {
   }
 
   if (provider === 'apple') {
+    const code = String(body.code || '').trim();
     const idToken = String(body.id_token || '').trim();
-    if (!idToken) return err('id_token required');
-    return appleOAuthLogin(idToken, body.user_name, env);
+    if (code) return appleOAuthLogin(code, true, body.user_name, env);
+    if (idToken) return appleOAuthLogin(idToken, false, body.user_name, env);
+    return err('code or id_token required');
   }
 
   return err('unsupported oauth provider', 400);

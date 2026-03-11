@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState, useCallback } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { api, type FeedComment, type FeedPost } from '../lib/api';
 import { getStoredRole, isLoggedIn } from '../lib/auth';
@@ -31,9 +31,17 @@ function ensureArray(raw: string[] | string | null | undefined): string[] {
   } catch { return []; }
 }
 
-function formatDate(iso?: string | null, locale?: string): string {
-  if (!iso) return '-';
-  try { return new Date(iso).toLocaleString(locale); } catch { return iso; }
+function relativeTime(iso?: string | null): string {
+  if (!iso) return '';
+  const diff = Date.now() - new Date(iso).getTime();
+  const mins = Math.floor(diff / 60000);
+  if (mins < 1) return 'now';
+  if (mins < 60) return `${mins}m`;
+  const hrs = Math.floor(mins / 60);
+  if (hrs < 24) return `${hrs}h`;
+  const days = Math.floor(hrs / 24);
+  if (days < 7) return `${days}d`;
+  return `${Math.floor(days / 7)}w`;
 }
 
 function uiErrorMessage(error: unknown, fallback: string): string {
@@ -45,37 +53,43 @@ function uiErrorMessage(error: unknown, fallback: string): string {
   return fallback;
 }
 
+const IMG_PLACEHOLDER = 'data:image/svg+xml,' + encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" width="400" height="400" fill="%23E8E6E1"><rect width="400" height="400"/><text x="200" y="210" text-anchor="middle" fill="%236B6B6B" font-size="48">🐾</text></svg>');
+
 /* ── Component ────────────────────────────────────────────── */
 export default function PublicHome() {
   const t = useT();
   const { lang, setLang } = useI18n();
   const locale = BCP47_LOCALE_MAP[lang as Lang] || 'en-US';
-  /* ── State (모든 기존 state 유지) ─────────────────────── */
+
   const [loading, setLoading] = useState(true);
-  const [error, setError]     = useState('');
-  const [feeds, setFeeds]     = useState<FeedPost[]>([]);
-  const [tab, setTab]         = useState<FeedTab>('all');
+  const [error, setError] = useState('');
+  const [feeds, setFeeds] = useState<FeedPost[]>([]);
+  const [tab, setTab] = useState<FeedTab>('all');
   const [businessCategoryId, setBusinessCategoryId] = useState('');
-  const [petTypeId, setPetTypeId]                   = useState('');
-  const [businessOptions, setBusinessOptions]       = useState<FilterOption[]>([]);
-  const [petTypeOptions, setPetTypeOptions]         = useState<FilterOption[]>([]);
-  const [commentMap, setCommentMap]   = useState<Record<string, FeedComment[]>>({});
+  const [petTypeId, setPetTypeId] = useState('');
+  const [businessOptions, setBusinessOptions] = useState<FilterOption[]>([]);
+  const [petTypeOptions, setPetTypeOptions] = useState<FilterOption[]>([]);
+  const [commentMap, setCommentMap] = useState<Record<string, FeedComment[]>>({});
   const [openComments, setOpenComments] = useState<Record<string, boolean>>({});
   const [commentInput, setCommentInput] = useState<Record<string, string>>({});
   const [editingCommentId, setEditingCommentId] = useState<string | null>(null);
-  const [editingContent, setEditingContent]     = useState('');
-  const [friendEmail, setFriendEmail]   = useState('');
+  const [editingContent, setEditingContent] = useState('');
+  const [friendEmail, setFriendEmail] = useState('');
   const [friendMessage, setFriendMessage] = useState('');
   const [isDark, setIsDark] = useState(() => localStorage.getItem('petfolio-theme') === 'dark');
   const [authModalOpen, setAuthModalOpen] = useState(false);
   const [authModalMode, setAuthModalMode] = useState<'login' | 'signup'>('login');
+  const [brokenImages, setBrokenImages] = useState<Set<string>>(new Set());
+  const [savedPosts, setSavedPosts] = useState<Set<string>>(new Set());
 
   const openAuthModal = (mode: 'login' | 'signup') => { setAuthModalMode(mode); setAuthModalOpen(true); };
+  const handleImgError = useCallback((key: string) => { setBrokenImages(prev => { const n = new Set(prev); n.add(key); return n; }); }, []);
 
-  const loggedIn   = isLoggedIn();
-  const role       = getStoredRole();
-  const myUserId   = useMemo(() => parseJwtSub(), []);
-  const navigate   = useNavigate();
+  const loggedIn = isLoggedIn();
+  const role = getStoredRole();
+  const myUserId = useMemo(() => parseJwtSub(), []);
+  const navigate = useNavigate();
+
   const NAV_ITEMS = useMemo(() => ([
     { icon: '🏠', label: t('public.nav.home', '홈'), to: '/' },
     { icon: '🔍', label: t('public.nav.explore', '탐색'), to: '/explore' },
@@ -84,6 +98,7 @@ export default function PublicHome() {
     { icon: '📅', label: t('public.nav.booking', '예약'), to: null },
     { icon: '👤', label: t('public.nav.profile', '프로필'), to: null },
   ]), [t]);
+
   const translateMasterLabel = (key?: string | null, fallback?: string | null, finalFallback?: string | null) => {
     const safeFallback = fallback || finalFallback || '-';
     if (!key) return safeFallback;
@@ -91,6 +106,7 @@ export default function PublicHome() {
     if (direct !== '__MISSING__') return direct;
     return t(`master.${key}`, safeFallback);
   };
+
   const roleLabel = role === 'guardian'
     ? t('public.role.guardian', 'Guardian')
     : role === 'provider'
@@ -108,18 +124,21 @@ export default function PublicHome() {
   /* Derived: story bar authors */
   const storyAuthors = useMemo(() => {
     const seen = new Set<string>();
-    const out: string[] = [];
+    const out: { email: string; hasNew: boolean }[] = [];
     for (const f of feeds) {
       const a = f.author_email;
-      if (a && !seen.has(a)) { seen.add(a); out.push(a); }
+      if (a && !seen.has(a)) {
+        seen.add(a);
+        const hoursAgo = (Date.now() - new Date(f.created_at).getTime()) / 3600000;
+        out.push({ email: a, hasNew: hoursAgo < 24 });
+      }
     }
-    return out.slice(0, 12);
+    return out.slice(0, 14);
   }, [feeds]);
 
-  /* Derived: suggested users for right panel */
   const suggestedUsers = useMemo(() => storyAuthors.slice(0, 5), [storyAuthors]);
 
-  /* ── API calls (모두 기존 그대로) ─────────────────────── */
+  /* ── API calls ─────────────────────────────────────────── */
   async function loadFeed(nextTab = tab, nextBusiness = businessCategoryId, nextPetType = petTypeId) {
     setLoading(true); setError('');
     try {
@@ -134,7 +153,7 @@ export default function PublicHome() {
       const res = await api.feeds.filters(lang);
       setBusinessOptions(res.business_categories || []);
       setPetTypeOptions(res.pet_types || []);
-    } catch { /* ignore — filters are optional */ }
+    } catch { /* ignore */ }
   }
 
   useEffect(() => { loadFeed(); loadFilters(); }, []);
@@ -198,275 +217,331 @@ export default function PublicHome() {
     setFriendMessage('');
     try {
       const res = await api.friends.requests.create({ receiver_email: email });
-      if (res.status === 'already_friends')  setFriendMessage(t('public.friend.already', '이미 연결된 사용자입니다.'));
+      if (res.status === 'already_friends') setFriendMessage(t('public.friend.already', '이미 연결된 사용자입니다.'));
       else if (res.status === 'request_sent') setFriendMessage(t('public.friend.sent', '연결 요청을 보냈습니다.'));
-      else                                    setFriendMessage(t('public.friend.done', '요청 처리 완료'));
+      else setFriendMessage(t('public.friend.done', '요청 처리 완료'));
       setFriendEmail('');
     } catch (e) { setFriendMessage(uiErrorMessage(e, t('public.friend.error', '요청 처리에 실패했습니다.'))); }
   }
 
-  /* ── Sidebar component (inline) ───────────────────────── */
-  const Sidebar = () => (
-    <aside className="ig-sidebar">
-      <div className="ig-sidebar-logo">{t('platform.name', 'Petfolio')}</div>
+  function toggleSave(feedId: string) {
+    setSavedPosts(prev => {
+      const n = new Set(prev);
+      n.has(feedId) ? n.delete(feedId) : n.add(feedId);
+      return n;
+    });
+  }
 
-      {/* Hero mini (비로그인) */}
+  /* ── Card type detection ───────────────────────────────── */
+  function getCardType(feed: FeedPost): 'photo' | 'health' | 'text' {
+    if (feed.feed_type === 'health_update') return 'health';
+    const media = ensureArray(feed.media_urls);
+    return media.length > 0 ? 'photo' : 'text';
+  }
+
+  /* ── Sidebar ───────────────────────────────────────────── */
+  const Sidebar = () => (
+    <aside className="pf-sidebar">
+      <div className="pf-sidebar-logo">{t('platform.name', 'Petfolio')}</div>
+
       {!loggedIn && (
-        <div className="ig-hero-mini">
+        <div className="pf-hero-mini">
           <h3>{t('public.hero.title', '반려동물의 삶을')}<br />{t('public.hero.title_2', '아름답게 기록하다')}</h3>
           <p>{t('public.hero.sub', 'SNS + 포트폴리오 아카이브')}</p>
-          <button className="btn btn-primary btn-sm" style={{ width: '100%', justifyContent: 'center' }} onClick={() => openAuthModal('signup')}>{t('public.cta.start', '시작하기')}</button>
+          <button className="pf-btn-start" onClick={() => openAuthModal('signup')}>{t('public.cta.start', '시작하기')}</button>
         </div>
       )}
 
-      <nav className="ig-nav">
+      <nav className="pf-nav">
         {NAV_ITEMS.map((item) => {
           const isActive = item.to === '/';
           if (item.to) {
             return (
-              <Link key={item.label} to={item.to} className={`ig-nav-item${isActive ? ' active' : ''}`}>
-                <span className="ig-nav-icon">{item.icon}</span>
+              <Link key={item.label} to={item.to} className={`pf-nav-item${isActive ? ' active' : ''}`}>
+                <span className="pf-nav-icon">{item.icon}</span>
                 <span>{item.label}</span>
               </Link>
             );
           }
           const handleNavClick = () => {
-            if (!loggedIn) {
-              openAuthModal('login');
-              return;
-            }
-            if (item.label === t('public.nav.profile', '프로필') || item.label === t('public.nav.mypet', '내 펫')) {
-              navigate('/guardian');
-            }
+            if (!loggedIn) { openAuthModal('login'); return; }
+            if (item.label === t('public.nav.profile', '프로필') || item.label === t('public.nav.mypet', '내 펫')) navigate('/guardian');
           };
           return (
-            <button key={item.label} className="ig-nav-item" onClick={handleNavClick} style={{ opacity: !loggedIn ? .72 : 1 }}>
-              <span className="ig-nav-icon">{item.icon}</span>
+            <button key={item.label} className="pf-nav-item" onClick={handleNavClick} style={{ opacity: !loggedIn ? .65 : 1 }}>
+              <span className="pf-nav-icon">{item.icon}</span>
               <span>{item.label}</span>
             </button>
           );
         })}
       </nav>
 
-      <div className="ig-sidebar-footer">
-        <button className="ig-dark-toggle" onClick={() => setIsDark((d) => !d)}>
-          <span className="ig-nav-icon">{isDark ? '☀️' : '🌙'}</span>
+      <div className="pf-sidebar-footer">
+        <button className="pf-nav-item" onClick={() => setIsDark(d => !d)}>
+          <span className="pf-nav-icon">{isDark ? '☀️' : '🌙'}</span>
           <span>{isDark ? t('public.theme.light', '라이트 모드') : t('public.theme.dark', '다크 모드')}</span>
         </button>
-        <div className="ig-sidebar-lang">
-          <select
-            className="form-select ig-sidebar-lang-select"
-            value={lang}
-            onChange={(e) => setLang(e.target.value as typeof lang)}
-            aria-label={t('admin.common.language', 'Language')}
-          >
-            {SUPPORTED_LANGS.map((l) => (
-              <option key={l} value={l}>{LANG_LABELS[l]}</option>
-            ))}
+        <div className="pf-sidebar-lang">
+          <select className="form-select" value={lang} onChange={(e) => setLang(e.target.value as typeof lang)} aria-label={t('admin.common.language', 'Language')}>
+            {SUPPORTED_LANGS.map((l) => <option key={l} value={l}>{LANG_LABELS[l]}</option>)}
           </select>
         </div>
         {!loggedIn && (
-          <button className="ig-nav-item" onClick={() => openAuthModal('login')}>
-            <span className="ig-nav-icon">🔑</span>
+          <button className="pf-nav-item" onClick={() => openAuthModal('login')}>
+            <span className="pf-nav-icon">🔑</span>
             <span>{t('public.auth.login', '로그인')}</span>
           </button>
         )}
-        <Link to="/admin/login" className="ig-nav-item" style={{ opacity: .5 }}>
-          <span className="ig-nav-icon">⚙️</span>
+        <Link to="/admin/login" className="pf-nav-item" style={{ opacity: .45 }}>
+          <span className="pf-nav-icon">⚙️</span>
           <span>{t('public.admin', 'Admin')}</span>
         </Link>
       </div>
     </aside>
   );
 
-  /* ── Feed card renderer ────────────────────────────────── */
-  const renderFeedCard = (feed: FeedPost) => {
-    const media      = ensureArray(feed.media_urls);
-    const tags       = ensureArray(feed.tags);
-    const comments   = commentMap[feed.id] || [];
-    const isLiked    = Number(feed.liked_by_me || 0) > 0;
+  /* ── Photo card ────────────────────────────────────────── */
+  const renderPhotoCard = (feed: FeedPost, idx: number) => {
+    const media = ensureArray(feed.media_urls);
+    const tags = ensureArray(feed.tags);
+    const comments = commentMap[feed.id] || [];
+    const isLiked = Number(feed.liked_by_me || 0) > 0;
     const authorLine = feed.feed_type === 'booking_completed'
       ? `${feed.booking_guardian_email || '-'} + ${feed.booking_supplier_email || '-'}`
       : (feed.author_email || '-');
     const avatarLetter = authorLine[0]?.toUpperCase() || '?';
-    const canDelete  = !!(myUserId && feed.author_user_id === myUserId);
-    const displayBusiness = translateMasterLabel(feed.business_category_key, feed.business_category_ko, feed.business_category_id);
+    const canDelete = !!(myUserId && feed.author_user_id === myUserId);
+    const isSaved = savedPosts.has(feed.id);
+    const imgKey = `${feed.id}-0`;
+    const imgSrc = brokenImages.has(imgKey) ? IMG_PLACEHOLDER : media[0];
 
     return (
-      <article key={feed.id} className="ig-card">
-        {/* Header */}
-        <div className="ig-card-header">
-          <div className="ig-avatar">{avatarLetter}</div>
-          <div className="ig-card-author">
-            <div className="ig-card-username">{authorLine.split('@')[0] || authorLine}</div>
-            <div className="ig-card-meta">
-              <span>{formatDate(feed.created_at, locale)}</span>
-              {feed.pet_name && <span className="ig-pet-badge">{feed.pet_name}</span>}
-              {displayBusiness && <span className="ig-pet-badge" style={{ background: 'rgba(100,150,255,.12)', color: '#3B5BDB' }}>{displayBusiness}</span>}
+      <article key={feed.id} className="pf-card pf-card--photo" style={{ animationDelay: `${idx * 60}ms` }}>
+        {media.length > 0 && (
+          <div className="pf-card-image">
+            <img src={imgSrc} alt={feed.caption || t('public.post', '게시')} loading="lazy" onError={() => handleImgError(imgKey)} />
+            {media.length > 1 && <span className="pf-card-image-count">+{media.length - 1}</span>}
+          </div>
+        )}
+        <div className="pf-card-body">
+          <div className="pf-card-header">
+            <div className="pf-avatar">{avatarLetter}</div>
+            <div className="pf-card-author">
+              <span className="pf-card-username">{authorLine.split('@')[0] || authorLine}</span>
+              <span className="pf-card-time">{relativeTime(feed.created_at)}</span>
             </div>
-          </div>
-          {canDelete && (
-            <button className="ig-card-menu" onClick={() => api.feeds.remove(feed.id).then(() => loadFeed()).catch(() => null)}>···</button>
-          )}
-        </div>
-
-        {/* Image — 1:1 */}
-        {media.length === 1 && (
-          <div className="ig-card-image">
-            <img src={media[0]} alt={feed.caption || t('public.post', '게시')} loading="lazy" />
-          </div>
-        )}
-        {media.length > 1 && (
-          <div className="ig-card-media-grid">
-            {media.slice(0, 4).map((url, i) => (
-              <div key={i} className="ig-card-media-tile">
-                <img src={url} alt="post" loading="lazy" />
-              </div>
-            ))}
-          </div>
-        )}
-
-        {/* Text-only post */}
-        {media.length === 0 && feed.caption && (
-          <div className="ig-card-text-body">{feed.caption}</div>
-        )}
-
-        {/* Actions */}
-        <div className="ig-card-actions">
-          <button
-            className={`ig-action-btn${isLiked ? ' liked' : ''}`}
-            onClick={() => toggleLike(feed)}
-            disabled={!loggedIn}
-            title={!loggedIn ? t('public.hint.login_required', '로그인 후 이용 가능') : ''}
-          >
-            {isLiked ? '♥' : '♡'}
-          </button>
-          <button className="ig-action-btn" onClick={() => toggleComments(feed.id)} title={t('public.comment', '댓글')}>
-            💬
-          </button>
-          <div className="ig-spacer" />
-        </div>
-
-        {/* Like count */}
-        {(feed.like_count || 0) > 0 && (
-          <div className="ig-card-likes">{t('public.like_count', '좋아요')} {feed.like_count}{t('public.count_suffix', '개')}</div>
-        )}
-
-        {/* Caption (images present) */}
-        {media.length > 0 && feed.caption && (
-          <div className="ig-card-caption clamp">
-            <span className="cap-user">{authorLine.split('@')[0]}</span>
-            {feed.caption}
-          </div>
-        )}
-
-        {/* Tags */}
-        {tags.length > 0 && (
-          <div className="ig-card-tags">{tags.map((t) => <span key={t}>#{t}</span>)}</div>
-        )}
-
-        {/* Comment peek / toggle */}
-        <div className="ig-card-comment-peek" onClick={() => toggleComments(feed.id)}>
-          {(feed.comment_count || 0) > 0
-            ? `${t('public.comment', '댓글')} ${feed.comment_count}${t('public.count_suffix', '개')} ${t('public.comment.view_all', '모두 보기')}`
-            : t('public.comment.write', '댓글 달기…')}
-        </div>
-
-        {/* Comment section */}
-        {openComments[feed.id] && (
-          <div className="ig-card-comments">
-            {comments.length > 0 && (
-              <div className="ig-comment-list">
-                {comments.map((c) => {
-                  const mine = !!(myUserId && c.author_user_id === myUserId);
-                  const isEditing = editingCommentId === c.id;
-                  return (
-                    <div key={c.id} className="ig-comment-item">
-                      {isEditing ? (
-                        <div className="ig-comment-input-row">
-                          <input className="ig-comment-input" value={editingContent} onChange={(e) => setEditingContent(e.target.value)} />
-                          <button className="ig-comment-post-btn" onClick={() => saveEditedComment(feed.id, c.id)}>{t('common.save', '저장')}</button>
-                          <button className="ig-comment-post-btn" style={{ color: 'var(--text-muted)' }} onClick={() => { setEditingCommentId(null); setEditingContent(''); }}>{t('common.cancel', '취소')}</button>
-                        </div>
-                      ) : (
-                        <>
-                          <span className="ig-comment-user">{c.author_email?.split('@')[0] || c.author_user_id}</span>
-                          {c.content}
-                          <div className="ig-comment-meta">{formatDate(c.created_at, locale)}</div>
-                          {mine && (
-                            <div className="ig-comment-actions">
-                              <button className="ig-comment-post-btn" style={{ fontSize: 11 }} title={t('common.edit', 'Edit')} aria-label={t('common.edit', 'Edit')} onClick={() => { setEditingCommentId(c.id); setEditingContent(c.content); }}>✏️</button>
-                              <button className="ig-comment-post-btn" style={{ fontSize: 11, color: 'var(--danger)' }} title={t('common.delete', 'Delete')} aria-label={t('common.delete', 'Delete')} onClick={() => deleteComment(feed.id, c.id)}>🗑️</button>
-                            </div>
-                          )}
-                        </>
-                      )}
-                    </div>
-                  );
-                })}
-              </div>
+            {canDelete && (
+              <button className="pf-card-menu" onClick={() => api.feeds.remove(feed.id).then(() => loadFeed()).catch(() => null)}>
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/><circle cx="5" cy="12" r="1"/></svg>
+              </button>
             )}
-            <div className="ig-comment-input-row">
-              <input
-                className="ig-comment-input"
-                placeholder={loggedIn ? t('public.comment.write', '댓글 달기…') : t('public.comment.login_hint', '로그인 후 댓글 작성 가능')}
-                value={commentInput[feed.id] || ''}
-                onChange={(e) => setCommentInput((p) => ({ ...p, [feed.id]: e.target.value }))}
-                onKeyDown={(e) => e.key === 'Enter' && createComment(feed.id)}
-                disabled={!loggedIn}
-              />
-              <button className="ig-comment-post-btn" onClick={() => createComment(feed.id)} disabled={!loggedIn}>{t('public.post', '게시')}</button>
-            </div>
           </div>
-        )}
+          {(feed.pet_name || feed.business_category_key) && (
+            <div className="pf-card-badges">
+              {feed.pet_name && <span className="pf-badge pf-badge--pet">{feed.pet_name}</span>}
+              {feed.business_category_key && <span className="pf-badge pf-badge--biz">{translateMasterLabel(feed.business_category_key, feed.business_category_ko, feed.business_category_id)}</span>}
+            </div>
+          )}
+          {feed.caption && <p className="pf-card-caption">{feed.caption}</p>}
+          {tags.length > 0 && <div className="pf-card-tags">{tags.map((tg) => <span key={tg}>#{tg}</span>)}</div>}
+          <div className="pf-card-actions">
+            <button className={`pf-action${isLiked ? ' liked' : ''}`} onClick={() => toggleLike(feed)} disabled={!loggedIn}>
+              {isLiked ? '❤️' : '🤍'} <span>{feed.like_count || ''}</span>
+            </button>
+            <button className="pf-action" onClick={() => toggleComments(feed.id)}>💬 <span>{feed.comment_count || ''}</span></button>
+            <button className={`pf-action${isSaved ? ' saved' : ''}`} onClick={() => toggleSave(feed.id)}>{isSaved ? '🔖' : '📑'}</button>
+            <div className="pf-spacer" />
+            <button className="pf-action pf-action--share">↗️</button>
+          </div>
+          {openComments[feed.id] && renderComments(feed, comments)}
+        </div>
       </article>
     );
   };
 
+  /* ── Health card ────────────────────────────────────────── */
+  const renderHealthCard = (feed: FeedPost, idx: number) => {
+    const authorLine = feed.author_email || '-';
+    const isLiked = Number(feed.liked_by_me || 0) > 0;
+    const isSaved = savedPosts.has(feed.id);
+    const comments = commentMap[feed.id] || [];
+    const meta = (() => { try { return feed.caption ? JSON.parse(feed.caption) : {}; } catch { return {}; } })() as Record<string, unknown>;
+
+    return (
+      <article key={feed.id} className="pf-card pf-card--health" style={{ animationDelay: `${idx * 60}ms` }}>
+        <div className="pf-card-body">
+          <div className="pf-card-header">
+            <div className="pf-avatar">{authorLine[0]?.toUpperCase() || '?'}</div>
+            <div className="pf-card-author">
+              <span className="pf-card-username">{authorLine.split('@')[0]}</span>
+              <span className="pf-card-time">{relativeTime(feed.created_at)}</span>
+            </div>
+          </div>
+          {feed.pet_name && <span className="pf-health-pet">{feed.pet_name}</span>}
+          <div className="pf-health-grid">
+            <div className="pf-health-stat">
+              <span className="pf-health-stat-icon">⚖️</span>
+              <span className="pf-health-stat-value">{meta.weight ? `${meta.weight}` : '--'}</span>
+              <span className="pf-health-stat-label">{t('public.health.weight', '체중')} kg</span>
+            </div>
+            <div className="pf-health-stat">
+              <span className="pf-health-stat-icon">🔥</span>
+              <span className="pf-health-stat-value">{meta.calories ? `${meta.calories}` : '--'}</span>
+              <span className="pf-health-stat-label">{t('public.health.calories', '칼로리')} kcal</span>
+            </div>
+            <div className="pf-health-stat">
+              <span className="pf-health-stat-icon">🏃</span>
+              <span className="pf-health-stat-value">{meta.exercise ? `${meta.exercise}` : '--'}</span>
+              <span className="pf-health-stat-label">{t('public.health.exercise', '운동')} min</span>
+            </div>
+            <div className="pf-health-stat">
+              <span className="pf-health-stat-icon">👣</span>
+              <span className="pf-health-stat-value">{meta.steps ? `${meta.steps}` : '--'}</span>
+              <span className="pf-health-stat-label">{t('public.health.steps', '걸음수')}</span>
+            </div>
+          </div>
+          <div className="pf-health-progress">
+            <div className="pf-health-progress-label">
+              <span>{t('public.health.goal', '오늘 목표')}</span><span>72%</span>
+            </div>
+            <div className="pf-health-progress-bar"><div className="pf-health-progress-fill" style={{ width: '72%' }} /></div>
+          </div>
+          <div className="pf-card-actions">
+            <button className={`pf-action${isLiked ? ' liked' : ''}`} onClick={() => toggleLike(feed)} disabled={!loggedIn}>{isLiked ? '❤️' : '🤍'} <span>{feed.like_count || ''}</span></button>
+            <button className="pf-action" onClick={() => toggleComments(feed.id)}>💬 <span>{feed.comment_count || ''}</span></button>
+            <button className={`pf-action${isSaved ? ' saved' : ''}`} onClick={() => toggleSave(feed.id)}>{isSaved ? '🔖' : '📑'}</button>
+            <div className="pf-spacer" />
+            <button className="pf-action pf-action--share">↗️</button>
+          </div>
+          {openComments[feed.id] && renderComments(feed, comments)}
+        </div>
+      </article>
+    );
+  };
+
+  /* ── Text card ─────────────────────────────────────────── */
+  const renderTextCard = (feed: FeedPost, idx: number) => {
+    const tags = ensureArray(feed.tags);
+    const authorLine = feed.author_email || '-';
+    const isLiked = Number(feed.liked_by_me || 0) > 0;
+    const isSaved = savedPosts.has(feed.id);
+    const comments = commentMap[feed.id] || [];
+
+    return (
+      <article key={feed.id} className="pf-card pf-card--text" style={{ animationDelay: `${idx * 60}ms` }}>
+        <div className="pf-card-body">
+          {feed.caption && <blockquote className="pf-text-quote">{feed.caption}</blockquote>}
+          {tags.length > 0 && <div className="pf-card-tags">{tags.map((tg) => <span key={tg}>#{tg}</span>)}</div>}
+          <div className="pf-card-header" style={{ marginTop: 8 }}>
+            <div className="pf-avatar pf-avatar--sm">{authorLine[0]?.toUpperCase() || '?'}</div>
+            <div className="pf-card-author">
+              <span className="pf-card-username">{authorLine.split('@')[0]}</span>
+              {feed.pet_name && <span className="pf-badge pf-badge--pet" style={{ marginLeft: 6 }}>{feed.pet_name}</span>}
+            </div>
+            <span className="pf-card-time">{relativeTime(feed.created_at)}</span>
+          </div>
+          <div className="pf-card-actions">
+            <button className={`pf-action${isLiked ? ' liked' : ''}`} onClick={() => toggleLike(feed)} disabled={!loggedIn}>{isLiked ? '❤️' : '🤍'} <span>{feed.like_count || ''}</span></button>
+            <button className="pf-action" onClick={() => toggleComments(feed.id)}>💬 <span>{feed.comment_count || ''}</span></button>
+            <button className={`pf-action${isSaved ? ' saved' : ''}`} onClick={() => toggleSave(feed.id)}>{isSaved ? '🔖' : '📑'}</button>
+            <div className="pf-spacer" />
+            <button className="pf-action pf-action--share">↗️</button>
+          </div>
+          {openComments[feed.id] && renderComments(feed, comments)}
+        </div>
+      </article>
+    );
+  };
+
+  /* ── Comments ──────────────────────────────────────────── */
+  const renderComments = (feed: FeedPost, comments: FeedComment[]) => (
+    <div className="pf-comments">
+      {comments.length > 0 && (
+        <div className="pf-comment-list">
+          {comments.map((c) => {
+            const mine = !!(myUserId && c.author_user_id === myUserId);
+            const isEditing = editingCommentId === c.id;
+            return (
+              <div key={c.id} className="pf-comment">
+                {isEditing ? (
+                  <div className="pf-comment-edit">
+                    <input className="pf-comment-input" value={editingContent} onChange={(e) => setEditingContent(e.target.value)} />
+                    <button className="pf-comment-btn" onClick={() => saveEditedComment(feed.id, c.id)}>{t('common.save', '저장')}</button>
+                    <button className="pf-comment-btn" style={{ color: 'var(--mid)' }} onClick={() => { setEditingCommentId(null); setEditingContent(''); }}>{t('common.cancel', '취소')}</button>
+                  </div>
+                ) : (
+                  <>
+                    <span className="pf-comment-user">{c.author_email?.split('@')[0] || c.author_user_id}</span>
+                    <span className="pf-comment-text">{c.content}</span>
+                    <span className="pf-comment-time">{relativeTime(c.created_at)}</span>
+                    {mine && (
+                      <span className="pf-comment-mine">
+                        <button onClick={() => { setEditingCommentId(c.id); setEditingContent(c.content); }}>✏️</button>
+                        <button onClick={() => deleteComment(feed.id, c.id)}>🗑️</button>
+                      </span>
+                    )}
+                  </>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      )}
+      <div className="pf-comment-form">
+        <input className="pf-comment-input" placeholder={loggedIn ? t('public.comment.write', '댓글 달기…') : t('public.comment.login_hint', '로그인 후 댓글 작성 가능')}
+          value={commentInput[feed.id] || ''} onChange={(e) => setCommentInput((p) => ({ ...p, [feed.id]: e.target.value }))}
+          onKeyDown={(e) => e.key === 'Enter' && createComment(feed.id)} disabled={!loggedIn} />
+        <button className="pf-comment-btn pf-comment-btn--post" onClick={() => createComment(feed.id)} disabled={!loggedIn}>{t('public.post', '게시')}</button>
+      </div>
+    </div>
+  );
+
+  /* ── Feed card dispatcher ──────────────────────────────── */
+  const renderFeedCard = (feed: FeedPost, idx: number) => {
+    const type = getCardType(feed);
+    switch (type) {
+      case 'health': return renderHealthCard(feed, idx);
+      case 'text': return renderTextCard(feed, idx);
+      default: return renderPhotoCard(feed, idx);
+    }
+  };
+
   /* ── Render ────────────────────────────────────────────── */
   return (
-    <div className="ig-layout">
+    <div className="pf-layout">
       <Sidebar />
 
-      {/* ── Main area ──────────────────────────────────── */}
-      <div className="ig-main">
-        {/* ── Feed column ──────────────────────────────── */}
-        <div className="ig-feed-col">
-          <div className="ig-mobile-lang-wrap">
-            <select
-              className="form-select ig-mobile-lang-select"
-              value={lang}
-              onChange={(e) => setLang(e.target.value as typeof lang)}
-              aria-label={t('admin.common.language', 'Language')}
-            >
-              {SUPPORTED_LANGS.map((l) => (
-                <option key={l} value={l}>{LANG_LABELS[l]}</option>
-              ))}
+      <div className="pf-main">
+        <div className="pf-feed-col">
+
+          {/* Mobile header */}
+          <div className="pf-mobile-lang">
+            <span className="pf-mobile-logo">{t('platform.name', 'Petfolio')}</span>
+            <select className="form-select pf-mobile-lang-select" value={lang} onChange={(e) => setLang(e.target.value as typeof lang)} aria-label={t('admin.common.language', 'Language')}>
+              {SUPPORTED_LANGS.map((l) => <option key={l} value={l}>{LANG_LABELS[l]}</option>)}
             </select>
           </div>
 
           {/* Story bar */}
-          {storyAuthors.length > 0 && (
-            <div className="ig-story-bar">
-              {storyAuthors.map((author) => (
-                <div key={author} className="ig-story-item">
-                  <div className="ig-story-ring">
-                    <div className="ig-story-avatar">{author[0].toUpperCase()}</div>
-                  </div>
-                  <span className="ig-story-label">{author.split('@')[0]}</span>
-                </div>
-              ))}
+          <div className="pf-story-bar">
+            <div className="pf-story-item pf-story-add" onClick={() => loggedIn ? null : openAuthModal('login')}>
+              <div className="pf-story-ring pf-story-ring--add"><div className="pf-story-avatar-inner">＋</div></div>
+              <span className="pf-story-name">{t('public.story.add', '추가')}</span>
             </div>
-          )}
+            {storyAuthors.map(({ email, hasNew }) => (
+              <div key={email} className="pf-story-item">
+                <div className={`pf-story-ring${hasNew ? '' : ' seen'}`}><div className="pf-story-avatar-inner">{email[0].toUpperCase()}</div></div>
+                <span className="pf-story-name">{email.split('@')[0]}</span>
+              </div>
+            ))}
+          </div>
 
           {/* Feed tabs */}
-          <div className="ig-feed-tabs">
-            <button className={`ig-feed-tab${tab === 'all' ? ' active' : ''}`}
-              onClick={() => { setTab('all'); loadFeed('all', businessCategoryId, petTypeId); }}>
+          <div className="pf-feed-tabs">
+            <button className={`pf-feed-tab${tab === 'all' ? ' active' : ''}`} onClick={() => { setTab('all'); loadFeed('all', businessCategoryId, petTypeId); }}>
               {t('public.feed.all', '전체 피드')}
             </button>
-            <button className={`ig-feed-tab${tab === 'friends' ? ' active' : ''}`}
-              onClick={() => { setTab('friends'); loadFeed('friends', businessCategoryId, petTypeId); }}
+            <button className={`pf-feed-tab${tab === 'friends' ? ' active' : ''}`} onClick={() => { setTab('friends'); loadFeed('friends', businessCategoryId, petTypeId); }}
               disabled={!loggedIn} title={!loggedIn ? t('public.hint.login_required', '로그인 후 이용 가능') : ''}>
               {t('public.feed.friends', '친구 피드')}
             </button>
@@ -474,156 +549,142 @@ export default function PublicHome() {
 
           {/* Filter pills */}
           {(businessOptions.length > 0 || petTypeOptions.length > 0) && (
-            <div className="ig-filter-row">
+            <div className="pf-filter-row">
               {businessOptions.length > 0 && (
-                <div className="ig-filter-group">
-                  <span className="ig-filter-group-label">{t('public.filter.business', '업종')}</span>
-                  <button
-                    className={`ig-filter-pill${businessCategoryId === '' ? ' active' : ''}`}
-                    onClick={() => { setBusinessCategoryId(''); loadFeed(tab, '', petTypeId); }}
-                  >{t('public.filter.all', '전체')}</button>
+                <div className="pf-filter-group">
+                  <span className="pf-filter-label">{t('public.filter.business', '업종')}</span>
+                  <button className={`pf-pill${businessCategoryId === '' ? ' active' : ''}`} onClick={() => { setBusinessCategoryId(''); loadFeed(tab, '', petTypeId); }}>{t('public.filter.all', '전체')}</button>
                   {businessOptions.map((o) => (
-                    <button
-                      key={o.id}
-                      className={`ig-filter-pill${businessCategoryId === o.id ? ' active' : ''}`}
-                      onClick={() => { const v = businessCategoryId === o.id ? '' : o.id; setBusinessCategoryId(v); loadFeed(tab, v, petTypeId); }}
-                    >{translateMasterLabel(o.i18n_key, o.label, o.code)}</button>
+                    <button key={o.id} className={`pf-pill${businessCategoryId === o.id ? ' active' : ''}`}
+                      onClick={() => { const v = businessCategoryId === o.id ? '' : o.id; setBusinessCategoryId(v); loadFeed(tab, v, petTypeId); }}>
+                      {translateMasterLabel(o.i18n_key, o.label, o.code)}
+                    </button>
                   ))}
                 </div>
               )}
               {petTypeOptions.length > 0 && (
-                <div className="ig-filter-group">
-                  <span className="ig-filter-group-label">{t('public.filter.pet_type', '펫 유형')}</span>
-                  <button
-                    className={`ig-filter-pill${petTypeId === '' ? ' active' : ''}`}
-                    onClick={() => { setPetTypeId(''); loadFeed(tab, businessCategoryId, ''); }}
-                  >{t('public.filter.all', '전체')}</button>
+                <div className="pf-filter-group">
+                  <span className="pf-filter-label">{t('public.filter.pet_type', '펫 유형')}</span>
+                  <button className={`pf-pill${petTypeId === '' ? ' active' : ''}`} onClick={() => { setPetTypeId(''); loadFeed(tab, businessCategoryId, ''); }}>{t('public.filter.all', '전체')}</button>
                   {petTypeOptions.map((o) => (
-                    <button
-                      key={o.id}
-                      className={`ig-filter-pill${petTypeId === o.id ? ' active' : ''}`}
-                      onClick={() => { const v = petTypeId === o.id ? '' : o.id; setPetTypeId(v); loadFeed(tab, businessCategoryId, v); }}
-                    >{translateMasterLabel(o.i18n_key, o.label, o.code)}</button>
+                    <button key={o.id} className={`pf-pill${petTypeId === o.id ? ' active' : ''}`}
+                      onClick={() => { const v = petTypeId === o.id ? '' : o.id; setPetTypeId(v); loadFeed(tab, businessCategoryId, v); }}>
+                      {translateMasterLabel(o.i18n_key, o.label, o.code)}
+                    </button>
                   ))}
                 </div>
               )}
             </div>
           )}
 
-          {error && <div className="alert alert-error">{error}</div>}
+          {error && <div className="alert alert-error" style={{ margin: '0 0 16px' }}>{error}</div>}
 
-          {/* Feed list */}
+          {/* Masonry Feed */}
           {loading ? (
             <div className="loading-center"><span className="spinner" /></div>
           ) : feeds.length === 0 ? (
-            <div className="ig-card" style={{ padding: 40, textAlign: 'center', color: 'var(--text-muted)' }}>
-              <div style={{ fontSize: 36, marginBottom: 12 }}>🐾</div>
-              <p style={{ fontWeight: 600, marginBottom: 4 }}>{t('public.feed.empty_title', '아직 피드가 없습니다')}</p>
+            <div className="pf-card" style={{ padding: 48, textAlign: 'center', color: 'var(--mid)' }}>
+              <div style={{ fontSize: 48, marginBottom: 12 }}>🐾</div>
+              <p style={{ fontFamily: 'var(--font-serif)', fontSize: 18, fontStyle: 'italic', marginBottom: 6 }}>{t('public.feed.empty_title', '아직 피드가 없습니다')}</p>
               <p style={{ fontSize: 13 }}>{t('public.feed.empty_desc', '첫 번째 이야기를 올려보세요.')}</p>
             </div>
           ) : (
-            feeds.map(renderFeedCard)
+            <div className="pf-masonry">{feeds.map((f, i) => renderFeedCard(f, i))}</div>
           )}
         </div>
 
-        {/* ── Right panel ──────────────────────────────── */}
-        <aside className="ig-right-col">
-
-          {/* Profile mini */}
-          {loggedIn ? (
-            <div className="ig-profile-mini">
-              <div className="ig-profile-mini-avatar">
-                {(myUserId || '?')[0].toUpperCase()}
-              </div>
-              <div className="ig-profile-mini-info">
-                <div className="ig-profile-mini-name">{roleLabel}</div>
-                <div className="ig-profile-mini-sub">{t('public.account', 'Petfolio 계정')}</div>
+        {/* Right panel */}
+        <aside className="pf-right-col">
+          <div className="pf-pet-widget">
+            <div className="pf-pet-widget-header">
+              <div className="pf-pet-widget-avatar">🐕</div>
+              <div className="pf-pet-widget-info">
+                <span className="pf-pet-widget-name">{loggedIn ? roleLabel : t('platform.name', 'Petfolio')}</span>
+                <span className="pf-pet-widget-breed">{loggedIn ? t('public.account', 'Petfolio 계정') : t('public.hero.sub', 'SNS + 포트폴리오 아카이브')}</span>
               </div>
             </div>
-          ) : (
-            <div style={{ display: 'flex', gap: 8, marginBottom: 20 }}>
-              <button className="btn btn-secondary btn-sm" style={{ flex: 1, justifyContent: 'center' }} onClick={() => openAuthModal('login')}>{t('public.auth.login', '로그인')}</button>
-              <button className="btn btn-primary btn-sm"   style={{ flex: 1, justifyContent: 'center' }} onClick={() => openAuthModal('signup')}>{t('public.cta.start', '시작하기')}</button>
+            <div className="pf-pet-widget-stats">
+              <div className="pf-pet-widget-stat"><span className="pf-pet-widget-stat-value">--</span><span className="pf-pet-widget-stat-label">{t('public.health.weight', '체중')} kg</span></div>
+              <div className="pf-pet-widget-stat"><span className="pf-pet-widget-stat-value">--</span><span className="pf-pet-widget-stat-label">{t('public.health.calories', '칼로리')}</span></div>
+              <div className="pf-pet-widget-stat"><span className="pf-pet-widget-stat-value">--</span><span className="pf-pet-widget-stat-label">{t('public.health.exercise', '운동')}</span></div>
             </div>
-          )}
+            <div className="pf-pet-widget-schedule">
+              <span>💉</span>
+              <span className="pf-pet-widget-schedule-text">{t('public.widget.next_schedule', '다음 예정 일정')}</span>
+              <span className="pf-pet-widget-schedule-date">--</span>
+            </div>
+            {!loggedIn && (
+              <div style={{ display: 'flex', gap: 8, marginTop: 12 }}>
+                <button className="pf-btn-outline" onClick={() => openAuthModal('login')}>{t('public.auth.login', '로그인')}</button>
+                <button className="pf-btn-start" style={{ flex: 1 }} onClick={() => openAuthModal('signup')}>{t('public.cta.start', '시작하기')}</button>
+              </div>
+            )}
+            {loggedIn && <button className="pf-pet-add-btn" onClick={() => navigate('/guardian')}>＋ {t('public.widget.add_pet', '반려동물 추가')}</button>}
+          </div>
 
-          {/* Suggested users */}
           {suggestedUsers.length > 0 && (
-            <div className="ig-right-section">
-              <div className="ig-right-title">{t('public.recommend.guardian', '추천 Guardian')}</div>
-              {suggestedUsers.map((u) => (
-                <div key={u} className="ig-right-user">
-                  <div className="ig-right-user-avatar">{u[0].toUpperCase()}</div>
-                  <div className="ig-right-user-info">
-                    <div className="ig-right-user-name">{u.split('@')[0]}</div>
-                    <div className="ig-right-user-sub">{t('public.recommend.guardian_sub', 'Petfolio 가디언')}</div>
+            <div className="pf-right-section">
+              <div className="pf-right-section-title">{t('public.recommend.guardian', '추천 Guardian')}</div>
+              {suggestedUsers.map(({ email }) => (
+                <div key={email} className="pf-suggest-user">
+                  <div className="pf-suggest-avatar">{email[0].toUpperCase()}</div>
+                  <div className="pf-suggest-info">
+                    <span className="pf-suggest-name">{email.split('@')[0]}</span>
+                    <span className="pf-suggest-sub">{t('public.recommend.guardian_sub', 'Petfolio 가디언')}</span>
                   </div>
-                  <button className="ig-follow-btn" disabled={!loggedIn}>{t('public.follow', '팔로우')}</button>
+                  <button className="pf-follow-btn" disabled={!loggedIn}>{t('public.follow', '팔로우')}</button>
                 </div>
               ))}
             </div>
           )}
 
-          {/* Guardian ↔ Supplier 연결 요청 */}
           {loggedIn && (role === 'guardian' || role === 'provider') && (
-            <div className="ig-right-section">
-              <div className="ig-right-title">{t('public.friend.title', 'Guardian ↔ Supplier 연결')}</div>
-              <div style={{ display: 'flex', gap: 6, marginBottom: 6 }}>
-                <input
-                  className="form-input" style={{ fontSize: 12, padding: '6px 8px' }}
-                  placeholder={t('public.friend.email', '상대 이메일')}
-                  value={friendEmail}
-                  onChange={(e) => setFriendEmail(e.target.value)}
-                  onKeyDown={(e) => e.key === 'Enter' && sendFriendRequest()}
-                />
-                <button className="btn btn-secondary btn-sm" onClick={sendFriendRequest}>{t('public.friend.request', '요청')}</button>
+            <div className="pf-right-section">
+              <div className="pf-right-section-title">{t('public.friend.title', 'Guardian ↔ Supplier 연결')}</div>
+              <div style={{ display: 'flex', gap: 6 }}>
+                <input className="form-input" style={{ fontSize: 12, padding: '8px 10px' }} placeholder={t('public.friend.email', '상대 이메일')}
+                  value={friendEmail} onChange={(e) => setFriendEmail(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && sendFriendRequest()} />
+                <button className="pf-btn-outline" onClick={sendFriendRequest}>{t('public.friend.request', '요청')}</button>
               </div>
-              {friendMessage && <p style={{ fontSize: 12, color: 'var(--primary)' }}>{friendMessage}</p>}
+              {friendMessage && <p style={{ fontSize: 12, color: 'var(--amber)', marginTop: 6 }}>{friendMessage}</p>}
             </div>
           )}
 
-          {/* Footer */}
-          <div className="ig-right-footer">
+          <div className="pf-right-footer">
             <span>{t('public.copyright', '© 2026 Petfolio')}</span> · <span>{t('platform.tagline', "Your pet's life portfolio")}</span>
-            <br />
-            <Link to="/admin/login">{t('public.admin', 'Admin')}</Link>
+            <br /><Link to="/admin/login">{t('public.admin', 'Admin')}</Link>
           </div>
         </aside>
       </div>
 
-      {/* ── Mobile bottom tabbar ─────────────────────────── */}
-      <nav className="ig-bottom-tabbar">
-        <Link to="/" className="ig-tabbar-item active">
+      {/* Mobile bottom tabbar */}
+      <nav className="pf-bottom-tabbar">
+        <Link to="/" className="pf-tabbar-item active">
           <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
-          <span className="ig-tabbar-label">{t('public.nav.home', 'Home')}</span>
+          <span className="pf-tabbar-label">{t('public.nav.home', 'Home')}</span>
         </Link>
-        <Link to="/explore" className="ig-tabbar-item">
+        <Link to="/explore" className="pf-tabbar-item">
           <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-          <span className="ig-tabbar-label">{t('public.nav.explore', 'Explore')}</span>
+          <span className="pf-tabbar-label">{t('public.nav.explore', 'Explore')}</span>
         </Link>
-        <button className="ig-tabbar-item" onClick={() => loggedIn ? navigate('/guardian') : openAuthModal('login')} aria-label={loggedIn ? t('public.nav.mypet', '내 펫') : t('public.auth.login', '로그인')}>
+        <button className="pf-tabbar-item" onClick={() => loggedIn ? navigate('/guardian') : openAuthModal('login')}>
           <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 19c-4.3 0-7.5-3.4-7.5-5s3.2-5 7.5-5 7.5 3.4 7.5 5-3.2 5-7.5 5z"/><circle cx="12" cy="14" r="1.5"/><path d="M10 2c0 .5.5 1 1 1h2c.5 0 1-.5 1-1"/></svg>
-          <span className="ig-tabbar-label">{t('public.nav.mypet', 'My Pet')}</span>
+          <span className="pf-tabbar-label">{t('public.nav.mypet', 'My Pet')}</span>
         </button>
-        <button className="ig-tabbar-item" onClick={() => loggedIn ? navigate('/') : openAuthModal('login')} aria-label={loggedIn ? t('public.nav.alerts', '알림') : t('public.auth.login', '로그인')}>
+        <button className="pf-tabbar-item" onClick={() => loggedIn ? navigate('/') : openAuthModal('login')}>
           {loggedIn
             ? <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
             : <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"/><polyline points="10 17 15 12 10 7"/><line x1="15" y1="12" x2="3" y2="12"/></svg>
           }
-          <span className="ig-tabbar-label">{loggedIn ? t('public.nav.alerts', 'Alerts') : t('public.auth.login', 'Login')}</span>
+          <span className="pf-tabbar-label">{loggedIn ? t('public.nav.alerts', 'Alerts') : t('public.auth.login', 'Login')}</span>
         </button>
-        <button className="ig-tabbar-item" onClick={() => loggedIn ? navigate('/guardian') : openAuthModal('login')} aria-label={loggedIn ? t('public.nav.profile', '프로필') : t('public.auth.login', '로그인')}>
+        <button className="pf-tabbar-item" onClick={() => loggedIn ? navigate('/guardian') : openAuthModal('login')}>
           <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
-          <span className="ig-tabbar-label">{loggedIn ? t('public.nav.profile', 'Profile') : t('public.auth.login', 'Login')}</span>
+          <span className="pf-tabbar-label">{loggedIn ? t('public.nav.profile', 'Profile') : t('public.auth.login', 'Login')}</span>
         </button>
       </nav>
 
-      <AuthModal
-        open={authModalOpen}
-        initialMode={authModalMode}
-        onClose={() => setAuthModalOpen(false)}
-        onSuccess={() => setAuthModalOpen(false)}
-      />
+      <AuthModal open={authModalOpen} initialMode={authModalMode} onClose={() => setAuthModalOpen(false)} onSuccess={() => setAuthModalOpen(false)} />
     </div>
   );
 }

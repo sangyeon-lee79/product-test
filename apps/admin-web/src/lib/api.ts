@@ -266,7 +266,7 @@ export const api = {
       method: 'POST',
       body: JSON.stringify({
         provider,
-        ...(provider === 'kakao' ? { code: credential } : { id_token: credential }),
+        code: credential,
         ...(extra?.user_name ? { user_name: extra.user_name } : {}),
       }),
     }),

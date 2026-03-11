@@ -335,6 +335,68 @@ tbody tr:hover { background: #FAF7F2; }
 .oauth-btn-kakao { background: #FEE500; color: #191919; }
 .oauth-btn-apple { background: #000; color: #fff; }
 
+/* ── Signup Enhancements ──────────────────────────────────── */
+.signup-lang-toggle {
+  display: inline-flex; align-items: center; gap: 4px;
+  padding: 3px 10px; border-radius: 999px; font-size: 12px; font-weight: 500;
+  border: 1px solid var(--border); background: var(--surface); color: var(--text-muted);
+  cursor: pointer; transition: all 0.15s var(--ease);
+}
+.signup-lang-toggle:hover { border-color: var(--primary); color: var(--primary); }
+
+.signup-biz-info-btn {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 22px; height: 22px; border-radius: 50%; border: 1px solid var(--border);
+  background: var(--surface); color: var(--text-muted); cursor: pointer;
+  font-size: 13px; line-height: 1; transition: all 0.15s var(--ease); flex-shrink: 0;
+}
+.signup-biz-info-btn:hover { border-color: var(--primary); color: var(--primary); }
+
+.signup-biz-info-popover {
+  position: absolute; top: calc(100% + 6px); left: 0; z-index: 50;
+  width: 320px; padding: 12px 14px; border-radius: 8px;
+  background: var(--surface); border: 1px solid var(--border);
+  box-shadow: 0 4px 12px rgba(0,0,0,0.08); font-size: 13px; line-height: 1.5;
+  color: var(--text); animation: fadeInUp 0.15s var(--ease);
+}
+
+.signup-cert-tags {
+  display: flex; flex-wrap: wrap; gap: 6px; margin-top: 6px;
+}
+.signup-cert-tag {
+  display: inline-flex; align-items: center; gap: 4px;
+  padding: 3px 10px; border-radius: 999px; font-size: 12px;
+  background: var(--primary-light); color: var(--primary-dark); font-weight: 500;
+}
+.signup-cert-tag button {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 16px; height: 16px; border: none; background: transparent;
+  color: var(--primary-dark); cursor: pointer; font-size: 13px; line-height: 1;
+  padding: 0; border-radius: 50%; transition: background 0.1s;
+}
+.signup-cert-tag button:hover { background: rgba(0,0,0,0.08); }
+
+.signup-hours-grid {
+  display: grid; gap: 6px;
+}
+.signup-hours-row {
+  display: grid; grid-template-columns: 36px 1fr 12px 1fr 60px; gap: 6px; align-items: center;
+  font-size: 13px;
+}
+.signup-hours-row .day-label {
+  font-weight: 600; text-align: center; color: var(--text);
+}
+.signup-hours-row .sep { text-align: center; color: var(--text-muted); }
+.signup-hours-row input[type="time"] {
+  padding: 4px 6px; border: 1px solid var(--border); border-radius: 6px;
+  font-size: 12px; background: var(--surface); color: var(--text);
+}
+.signup-hours-row input[type="time"]:disabled { opacity: 0.4; }
+.signup-hours-row label.closed-label {
+  display: flex; align-items: center; gap: 4px; font-size: 11px;
+  color: var(--text-muted); cursor: pointer; white-space: nowrap;
+}
+
 /* ── Public Page ────────────────────────────────────────────── */
 .public-page {
   min-height: 100vh;

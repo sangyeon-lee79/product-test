@@ -1,12 +1,14 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { api, setTokens, type MasterItem } from '../lib/api';
 import { getApiBase } from '../lib/apiBase';
 import { getRoleHomePath, storeRole } from '../lib/auth';
-import { ensureGoogleIdentityScript } from '../lib/google';
-import { getKakaoConfig, loginWithKakao, getKakaoCodeFromUrl, clearKakaoCodeFromUrl } from '../lib/kakao';
+import { loginWithGoogle, getGoogleConfig } from '../lib/google';
+import { getKakaoConfig, loginWithKakao } from '../lib/kakao';
 import { getAppleConfig, loginWithApple } from '../lib/apple';
+import { getOAuthRedirectResult, clearOAuthRedirectParams } from '../lib/oauthRedirect';
 import { LANG_LABELS, SUPPORTED_LANGS, useI18n, useT } from '../lib/i18n';
+import { COUNTRY_REGIONS } from '../data/countryRegions';
 
 type SignupPhase = 'choose' | 'direct' | 'sns';
 type CountryRow = { id: string; code: string; currency_code?: string | null };
@@ -76,8 +78,22 @@ export default function Signup() {
   const [providerPetTypeL2Id, setProviderPetTypeL2Id] = useState('');
   const [providerL3Id, setProviderL3Id] = useState('');
   const [providerBusinessNumber, setProviderBusinessNumber] = useState('');
-  const [providerOperatingHours, setProviderOperatingHours] = useState('');
-  const [providerCertifications, setProviderCertifications] = useState('');
+
+  // Enhanced provider fields
+  const [providerLabelLang, setProviderLabelLang] = useState<'ko' | 'en'>(() => {
+    try { return (localStorage.getItem('provider_label_lang') as 'ko' | 'en') || 'ko'; } catch { return 'ko'; }
+  });
+  const [showBizInfo, setShowBizInfo] = useState(false);
+  const [providerState, setProviderState] = useState('');
+  const [providerCity, setProviderCity] = useState('');
+  const [providerAddressDetail, setProviderAddressDetail] = useState('');
+  const [providerAddressFlat, setProviderAddressFlat] = useState('');
+  const DAYS = ['mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun'] as const;
+  const [operatingHoursMap, setOperatingHoursMap] = useState<Record<string, { open: string; close: string; closed: boolean }>>(() =>
+    Object.fromEntries(DAYS.map(d => [d, { open: '09:00', close: '18:00', closed: false }]))
+  );
+  const [certTags, setCertTags] = useState<string[]>([]);
+  const [certInput, setCertInput] = useState('');
 
   // Agreements
   const [bookingNotifications, setBookingNotifications] = useState(true);
@@ -90,9 +106,9 @@ export default function Signup() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [snsToken, setSnsToken] = useState<{ access: string; refresh: string; role: string } | null>(null);
+  const [googleAvailable, setGoogleAvailable] = useState(false);
   const [kakaoAvailable, setKakaoAvailable] = useState(false);
   const [appleAvailable, setAppleAvailable] = useState(false);
-  const googleButtonRef = useRef<HTMLDivElement | null>(null);
 
   const totalSteps = phase === 'direct' ? 5 : 4;
 
@@ -158,102 +174,39 @@ export default function Signup() {
 
   // Check which OAuth platforms are configured
   useEffect(() => {
+    getGoogleConfig().then(c => setGoogleAvailable(!!c.google_oauth_client_id)).catch(() => {});
     getKakaoConfig().then(c => setKakaoAvailable(!!c.kakao_javascript_key)).catch(() => {});
     getAppleConfig().then(c => setAppleAvailable(!!c.apple_service_id)).catch(() => {});
   }, []);
 
-  // Handle Kakao redirect (URL has ?code= before the hash)
+  // Handle OAuth redirect result (unified for Google, Kakao, Apple)
   useEffect(() => {
-    const code = getKakaoCodeFromUrl();
-    if (!code) return;
-    clearKakaoCodeFromUrl();
+    const result = getOAuthRedirectResult();
+    if (!result || result.mode !== 'signup') return;
+    clearOAuthRedirectParams();
     setLoading(true);
     setError('');
-    api.oauthLogin('kakao', code)
+    api.oauthLogin(result.provider, result.code)
       .then(data => {
         setSnsToken({ access: data.access_token, refresh: data.refresh_token, role: data.role });
         if (data.email) setEmail(data.email);
+        if (data.display_name) setDisplayName(data.display_name);
         setPhase('sns');
         setStep(1);
       })
-      .catch(err => setError(err instanceof Error ? err.message : t('public.signup.kakao_fail', '카카오 가입에 실패했습니다.')))
+      .catch(err => setError(err instanceof Error ? err.message : t('public.signup.sns_fail', 'SNS 가입에 실패했습니다.')))
       .finally(() => setLoading(false));
   }, []);
 
-  async function handleKakaoSignup() {
+  function handleOAuthRedirect(provider: 'google' | 'kakao' | 'apple') {
     setError('');
-    try { await loginWithKakao(); } catch (err) {
-      setError(err instanceof Error ? err.message : t('public.signup.kakao_no_code', '카카오 인증 코드를 받지 못했습니다.'));
-    }
+    const doRedirect = provider === 'google' ? loginWithGoogle
+      : provider === 'apple' ? loginWithApple
+      : loginWithKakao;
+    doRedirect('signup').catch((e: unknown) => {
+      setError(e instanceof Error ? e.message : t('public.signup.sns_fail', 'SNS 연결에 실패했습니다.'));
+    });
   }
-
-  async function handleAppleSignup() {
-    setLoading(true);
-    setError('');
-    try {
-      const { id_token, user_name } = await loginWithApple();
-      const data = await api.oauthLogin('apple', id_token, { user_name });
-      setSnsToken({ access: data.access_token, refresh: data.refresh_token, role: data.role });
-      if (data.email) setEmail(data.email);
-      if (user_name) setDisplayName(user_name);
-      setPhase('sns');
-      setStep(1);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : t('public.signup.apple_fail', 'Apple 가입에 실패했습니다.'));
-    } finally {
-      setLoading(false);
-    }
-  }
-
-  // ── Google OAuth for choose phase ──
-  useEffect(() => {
-    if (phase !== 'choose' || !googleButtonRef.current) return;
-    let cancelled = false;
-
-    async function setupGoogle() {
-      if (!googleButtonRef.current) return;
-      try {
-        const config = await ensureGoogleIdentityScript();
-        if (cancelled || !googleButtonRef.current) return;
-        const googleId = window.google?.accounts?.id;
-        if (!googleId) return;
-
-        googleButtonRef.current.innerHTML = '';
-        googleId.initialize({
-          client_id: config.google_oauth_client_id,
-          ux_mode: 'popup',
-          callback: async ({ credential }) => {
-            if (!credential) { setError(t('public.signup.google_no_token', 'Google 인증 토큰을 받지 못했습니다.')); return; }
-            setLoading(true);
-            setError('');
-            try {
-              const data = await api.oauthLogin('google', credential);
-              // Store tokens for later, transition to SNS wizard
-              setSnsToken({ access: data.access_token, refresh: data.refresh_token, role: data.role });
-              // Try to extract name/email from JWT payload
-              try {
-                const payload = JSON.parse(atob(credential.split('.')[1]));
-                if (payload.email) setEmail(payload.email);
-                if (payload.name) setDisplayName(payload.name);
-              } catch { /* ignore JWT parse */ }
-              setPhase('sns');
-              setStep(1);
-            } catch (err) {
-              setError(err instanceof Error ? err.message : t('public.signup.google_fail', 'Google 가입에 실패했습니다.'));
-            } finally {
-              setLoading(false);
-            }
-          },
-        });
-        googleId.renderButton(googleButtonRef.current, {
-          theme: 'outline', size: 'large', width: 300, text: 'signup_with', shape: 'pill',
-        });
-      } catch { /* Google not available — direct signup still works */ }
-    }
-
-    void setupGoogle();
-    return () => { cancelled = true; };
-  }, [phase, t]);
 
   const selectedCountry = useMemo(() => countries.find(c => c.code === countryCode), [countries, countryCode]);
 
@@ -348,8 +301,13 @@ export default function Signup() {
           pet_type_l1_id: providerPetTypeL1Id || null,
           pet_type_l2_id: providerPetTypeL2Id || null,
           business_registration_no: providerBusinessNumber || null,
-          operating_hours: providerOperatingHours || null,
-          certifications: providerCertifications.split(',').map(v => v.trim()).filter(Boolean),
+          operating_hours: JSON.stringify({
+            schedule: operatingHoursMap,
+            address: (COUNTRY_REGIONS[countryCode]?.length)
+              ? [providerState, providerCity, providerAddressDetail].filter(Boolean).join(' ')
+              : providerAddressFlat,
+          }),
+          certifications: certTags,
         } : undefined,
       });
 
@@ -404,15 +362,19 @@ export default function Signup() {
                   <p className="text-muted text-sm" style={{ margin: '0 0 16px' }}>
                     {t('public.signup.sns_desc', 'Google 계정으로 빠르게 가입')}
                   </p>
-                  <div ref={googleButtonRef} style={{ display: 'flex', justifyContent: 'center', minHeight: 42 }} />
                   <div className="oauth-buttons">
+                    {googleAvailable && (
+                      <button className="oauth-btn oauth-btn-google" onClick={() => handleOAuthRedirect('google')} disabled={loading} type="button">
+                        {t('public.signup.google', 'Google로 가입')}
+                      </button>
+                    )}
                     {kakaoAvailable && (
-                      <button className="oauth-btn oauth-btn-kakao" onClick={handleKakaoSignup} disabled={loading} type="button">
+                      <button className="oauth-btn oauth-btn-kakao" onClick={() => handleOAuthRedirect('kakao')} disabled={loading} type="button">
                         {t('public.signup.kakao', '카카오로 가입')}
                       </button>
                     )}
                     {appleAvailable && (
-                      <button className="oauth-btn oauth-btn-apple" onClick={() => void handleAppleSignup()} disabled={loading} type="button">
+                      <button className="oauth-btn oauth-btn-apple" onClick={() => handleOAuthRedirect('apple')} disabled={loading} type="button">
                         {t('public.signup.apple', 'Apple로 가입')}
                       </button>
                     )}
@@ -507,7 +469,7 @@ export default function Signup() {
             </div>
             <div className="form-group">
               <label className="form-label">{t('public.signup.country', '거주 국가')} *</label>
-              <select className="form-select" required value={countryCode} onChange={e => setCountryCode(e.target.value)}>
+              <select className="form-select" required value={countryCode} onChange={e => { setCountryCode(e.target.value); setProviderState(''); setProviderCity(''); setProviderAddressDetail(''); setProviderAddressFlat(''); }}>
                 {countries.map(c => <option key={c.id} value={c.code}>{c.code}</option>)}
               </select>
             </div>
@@ -568,6 +530,60 @@ export default function Signup() {
     // Role step (direct step 4 / sns step 3)
     const roleStep = phase === 'direct' ? 4 : 3;
     if (step === roleStep) {
+      // English label map for provider form toggle
+      const EN: Record<string, string> = {
+        'public.signup.provider_l1': 'Business Category *',
+        'public.signup.provider_l2': 'Sub-category',
+        'public.signup.provider_pet_l1': 'Pet Type',
+        'public.signup.provider_pet_l2': 'Breed',
+        'public.signup.provider_business_number': 'Business Reg. No.',
+        'public.signup.provider_certifications': 'Certificates/Licenses',
+        'public.signup.provider_address_state': 'State/Province',
+        'public.signup.provider_address_city': 'City/District',
+        'public.signup.provider_address_detail': 'Detailed Address',
+        'public.signup.provider_address_flat': 'Address',
+        'public.signup.provider_hours_title': 'Operating Hours',
+      };
+      const pl = (key: string, koFb: string) => providerLabelLang === 'en' ? (EN[key] || t(key, koFb)) : t(key, koFb);
+
+      // Resolve biz info popover text based on selected L1
+      const selectedL1Key = l1Options.find(o => o.id === providerL1Id)?.key || '';
+      const bizInfoMap: Record<string, string> = {
+        hospital: 'public.signup.provider_info_hospital',
+        grooming: 'public.signup.provider_info_grooming',
+        pet_shop: 'public.signup.provider_info_petshop',
+        pet_hotel: 'public.signup.provider_info_hotel',
+        training: 'public.signup.provider_info_training',
+      };
+      const bizInfoKey = Object.entries(bizInfoMap).find(([k]) => selectedL1Key.toLowerCase().includes(k))?.[1];
+
+      const countryRegionList = COUNTRY_REGIONS[countryCode] || [];
+      const hasRegions = countryRegionList.length > 0;
+      const selectedRegion = countryRegionList.find(r => r.name === providerState);
+      const hasCities = !!(selectedRegion?.cities && selectedRegion.cities.length > 0);
+
+      function toggleLabelLang() {
+        const next = providerLabelLang === 'ko' ? 'en' : 'ko';
+        setProviderLabelLang(next);
+        try { localStorage.setItem('provider_label_lang', next); } catch { /* */ }
+      }
+
+      function handleCertKeyDown(e: React.KeyboardEvent<HTMLInputElement>) {
+        if (e.key === 'Enter') {
+          e.preventDefault();
+          const val = certInput.trim();
+          if (val && !certTags.includes(val)) setCertTags(prev => [...prev, val]);
+          setCertInput('');
+        }
+      }
+
+      function updateHours(day: string, field: 'open' | 'close' | 'closed', value: string | boolean) {
+        setOperatingHoursMap(prev => ({
+          ...prev,
+          [day]: { ...prev[day], [field]: value },
+        }));
+      }
+
       return (
         <>
           <div style={{ display: 'grid', gap: 12 }}>
@@ -583,52 +599,144 @@ export default function Signup() {
 
           {applyProvider && (
             <div className="card mt-3">
-              <div className="card-body" style={{ display: 'grid', gap: 10 }}>
+              <div className="card-body" style={{ display: 'grid', gap: 12 }}>
+                {/* A. Language Toggle */}
+                <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+                  <button type="button" className="signup-lang-toggle" onClick={toggleLabelLang}>
+                    🌐 {providerLabelLang === 'ko' ? '한국어' : 'English'}
+                  </button>
+                </div>
+
+                {/* B. Business Category L1/L2 + Info Popover */}
                 <div className="form-row col2">
-                  <div className="form-group">
-                    <label className="form-label">{t('public.signup.provider_l1', '업종 L1')} *</label>
-                    <select className="form-select" value={providerL1Id} onChange={e => { setProviderL1Id(e.target.value); setProviderL3Id(''); }}>
+                  <div className="form-group" style={{ position: 'relative' }}>
+                    <label className="form-label" style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                      {pl('public.signup.provider_l1', '업종 L1')}
+                      {providerL1Id && (
+                        <button type="button" className="signup-biz-info-btn" onClick={() => setShowBizInfo(v => !v)}>ℹ</button>
+                      )}
+                    </label>
+                    <select className="form-select" value={providerL1Id} onChange={e => { setProviderL1Id(e.target.value); setProviderL3Id(''); setShowBizInfo(false); }}>
                       <option value="">{t('common.select', '선택...')}</option>
                       {l1Options.map(item => <option key={item.id} value={item.id}>{item.display_label || item.ko || item.key}</option>)}
                     </select>
+                    {showBizInfo && bizInfoKey && (
+                      <div className="signup-biz-info-popover">
+                        {t(bizInfoKey, '')}
+                        <div style={{ textAlign: 'right', marginTop: 6 }}>
+                          <button type="button" style={{ fontSize: 11, color: 'var(--text-muted)', background: 'none', border: 'none', cursor: 'pointer' }} onClick={() => setShowBizInfo(false)}>✕</button>
+                        </div>
+                      </div>
+                    )}
                   </div>
                   <div className="form-group">
-                    <label className="form-label">{t('public.signup.provider_l2', '업종 L2')}</label>
+                    <label className="form-label">{pl('public.signup.provider_l2', '업종 L2')}</label>
                     <select className="form-select" value={providerL2Id} onChange={e => setProviderL2Id(e.target.value)}>
                       <option value="">{t('public.signup.provider_l2_optional', '선택 안 함')}</option>
                       {l2Options.map(item => <option key={item.id} value={item.id}>{item.display_label || item.ko || item.key}</option>)}
                     </select>
                   </div>
                 </div>
+
+                {/* Pet Type L1/L2 */}
                 <div className="form-row col2">
                   <div className="form-group">
-                    <label className="form-label">{t('public.signup.provider_pet_l1', '펫종류 L1')}</label>
+                    <label className="form-label">{pl('public.signup.provider_pet_l1', '펫종류 L1')}</label>
                     <select className="form-select" value={providerPetTypeL1Id} onChange={e => { setProviderPetTypeL1Id(e.target.value); setProviderPetTypeL2Id(''); setProviderL3Id(''); }}>
                       <option value="">{t('common.select', '선택...')}</option>
                       {petTypeL1Options.map(item => <option key={item.id} value={item.id}>{item.display_label || item.ko || item.key}</option>)}
                     </select>
                   </div>
                   <div className="form-group">
-                    <label className="form-label">{t('public.signup.provider_pet_l2', '펫종류 L2')}</label>
+                    <label className="form-label">{pl('public.signup.provider_pet_l2', '펫종류 L2')}</label>
                     <select className="form-select" value={providerPetTypeL2Id} onChange={e => { setProviderPetTypeL2Id(e.target.value); setProviderL3Id(''); }}>
                       <option value="">{t('common.select', '선택...')}</option>
                       {petTypeL2Options.map(item => <option key={item.id} value={item.id}>{item.display_label || item.ko || item.key}</option>)}
                     </select>
                   </div>
                 </div>
-                <div className="form-row col3">
-                  <div className="form-group">
-                    <label className="form-label">{t('public.signup.provider_business_number', '사업자 번호')}</label>
-                    <input className="form-input" value={providerBusinessNumber} onChange={e => setProviderBusinessNumber(e.target.value)} />
+
+                {/* Business Registration Number */}
+                <div className="form-group">
+                  <label className="form-label">{pl('public.signup.provider_business_number', '사업자 번호')}</label>
+                  <input className="form-input" value={providerBusinessNumber} onChange={e => setProviderBusinessNumber(e.target.value)} />
+                </div>
+
+                {/* C. Address — universal country-aware cascade */}
+                {hasRegions ? (
+                  <div className="form-row col3">
+                    <div className="form-group">
+                      <label className="form-label">{pl('public.signup.provider_address_state', '시/도')}</label>
+                      <select className="form-select" value={providerState} onChange={e => { setProviderState(e.target.value); setProviderCity(''); }}>
+                        <option value="">{t('common.select', '선택...')}</option>
+                        {countryRegionList.map(r => <option key={r.name} value={r.name}>{r.name}</option>)}
+                      </select>
+                    </div>
+                    <div className="form-group">
+                      <label className="form-label">{pl('public.signup.provider_address_city', '시/군/구')}</label>
+                      {hasCities ? (
+                        <select className="form-select" value={providerCity} onChange={e => setProviderCity(e.target.value)} disabled={!providerState}>
+                          <option value="">{t('common.select', '선택...')}</option>
+                          {(selectedRegion?.cities || []).map(c => <option key={c} value={c}>{c}</option>)}
+                        </select>
+                      ) : (
+                        <input className="form-input" value={providerCity} onChange={e => setProviderCity(e.target.value)} disabled={!providerState} />
+                      )}
+                    </div>
+                    <div className="form-group">
+                      <label className="form-label">{pl('public.signup.provider_address_detail', '상세 주소')}</label>
+                      <input className="form-input" value={providerAddressDetail} onChange={e => setProviderAddressDetail(e.target.value)} />
+                    </div>
                   </div>
+                ) : (
                   <div className="form-group">
-                    <label className="form-label">{t('public.signup.provider_operating_hours', '운영 시간')}</label>
-                    <input className="form-input" value={providerOperatingHours} onChange={e => setProviderOperatingHours(e.target.value)} />
+                    <label className="form-label">{pl('public.signup.provider_address_flat', '주소')}</label>
+                    <input className="form-input" value={providerAddressFlat} onChange={e => setProviderAddressFlat(e.target.value)} />
                   </div>
-                  <div className="form-group">
-                    <label className="form-label">{t('public.signup.provider_certifications', '자격증/면허')}</label>
-                    <input className="form-input" value={providerCertifications} onChange={e => setProviderCertifications(e.target.value)} placeholder={t('public.signup.certifications_placeholder', '쉼표로 구분')} />
+                )}
+
+                {/* D. Operating Hours Day-by-Day */}
+                <div className="form-group">
+                  <label className="form-label">{pl('public.signup.provider_hours_title', '운영 시간')}</label>
+                  <div className="signup-hours-grid">
+                    {DAYS.map(day => {
+                      const h = operatingHoursMap[day];
+                      return (
+                        <div key={day} className="signup-hours-row">
+                          <span className="day-label">{t(`public.signup.provider_hours_${day}`, day)}</span>
+                          <input type="time" value={h.open} disabled={h.closed} onChange={e => updateHours(day, 'open', e.target.value)} />
+                          <span className="sep">~</span>
+                          <input type="time" value={h.close} disabled={h.closed} onChange={e => updateHours(day, 'close', e.target.value)} />
+                          <label className="closed-label">
+                            <input type="checkbox" checked={h.closed} onChange={e => updateHours(day, 'closed', e.target.checked)} />
+                            {t('public.signup.provider_hours_closed', '휴무')}
+                          </label>
+                        </div>
+                      );
+                    })}
                   </div>
+                </div>
+
+                {/* E. Certifications Tag UI */}
+                <div className="form-group">
+                  <label className="form-label">{pl('public.signup.provider_certifications', '자격증/면허')}</label>
+                  <input
+                    className="form-input"
+                    value={certInput}
+                    onChange={e => setCertInput(e.target.value)}
+                    onKeyDown={handleCertKeyDown}
+                    placeholder={t('public.signup.provider_cert_placeholder', '자격증명을 입력하고 Enter')}
+                  />
+                  {certTags.length > 0 && (
+                    <div className="signup-cert-tags">
+                      {certTags.map((tag, i) => (
+                        <span key={i} className="signup-cert-tag">
+                          {tag}
+                          <button type="button" onClick={() => setCertTags(prev => prev.filter((_, j) => j !== i))}>✕</button>
+                        </span>
+                      ))}
+                    </div>
+                  )}
                 </div>
               </div>
             </div>

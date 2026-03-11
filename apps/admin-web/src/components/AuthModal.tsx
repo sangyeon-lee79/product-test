@@ -1,11 +1,12 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { api, setTokens, type MasterItem } from '../lib/api';
 import { getApiBase } from '../lib/apiBase';
 import { getRoleHomePath, storeRole } from '../lib/auth';
-import { ensureGoogleIdentityScript } from '../lib/google';
-import { getKakaoConfig, loginWithKakao, getKakaoCodeFromUrl, clearKakaoCodeFromUrl } from '../lib/kakao';
+import { loginWithGoogle, getGoogleConfig } from '../lib/google';
+import { getKakaoConfig, loginWithKakao } from '../lib/kakao';
 import { getAppleConfig, loginWithApple } from '../lib/apple';
+import { getOAuthRedirectResult, clearOAuthRedirectParams } from '../lib/oauthRedirect';
 import { LANG_LABELS, SUPPORTED_LANGS, useI18n, useT } from '../lib/i18n';
 
 type AuthMode = 'login' | 'signup';
@@ -60,7 +61,7 @@ export default function AuthModal({ open, initialMode, onClose, onSuccess }: Aut
   const [loginPassword, setLoginPassword] = useState('');
   const [loginLoading, setLoginLoading] = useState(false);
   const [loginError, setLoginError] = useState('');
-  const loginGoogleRef = useRef<HTMLDivElement | null>(null);
+  const [googleAvailable, setGoogleAvailable] = useState(false);
 
   // ── Signup state ──
   const [phase, setPhase] = useState<SignupPhase>('choose');
@@ -97,7 +98,6 @@ export default function AuthModal({ open, initialMode, onClose, onSuccess }: Aut
   const [signupLoading, setSignupLoading] = useState(false);
   const [signupError, setSignupError] = useState('');
   const [snsToken, setSnsToken] = useState<{ access: string; refresh: string; role: string } | null>(null);
-  const signupGoogleRef = useRef<HTMLDivElement | null>(null);
   const [kakaoAvailable, setKakaoAvailable] = useState(false);
   const [appleAvailable, setAppleAvailable] = useState(false);
 
@@ -128,83 +128,53 @@ export default function AuthModal({ open, initialMode, onClose, onSuccess }: Aut
   // Check which OAuth platforms are configured
   useEffect(() => {
     if (!open) return;
+    getGoogleConfig().then(c => setGoogleAvailable(!!c.google_oauth_client_id)).catch(() => {});
     getKakaoConfig().then(c => setKakaoAvailable(!!c.kakao_javascript_key)).catch(() => {});
     getAppleConfig().then(c => setAppleAvailable(!!c.apple_service_id)).catch(() => {});
   }, [open]);
 
-  // Handle Kakao redirect (URL has ?code= before the hash)
+  // Handle OAuth redirect result (Google, Kakao, Apple — unified)
   useEffect(() => {
     if (!open) return;
-    const code = getKakaoCodeFromUrl();
-    if (!code) return;
-    clearKakaoCodeFromUrl();
+    const result = getOAuthRedirectResult();
+    if (!result) return;
+    clearOAuthRedirectParams();
 
-    if (mode === 'signup') {
+    const { provider, mode: oauthMode, code } = result;
+
+    if (oauthMode === 'signup') {
+      setMode('signup');
       setSignupLoading(true);
       setSignupError('');
-      api.oauthLogin('kakao', code)
+      api.oauthLogin(provider, code)
         .then(data => {
           setSnsToken({ access: data.access_token, refresh: data.refresh_token, role: data.role });
           if (data.email) setEmail(data.email);
           setPhase('sns');
           setStep(1);
         })
-        .catch(err => setSignupError(err instanceof Error ? err.message : t('public.signup.kakao_fail', '카카오 가입에 실패했습니다.')))
+        .catch(e => setSignupError(e instanceof Error ? e.message : t('public.signup.sns_fail', 'SNS 가입에 실패했습니다.')))
         .finally(() => setSignupLoading(false));
     } else {
+      setMode('login');
       setLoginLoading(true);
       setLoginError('');
-      api.oauthLogin('kakao', code)
+      api.oauthLogin(provider, code)
         .then(data => completeAuth(data))
-        .catch(err => setLoginError(err instanceof Error ? err.message : t('public.signup.kakao_fail', '카카오 로그인에 실패했습니다.')))
+        .catch(e => setLoginError(e instanceof Error ? e.message : t('public.signup.sns_fail', 'SNS 로그인에 실패했습니다.')))
         .finally(() => setLoginLoading(false));
     }
   }, [open]);
 
-  async function handleKakaoLogin() {
-    setLoginError('');
-    try { await loginWithKakao(); } catch (err) {
-      setLoginError(err instanceof Error ? err.message : t('public.signup.kakao_no_code', '카카오 인증 코드를 받지 못했습니다.'));
-    }
-  }
-
-  async function handleAppleLogin() {
-    setLoginLoading(true);
-    setLoginError('');
-    try {
-      const { id_token, user_name } = await loginWithApple();
-      const data = await api.oauthLogin('apple', id_token, { user_name });
-      completeAuth(data);
-    } catch (err) {
-      setLoginError(err instanceof Error ? err.message : t('public.signup.apple_fail', 'Apple 로그인에 실패했습니다.'));
-    } finally {
-      setLoginLoading(false);
-    }
-  }
-
-  async function handleKakaoSignup() {
-    setSignupError('');
-    try { await loginWithKakao(); } catch (err) {
-      setSignupError(err instanceof Error ? err.message : t('public.signup.kakao_no_code', '카카오 인증 코드를 받지 못했습니다.'));
-    }
-  }
-
-  async function handleAppleSignup() {
-    setSignupLoading(true);
-    setSignupError('');
-    try {
-      const { id_token, user_name } = await loginWithApple();
-      const data = await api.oauthLogin('apple', id_token, { user_name });
-      setSnsToken({ access: data.access_token, refresh: data.refresh_token, role: data.role });
-      if (data.email) setEmail(data.email);
-      if (user_name) setDisplayName(user_name);
-      setPhase('sns');
-      setStep(1);
-    } catch (err) {
-      setSignupError(err instanceof Error ? err.message : t('public.signup.apple_fail', 'Apple 가입에 실패했습니다.'));
-    } finally {
-      setSignupLoading(false);
-    }
+  function handleOAuthRedirect(provider: 'google' | 'kakao' | 'apple', oauthMode: 'login' | 'signup') {
+    const setError = oauthMode === 'login' ? setLoginError : setSignupError;
+    setError('');
+    const doRedirect = provider === 'google' ? loginWithGoogle
+      : provider === 'apple' ? loginWithApple
+      : loginWithKakao;
+    doRedirect(oauthMode).catch((e: unknown) => {
+      setError(e instanceof Error ? e.message : t('public.signup.sns_fail', 'SNS 연결에 실패했습니다.'));
+    });
   }
 
   // ── Login helpers ──
@@ -238,47 +208,6 @@ export default function AuthModal({ open, initialMode, onClose, onSuccess }: Aut
       setLoginLoading(false);
     }
   }
-
-  // ── Google login button ──
-  useEffect(() => {
-    if (!open || mode !== 'login' || !loginGoogleRef.current) return;
-    let cancelled = false;
-
-    async function setup() {
-      if (!loginGoogleRef.current) return;
-      try {
-        const config = await ensureGoogleIdentityScript();
-        if (cancelled || !loginGoogleRef.current) return;
-        const googleId = window.google?.accounts?.id;
-        if (!googleId) return;
-
-        loginGoogleRef.current.innerHTML = '';
-        googleId.initialize({
-          client_id: config.google_oauth_client_id,
-          ux_mode: 'popup',
-          callback: async ({ credential }) => {
-            if (!credential) { setLoginError(t('public.signup.google_no_token', 'Google 인증 토큰을 받지 못했습니다.')); return; }
-            setLoginLoading(true);
-            setLoginError('');
-            try {
-              const data = await api.oauthLogin('google', credential);
-              completeAuth(data);
-            } catch (err) {
-              setLoginError(uiErrorMessage(err));
-            } finally {
-              setLoginLoading(false);
-            }
-          },
-        });
-        googleId.renderButton(loginGoogleRef.current, {
-          theme: 'outline', size: 'large', width: 360, text: 'continue_with', shape: 'pill',
-        });
-      } catch { /* Password login remains available */ }
-    }
-
-    void setup();
-    return () => { cancelled = true; };
-  }, [open, mode]);
 
   // ── Signup data loaders ──
   useEffect(() => {
@@ -337,54 +266,6 @@ export default function AuthModal({ open, initialMode, onClose, onSuccess }: Aut
   useEffect(() => {
     if (!providerL1Id || !providerPetTypeL1Id || !providerPetTypeL2Id) setProviderL3Id('');
   }, [providerL1Id, providerPetTypeL1Id, providerPetTypeL2Id]);
-
-  // ── Google signup button ──
-  useEffect(() => {
-    if (!open || mode !== 'signup' || phase !== 'choose' || !signupGoogleRef.current) return;
-    let cancelled = false;
-
-    async function setup() {
-      if (!signupGoogleRef.current) return;
-      try {
-        const config = await ensureGoogleIdentityScript();
-        if (cancelled || !signupGoogleRef.current) return;
-        const googleId = window.google?.accounts?.id;
-        if (!googleId) return;
-
-        signupGoogleRef.current.innerHTML = '';
-        googleId.initialize({
-          client_id: config.google_oauth_client_id,
-          ux_mode: 'popup',
-          callback: async ({ credential }) => {
-            if (!credential) { setSignupError(t('public.signup.google_no_token', 'Google 인증 토큰을 받지 못했습니다.')); return; }
-            setSignupLoading(true);
-            setSignupError('');
-            try {
-              const data = await api.oauthLogin('google', credential);
-              setSnsToken({ access: data.access_token, refresh: data.refresh_token, role: data.role });
-              try {
-                const payload = JSON.parse(atob(credential.split('.')[1]));
-                if (payload.email) setEmail(payload.email);
-                if (payload.name) setDisplayName(payload.name);
-              } catch { /* ignore JWT parse */ }
-              setPhase('sns');
-              setStep(1);
-            } catch (err) {
-              setSignupError(err instanceof Error ? err.message : t('public.signup.google_fail', 'Google 가입에 실패했습니다.'));
-            } finally {
-              setSignupLoading(false);
-            }
-          },
-        });
-        googleId.renderButton(signupGoogleRef.current, {
-          theme: 'outline', size: 'large', width: 300, text: 'signup_with', shape: 'pill',
-        });
-      } catch { /* Google not available */ }
-    }
-
-    void setup();
-    return () => { cancelled = true; };
-  }, [open, mode, phase, t]);
 
   const selectedCountry = useMemo(() => countries.find(c => c.code === countryCode), [countries, countryCode]);
 
@@ -525,15 +406,19 @@ export default function AuthModal({ open, initialMode, onClose, onSuccess }: Aut
             <button className="btn btn-primary" type="submit" disabled={loginLoading} style={{ width: '100%', justifyContent: 'center' }}>
               {loginLoading ? t('admin.login.loading', '로그인 중...') : t('public.login.submit_password', '이메일 로그인')}
             </button>
-            <div ref={loginGoogleRef} style={{ display: 'flex', justifyContent: 'center', minHeight: 42 }} />
             <div className="oauth-buttons">
+              {googleAvailable && (
+                <button className="oauth-btn oauth-btn-google" onClick={() => handleOAuthRedirect('google', 'login')} disabled={loginLoading} type="button">
+                  {t('public.login.google', 'Google 로그인')}
+                </button>
+              )}
               {kakaoAvailable && (
-                <button className="oauth-btn oauth-btn-kakao" onClick={handleKakaoLogin} disabled={loginLoading} type="button">
+                <button className="oauth-btn oauth-btn-kakao" onClick={() => handleOAuthRedirect('kakao', 'login')} disabled={loginLoading} type="button">
                   {t('public.login.kakao', '카카오 로그인')}
                 </button>
               )}
               {appleAvailable && (
-                <button className="oauth-btn oauth-btn-apple" onClick={() => void handleAppleLogin()} disabled={loginLoading} type="button">
+                <button className="oauth-btn oauth-btn-apple" onClick={() => handleOAuthRedirect('apple', 'login')} disabled={loginLoading} type="button">
                   {t('public.login.apple', 'Apple로 로그인')}
                 </button>
               )}
@@ -569,15 +454,19 @@ export default function AuthModal({ open, initialMode, onClose, onSuccess }: Aut
               <p className="text-muted text-sm" style={{ margin: '0 0 16px' }}>
                 {t('public.signup.sns_desc', 'Google 계정으로 빠르게 가입')}
               </p>
-              <div ref={signupGoogleRef} style={{ display: 'flex', justifyContent: 'center', minHeight: 42 }} />
               <div className="oauth-buttons">
+                {googleAvailable && (
+                  <button className="oauth-btn oauth-btn-google" onClick={() => handleOAuthRedirect('google', 'signup')} disabled={signupLoading} type="button">
+                    {t('public.signup.google', 'Google로 가입')}
+                  </button>
+                )}
                 {kakaoAvailable && (
-                  <button className="oauth-btn oauth-btn-kakao" onClick={handleKakaoSignup} disabled={signupLoading} type="button">
+                  <button className="oauth-btn oauth-btn-kakao" onClick={() => handleOAuthRedirect('kakao', 'signup')} disabled={signupLoading} type="button">
                     {t('public.signup.kakao', '카카오로 가입')}
                   </button>
                 )}
                 {appleAvailable && (
-                  <button className="oauth-btn oauth-btn-apple" onClick={() => void handleAppleSignup()} disabled={signupLoading} type="button">
+                  <button className="oauth-btn oauth-btn-apple" onClick={() => handleOAuthRedirect('apple', 'signup')} disabled={signupLoading} type="button">
                     {t('public.signup.apple', 'Apple로 가입')}
                   </button>
                 )}

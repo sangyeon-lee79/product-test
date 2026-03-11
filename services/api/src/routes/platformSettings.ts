@@ -10,6 +10,7 @@ const GOOGLE_PUBLIC_SETTING_KEYS = [
 
 const GOOGLE_ADMIN_SETTING_KEYS = [
   ...GOOGLE_PUBLIC_SETTING_KEYS,
+  'google_oauth_client_secret',
   'google_translate_service_account_json',
   'google_translate_service_account_email',
   'google_translate_service_account_private_key',
@@ -212,6 +213,7 @@ async function listGoogleSettings(env: Env, me: JwtPayload): Promise<Response> {
        'google_places_api_key',
        'google_oauth_client_id',
        'google_oauth_redirect_uri',
+       'google_oauth_client_secret',
        'google_translate_service_account_json',
        'google_translate_service_account_email',
        'google_translate_service_account_private_key',
