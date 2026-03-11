@@ -36,7 +36,7 @@ export async function handleFeedingMixFavorites(request: Request, env: Env, url:
     if (!name) return err('name required');
 
     const items = Array.isArray(body.items) ? body.items : [];
-    if (items.length < 2) return err('At least 2 items required');
+    if (items.length < 1) return err('At least 1 item required');
 
     const id = newId();
     const ts = now();

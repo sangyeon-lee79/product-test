@@ -309,30 +309,51 @@ export default function FeedingLogModal({
     setSupplementRows((prev) => prev.map((r, i) => i === idx ? { ...r, [field]: value } : r));
   }
 
-  // Load a favorite into mixedRows
+  // Load a favorite into mixedRows + supplementRows
   function loadFavorite(fav: FeedingMixFavorite) {
     try {
-      const items = JSON.parse(fav.items_json) as Array<{ pet_feed_id: string; amount_g?: number }>;
+      const items = JSON.parse(fav.items_json) as Array<{ pet_feed_id: string; amount_g?: number; type?: string }>;
       if (!Array.isArray(items) || items.length === 0) return;
-      setMixedRows(items.map((it) => ({
-        pet_feed_id: it.pet_feed_id || '',
-        amount_g: it.amount_g != null ? String(it.amount_g) : '',
-      })));
+      const feedItems = items.filter(it => it.type !== 'supplement');
+      const suppItems = items.filter(it => it.type === 'supplement');
+      if (feedItems.length > 0) {
+        setMixedRows(feedItems.map((it) => ({
+          pet_feed_id: it.pet_feed_id || '',
+          amount_g: it.amount_g != null ? String(it.amount_g) : '',
+        })));
+      }
+      if (suppItems.length > 0) {
+        setSupplementRows(suppItems.map((it) => ({
+          pet_feed_id: it.pet_feed_id || '',
+          dosage: it.amount_g != null ? String(it.amount_g) : '1',
+        })));
+      } else {
+        setSupplementRows([]);
+      }
     } catch { /* ignore parse errors */ }
   }
 
-  // Save current mixed rows as favorite
+  // Save current mixed rows + supplement rows as favorite
   async function handleSaveFavorite() {
     if (!petId || !saveFavName.trim()) return;
-    const validRows = mixedRows.filter((r) => r.pet_feed_id);
-    if (validRows.length < 2) return;
+    const validFeedRows = mixedRows.filter((r) => r.pet_feed_id);
+    const validSuppRows = supplementRows.filter((r) => r.pet_feed_id);
+    if (validFeedRows.length + validSuppRows.length < 1) return;
     try {
-      await api.pets.feedingMixFavorites.create(petId, {
-        name: saveFavName.trim(),
-        items: validRows.map((r) => ({
+      const items = [
+        ...validFeedRows.map((r) => ({
           pet_feed_id: r.pet_feed_id,
           amount_g: Number(r.amount_g) || undefined,
         })),
+        ...validSuppRows.map((r) => ({
+          pet_feed_id: r.pet_feed_id,
+          amount_g: Number(r.dosage) || undefined,
+          type: 'supplement' as const,
+        })),
+      ];
+      await api.pets.feedingMixFavorites.create(petId, {
+        name: saveFavName.trim(),
+        items,
       });
       const res = await api.pets.feedingMixFavorites.list(petId);
       setFavorites(res.favorites);
@@ -453,7 +474,13 @@ export default function FeedingLogModal({
                         {t('guardian.feeding.load_favorite', 'Load Favorite')}
                       </label>
                       <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
-                        {favorites.map((fav) => (
+                        {favorites.map((fav) => {
+                          let suppCount = 0;
+                          try {
+                            const items = JSON.parse(fav.items_json) as Array<{ type?: string }>;
+                            suppCount = items.filter(it => it.type === 'supplement').length;
+                          } catch { /* ignore */ }
+                          return (
                           <div key={fav.id} style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}>
                             <button
                               className="btn btn-secondary btn-sm"
@@ -461,6 +488,7 @@ export default function FeedingLogModal({
                               onClick={() => loadFavorite(fav)}
                             >
                               {fav.name}
+                              {suppCount > 0 && <span style={{ marginLeft: 4 }} title="Supplements included">{'\uD83D\uDC8A'}{suppCount}</span>}
                             </button>
                             <button
                               style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)', fontSize: 12, padding: 0 }}
@@ -470,7 +498,8 @@ export default function FeedingLogModal({
                               &times;
                             </button>
                           </div>
-                        ))}
+                          );
+                        })}
                       </div>
                     </div>
                   )}
@@ -535,8 +564,8 @@ export default function FeedingLogModal({
                       + {t('guardian.feeding.add_feed_row', 'Add Feed')}
                     </button>
 
-                    {/* Save favorite button — show when 2+ valid rows */}
-                    {validMixedRowCount >= 2 && !showSaveFav && (
+                    {/* Save favorite button — show when feed+supplement total >= 1 */}
+                    {(validMixedRowCount + supplementRows.filter(r => r.pet_feed_id).length) >= 1 && !showSaveFav && (
                       <button
                         className="btn btn-secondary btn-sm"
                         onClick={() => setShowSaveFav(true)}

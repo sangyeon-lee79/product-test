@@ -108,7 +108,7 @@ export default function PetReportTab({ selectedPet, lang, locale, t, setError }:
                     transition: 'width 0.3s',
                   }} />
                 </div>
-                {r.feeding.target_calories != null && (
+                {r.feeding.target_calories != null && r.feeding.target_calories > 0 && (
                   <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 2, textAlign: 'right' }}>
                     {t('guardian.report.feeding.compliance', 'Compliance')}: {Math.round(r.feeding.today_calories / r.feeding.target_calories * 100)}%
                   </div>
@@ -121,7 +121,7 @@ export default function PetReportTab({ selectedPet, lang, locale, t, setError }:
                   <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 8 }}>{t('guardian.report.feeding.weekly_trend', 'Weekly Calorie Trend')}</div>
                   <ResponsiveContainer width="100%" height={180}>
                     <BarChart data={r.feeding.weekly_calories}>
-                      <XAxis dataKey="date" tick={{ fontSize: 10 }} tickFormatter={(v: string) => v.slice(5)} />
+                      <XAxis dataKey="date" tick={{ fontSize: 10 }} tickFormatter={(v: string) => { const d = new Date(v + 'T00:00:00'); return `${d.getMonth() + 1}/${d.getDate()}`; }} />
                       <YAxis tick={{ fontSize: 10 }} width={40} />
                       <Tooltip />
                       <Bar dataKey="calories" fill="#D97706" radius={[3, 3, 0, 0]} />
@@ -311,7 +311,7 @@ export default function PetReportTab({ selectedPet, lang, locale, t, setError }:
                   <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 8 }}>{t('guardian.report.health.weight_trend', 'Weight Trend')}</div>
                   <ResponsiveContainer width="100%" height={180}>
                     <LineChart data={r.health.weight_trend}>
-                      <XAxis dataKey="date" tick={{ fontSize: 10 }} tickFormatter={(v: string) => v.slice(5)} />
+                      <XAxis dataKey="date" tick={{ fontSize: 10 }} tickFormatter={(v: string) => { const d = new Date(v + 'T00:00:00'); return `${d.getMonth() + 1}/${d.getDate()}`; }} />
                       <YAxis tick={{ fontSize: 10 }} width={40} domain={['auto', 'auto']} />
                       <Tooltip />
                       <Line type="monotone" dataKey="weight" stroke="#D97706" strokeWidth={2} dot={{ r: 3 }} />
@@ -329,7 +329,7 @@ export default function PetReportTab({ selectedPet, lang, locale, t, setError }:
                       <div style={{ fontSize: 12, color: 'var(--text-muted)', marginBottom: 4 }}>{mt.metric}</div>
                       <ResponsiveContainer width="100%" height={120}>
                         <LineChart data={mt.data}>
-                          <XAxis dataKey="date" tick={{ fontSize: 9 }} tickFormatter={(v: string) => v.slice(5)} />
+                          <XAxis dataKey="date" tick={{ fontSize: 9 }} tickFormatter={(v: string) => { const d = new Date(v + 'T00:00:00'); return `${d.getMonth() + 1}/${d.getDate()}`; }} />
                           <YAxis tick={{ fontSize: 9 }} width={35} domain={['auto', 'auto']} />
                           <Tooltip />
                           <Line type="monotone" dataKey="value" stroke="#F59E0B" strokeWidth={2} dot={{ r: 2 }} />

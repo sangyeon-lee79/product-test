@@ -141,7 +141,9 @@ export async function getPetReport(env: Env, payload: JwtPayload, petId: string,
         CASE WHEN pf.disease_item_id IS NOT NULL THEN true ELSE false END AS is_prescribed,
         EXISTS(
           SELECT 1 FROM pet_feeding_logs fl
-          WHERE fl.pet_feed_id = pf.id AND fl.status = 'active'
+          LEFT JOIN pet_feeding_log_items fli ON fli.feeding_log_id = fl.id
+          WHERE (fl.pet_feed_id = pf.id OR fli.pet_feed_id = pf.id)
+            AND fl.status = 'active' AND fl.pet_id = pf.pet_id
             AND fl.created_at::date = ?::date
         ) AS taken_today
       FROM pet_feeds pf
@@ -346,7 +348,7 @@ export async function getPetReport(env: Env, payload: JwtPayload, petId: string,
     period,
     feeding: {
       today_calories: Math.round(Number(todayCaloriesResult?.total) || 0),
-      target_calories: targetCaloriesResult?.target != null ? Math.round(Number(targetCaloriesResult.target)) : null,
+      target_calories: targetCaloriesResult?.target != null && Number(targetCaloriesResult.target) > 0 ? Math.round(Number(targetCaloriesResult.target)) : null,
       weekly_calories: weeklyCaloriesResult.results.map(r => ({
         date: String(r.date),
         calories: Math.round(Number(r.calories)),
