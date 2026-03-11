@@ -4,14 +4,19 @@ import { requireAuth, requireRole } from '../middleware/auth';
 import { SUPPORTED_LANGS as LANGS } from '@petfolio/shared';
 import { resolveLang, hasColumn, hasTable, syncParentMap, normalizedTranslations, upsertI18n } from '../helpers/sqlHelpers';
 
-export async function handleFeedCatalog(request: Request, env: Env, url: URL): Promise<Response> {
+/**
+ * Supplement Catalog — mirrors feedCatalog.ts but filters by category_type='supplement'
+ * and uses master_categories.code='supplement_type' for type hierarchy.
+ */
+export async function handleSupplementCatalog(request: Request, env: Env, url: URL): Promise<Response> {
   const path = url.pathname;
   const method = request.method;
   const isAdmin = path.startsWith('/api/v1/admin/');
-  const hasFeedManufacturerTypeMap = await hasTable(env, 'feed_manufacturer_type_map');
+  const hasMfrTypeMap = await hasTable(env, 'feed_manufacturer_type_map');
+  const CAT = 'supplement';
 
-  // Public: nutrition info for a feed model
-  const publicNutritionMatch = !isAdmin && path.match(/^\/api\/v1\/feed-catalog\/models\/([^/]+)\/nutrition$/);
+  // Public: nutrition info for a supplement model
+  const publicNutritionMatch = !isAdmin && path.match(/^\/api\/v1\/supplement-catalog\/models\/([^/]+)\/nutrition$/);
   if (publicNutritionMatch && method === 'GET') {
     const modelId = publicNutritionMatch[1];
     if (!(await hasTable(env, 'feed_nutrition'))) return ok(null);
@@ -25,7 +30,7 @@ export async function handleFeedCatalog(request: Request, env: Env, url: URL): P
     const lang = resolveLang(url);
     const langCol = lang;
 
-    if (path === '/api/v1/feed-catalog/types' && method === 'GET') {
+    if (path === '/api/v1/supplement-catalog/types' && method === 'GET') {
       const rows = await env.DB.prepare(
         `SELECT
            mi.id,
@@ -37,6 +42,7 @@ export async function handleFeedCatalog(request: Request, env: Env, url: URL): P
              FROM feed_models fm
              WHERE fm.feed_type_item_id = mi.id
                AND fm.status = 'active'
+               AND fm.category_type = '${CAT}'
            ), 0) AS model_count,
            COALESCE(NULLIF(TRIM(tr.${langCol}), ''), NULLIF(TRIM(tr.en), ''), NULLIF(TRIM(tr.ko), ''), mi.code) AS display_label,
            tr.ko AS ko_name,
@@ -48,23 +54,22 @@ export async function handleFeedCatalog(request: Request, env: Env, url: URL): P
              WHEN mc.code LIKE 'master.%' THEN (mc.code || '.' || mi.code)
              ELSE ('master.' || mc.code || '.' || mi.code)
            END
-         WHERE mc.code = 'diet_feed_type'
+         WHERE mc.code = 'supplement_type'
            AND mi.status = 'active'
          ORDER BY mi.sort_order, mi.code`
       ).all();
       return ok(rows.results);
     }
 
-    if (path === '/api/v1/feed-catalog/manufacturers' && method === 'GET') {
+    if (path === '/api/v1/supplement-catalog/manufacturers' && method === 'GET') {
       const typeItemId = (url.searchParams.get('feed_type_id') || '').trim();
       const binds: string[] = [];
-      let where = `WHERE mfr.status = 'active' AND COALESCE(mfr.category_type, 'feed') = 'feed'`;
       let modelCountExpr = `(
         SELECT COUNT(*)
         FROM feed_models fm
         WHERE fm.manufacturer_id = mfr.id
           AND fm.status = 'active'
-          AND COALESCE(fm.category_type, 'feed') = 'feed'
+          AND fm.category_type = '${CAT}'
       )`;
       if (typeItemId) {
         modelCountExpr = `(
@@ -72,17 +77,18 @@ export async function handleFeedCatalog(request: Request, env: Env, url: URL): P
           FROM feed_models fm
           WHERE fm.manufacturer_id = mfr.id
             AND fm.status = 'active'
-            AND COALESCE(fm.category_type, 'feed') = 'feed'
+            AND fm.category_type = '${CAT}'
             AND fm.feed_type_item_id = ?
         )`;
         binds.push(typeItemId);
       }
+      let where = `WHERE mfr.status = 'active' AND mfr.category_type = '${CAT}'`;
       where += ` AND EXISTS (
         SELECT 1
         FROM feed_models fm
         WHERE fm.manufacturer_id = mfr.id
           AND fm.status = 'active'
-          AND COALESCE(fm.category_type, 'feed') = 'feed'`;
+          AND fm.category_type = '${CAT}'`;
       if (typeItemId) {
         where += `
           AND fm.feed_type_item_id = ?`;
@@ -102,7 +108,7 @@ export async function handleFeedCatalog(request: Request, env: Env, url: URL): P
       return ok(rows.results);
     }
 
-    if (path === '/api/v1/feed-catalog/brands' && method === 'GET') {
+    if (path === '/api/v1/supplement-catalog/brands' && method === 'GET') {
       const manufacturerId = url.searchParams.get('manufacturer_id');
       const typeItemId = (url.searchParams.get('feed_type_id') || '').trim();
       const binds: string[] = [];
@@ -111,7 +117,7 @@ export async function handleFeedCatalog(request: Request, env: Env, url: URL): P
         FROM feed_models fm
         WHERE fm.brand_id = b.id
           AND fm.status = 'active'
-          AND COALESCE(fm.category_type, 'feed') = 'feed'
+          AND fm.category_type = '${CAT}'
       )`;
       if (typeItemId) {
         modelCountExpr = `(
@@ -119,7 +125,7 @@ export async function handleFeedCatalog(request: Request, env: Env, url: URL): P
           FROM feed_models fm
           WHERE fm.brand_id = b.id
             AND fm.status = 'active'
-            AND COALESCE(fm.category_type, 'feed') = 'feed'
+            AND fm.category_type = '${CAT}'
             AND fm.feed_type_item_id = ?
         )`;
         binds.push(typeItemId);
@@ -150,13 +156,13 @@ export async function handleFeedCatalog(request: Request, env: Env, url: URL): P
                LEFT JOIN i18n_translations tr_mfr ON tr_mfr.key = m.name_key
                LEFT JOIN i18n_translations tr_brand ON tr_brand.key = b.name_key
                WHERE b.status = 'active'
-                 AND COALESCE(b.category_type, 'feed') = 'feed'
+                 AND b.category_type = '${CAT}'
                  AND EXISTS (
                    SELECT 1
                    FROM feed_models fm
                    WHERE fm.brand_id = b.id
                      AND fm.status = 'active'
-                     AND COALESCE(fm.category_type, 'feed') = 'feed'`;
+                     AND fm.category_type = '${CAT}'`;
       if (manufacturerId) {
         q += `
                      AND (
@@ -189,6 +195,7 @@ export async function handleFeedCatalog(request: Request, env: Env, url: URL): P
           FROM feed_models fm_type
           WHERE fm_type.brand_id = b.id
             AND fm_type.status = 'active'
+            AND fm_type.category_type = '${CAT}'
             AND fm_type.feed_type_item_id = ?`;
         if (manufacturerId) {
           q += `
@@ -213,7 +220,7 @@ export async function handleFeedCatalog(request: Request, env: Env, url: URL): P
       return ok(rows.results);
     }
 
-    if (path === '/api/v1/feed-catalog/models' && method === 'GET') {
+    if (path === '/api/v1/supplement-catalog/models' && method === 'GET') {
       const typeId = url.searchParams.get('feed_type_id');
       const mfrId = url.searchParams.get('manufacturer_id');
       const brandId = url.searchParams.get('brand_id');
@@ -221,7 +228,7 @@ export async function handleFeedCatalog(request: Request, env: Env, url: URL): P
         && (await hasColumn(env, 'feed_model_brand_map', 'model_id'))
         && (await hasColumn(env, 'feed_model_brand_map', 'brand_id'));
       const binds: string[] = [];
-      let where = `WHERE m.status = 'active' AND COALESCE(m.category_type, 'feed') = 'feed'`;
+      let where = `WHERE m.status = 'active' AND m.category_type = '${CAT}'`;
       if (typeId) { where += ' AND m.feed_type_item_id = ?'; binds.push(typeId); }
       if (mfrId) { where += ' AND m.manufacturer_id = ?'; binds.push(mfrId); }
       if (brandId) {
@@ -274,6 +281,7 @@ export async function handleFeedCatalog(request: Request, env: Env, url: URL): P
     }
   }
 
+  // ── Admin endpoints (auth required) ──
   const user = await requireAuth(request, env);
   if (!user) return err('Unauthorized', 401, 'unauthorized');
   const roleResult = requireRole(user as JwtPayload, ['admin']);
@@ -282,7 +290,7 @@ export async function handleFeedCatalog(request: Request, env: Env, url: URL): P
   const lang = resolveLang(url);
   const langCol = lang;
 
-  if (path === '/api/v1/admin/feed-catalog/types' && method === 'GET') {
+  if (path === '/api/v1/admin/supplement-catalog/types' && method === 'GET') {
     const rows = await env.DB.prepare(
       `SELECT
          mi.id,
@@ -294,7 +302,7 @@ export async function handleFeedCatalog(request: Request, env: Env, url: URL): P
            FROM feed_models fm
            WHERE fm.feed_type_item_id = mi.id
              AND fm.status = 'active'
-             AND COALESCE(fm.category_type, 'feed') = 'feed'
+             AND fm.category_type = '${CAT}'
          ), 0) AS model_count,
          COALESCE(NULLIF(TRIM(tr.${langCol}), ''), NULLIF(TRIM(tr.en), ''), NULLIF(TRIM(tr.ko), ''), mi.code) AS display_label,
          tr.ko AS ko_name,
@@ -306,15 +314,15 @@ export async function handleFeedCatalog(request: Request, env: Env, url: URL): P
            WHEN mc.code LIKE 'master.%' THEN (mc.code || '.' || mi.code)
            ELSE ('master.' || mc.code || '.' || mi.code)
          END
-       WHERE mc.code = 'diet_feed_type'
+       WHERE mc.code = 'supplement_type'
        ORDER BY mi.sort_order, mi.code`
     ).all();
     return ok(rows.results);
   }
 
-  if (path === '/api/v1/admin/feed-catalog/manufacturers' && method === 'GET') {
+  if (path === '/api/v1/admin/supplement-catalog/manufacturers' && method === 'GET') {
     const typeItemId = url.searchParams.get('type_item_id');
-    const parentTypeIdsExpr = hasFeedManufacturerTypeMap
+    const parentTypeIdsExpr = hasMfrTypeMap
       ? `(SELECT STRING_AGG(type_item_id, ',') FROM feed_manufacturer_type_map mtm WHERE mtm.manufacturer_id = mfr.id)`
       : `NULL`;
     const binds: string[] = [];
@@ -323,7 +331,7 @@ export async function handleFeedCatalog(request: Request, env: Env, url: URL): P
       FROM feed_models fm
       WHERE fm.manufacturer_id = mfr.id
         AND fm.status = 'active'
-        AND COALESCE(fm.category_type, 'feed') = 'feed'
+        AND fm.category_type = '${CAT}'
     )`;
     if (typeItemId) {
       modelCountExpr = `(
@@ -331,13 +339,13 @@ export async function handleFeedCatalog(request: Request, env: Env, url: URL): P
         FROM feed_models fm
         WHERE fm.manufacturer_id = mfr.id
           AND fm.status = 'active'
-          AND COALESCE(fm.category_type, 'feed') = 'feed'
+          AND fm.category_type = '${CAT}'
           AND fm.feed_type_item_id = ?
       )`;
       binds.push(typeItemId);
     }
-    let where = `WHERE COALESCE(mfr.category_type, 'feed') = 'feed'`;
-    if (typeItemId && hasFeedManufacturerTypeMap) {
+    let where = `WHERE mfr.category_type = '${CAT}'`;
+    if (typeItemId && hasMfrTypeMap) {
       where += ` AND EXISTS (SELECT 1 FROM feed_manufacturer_type_map mtm WHERE mtm.manufacturer_id = mfr.id AND mtm.type_item_id = ?)`;
       binds.push(typeItemId);
     }
@@ -354,23 +362,23 @@ export async function handleFeedCatalog(request: Request, env: Env, url: URL): P
     return ok(rows.results);
   }
 
-  if (path === '/api/v1/admin/feed-catalog/manufacturers' && method === 'POST') {
+  if (path === '/api/v1/admin/supplement-catalog/manufacturers' && method === 'POST') {
     const body = await request.json<{ country?: string; sort_order?: number; translations?: Record<string, string>; name_ko?: string; name_en?: string; parent_type_ids?: string[] }>();
     const ko = (body.translations?.ko || body.name_ko || '').trim();
     const en = (body.translations?.en || body.name_en || ko).trim();
     if (!ko) return err('ko required', 400, 'missing_field');
-    const key = `mfr_${randomToken(8)}`;
-    const nameKey = `feed.manufacturer.${key}`;
+    const key = `suppl_mfr_${randomToken(8)}`;
+    const nameKey = `supplement.manufacturer.${key}`;
     const id = newId();
     await env.DB.prepare(
-      `INSERT INTO feed_manufacturers (id, key, name_key, name_ko, name_en, country, status, sort_order, created_at, updated_at)
-       VALUES (?, ?, ?, ?, ?, ?, 'active', ?, ?, ?)`
+      `INSERT INTO feed_manufacturers (id, key, name_key, name_ko, name_en, country, status, sort_order, category_type, created_at, updated_at)
+       VALUES (?, ?, ?, ?, ?, ?, 'active', ?, '${CAT}', ?, ?)`
     ).bind(id, key, nameKey, ko, en, body.country ?? null, body.sort_order ?? 0, now(), now()).run();
-    await upsertI18n(env, nameKey, normalizedTranslations(body.translations, ko, en), 'feed');
-    if (hasFeedManufacturerTypeMap) {
+    await upsertI18n(env, nameKey, normalizedTranslations(body.translations, ko, en), 'supplement');
+    if (hasMfrTypeMap) {
       await syncParentMap(env, 'feed_manufacturer_type_map', 'manufacturer_id', id, 'type_item_id', body.parent_type_ids ?? []);
     }
-    const parentTypeIdsExpr = hasFeedManufacturerTypeMap
+    const parentTypeIdsExpr = hasMfrTypeMap
       ? `(SELECT STRING_AGG(type_item_id, ',') FROM feed_manufacturer_type_map mtm WHERE mtm.manufacturer_id = mfr.id)`
       : `NULL`;
     return created(await env.DB.prepare(
@@ -383,7 +391,7 @@ export async function handleFeedCatalog(request: Request, env: Env, url: URL): P
     ).bind(id).first());
   }
 
-  const mfrIdMatch = path.match(/^\/api\/v1\/admin\/feed-catalog\/manufacturers\/([^/]+)$/);
+  const mfrIdMatch = path.match(/^\/api\/v1\/admin\/supplement-catalog\/manufacturers\/([^/]+)$/);
   if (mfrIdMatch) {
     const mfrId = mfrIdMatch[1];
     if (method === 'PUT') {
@@ -403,12 +411,12 @@ export async function handleFeedCatalog(request: Request, env: Env, url: URL): P
       const ko = (body.translations?.ko || body.name_ko || existing.name_ko || '').trim();
       const en = (body.translations?.en || body.name_en || ko || existing.name_en || '').trim();
       if (existing.name_key && (ko || en)) {
-        await upsertI18n(env, existing.name_key, normalizedTranslations(body.translations, ko, en), 'feed');
+        await upsertI18n(env, existing.name_key, normalizedTranslations(body.translations, ko, en), 'supplement');
       }
-      if (body.parent_type_ids && hasFeedManufacturerTypeMap) {
+      if (body.parent_type_ids && hasMfrTypeMap) {
         await syncParentMap(env, 'feed_manufacturer_type_map', 'manufacturer_id', mfrId, 'type_item_id', body.parent_type_ids);
       }
-      const parentTypeIdsExpr = hasFeedManufacturerTypeMap
+      const parentTypeIdsExpr = hasMfrTypeMap
         ? `(SELECT STRING_AGG(type_item_id, ',') FROM feed_manufacturer_type_map mtm WHERE mtm.manufacturer_id = mfr.id)`
         : `NULL`;
       return ok(await env.DB.prepare(
@@ -426,7 +434,7 @@ export async function handleFeedCatalog(request: Request, env: Env, url: URL): P
     }
   }
 
-  if (path === '/api/v1/admin/feed-catalog/brands' && method === 'GET') {
+  if (path === '/api/v1/admin/supplement-catalog/brands' && method === 'GET') {
     const manufacturerId = url.searchParams.get('manufacturer_id');
     const typeItemId = (url.searchParams.get('type_item_id') || '').trim();
     const hasBrandMfrMap = await hasTable(env, 'feed_brand_manufacturer_map');
@@ -439,7 +447,7 @@ export async function handleFeedCatalog(request: Request, env: Env, url: URL): P
       FROM feed_models fm
       WHERE fm.brand_id = b.id
         AND fm.status = 'active'
-        AND COALESCE(fm.category_type, 'feed') = 'feed'
+        AND fm.category_type = '${CAT}'
     )`;
     if (typeItemId) {
       modelCountExpr = `(
@@ -447,7 +455,7 @@ export async function handleFeedCatalog(request: Request, env: Env, url: URL): P
         FROM feed_models fm
         WHERE fm.brand_id = b.id
           AND fm.status = 'active'
-          AND COALESCE(fm.category_type, 'feed') = 'feed'
+          AND fm.category_type = '${CAT}'
           AND fm.feed_type_item_id = ?
       )`;
       binds.push(typeItemId);
@@ -462,7 +470,7 @@ export async function handleFeedCatalog(request: Request, env: Env, url: URL): P
              JOIN feed_manufacturers m ON m.id = b.manufacturer_id
              LEFT JOIN i18n_translations tr_mfr ON tr_mfr.key = m.name_key
              LEFT JOIN i18n_translations tr_brand ON tr_brand.key = b.name_key
-             WHERE COALESCE(b.category_type, 'feed') = 'feed'`;
+             WHERE b.category_type = '${CAT}'`;
     if (manufacturerId) {
       q += ` AND (
         b.manufacturer_id = ?
@@ -480,27 +488,27 @@ export async function handleFeedCatalog(request: Request, env: Env, url: URL): P
     return ok(rows.results);
   }
 
-  if (path === '/api/v1/admin/feed-catalog/brands' && method === 'POST') {
+  if (path === '/api/v1/admin/supplement-catalog/brands' && method === 'POST') {
     const body = await request.json<{ manufacturer_id?: string; manufacturer_ids?: string[]; translations?: Record<string, string>; name_ko?: string; name_en?: string }>();
     const ko = (body.translations?.ko || body.name_ko || '').trim();
     const en = (body.translations?.en || body.name_en || ko).trim();
     const manufacturerIds = Array.from(new Set([...(body.manufacturer_ids ?? []), ...(body.manufacturer_id ? [body.manufacturer_id] : [])].filter(Boolean)));
     if (manufacturerIds.length === 0 || !ko) return err('manufacturer_ids and ko required', 400, 'missing_field');
-    const key = `brand_${randomToken(8)}`;
-    const nameKey = `feed.brand.${key}`;
+    const key = `suppl_brand_${randomToken(8)}`;
+    const nameKey = `supplement.brand.${key}`;
     const id = newId();
     await env.DB.prepare(
-      `INSERT INTO feed_brands (id, manufacturer_id, name_key, name_ko, name_en, status, created_at, updated_at)
-       VALUES (?, ?, ?, ?, ?, 'active', ?, ?)`
+      `INSERT INTO feed_brands (id, manufacturer_id, name_key, name_ko, name_en, status, category_type, created_at, updated_at)
+       VALUES (?, ?, ?, ?, ?, 'active', '${CAT}', ?, ?)`
     ).bind(id, manufacturerIds[0], nameKey, ko, en, now(), now()).run();
-    await upsertI18n(env, nameKey, normalizedTranslations(body.translations, ko, en), 'feed');
+    await upsertI18n(env, nameKey, normalizedTranslations(body.translations, ko, en), 'supplement');
     if (await hasTable(env, 'feed_brand_manufacturer_map')) {
       await syncParentMap(env, 'feed_brand_manufacturer_map', 'brand_id', id, 'manufacturer_id', manufacturerIds);
     }
     return created(await env.DB.prepare(`SELECT * FROM feed_brands WHERE id = ?`).bind(id).first());
   }
 
-  const brandIdMatch = path.match(/^\/api\/v1\/admin\/feed-catalog\/brands\/([^/]+)$/);
+  const brandIdMatch = path.match(/^\/api\/v1\/admin\/supplement-catalog\/brands\/([^/]+)$/);
   if (brandIdMatch) {
     const brandId = brandIdMatch[1];
     if (method === 'PUT') {
@@ -520,7 +528,7 @@ export async function handleFeedCatalog(request: Request, env: Env, url: URL): P
       const ko = (body.translations?.ko || body.name_ko || existing.name_ko || '').trim();
       const en = (body.translations?.en || body.name_en || ko || existing.name_en || '').trim();
       if (existing.name_key && (ko || en)) {
-        await upsertI18n(env, existing.name_key, normalizedTranslations(body.translations, ko, en), 'feed');
+        await upsertI18n(env, existing.name_key, normalizedTranslations(body.translations, ko, en), 'supplement');
       }
       if (manufacturerIds.length > 0 && await hasTable(env, 'feed_brand_manufacturer_map')) {
         await syncParentMap(env, 'feed_brand_manufacturer_map', 'brand_id', brandId, 'manufacturer_id', manufacturerIds);
@@ -533,7 +541,7 @@ export async function handleFeedCatalog(request: Request, env: Env, url: URL): P
     }
   }
 
-  if (path === '/api/v1/admin/feed-catalog/models' && method === 'GET') {
+  if (path === '/api/v1/admin/supplement-catalog/models' && method === 'GET') {
     const typeId = url.searchParams.get('feed_type_id');
     const mfrId = url.searchParams.get('manufacturer_id');
     const brandId = url.searchParams.get('brand_id');
@@ -544,7 +552,7 @@ export async function handleFeedCatalog(request: Request, env: Env, url: URL): P
       ? `(SELECT STRING_AGG(brand_id, ',') FROM feed_model_brand_map mbm WHERE mbm.model_id = m.id)`
       : `NULL`;
     const binds: string[] = [];
-    let where = ` AND COALESCE(m.category_type, 'feed') = 'feed'`;
+    let where = `AND m.category_type = '${CAT}'`;
     if (typeId) { where += ' AND m.feed_type_item_id = ?'; binds.push(typeId); }
     if (mfrId) { where += ' AND m.manufacturer_id = ?'; binds.push(mfrId); }
     if (brandId) {
@@ -597,7 +605,7 @@ export async function handleFeedCatalog(request: Request, env: Env, url: URL): P
       ).bind(...binds).all();
       return ok(rows.results);
     } catch (e) {
-      console.error('[feed-catalog admin models] primary query failed, fallback query used', e);
+      console.error('[supplement-catalog admin models] primary query failed, fallback query used', e);
       const rows = await env.DB.prepare(
         `SELECT m.*,
                 NULL AS parent_brand_ids,
@@ -622,17 +630,17 @@ export async function handleFeedCatalog(request: Request, env: Env, url: URL): P
     }
   }
 
-  if (path === '/api/v1/admin/feed-catalog/models' && method === 'POST') {
+  if (path === '/api/v1/admin/supplement-catalog/models' && method === 'POST') {
     const body = await request.json<{ feed_type_id: string; manufacturer_id: string; brand_id?: string; brand_ids?: string[]; model_name?: string; model_code?: string; description?: string; translations?: Record<string, string>; name_ko?: string; name_en?: string }>();
     const ko = (body.translations?.ko || body.name_ko || body.model_name || '').trim();
     const en = (body.translations?.en || body.name_en || ko || body.model_name || '').trim();
     if (!body.feed_type_id || !body.manufacturer_id || !ko) return err('feed_type_id, manufacturer_id, ko required', 400, 'missing_field');
-    const key = `model_${randomToken(8)}`;
-    const nameKey = `feed.model.${key}`;
+    const key = `suppl_model_${randomToken(8)}`;
+    const nameKey = `supplement.model.${key}`;
     const id = newId();
     await env.DB.prepare(
-      `INSERT INTO feed_models (id, feed_type_item_id, manufacturer_id, brand_id, name_key, model_name, model_code, description, status, created_at, updated_at)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'active', ?, ?)`
+      `INSERT INTO feed_models (id, feed_type_item_id, manufacturer_id, brand_id, name_key, model_name, model_code, description, status, category_type, created_at, updated_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'active', '${CAT}', ?, ?)`
     ).bind(
       id,
       body.feed_type_id,
@@ -645,7 +653,7 @@ export async function handleFeedCatalog(request: Request, env: Env, url: URL): P
       now(),
       now()
     ).run();
-    await upsertI18n(env, nameKey, normalizedTranslations(body.translations, ko, en), 'feed');
+    await upsertI18n(env, nameKey, normalizedTranslations(body.translations, ko, en), 'supplement');
     const brandIds = Array.from(new Set([...(body.brand_ids ?? []), ...(body.brand_id ? [body.brand_id] : [])].filter(Boolean)));
     if (brandIds.length > 0 && await hasTable(env, 'feed_model_brand_map')) {
       await syncParentMap(env, 'feed_model_brand_map', 'model_id', id, 'brand_id', brandIds);
@@ -653,7 +661,7 @@ export async function handleFeedCatalog(request: Request, env: Env, url: URL): P
     return created(await env.DB.prepare(`SELECT * FROM feed_models WHERE id = ?`).bind(id).first());
   }
 
-  const modelIdMatch = path.match(/^\/api\/v1\/admin\/feed-catalog\/models\/([^/]+)$/);
+  const modelIdMatch = path.match(/^\/api\/v1\/admin\/supplement-catalog\/models\/([^/]+)$/);
   if (modelIdMatch) {
     const modelId = modelIdMatch[1];
     if (method === 'PUT') {
@@ -678,7 +686,7 @@ export async function handleFeedCatalog(request: Request, env: Env, url: URL): P
       vals.push(now(), modelId);
       await env.DB.prepare(`UPDATE feed_models SET ${sets.join(', ')} WHERE id = ?`).bind(...vals).run();
       if (existing.name_key && (ko || en || body.translations)) {
-        await upsertI18n(env, existing.name_key, normalizedTranslations(body.translations, ko || existing.model_name || '', en || ko || existing.model_name || ''), 'feed');
+        await upsertI18n(env, existing.name_key, normalizedTranslations(body.translations, ko || existing.model_name || '', en || ko || existing.model_name || ''), 'supplement');
       }
       if (brandIds.length > 0 && await hasTable(env, 'feed_model_brand_map')) {
         await syncParentMap(env, 'feed_model_brand_map', 'model_id', modelId, 'brand_id', brandIds);
@@ -691,8 +699,8 @@ export async function handleFeedCatalog(request: Request, env: Env, url: URL): P
     }
   }
 
-  // Admin: nutrition upsert for a feed model
-  const adminNutritionMatch = path.match(/^\/api\/v1\/admin\/feed-catalog\/models\/([^/]+)\/nutrition$/);
+  // Admin: nutrition upsert for a supplement model
+  const adminNutritionMatch = path.match(/^\/api\/v1\/admin\/supplement-catalog\/models\/([^/]+)\/nutrition$/);
   if (adminNutritionMatch) {
     const modelId = adminNutritionMatch[1];
     if (!(await hasTable(env, 'feed_nutrition'))) return err('feed_nutrition table not available', 400, 'not_supported');

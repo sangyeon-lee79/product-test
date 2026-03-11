@@ -913,6 +913,51 @@ export const api = {
     },
   },
 
+  supplementCatalog: {
+    types: {
+      list: (lang?: string) => {
+        const q = lang ? `?lang=${encodeURIComponent(lang)}` : '';
+        return request<FeedType[]>(`/api/v1/admin/supplement-catalog/types${q}`);
+      },
+    },
+    manufacturers: {
+      list: (lang?: string, typeItemId?: string) =>
+        request<FeedManufacturer[]>(`/api/v1/admin/supplement-catalog/manufacturers${buildQuery({ lang, type_item_id: typeItemId })}`),
+      create: (data: { key?: string; country?: string; sort_order?: number; name_ko: string; name_en?: string; parent_type_ids?: string[]; translations?: Record<string, string> }) =>
+        request<FeedManufacturer>('/api/v1/admin/supplement-catalog/manufacturers', { method: 'POST', body: JSON.stringify(data) }),
+      update: (id: string, data: Partial<{ key: string; name_ko: string; name_en: string; country: string; sort_order: number; status: string; parent_type_ids: string[]; translations: Record<string, string> }>) =>
+        request<FeedManufacturer>(`/api/v1/admin/supplement-catalog/manufacturers/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
+      delete: (id: string) =>
+        request<{ id: string; deleted: boolean }>(`/api/v1/admin/supplement-catalog/manufacturers/${id}`, { method: 'DELETE' }),
+    },
+    brands: {
+      list: (manufacturerId?: string, typeItemId?: string) =>
+        request<FeedBrand[]>(`/api/v1/admin/supplement-catalog/brands${buildQuery({ manufacturer_id: manufacturerId, type_item_id: typeItemId })}`),
+      create: (data: { key?: string; manufacturer_id?: string; manufacturer_ids?: string[]; parent_type_ids?: string[]; sort_order?: number; name_ko: string; name_en?: string; translations?: Record<string, string> }) =>
+        request<FeedBrand>('/api/v1/admin/supplement-catalog/brands', { method: 'POST', body: JSON.stringify(data) }),
+      update: (id: string, data: Partial<{ key: string; name_ko: string; name_en: string; status: string; manufacturer_id: string; manufacturer_ids: string[]; parent_type_ids: string[]; sort_order: number; translations: Record<string, string> }>) =>
+        request<FeedBrand>(`/api/v1/admin/supplement-catalog/brands/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
+      delete: (id: string) =>
+        request<{ id: string; deleted: boolean }>(`/api/v1/admin/supplement-catalog/brands/${id}`, { method: 'DELETE' }),
+    },
+    models: {
+      list: (filters?: { feed_type_id?: string; manufacturer_id?: string; brand_id?: string }) =>
+        request<FeedModel[]>(`/api/v1/admin/supplement-catalog/models${buildQuery({ feed_type_id: filters?.feed_type_id, manufacturer_id: filters?.manufacturer_id, brand_id: filters?.brand_id })}`),
+      create: (data: { key?: string; feed_type_id: string; parent_type_ids?: string[]; manufacturer_id: string; brand_id?: string; brand_ids?: string[]; model_name?: string; model_code?: string; description?: string; sort_order?: number; name_ko?: string; name_en?: string; translations?: Record<string, string> }) =>
+        request<FeedModel>('/api/v1/admin/supplement-catalog/models', { method: 'POST', body: JSON.stringify(data) }),
+      update: (id: string, data: Partial<{ key: string; model_name: string; model_code: string; description: string; status: string; feed_type_id: string; parent_type_ids: string[]; manufacturer_id: string; brand_id: string | null; brand_ids: string[]; sort_order: number; name_ko: string; name_en: string; translations: Record<string, string> }>) =>
+        request<FeedModel>(`/api/v1/admin/supplement-catalog/models/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
+      delete: (id: string) =>
+        request<{ id: string; deleted: boolean }>(`/api/v1/admin/supplement-catalog/models/${id}`, { method: 'DELETE' }),
+    },
+    nutrition: {
+      get: (modelId: string) =>
+        request<FeedNutrition | null>(`/api/v1/admin/supplement-catalog/models/${modelId}/nutrition`),
+      upsert: (modelId: string, data: Partial<Omit<FeedNutrition, 'id' | 'feed_model_id' | 'status' | 'created_at' | 'updated_at'>>) =>
+        request<FeedNutrition>(`/api/v1/admin/supplement-catalog/models/${modelId}/nutrition`, { method: 'PUT', body: JSON.stringify(data) }),
+    },
+  },
+
   feedRequests: {
     create: (data: {
       feed_name: string; pet_id?: string; feed_type_item_id?: string;
