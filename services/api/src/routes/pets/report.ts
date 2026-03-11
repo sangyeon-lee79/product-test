@@ -146,9 +146,8 @@ export async function getPetReport(env: Env, payload: JwtPayload, petId: string,
         ) AS taken_today
       FROM pet_feeds pf
       JOIN feed_models fm ON fm.id = pf.feed_model_id
-      JOIN feed_types ft ON ft.id = fm.feed_type_item_id
       WHERE pf.pet_id = ? AND pf.status = 'active'
-        AND ft.key = 'supplement'
+        AND COALESCE(pf.category_type, 'feed') = 'supplement'
     `).bind(todayStart, petId).all<Row>(),
 
     // ── Exercise: week summary ──
