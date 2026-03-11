@@ -347,6 +347,7 @@ export const api = {
   // Countries
   countries: {
     list: () => request<Country[]>('/api/v1/admin/countries'),
+    publicList: () => request<Country[]>('/api/v1/countries'),
     create: (data: { code: string; translations: Record<string, string>; default_currency_code: string }) =>
       request<Country>('/api/v1/admin/countries', { method: 'POST', body: JSON.stringify(data) }),
     update: (id: string, data: { sort_order?: number; is_active?: number; translations?: Record<string, string>; default_currency_code?: string }) =>

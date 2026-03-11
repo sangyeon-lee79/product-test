@@ -287,7 +287,7 @@ export default function GuardianMainPage() {
         safe(api.feeds.list({ tab, limit: 30 }), { feeds: [] }, 'feeds.list'),
         safe(api.petAlbum.list({ include_pending: true, limit: 400 }), { media: [] }, 'petAlbum.list'),
         safe(api.guardians.me(), { profile: null }, 'guardians.me'),
-        safe(api.countries.list(), [] as Country[], 'countries.list'),
+        safe(api.countries.publicList(), [] as Country[], 'countries.list'),
         loadCategoryItems(CATEGORY_KEYS.pet_type, lang),
         loadCategoryItems(CATEGORY_KEYS.pet_breed, lang),
         loadCategoryItems(CATEGORY_KEYS.pet_gender, lang),
