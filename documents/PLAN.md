@@ -827,6 +827,13 @@ DB 테이블/마이그레이션
 [ ] 검사결과 업로드/조회 (R2) — S8 이후
 [x] 타임라인/리스트 보기 (로그 목록, 유형/날짜/메모 카드 형태)
 
+## S7-4a. 운동 기록 (Exercise Logs)
+[x] DB: pet_exercise_logs 테이블 + master exercise_type 카테고리/아이템 + i18n (057_exercise_logs.sql)
+[x] API: GET/POST/PUT/DELETE /api/v1/pets/:id/exercise-logs (exerciseLogs.ts)
+[x] Web: ExerciseLogModal.tsx (종류/세부/시간/거리/강도/리드줄/장소/동반/메모)
+[x] Web: GuardianMainPage Health 탭 통합 (툴바 버튼, 운동 기록 목록, 차트 데이터, 타임라인 엔트리)
+[x] 종 필터링: 강아지(6종) / 고양이(3종) / 기타(2종)
+
 ## S7-5. 테스트 데이터 & 검증
 [ ] 방울이 혈당 기록 3건 입력 (정상: 150, 주의: 75, 긴급: 55)
     - 55 입력 시 critical 경고 확인

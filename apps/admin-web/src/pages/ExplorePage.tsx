@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { api, type FeedPost } from '../lib/api';
 import { isLoggedIn } from '../lib/auth';
-import { useI18n } from '../lib/i18n';
+import { useI18n, useT } from '../lib/i18n';
 import { BCP47_LOCALE_MAP, type Lang } from '@petfolio/shared';
 
 function ensureArray(raw: string[] | string | null | undefined): string[] {
@@ -30,6 +30,7 @@ const NAV_ITEMS = [
 
 export default function ExplorePage() {
   const { lang } = useI18n();
+  const t = useT();
   const locale = BCP47_LOCALE_MAP[lang as Lang] || 'en-US';
   const [allFeeds, setAllFeeds] = useState<FeedPost[]>([]);
   const [loading,  setLoading]  = useState(true);
@@ -201,11 +202,26 @@ export default function ExplorePage() {
 
       {/* Mobile bottom tabbar */}
       <nav className="ig-bottom-tabbar">
-        <Link to="/"        className="ig-tabbar-item">🏠</Link>
-        <Link to="/explore" className="ig-tabbar-item active">🔍</Link>
-        <button className="ig-tabbar-item" disabled={!loggedIn} onClick={() => loggedIn && navigate('/guardian')}>✏️</button>
-        <button className="ig-tabbar-item" disabled={!loggedIn}>🔔</button>
-        <button className="ig-tabbar-item" disabled={!loggedIn} onClick={() => loggedIn && navigate('/guardian')}>👤</button>
+        <Link to="/" className="ig-tabbar-item">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+          <span className="ig-tabbar-label">{t('public.nav.home', 'Home')}</span>
+        </Link>
+        <Link to="/explore" className="ig-tabbar-item active">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+          <span className="ig-tabbar-label">{t('public.nav.explore', 'Explore')}</span>
+        </Link>
+        <button className="ig-tabbar-item" disabled={!loggedIn} onClick={() => loggedIn && navigate('/guardian')}>
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 19c-4.3 0-7.5-3.4-7.5-5s3.2-5 7.5-5 7.5 3.4 7.5 5-3.2 5-7.5 5z"/><circle cx="12" cy="14" r="1.5"/><path d="M10 2c0 .5.5 1 1 1h2c.5 0 1-.5 1-1"/></svg>
+          <span className="ig-tabbar-label">{t('public.nav.mypet', 'My Pet')}</span>
+        </button>
+        <button className="ig-tabbar-item" disabled={!loggedIn}>
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
+          <span className="ig-tabbar-label">{t('public.nav.alerts', 'Alerts')}</span>
+        </button>
+        <button className="ig-tabbar-item" disabled={!loggedIn} onClick={() => loggedIn && navigate('/guardian')}>
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+          <span className="ig-tabbar-label">{t('public.nav.profile', 'Profile')}</span>
+        </button>
       </nav>
     </div>
   );

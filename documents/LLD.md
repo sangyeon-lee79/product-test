@@ -1008,6 +1008,30 @@ CREATE INDEX idx_pet_album_source ON pet_album_media(source_type, source_id);
 CREATE INDEX idx_pet_album_status ON pet_album_media(status);
 ```
 
+### 4.17 pet_exercise_logs (운동 기록)
+
+```sql
+CREATE TABLE pet_exercise_logs (
+    id                  TEXT PRIMARY KEY,
+    pet_id              TEXT NOT NULL REFERENCES pets(id) ON DELETE CASCADE,
+    exercise_type       TEXT NOT NULL,           -- L1: walking, running, swimming, play, training, rehabilitation
+    exercise_subtype    TEXT NOT NULL,           -- L2: short_walk, regular_walk, etc.
+    exercise_date       TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    duration_min        INTEGER NOT NULL,
+    distance_km         REAL,                    -- nullable, walking/running only
+    intensity           TEXT NOT NULL DEFAULT 'medium' CHECK (intensity IN ('low','medium','high')),
+    leash               BOOLEAN,
+    location_type       TEXT DEFAULT 'outdoor' CHECK (location_type IN ('indoor','outdoor','park','beach','other')),
+    with_other_pets     BOOLEAN DEFAULT false,
+    note                TEXT,
+    recorded_by_user_id TEXT REFERENCES users(id),
+    created_at          TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    updated_at          TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX idx_exercise_logs_pet_date ON pet_exercise_logs(pet_id, exercise_date DESC);
+```
+
 ---
 
 ## 5. API 설계
@@ -1129,6 +1153,10 @@ CREATE INDEX idx_pet_album_status ON pet_album_media(status);
 | POST | /api/v1/pets/:id/weight-logs | 몸무게 기록 추가 |
 | PUT | /api/v1/pets/:id/weight-logs/:logId | 몸무게 기록 수정 |
 | DELETE | /api/v1/pets/:id/weight-logs/:logId | 몸무게 기록 삭제 |
+| GET | /api/v1/pets/:id/exercise-logs?range=7d\|15d\|1m\|3m\|6m\|1y\|all | 운동 기록 이력 + 요약 |
+| POST | /api/v1/pets/:id/exercise-logs | 운동 기록 추가 |
+| PUT | /api/v1/pets/:id/exercise-logs/:logId | 운동 기록 수정 |
+| DELETE | /api/v1/pets/:id/exercise-logs/:logId | 운동 기록 삭제 |
 | GET | /api/v1/pet-album?pet_id=&source_type=&media_type=&sort= | 펫 앨범 조회 |
 | POST | /api/v1/pet-album | 펫 앨범 미디어 생성 |
 | GET | /api/v1/pet-album/:id | 펫 앨범 미디어 상세 |

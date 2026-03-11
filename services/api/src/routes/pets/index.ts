@@ -21,6 +21,7 @@ import {
   listGlucoseLogs, createGlucoseLog, updateGlucoseLog, deleteGlucoseLog,
   listHealthMeasurementLogs, createHealthMeasurementLog, updateHealthMeasurementLog, deleteHealthMeasurementLog,
 } from './healthMeasurements';
+import { listExerciseLogs, createExerciseLog, updateExerciseLog, deleteExerciseLog } from './exerciseLogs';
 
 export async function handlePets(request: Request, env: Env, url: URL): Promise<Response> {
   const auth = await requireAuth(request, env);
@@ -118,6 +119,22 @@ export async function handlePets(request: Request, env: Env, url: URL): Promise<
     const [, petId, logId] = measurementLogItemMatch;
     if (request.method === 'PUT') return updateHealthMeasurementLog(request, env, payload, petId, logId);
     if (request.method === 'DELETE') return deleteHealthMeasurementLog(env, payload, petId, logId);
+  }
+
+  // /pets/:id/exercise-logs
+  const exerciseLogsMatch = sub.match(/^\/([^/]+)\/exercise-logs$/);
+  if (exerciseLogsMatch) {
+    const petId = exerciseLogsMatch[1];
+    if (request.method === 'GET') return listExerciseLogs(env, payload, petId, url);
+    if (request.method === 'POST') return createExerciseLog(request, env, payload, petId);
+  }
+
+  // /pets/:id/exercise-logs/:logId
+  const exerciseLogItemMatch = sub.match(/^\/([^/]+)\/exercise-logs\/([^/]+)$/);
+  if (exerciseLogItemMatch) {
+    const [, petId, logId] = exerciseLogItemMatch;
+    if (request.method === 'PUT') return updateExerciseLog(request, env, payload, petId, logId);
+    if (request.method === 'DELETE') return deleteExerciseLog(env, payload, petId, logId);
   }
 
   // /pets/:id/pet-feeds (delegated to petFeeds route)

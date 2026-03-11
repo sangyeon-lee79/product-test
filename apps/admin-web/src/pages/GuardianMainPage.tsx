@@ -15,6 +15,7 @@ import {
   type Pet,
   type PetAlbumMedia,
   type PetHealthMeasurementLog,
+  type PetExerciseLog,
   type PetLog,
   type PetWeightLog,
   type WeightSummary,
@@ -39,6 +40,7 @@ import MeasurementModal from './guardian/MeasurementModal';
 import DeviceManageModal from './guardian/DeviceManageModal';
 import FeedManageModal from './guardian/FeedManageModal';
 import FeedingLogModal from './guardian/FeedingLogModal';
+import ExerciseLogModal from './guardian/ExerciseLogModal';
 import PetWizardModal from './guardian/PetWizardModal';
 import {
   type FeedTab,
@@ -95,21 +97,26 @@ export default function GuardianMainPage() {
   const [feedingLogs, setFeedingLogs] = useState<FeedingLog[]>([]);
   const [editingFeedingLog, setEditingFeedingLog] = useState<FeedingLog | null>(null);
   const [feedingMixFavorites, setFeedingMixFavorites] = useState<FeedingMixFavorite[]>([]);
+  const [exerciseLogs, setExerciseLogs] = useState<PetExerciseLog[]>([]);
+  const [exerciseLogModalOpen, setExerciseLogModalOpen] = useState(false);
+  const [editingExerciseLog, setEditingExerciseLog] = useState<PetExerciseLog | null>(null);
+  const [exerciseTypeItems, setExerciseTypeItems] = useState<MasterItem[]>([]);
   const [feedTab, setFeedTab] = useState<FeedTab>('all');
   const [petTab, setPetTab] = useState<PetProfileTab>('health');
   const [composeModalOpen, setComposeModalOpen] = useState(false);
 
   // ── Health sub-tabs ──────────────────────────────────────────────────────
   const [healthSubTab, setHealthSubTab] = useState<'graph' | 'timeline'>('graph');
-  const [chartFilters, setChartFilters] = useState<{ weight: boolean; measurement: boolean; feeding: boolean; calories: boolean }>({ weight: true, measurement: true, feeding: true, calories: true });
+  const [chartFilters, setChartFilters] = useState<{ weight: boolean; measurement: boolean; feeding: boolean; calories: boolean; exercise: boolean }>({ weight: true, measurement: true, feeding: true, calories: true, exercise: true });
   const toggleChartFilter = (key: keyof typeof chartFilters) => setChartFilters((prev) => ({ ...prev, [key]: !prev[key] }));
-  const [chartTooltip, setChartTooltip] = useState<{ x: number; y: number; type: 'weight' | 'measurement' | 'feeding' | 'calories'; lines: string[] } | null>(null);
+  const [chartTooltip, setChartTooltip] = useState<{ x: number; y: number; type: 'weight' | 'measurement' | 'feeding' | 'calories' | 'exercise'; lines: string[] } | null>(null);
 
   // ── Pagination ──────────────────────────────────────────────────────────
   const PAGE_SIZE = 10;
   const [weightLogPage, setWeightLogPage] = useState(1);
   const [measurementLogPage, setMeasurementLogPage] = useState(1);
   const [feedingLogPage, setFeedingLogPage] = useState(1);
+  const [exerciseLogPage, setExerciseLogPage] = useState(1);
   const [timelinePage, setTimelinePage] = useState(1);
 
   // ── S7 Health Logs ────────────────────────────────────────────────────────
@@ -285,6 +292,7 @@ export default function GuardianMainPage() {
         logTypeRows,
         metricRows,
         unitRows,
+        exerciseTypeRows,
       ] = await Promise.all([
         safe(api.pets.list(), { pets: [] }, 'pets.list'),
         safe(api.bookings.list(), { bookings: [] }, 'bookings.list'),
@@ -314,6 +322,7 @@ export default function GuardianMainPage() {
         loadCategoryItems(['log_type'], lang),
         loadCategoryItems(['metric'], lang),
         loadCategoryItems(['unit'], lang),
+        loadCategoryItems(CATEGORY_KEYS.exercise_type, lang),
       ]);
 
       setPets(petsRes.pets || []);
@@ -350,6 +359,7 @@ export default function GuardianMainPage() {
       })));
       setOptMetric(metricRows);
       setOptUnit(unitRows);
+      setExerciseTypeItems(exerciseTypeRows);
 
       if (!silent && failedApis.length > 0) {
         setError(t('guardian.alert.partial_load_failed', 'Some data could not be loaded. Please try again shortly.'));
@@ -378,16 +388,19 @@ export default function GuardianMainPage() {
     setWeightLogPage(1);
     setMeasurementLogPage(1);
     setFeedingLogPage(1);
+    setExerciseLogPage(1);
     if (!selectedPet?.id) {
       setWeightLogs([]);
       setWeightSummary(null);
       setMeasurementLogs([]);
       setMeasurementSummary(null);
+      setExerciseLogs([]);
       setPetLogs([]);
       return;
     }
     loadWeightLogs(selectedPet.id, weightRange);
     loadMeasurementLogs(selectedPet.id, weightRange);
+    void loadExerciseLogs(selectedPet.id);
     void loadPetLogs(selectedPet.id);
   }, [selectedPet?.id, weightRange]);
 
@@ -431,6 +444,15 @@ export default function GuardianMainPage() {
       setFeedingLogs(res.logs || []);
     } catch {
       setFeedingLogs([]);
+    }
+  }
+
+  async function loadExerciseLogs(petId: string) {
+    try {
+      const res = await api.pets.exerciseLogs.list(petId, { range: weightRange });
+      setExerciseLogs(res.logs || []);
+    } catch {
+      setExerciseLogs([]);
     }
   }
 
@@ -543,6 +565,17 @@ export default function GuardianMainPage() {
     }
   }
 
+  async function removeExerciseLog(logId: string) {
+    if (!selectedPet?.id) return;
+    if (!confirm(t('guardian.exercise.delete_confirm', 'Delete this exercise log?'))) return;
+    try {
+      await api.pets.exerciseLogs.remove(selectedPet.id, logId);
+      await loadExerciseLogs(selectedPet.id);
+    } catch (e) {
+      setError(uiErrorMessage(e, t('guardian.exercise.create_failed', 'Failed to save exercise log.')));
+    }
+  }
+
   function renderPagination(page: number, totalItems: number, setPage: (p: number) => void) {
     const totalPages = Math.ceil(totalItems / PAGE_SIZE);
     if (totalPages <= 1) return null;
@@ -599,17 +632,18 @@ export default function GuardianMainPage() {
   }
 
   // ── Unified Timeline ──────────────────────────────────────────────────────
-  type TimelineItem = { id: string; type: 'weight' | 'measurement' | 'feeding'; date: string; source: PetWeightLog | PetHealthMeasurementLog | FeedingLog };
+  type TimelineItem = { id: string; type: 'weight' | 'measurement' | 'feeding' | 'exercise'; date: string; source: PetWeightLog | PetHealthMeasurementLog | FeedingLog | PetExerciseLog };
   const unifiedTimeline = useMemo<TimelineItem[]>(() => {
     const items: TimelineItem[] = [];
     for (const log of weightLogs) items.push({ id: `w-${log.id}`, type: 'weight', date: log.measured_at, source: log });
     for (const log of measurementLogs) items.push({ id: `m-${log.id}`, type: 'measurement', date: log.measured_at, source: log });
     for (const log of feedingLogs) items.push({ id: `f-${log.id}`, type: 'feeding', date: log.feeding_time || log.created_at, source: log });
+    for (const log of exerciseLogs) items.push({ id: `e-${log.id}`, type: 'exercise', date: log.exercise_date, source: log });
     return items.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
-  }, [weightLogs, measurementLogs, feedingLogs]);
+  }, [weightLogs, measurementLogs, feedingLogs, exerciseLogs]);
 
   // ── Grouped Timeline (date + type → horizontal chips) ──────────────────
-  interface TimelineGroup { dateKey: string; type: 'weight' | 'measurement' | 'feeding'; items: TimelineItem[] }
+  interface TimelineGroup { dateKey: string; type: 'weight' | 'measurement' | 'feeding' | 'exercise'; items: TimelineItem[] }
   const groupedTimeline = useMemo<TimelineGroup[]>(() => {
     const map = new Map<string, TimelineGroup>();
     for (const item of unifiedTimeline) {
@@ -622,7 +656,7 @@ export default function GuardianMainPage() {
     // Items within a group: ascending time (left→right)
     for (const g of groups) g.items.sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
     // Groups: date descending → same date: weight(0) → feeding(1) → measurement(2)
-    const typeOrd: Record<string, number> = { weight: 0, feeding: 1, measurement: 2 };
+    const typeOrd: Record<string, number> = { weight: 0, feeding: 1, exercise: 2, measurement: 3 };
     groups.sort((a, b) => {
       const dA = new Date(a.items[0].date).setHours(0, 0, 0, 0);
       const dB = new Date(b.items[0].date).setHours(0, 0, 0, 0);
@@ -646,7 +680,7 @@ export default function GuardianMainPage() {
   }
 
   function renderCombinedHealthChart(weightRows: PetWeightLog[], mRows: PetHealthMeasurementLog[]) {
-    if (!weightRows.length && !mRows.length && !petFeeds.length && !feedingLogs.length) {
+    if (!weightRows.length && !mRows.length && !petFeeds.length && !feedingLogs.length && !exerciseLogs.length) {
       return <div className="weight-chart-empty text-sm text-muted">{t('guardian.health.chart_empty', 'No health records to display.')}</div>;
     }
     const width = 720;
@@ -677,10 +711,14 @@ export default function GuardianMainPage() {
       })
       .filter((p) => p.cal > 0);
 
+    // Exercise data for chart
+    const exerciseWithDuration = exerciseLogs.filter((el) => el.duration_min > 0);
+
     const allTimes = [
       ...weightRows.map((row) => new Date(row.measured_at).getTime()),
       ...mRows.map((row) => new Date(row.measured_at).getTime()),
       ...feedingWithAmount.map((fl) => new Date(fl.feeding_time!).getTime()),
+      ...exerciseWithDuration.map((el) => new Date(el.exercise_date).getTime()),
     ].filter((v) => Number.isFinite(v));
     if (!allTimes.length && !hasFeedBands) return <div className="weight-chart-empty text-sm text-muted">{t('guardian.health.chart_empty', 'No health records to display.')}</div>;
     const minT = allTimes.length ? Math.min(...allTimes) : Date.now() - 86400000 * 30;
@@ -703,22 +741,26 @@ export default function GuardianMainPage() {
     const measurementValues = mRows.map((row) => Number(row.value));
     const feedingValues = feedingWithAmount.map((fl) => Number(fl.amount_g));
     const calorieValues = caloriePoints.map((p) => p.cal);
+    const exerciseValues = exerciseWithDuration.map((el) => el.duration_min);
 
     const [minW, , wSpan] = rangeWithPad(weightValues);
     const [minM, , mSpan] = rangeWithPad(measurementValues);
     const [minF, , fSpan] = rangeWithPad(feedingValues);
     const [minC, , cSpan] = rangeWithPad(calorieValues);
+    const [minE, , eSpan] = rangeWithPad(exerciseValues);
 
     const normalizeY = (value: number, mn: number, span: number) => padT + (1 - ((value - mn) / span)) * usableH;
     const normalizeYW = (v: number) => normalizeY(v, minW, wSpan);
     const normalizeYM = (v: number) => normalizeY(v, minM, mSpan);
     const normalizeYF = (v: number) => normalizeY(v, minF, fSpan);
     const normalizeYC = (v: number) => normalizeY(v, minC, cSpan);
+    const normalizeYE = (v: number) => normalizeY(v, minE, eSpan);
 
     const sortedWeights = [...weightRows].sort((a, b) => new Date(a.measured_at).getTime() - new Date(b.measured_at).getTime());
     const sortedMeasurements = [...mRows].sort((a, b) => new Date(a.measured_at).getTime() - new Date(b.measured_at).getTime());
     const sortedFeedings = [...feedingWithAmount].sort((a, b) => new Date(a.feeding_time!).getTime() - new Date(b.feeding_time!).getTime());
     const sortedCalories = [...caloriePoints].sort((a, b) => a.time - b.time);
+    const sortedExercises = [...exerciseWithDuration].sort((a, b) => new Date(a.exercise_date).getTime() - new Date(b.exercise_date).getTime());
 
     // Quadratic bezier smooth path builder
     function smoothPath(points: Array<{ x: number; y: number }>): string {
@@ -741,17 +783,20 @@ export default function GuardianMainPage() {
     const mPoints = sortedMeasurements.map((r) => ({ x: normalizeX(new Date(r.measured_at).getTime()), y: normalizeYM(Number(r.value)) }));
     const fPoints = sortedFeedings.map((fl) => ({ x: normalizeX(new Date(fl.feeding_time!).getTime()), y: normalizeYF(Number(fl.amount_g)) }));
     const cPoints = sortedCalories.map((p) => ({ x: normalizeX(p.time), y: normalizeYC(p.cal) }));
+    const ePoints = sortedExercises.map((el) => ({ x: normalizeX(new Date(el.exercise_date).getTime()), y: normalizeYE(el.duration_min) }));
 
     const weightPath = wPoints.length > 1 ? smoothPath(wPoints) : '';
     const measurementPath = mPoints.length > 1 ? smoothPath(mPoints) : '';
     const feedingPath = fPoints.length > 1 ? smoothPath(fPoints) : '';
     const caloriePath = cPoints.length > 1 ? smoothPath(cPoints) : '';
+    const exercisePath = ePoints.length > 1 ? smoothPath(ePoints) : '';
 
     // Last points for end-of-line labels
     const lastWeight = sortedWeights[sortedWeights.length - 1];
     const lastMeasurement = sortedMeasurements[sortedMeasurements.length - 1];
     const lastFeeding = sortedFeedings[sortedFeedings.length - 1];
     const lastCalorie = sortedCalories[sortedCalories.length - 1];
+    const lastExercise = sortedExercises[sortedExercises.length - 1];
 
     // Feed timeline bands
     const feedColors = ['#43a047', '#7b1fa2', '#e65100', '#0277bd', '#c62828', '#558b2f'];
@@ -819,6 +864,9 @@ export default function GuardianMainPage() {
           {chartFilters.calories && caloriePath && <path d={caloriePath} fill="none" stroke="#d32f2f" strokeWidth="2" strokeLinecap="round" />}
           {chartFilters.calories && cPoints.length === 1 && <circle cx={cPoints[0].x} cy={cPoints[0].y} r="4" fill="#d32f2f" />}
 
+          {chartFilters.exercise && exercisePath && <path d={exercisePath} fill="none" stroke="#ff9800" strokeWidth="2" strokeDasharray="6 3" strokeLinecap="round" />}
+          {chartFilters.exercise && ePoints.length === 1 && <circle cx={ePoints[0].x} cy={ePoints[0].y} r="4" fill="#ff9800" />}
+
           {/* Data point dots with tooltip hit targets */}
           {chartFilters.weight && wPoints.map((p, i) => {
             const d = sortedWeights[i];
@@ -862,6 +910,16 @@ export default function GuardianMainPage() {
                 onMouseLeave={() => setChartTooltip(null)} />
             </g>;
           })}
+          {chartFilters.exercise && ePoints.map((p, i) => {
+            const d = sortedExercises[i];
+            const typeLabel = t(`master.exercise_type.${d.exercise_type}`, d.exercise_type);
+            return <g key={`ed-${i}`}>
+              <circle cx={p.x} cy={p.y} r="2.5" fill="#ff9800" />
+              <circle cx={p.x} cy={p.y} r="8" fill="transparent" cursor="pointer"
+                onMouseEnter={() => setChartTooltip({ x: p.x, y: p.y, type: 'exercise', lines: [`${fmtDateTime(d.exercise_date, '-', locale)} · ${d.duration_min}min`, typeLabel] })}
+                onMouseLeave={() => setChartTooltip(null)} />
+            </g>;
+          })}
 
           {/* Last-value labels */}
           {chartFilters.weight && lastWeight && (
@@ -882,6 +940,11 @@ export default function GuardianMainPage() {
           {chartFilters.calories && lastCalorie && (
             <text x={normalizeX(lastCalorie.time) + 6} y={normalizeYC(lastCalorie.cal) - 6} fontSize="10" fill="#d32f2f" fontWeight="600">
               {lastCalorie.cal.toFixed(0)}kcal
+            </text>
+          )}
+          {chartFilters.exercise && lastExercise && (
+            <text x={normalizeX(new Date(lastExercise.exercise_date).getTime()) + 6} y={normalizeYE(lastExercise.duration_min) - 6} fontSize="10" fill="#ff9800" fontWeight="600">
+              {lastExercise.duration_min}min
             </text>
           )}
 
@@ -906,7 +969,7 @@ export default function GuardianMainPage() {
 
           {/* SVG Tooltip */}
           {chartTooltip && (() => {
-            const colors: Record<string, string> = { weight: '#1a73e8', measurement: '#ef6c00', feeding: '#43a047', calories: '#d32f2f' };
+            const colors: Record<string, string> = { weight: '#1a73e8', measurement: '#ef6c00', feeding: '#43a047', calories: '#d32f2f', exercise: '#ff9800' };
             const clr = colors[chartTooltip.type] || '#333';
             const lineH = 15;
             const maxLineLen = Math.max(...chartTooltip.lines.map((l) => l.length));
@@ -948,6 +1011,11 @@ export default function GuardianMainPage() {
           {caloriePoints.length > 0 && (
             <div className={`gm-chart-legend-item${!chartFilters.calories ? ' gm-legend-off' : ''}`} onClick={() => toggleChartFilter('calories')} style={{ cursor: 'pointer', opacity: chartFilters.calories ? 1 : 0.4 }}>
               <span className="gm-chart-legend-dot" style={{ background: '#d32f2f' }} />{t('guardian.feeding.total_calories', 'Calories')} (kcal)
+            </div>
+          )}
+          {exerciseWithDuration.length > 0 && (
+            <div className={`gm-chart-legend-item${!chartFilters.exercise ? ' gm-legend-off' : ''}`} onClick={() => toggleChartFilter('exercise')} style={{ cursor: 'pointer', opacity: chartFilters.exercise ? 1 : 0.4 }}>
+              <span className="gm-chart-legend-dot" style={{ background: '#ff9800' }} />{t('guardian.exercise.title', 'Exercise')} (min)
             </div>
           )}
         </div>
@@ -1174,6 +1242,10 @@ export default function GuardianMainPage() {
                             <span className="gm-tile-icon">🍽️</span>
                             <span className="gm-tile-label">{t('guardian.feeding.add', '급여 기록')}</span>
                           </button>
+                          <button className="gm-toolbar-tile gm-tile-exercise" onClick={() => { setEditingExerciseLog(null); setExerciseLogModalOpen(true); }}>
+                            <span className="gm-tile-icon">🏃</span>
+                            <span className="gm-tile-label">{t('guardian.exercise.add', '운동 추가')}</span>
+                          </button>
                         </div>
                         <div className="gm-toolbar-divider" />
                         <div className="gm-toolbar-group gm-toolbar-manage">
@@ -1285,6 +1357,35 @@ export default function GuardianMainPage() {
                           {renderPagination(feedingLogPage, feedingLogs.length, setFeedingLogPage)}
                         </div>
                       </div>
+
+                      {/* ── Exercise Logs ── */}
+                      <div className="gm-section">
+                        <div className="gm-section-header"><span className="gm-section-title">{t('guardian.exercise.title', '운동 기록')}</span></div>
+                        <div className="gm-section-body">
+                          <div className="guardian-pet-list">
+                            {exerciseLogs.slice((exerciseLogPage - 1) * PAGE_SIZE, exerciseLogPage * PAGE_SIZE).map((log) => {
+                              const typeLabel = t(`master.exercise_type.${log.exercise_type}`, log.exercise_type);
+                              const subtypeLabel = t(`master.exercise_type.${log.exercise_subtype}`, log.exercise_subtype);
+                              const intensityLabel = t(`guardian.exercise.intensity_${log.intensity}`, log.intensity);
+                              return (
+                                <div key={log.id} className="guardian-pet-item">
+                                  <div>
+                                    <p className="text-sm">{fmtDateTime(log.exercise_date, '-', locale)} · {typeLabel} / {subtypeLabel}</p>
+                                    <p className="text-sm text-muted" style={{ fontSize: 11 }}>{log.duration_min}{t('common.min', 'min')} · {intensityLabel}{log.distance_km != null ? ` · ${log.distance_km}km` : ''}</p>
+                                    {log.note && <p className="text-sm text-muted" style={{ fontSize: 11 }}>{log.note}</p>}
+                                  </div>
+                                  <div className="td-actions">
+                                    <button className="btn btn-secondary btn-sm" title={t('common.edit', 'Edit')} aria-label={t('common.edit', 'Edit')} onClick={() => { setEditingExerciseLog(log); setExerciseLogModalOpen(true); }}>✏️</button>
+                                    <button className="btn btn-danger btn-sm" title={t('common.delete', 'Delete')} aria-label={t('common.delete', 'Delete')} onClick={() => removeExerciseLog(log.id)}>🗑️</button>
+                                  </div>
+                                </div>
+                              );
+                            })}
+                            {exerciseLogs.length === 0 && <p className="text-muted" style={{ fontSize: 13 }}>{t('guardian.exercise.no_logs', '운동 기록이 없습니다.')}</p>}
+                          </div>
+                          {renderPagination(exerciseLogPage, exerciseLogs.length, setExerciseLogPage)}
+                        </div>
+                      </div>
                         </>
                       )}
 
@@ -1309,7 +1410,7 @@ export default function GuardianMainPage() {
                                 return pageGroups.flatMap((group) => {
                                   const showDateHeader = group.dateKey !== lastDateKey;
                                   lastDateKey = group.dateKey;
-                                  const emoji = group.type === 'weight' ? '⚖️' : group.type === 'feeding' ? '🍽️' : '📊';
+                                  const emoji = group.type === 'weight' ? '⚖️' : group.type === 'feeding' ? '🍽️' : group.type === 'exercise' ? '🏃' : '📊';
                                   const els: React.ReactNode[] = [];
                                   if (showDateHeader) els.push(<div key={`date-${group.dateKey}`} className="gm-tl-date">{group.dateKey}</div>);
                                   els.push(
@@ -1350,6 +1451,26 @@ export default function GuardianMainPage() {
                                                 <span className="gm-tl-chip-actions">
                                                   <button title={t('common.edit', 'Edit')} aria-label={t('common.edit', 'Edit')} onClick={() => openEditHealthMeasurementLog(log)}>✏️</button>
                                                   <button title={t('common.delete', 'Delete')} aria-label={t('common.delete', 'Delete')} onClick={() => removeHealthMeasurementLog(log.id)}>🗑️</button>
+                                                </span>
+                                              </div>
+                                            );
+                                          }
+
+                                          if (item.type === 'exercise') {
+                                            const log = item.source as PetExerciseLog;
+                                            const typeLabel = t(`master.exercise_type.${log.exercise_type}`, log.exercise_type);
+                                            const intensityLabel = t(`guardian.exercise.intensity_${log.intensity}`, log.intensity);
+                                            return (
+                                              <div className="gm-tl-chip" key={item.id}>
+                                                <span className="gm-tl-chip-time">{hhmm}</span>
+                                                <span className="gm-tl-chip-dot">·</span>
+                                                <span>{typeLabel} {log.duration_min}min</span>
+                                                <span className="gm-tl-chip-dot">·</span>
+                                                <span>{intensityLabel}</span>
+                                                {log.distance_km != null && <><span className="gm-tl-chip-dot">·</span><span>{log.distance_km}km</span></>}
+                                                <span className="gm-tl-chip-actions">
+                                                  <button title={t('common.edit', 'Edit')} aria-label={t('common.edit', 'Edit')} onClick={() => { setEditingExerciseLog(log); setExerciseLogModalOpen(true); }}>✏️</button>
+                                                  <button title={t('common.delete', 'Delete')} aria-label={t('common.delete', 'Delete')} onClick={() => removeExerciseLog(log.id)}>🗑️</button>
                                                 </span>
                                               </div>
                                             );
@@ -1682,6 +1803,17 @@ export default function GuardianMainPage() {
         onClose={() => { setFeedingLogModalOpen(false); setEditingFeedingLog(null); }}
         onSuccess={() => { if (selectedPet?.id) void loadFeedingLogs(selectedPet.id); }}
         onOpenFeedManage={() => setFeedManageModalOpen(true)}
+      />
+      <ExerciseLogModal
+        open={exerciseLogModalOpen}
+        editingLog={editingExerciseLog}
+        selectedPet={selectedPet}
+        exerciseTypeItems={exerciseTypeItems}
+        lang={lang}
+        t={t}
+        setError={setError}
+        onClose={() => { setExerciseLogModalOpen(false); setEditingExerciseLog(null); }}
+        onSuccess={() => { if (selectedPet?.id) void loadExerciseLogs(selectedPet.id); }}
       />
       <PetWizardModal
         open={petModalOpen}

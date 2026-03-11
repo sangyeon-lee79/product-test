@@ -639,6 +639,31 @@ export interface FeedRegistrationRequest {
   updated_at: string;
 }
 
+export interface PetExerciseLog {
+  id: string;
+  pet_id: string;
+  exercise_type: string;
+  exercise_subtype: string;
+  exercise_date: string;
+  duration_min: number;
+  distance_km?: number | null;
+  intensity: 'low' | 'medium' | 'high';
+  leash?: boolean | null;
+  location_type?: string | null;
+  with_other_pets?: boolean;
+  note?: string | null;
+  recorded_by_user_id?: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface ExerciseSummary {
+  total_count: number;
+  total_duration_min: number;
+  avg_duration_min: number;
+  latest_date?: string | null;
+}
+
 export interface PetLog {
   id: string;
   pet_id: string;

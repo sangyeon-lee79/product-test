@@ -187,6 +187,7 @@ export const CATEGORY_KEYS: Record<string, string[]> = {
   coat_length: ['master.coat_length', 'coat_length'],
   coat_type: ['master.coat_type', 'coat_type'],
   grooming_cycle: ['master.grooming_cycle', 'grooming_cycle'],
+  exercise_type: ['master.exercise_type', 'exercise_type'],
 };
 
 // ── 순수 함수 ─────────────────────────────────────────────
