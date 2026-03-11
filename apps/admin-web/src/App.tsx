@@ -18,6 +18,7 @@ import SupplierDashboardPage from './pages/SupplierDashboardPage';
 import ExplorePage from './pages/ExplorePage';
 import MembersPage from './pages/MembersPage';
 import ApiConnectionsPage from './pages/ApiConnectionsPage';
+import OAuthRedirectHandler from './components/OAuthRedirectHandler';
 import './index.css';
 
 function AuthRoute() {
@@ -46,6 +47,7 @@ export default function App() {
   return (
     <I18nProvider>
       <HashRouter>
+        <OAuthRedirectHandler>
         <Routes>
           <Route path="/" element={<PublicHome />} />
           <Route path="/explore" element={<ExplorePage />} />
@@ -81,6 +83,7 @@ export default function App() {
 
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
+        </OAuthRedirectHandler>
       </HashRouter>
     </I18nProvider>
   );

@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Link, useParams } from 'react-router-dom';
+import { Link, useNavigate, useParams } from 'react-router-dom';
 import {
   api,
   type Booking,
@@ -28,7 +28,7 @@ import {
 
 import { useI18n, useT } from '../lib/i18n';
 import { BCP47_LOCALE_MAP, LANG_LABELS, type Lang } from '@petfolio/shared';
-import { getStoredRole } from '../lib/auth';
+import { getStoredRole, logout } from '../lib/auth';
 import PetGalleryPanel from '../components/PetGalleryPanel';
 import ComposeModal from './guardian/ComposeModal';
 import WeightModal from './guardian/WeightModal';
@@ -65,6 +65,7 @@ export default function GuardianMainPage() {
   const t = useT();
   const { lang } = useI18n();
   const locale = BCP47_LOCALE_MAP[lang as Lang] || 'en-US';
+  const navigate = useNavigate();
   const role = getStoredRole();
   const isGuardian = role === 'guardian';
   const [loading, setLoading] = useState(true);
@@ -654,6 +655,7 @@ export default function GuardianMainPage() {
               <button className="btn btn-primary btn-sm" style={{ borderRadius: 20, fontSize: 12 }} onClick={openCreatePet}>+ {t('common.add_pet', 'Add Pet')}</button>
             )}
             <Link className="btn btn-secondary btn-sm" style={{ borderRadius: 20, fontSize: 12 }} to="/">{t('guardian.main.public_feed', 'Feed')}</Link>
+            <button className="btn btn-secondary btn-sm" style={{ borderRadius: 20, fontSize: 12 }} onClick={() => { logout(); navigate('/', { replace: true }); }}>{t('admin.common.logout', 'Logout')}</button>
           </div>
         </div>
         {selectedPet && petSummaryDetails && (

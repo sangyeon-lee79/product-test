@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { api, setTokens, type MasterItem } from '../lib/api';
 import { getApiBase } from '../lib/apiBase';
 import { getRoleHomePath, storeRole } from '../lib/auth';
@@ -44,6 +44,7 @@ function ProgressBar({ current, total }: { current: number; total: number }) {
 
 export default function Signup() {
   const navigate = useNavigate();
+  const location = useLocation();
   const t = useT();
   const { lang } = useI18n();
 
@@ -180,8 +181,21 @@ export default function Signup() {
     getAppleConfig().then(c => setAppleAvailable(!!c.apple_service_id)).catch(() => {});
   }, []);
 
-  // Handle OAuth redirect result (unified for Google, Kakao, Apple)
+  // Handle OAuth redirect — tokens may arrive via location.state (from OAuthRedirectHandler)
+  // or via URL params (legacy fallback)
   useEffect(() => {
+    const stateToken = (location.state as { snsToken?: { access: string; refresh: string; role: string; email?: string } } | null)?.snsToken;
+    if (stateToken) {
+      setSnsToken({ access: stateToken.access, refresh: stateToken.refresh, role: stateToken.role });
+      if (stateToken.email) setEmail(stateToken.email);
+      setPhase('sns');
+      setStep(1);
+      // Clear state to prevent re-processing on back/forward
+      window.history.replaceState({}, '', window.location.href);
+      return;
+    }
+
+    // Fallback: direct URL params (if OAuthRedirectHandler didn't intercept)
     const result = getOAuthRedirectResult();
     if (!result || result.mode !== 'signup') return;
     clearOAuthRedirectParams();
