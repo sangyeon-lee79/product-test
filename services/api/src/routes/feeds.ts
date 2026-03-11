@@ -278,12 +278,7 @@ async function listFeeds(request: Request, env: Env, url: URL): Promise<Response
        LIMIT ?`
     ).bind(me?.sub ?? null, me?.sub ?? null, ...params, limit).all<FeedRow>();
 
-    let data = rows.results.map(normalizeFeedRow).filter((r) => canViewFeed(r, me, friends));
-    if (me && tab === 'all') {
-      data = data.filter((r) => String(r.author_user_id || '') === me.sub);
-    } else if (me && tab === 'friends') {
-      data = data.filter((r) => friends.has(String(r.author_user_id || '')));
-    }
+    const data = rows.results.map(normalizeFeedRow).filter((r) => canViewFeed(r, me, friends));
     return ok({ feeds: data, filters: { feed_type: feedType || null, business_category_id: businessCategoryId || null, pet_type_id: petTypeId || null, tab } });
   }
 
@@ -336,13 +331,7 @@ async function listFeeds(request: Request, env: Env, url: URL): Promise<Response
      LIMIT ?`
   ).bind(me?.sub ?? null, me?.sub ?? null, ...params, limit).all<FeedRow>();
 
-  let data = rows.results.map(normalizeFeedRow).filter((r) => canViewFeed(r, me, friends));
-
-  if (me && tab === 'all') {
-    data = data.filter((r) => String(r.author_user_id || '') === me.sub);
-  } else if (me && tab === 'friends') {
-    data = data.filter((r) => friends.has(String(r.author_user_id || '')));
-  }
+  const data = rows.results.map(normalizeFeedRow).filter((r) => canViewFeed(r, me, friends));
 
   return ok({ feeds: data, filters: { feed_type: feedType || null, business_category_id: businessCategoryId || null, pet_type_id: petTypeId || null, tab } });
 }

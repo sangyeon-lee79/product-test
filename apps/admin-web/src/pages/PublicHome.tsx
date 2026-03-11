@@ -5,7 +5,6 @@ import { getStoredRole, isLoggedIn } from '../lib/auth';
 import { useI18n, useT } from '../lib/i18n';
 import AuthModal from '../components/AuthModal';
 
-type FeedTab = 'all' | 'friends';
 type FilterOption = { id: string; code: string; i18n_key: string; label: string };
 
 function parseJwtSub(): string | null {
@@ -62,7 +61,6 @@ export default function PublicHome() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [feeds, setFeeds] = useState<FeedPost[]>([]);
-  const [tab, setTab] = useState<FeedTab>('all');
   const [businessCategoryId, setBusinessCategoryId] = useState('');
   const [petTypeId, setPetTypeId] = useState('');
   const [businessOptions, setBusinessOptions] = useState<FilterOption[]>([]);
@@ -136,10 +134,10 @@ export default function PublicHome() {
   const suggestedUsers = useMemo(() => storyAuthors.slice(0, 5), [storyAuthors]);
 
   /* ── API calls ─────────────────────────────────────────── */
-  async function loadFeed(nextTab = tab, nextBusiness = businessCategoryId, nextPetType = petTypeId) {
+  async function loadFeed(nextBusiness = businessCategoryId, nextPetType = petTypeId) {
     setLoading(true); setError('');
     try {
-      const listRes = await api.feeds.list({ tab: nextTab, business_category_id: nextBusiness || undefined, pet_type_id: nextPetType || undefined, limit: 40 });
+      const listRes = await api.feeds.list({ business_category_id: nextBusiness || undefined, pet_type_id: nextPetType || undefined, limit: 40 });
       setFeeds(listRes.feeds || []);
     } catch (e) { setError(uiErrorMessage(e, t('public.error.feed_load', '피드 데이터를 불러오지 못했습니다.'))); }
     finally { setLoading(false); }
@@ -154,7 +152,7 @@ export default function PublicHome() {
   }
 
   useEffect(() => { loadFeed(); loadFilters(); }, []);
-  useEffect(() => { void loadFeed(tab, businessCategoryId, petTypeId); loadFilters(); }, [lang]);
+  useEffect(() => { void loadFeed(businessCategoryId, petTypeId); loadFilters(); }, [lang]);
 
   useEffect(() => {
     if (!loggedIn) { setMyProfile(null); setMyPets([]); setMyBookings([]); setFriendStatusMap(new Map()); setFriendDataLoaded(false); return; }
@@ -589,16 +587,11 @@ export default function PublicHome() {
             ))}
           </div>
 
-          {/* Feed tabs */}
+          {/* Feed header */}
           <div className="pf-feed-tabs">
-            <button className={`pf-feed-tab${tab === 'all' ? ' active' : ''}`} onClick={() => { setTab('all'); loadFeed('all', businessCategoryId, petTypeId); }}>
-              {loggedIn ? t('public.feed.my_feed', '내 피드') : t('public.feed.all', '전체 피드')}
+            <button className="pf-feed-tab active">
+              {t('public.feed.all', 'All Feeds')}
             </button>
-            {loggedIn && (
-              <button className={`pf-feed-tab${tab === 'friends' ? ' active' : ''}`} onClick={() => { setTab('friends'); loadFeed('friends', businessCategoryId, petTypeId); }}>
-                {t('friend.section.title', '친구')}
-              </button>
-            )}
           </div>
 
           {/* Filter pills */}
@@ -607,10 +600,10 @@ export default function PublicHome() {
               {businessOptions.length > 0 && (
                 <div className="pf-filter-group">
                   <span className="pf-filter-label">{t('public.filter.business', '업종')}</span>
-                  <button className={`pf-pill${businessCategoryId === '' ? ' active' : ''}`} onClick={() => { setBusinessCategoryId(''); loadFeed(tab, '', petTypeId); }}>{t('public.filter.all', '전체')}</button>
+                  <button className={`pf-pill${businessCategoryId === '' ? ' active' : ''}`} onClick={() => { setBusinessCategoryId(''); loadFeed('', petTypeId); }}>{t('public.filter.all', '전체')}</button>
                   {businessOptions.map((o) => (
                     <button key={o.id} className={`pf-pill${businessCategoryId === o.id ? ' active' : ''}`}
-                      onClick={() => { const v = businessCategoryId === o.id ? '' : o.id; setBusinessCategoryId(v); loadFeed(tab, v, petTypeId); }}>
+                      onClick={() => { const v = businessCategoryId === o.id ? '' : o.id; setBusinessCategoryId(v); loadFeed(v, petTypeId); }}>
                       {translateMasterLabel(o.i18n_key, o.label, o.code)}
                     </button>
                   ))}
@@ -619,10 +612,10 @@ export default function PublicHome() {
               {petTypeOptions.length > 0 && (
                 <div className="pf-filter-group">
                   <span className="pf-filter-label">{t('public.filter.pet_type', '펫 유형')}</span>
-                  <button className={`pf-pill${petTypeId === '' ? ' active' : ''}`} onClick={() => { setPetTypeId(''); loadFeed(tab, businessCategoryId, ''); }}>{t('public.filter.all', '전체')}</button>
+                  <button className={`pf-pill${petTypeId === '' ? ' active' : ''}`} onClick={() => { setPetTypeId(''); loadFeed(businessCategoryId, ''); }}>{t('public.filter.all', '전체')}</button>
                   {petTypeOptions.map((o) => (
                     <button key={o.id} className={`pf-pill${petTypeId === o.id ? ' active' : ''}`}
-                      onClick={() => { const v = petTypeId === o.id ? '' : o.id; setPetTypeId(v); loadFeed(tab, businessCategoryId, v); }}>
+                      onClick={() => { const v = petTypeId === o.id ? '' : o.id; setPetTypeId(v); loadFeed(businessCategoryId, v); }}>
                       {translateMasterLabel(o.i18n_key, o.label, o.code)}
                     </button>
                   ))}
