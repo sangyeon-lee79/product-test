@@ -94,6 +94,7 @@ export default function Signup() {
   );
   const [certTags, setCertTags] = useState<string[]>([]);
   const [certInput, setCertInput] = useState('');
+  const [altLangTrans, setAltLangTrans] = useState<Record<string, string>>({});
 
   // Agreements
   const [bookingNotifications, setBookingNotifications] = useState(true);
@@ -196,6 +197,25 @@ export default function Signup() {
       .catch(err => setError(err instanceof Error ? err.message : t('public.signup.sns_fail', 'SNS 가입에 실패했습니다.')))
       .finally(() => setLoading(false));
   }, []);
+
+  // Close biz info popover on outside click
+  useEffect(() => {
+    if (!showBizInfo) return;
+    const handler = () => setShowBizInfo(false);
+    document.addEventListener('click', handler);
+    return () => document.removeEventListener('click', handler);
+  }, [showBizInfo]);
+
+  // Fetch alt-language translations for provider label toggle
+  useEffect(() => {
+    if (!applyProvider) return;
+    const target = providerLabelLang === lang ? null : providerLabelLang;
+    if (!target) { setAltLangTrans({}); return; }
+    fetch(`${API_BASE}/api/v1/i18n?lang=${target}&prefix=public`)
+      .then(r => r.json())
+      .then((d: any) => setAltLangTrans(d.success ? d.data : {}))
+      .catch(() => setAltLangTrans({}));
+  }, [applyProvider, providerLabelLang, lang]);
 
   function handleOAuthRedirect(provider: 'google' | 'kakao' | 'apple') {
     setError('');
@@ -300,12 +320,10 @@ export default function Signup() {
           pet_type_l1_id: providerPetTypeL1Id || null,
           pet_type_l2_id: providerPetTypeL2Id || null,
           business_registration_no: providerBusinessNumber || null,
-          operating_hours: JSON.stringify({
-            schedule: operatingHoursMap,
-            address: (COUNTRY_REGIONS[countryCode]?.length)
-              ? [providerState, providerCity, providerAddressDetail].filter(Boolean).join(' ')
-              : providerAddressFlat,
-          }),
+          operating_hours: JSON.stringify({ schedule: operatingHoursMap }),
+          address_line: (COUNTRY_REGIONS[countryCode]?.length)
+            ? [providerState, providerCity, providerAddressDetail].filter(Boolean).join(' ')
+            : providerAddressFlat,
           certifications: certTags,
         } : undefined,
       });
@@ -529,24 +547,18 @@ export default function Signup() {
     // Role step (direct step 4 / sns step 3)
     const roleStep = phase === 'direct' ? 4 : 3;
     if (step === roleStep) {
-      // English label map for provider form toggle
-      const EN: Record<string, string> = {
-        'public.signup.provider_l1': 'Business Category *',
-        'public.signup.provider_l2': 'Sub-category',
-        'public.signup.provider_pet_l1': 'Pet Type',
-        'public.signup.provider_pet_l2': 'Breed',
-        'public.signup.provider_business_number': 'Business Reg. No.',
-        'public.signup.provider_certifications': 'Certificates/Licenses',
-        'public.signup.provider_address_state': 'State/Province',
-        'public.signup.provider_address_city': 'City/District',
-        'public.signup.provider_address_detail': 'Detailed Address',
-        'public.signup.provider_address_flat': 'Address',
-        'public.signup.provider_hours_title': 'Operating Hours',
+      // Provider label: use alt-language translations fetched from API
+      const pl = (key: string, koFb: string) => {
+        if (providerLabelLang === lang) return t(key, koFb);
+        return altLangTrans[key] || t(key, koFb);
       };
-      const pl = (key: string, koFb: string) => providerLabelLang === 'en' ? (EN[key] || t(key, koFb)) : t(key, koFb);
 
       // Resolve biz info popover text based on selected L1
+      const bizIconMap: Record<string, string> = {
+        hospital: '\u{1F3E5}', grooming: '\u2702\uFE0F', pet_shop: '\u{1F6D2}', pet_hotel: '\u{1F3E8}', training: '\u{1F415}',
+      };
       const selectedL1Key = l1Options.find(o => o.id === providerL1Id)?.key || '';
+      const selectedL1Label = l1Options.find(o => o.id === providerL1Id)?.display_label || l1Options.find(o => o.id === providerL1Id)?.ko || '';
       const bizInfoMap: Record<string, string> = {
         hospital: 'public.signup.provider_info_hospital',
         grooming: 'public.signup.provider_info_grooming',
@@ -554,8 +566,11 @@ export default function Signup() {
         pet_hotel: 'public.signup.provider_info_hotel',
         training: 'public.signup.provider_info_training',
       };
-      const bizInfoKey = Object.entries(bizInfoMap).find(([k]) => selectedL1Key.toLowerCase().includes(k))?.[1];
+      const bizInfoEntry = Object.entries(bizInfoMap).find(([k]) => selectedL1Key.toLowerCase().includes(k));
+      const bizInfoKey = bizInfoEntry?.[1];
+      const bizIcon = bizInfoEntry ? (bizIconMap[bizInfoEntry[0]] || '\u{2139}\uFE0F') : '';
 
+      const ENABLE_MAP = false;
       const countryRegionList = COUNTRY_REGIONS[countryCode] || [];
       const hasRegions = countryRegionList.length > 0;
       const selectedRegion = countryRegionList.find(r => r.name === providerState);
@@ -620,11 +635,14 @@ export default function Signup() {
                       {l1Options.map(item => <option key={item.id} value={item.id}>{item.display_label || item.ko || item.key}</option>)}
                     </select>
                     {showBizInfo && bizInfoKey && (
-                      <div className="signup-biz-info-popover">
-                        {t(bizInfoKey, '')}
-                        <div style={{ textAlign: 'right', marginTop: 6 }}>
-                          <button type="button" style={{ fontSize: 11, color: 'var(--text-muted)', background: 'none', border: 'none', cursor: 'pointer' }} onClick={() => setShowBizInfo(false)}>✕</button>
+                      <div className="signup-biz-info-popover" onClick={e => e.stopPropagation()}>
+                        <div style={{ display: 'flex', gap: 8, alignItems: 'center', marginBottom: 6 }}>
+                          <span style={{ fontSize: 20 }}>{bizIcon}</span>
+                          <strong style={{ fontSize: 14 }}>{selectedL1Label}</strong>
                         </div>
+                        <p style={{ margin: 0, fontSize: 13, color: 'var(--text-secondary)', lineHeight: 1.5 }}>
+                          {t(bizInfoKey, '')}
+                        </p>
                       </div>
                     )}
                   </div>
@@ -642,7 +660,7 @@ export default function Signup() {
                   <div className="form-group">
                     <label className="form-label">{pl('public.signup.provider_pet_l1', '펫종류 L1')}</label>
                     <select className="form-select" value={providerPetTypeL1Id} onChange={e => { setProviderPetTypeL1Id(e.target.value); setProviderPetTypeL2Id(''); setProviderL3Id(''); }}>
-                      <option value="">{t('common.select', '선택...')}</option>
+                      <option value="">{t('public.signup.provider_pet_all', '전체')}</option>
                       {petTypeL1Options.map(item => <option key={item.id} value={item.id}>{item.display_label || item.ko || item.key}</option>)}
                     </select>
                   </div>
@@ -693,6 +711,10 @@ export default function Signup() {
                     <input className="form-input" value={providerAddressFlat} onChange={e => setProviderAddressFlat(e.target.value)} />
                   </div>
                 )}
+                <button type="button" className="signup-map-btn" disabled={!ENABLE_MAP}
+                  title={ENABLE_MAP ? '' : t('public.signup.provider_address_map_disabled', '준비 중')}>
+                  {'\u{1F4CD}'} {t('public.signup.provider_address_map', '지도에서 선택')}
+                </button>
 
                 {/* D. Operating Hours Day-by-Day */}
                 <div className="form-group">
