@@ -1,5 +1,6 @@
 // Guardian Profile Edit Modal — 보호자 프로필 수정
 import { useState, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { api, type GuardianProfile, type Country } from '../../lib/api';
 import { useT } from '../../lib/i18n';
 import { LANG_LABELS, SUPPORTED_LANGS, type Lang } from '@petfolio/shared';
@@ -60,8 +61,23 @@ export default function GuardianProfileEditModal({ open, profile, countries, lan
     }
   }
 
-  return (
-    <div className="modal-backdrop" onClick={onClose}>
+  return createPortal(
+    <div
+      className="modal-backdrop"
+      onClick={onClose}
+      style={{
+        position: 'fixed',
+        top: 0,
+        left: 0,
+        width: '100vw',
+        height: '100vh',
+        background: 'rgba(0,0,0,0.5)',
+        zIndex: 9999,
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+      }}
+    >
       <div className="modal-content" onClick={(e) => e.stopPropagation()} style={{ maxWidth: 480 }}>
         <div className="modal-header">
           <h3>{t('guardian.profile.edit_profile', 'Edit Profile')}</h3>
@@ -139,6 +155,7 @@ export default function GuardianProfileEditModal({ open, profile, countries, lan
           </button>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body,
   );
 }
