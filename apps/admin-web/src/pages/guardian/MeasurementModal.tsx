@@ -330,7 +330,13 @@ export default function MeasurementModal({
 
   async function saveMeasurement() {
     if (!selectedPet?.id) return;
-    const stableDiseaseId = normalizeSingleStableId(measurementForm.disease_item_id, optDisease, false);
+    // When disease is auto-mapped from a device, the ID comes from the master
+    // hierarchy (device type → parentId) and is already a valid master_item ID.
+    // normalizeSingleStableId may fail because optDisease only contains items
+    // loaded via disease-group→disease chain, which can miss orphaned items.
+    const stableDiseaseId = diseaseAutoMapped
+      ? (measurementForm.disease_item_id || '')
+      : normalizeSingleStableId(measurementForm.disease_item_id, optDisease, false);
     const stableDeviceTypeId = normalizeSingleStableId(measurementForm.device_type_item_id, optDiseaseDevice, false);
     const stableMeasurementItemId = normalizeSingleStableId(measurementForm.measurement_item_id, optMeasurement, false);
     const stableMeasurementContextId = normalizeSingleStableId(measurementForm.measurement_context_id, optMeasurementContext, false);
