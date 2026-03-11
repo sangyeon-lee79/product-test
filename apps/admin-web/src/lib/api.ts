@@ -16,6 +16,7 @@ export type {
   FeedRegistrationRequest,
   PetLog, GlucoseAlert, MemberSummary, MemberRecord, GoogleSettingItem, PublicGoogleConfig, OAuthLoginResponse,
   PublicKakaoConfig, PublicAppleConfig, PlatformSettingItem,
+  ProviderProfile,
 } from '../types/api';
 import type {
   I18nRow, MasterCategory, MasterItem, Country, Currency,
@@ -32,6 +33,7 @@ import type {
   FeedRegistrationRequest,
   PetLog, GlucoseAlert, MemberSummary, MemberRecord, GoogleSettingItem, PublicGoogleConfig, OAuthLoginResponse,
   PublicKakaoConfig, PublicAppleConfig, PlatformSettingItem,
+  ProviderProfile,
 } from '../types/api';
 
 const API_BASE = getApiBase();
@@ -603,6 +605,20 @@ export const api = {
     presignedUrl: (params: { type: 'user_avatar' | 'pet_avatar' | 'log_media' | 'feed_media' | 'completion_photo' | 'store_photo' | 'service_photo'; ext: string; subdir?: string }) =>
       request<{ upload_url: string; file_key: string; public_url: string; expires_in: number }>(`/api/v1/storage/presigned-url${buildQuery({ type: params.type, ext: params.ext, subdir: params.subdir })}`),
   },
+  providers: {
+    me: () => request<{ approval_status: string; role_application_status?: string; rejection_reason?: string; profile: ProviderProfile | null }>('/api/v1/providers/me'),
+    updateMe: (data: {
+      business_category_l1_id?: string | null;
+      business_category_l2_id?: string | null;
+      business_category_l3_id?: string | null;
+      pet_type_l1_id?: string | null;
+      pet_type_l2_id?: string | null;
+      business_registration_no?: string | null;
+      operating_hours?: string | null;
+      certifications?: string[];
+      address_line?: string | null;
+    }) => request<{ updated: boolean }>('/api/v1/providers/me', { method: 'PUT', body: JSON.stringify(data) }),
+  },
   bookings: {
     list: () => request<{ bookings: Booking[] }>('/api/v1/bookings'),
     updateStatus: (bookingId: string, status: 'created' | 'in_progress' | 'service_completed' | 'publish_requested' | 'publish_approved' | 'publish_rejected' | 'cancelled') =>
@@ -689,6 +705,8 @@ export const api = {
       method: 'PUT',
       body: JSON.stringify(data),
     }),
+    delete: (memberId: string) =>
+      request<{ action: string; member_id: string }>(`/api/v1/admin/members/${memberId}`, { method: 'DELETE' }),
     decideRoleApplication: (applicationId: string, action: 'approve' | 'reject') =>
       request<{ id: string; status: string }>(`/api/v1/admin/role-applications/${applicationId}/decision`, {
         method: 'POST',

@@ -1,0 +1,33 @@
+-- 058_provider_approval_i18n.sql
+-- Provider approval status UI + profile edit i18n keys
+
+INSERT INTO i18n_translations (key, page, ko, en, ja, zh_cn, zh_tw, es, fr, de, pt, vi, th, id_lang, ar, is_active)
+VALUES
+-- Approval status
+('admin.provider.approval.pending_title', 'supplier', '승인 대기 중', 'Pending Approval', '承認待ち', '待审批', '待審批', 'Pendiente de aprobación', 'En attente d''approbation', 'Genehmigung ausstehend', 'Aprovação pendente', 'Đang chờ phê duyệt', 'รอการอนุมัติ', 'Menunggu persetujuan', 'في انتظار الموافقة', true),
+('admin.provider.approval.pending_description', 'supplier', '관리자가 회원님의 업체 등록 신청을 검토 중입니다. 승인이 완료되면 모든 서비스를 이용하실 수 있습니다.', 'Your business registration is under review. Once approved, you will have full access to all services.', '管理者があなたの事業者登録申請を審査中です。承認が完了すると、すべてのサービスをご利用いただけます。', '管理员正在审核您的商家注册申请。审核通过后即可使用全部服务。', '管理員正在審核您的商家註冊申請。審核通過後即可使用全部服務。', 'Su registro de negocio está en revisión. Una vez aprobado, tendrá acceso completo a todos los servicios.', 'Votre inscription commerciale est en cours de vérification. Une fois approuvée, vous aurez accès à tous les services.', 'Ihre Geschäftsregistrierung wird überprüft. Nach der Genehmigung haben Sie vollen Zugriff auf alle Dienste.', 'Seu registro comercial está em análise. Após aprovação, você terá acesso completo a todos os serviços.', 'Đăng ký doanh nghiệp của bạn đang được xem xét. Sau khi được phê duyệt, bạn sẽ có quyền truy cập đầy đủ.', 'การลงทะเบียนธุรกิจของคุณอยู่ระหว่างการตรวจสอบ เมื่อได้รับอนุมัติแล้วจะสามารถใช้บริการทั้งหมดได้', 'Pendaftaran bisnis Anda sedang ditinjau. Setelah disetujui, Anda akan memiliki akses penuh.', 'تسجيل عملك قيد المراجعة. بمجرد الموافقة، ستتمكن من الوصول الكامل لجميع الخدمات.', true),
+('admin.provider.approval.rejected_title', 'supplier', '승인 거절', 'Application Rejected', '申請却下', '申请被拒', '申請被拒', 'Solicitud rechazada', 'Demande rejetée', 'Antrag abgelehnt', 'Solicitação rejeitada', 'Đơn bị từ chối', 'คำขอถูกปฏิเสธ', 'Permohonan ditolak', 'تم رفض الطلب', true),
+('admin.provider.approval.rejected_description', 'supplier', '업체 등록 신청이 거절되었습니다. 정보를 수정한 후 다시 신청해 주세요.', 'Your business registration was rejected. Please update your information and reapply.', '事業者登録申請が却下されました。情報を修正して再申請してください。', '商家注册申请已被拒绝，请修改信息后重新申请。', '商家註冊申請已被拒絕，請修改資訊後重新申請。', 'Su registro fue rechazado. Actualice su información y vuelva a solicitar.', 'Votre inscription a été rejetée. Veuillez mettre à jour vos informations et refaire une demande.', 'Ihre Registrierung wurde abgelehnt. Bitte aktualisieren Sie Ihre Informationen und beantragen Sie erneut.', 'Seu registro foi rejeitado. Atualize suas informações e reaplique.', 'Đăng ký của bạn đã bị từ chối. Vui lòng cập nhật thông tin và nộp lại.', 'การลงทะเบียนถูกปฏิเสธ กรุณาแก้ไขข้อมูลและสมัครใหม่', 'Pendaftaran Anda ditolak. Silakan perbarui informasi dan ajukan kembali.', 'تم رفض تسجيلك. يرجى تحديث معلوماتك وإعادة التقديم.', true),
+('admin.provider.approval.approved_title', 'supplier', '승인 완료', 'Approved', '承認済み', '已批准', '已批准', 'Aprobado', 'Approuvé', 'Genehmigt', 'Aprovado', 'Đã phê duyệt', 'อนุมัติแล้ว', 'Disetujui', 'تمت الموافقة', true),
+
+-- Profile section
+('admin.provider.profile.title', 'supplier', '업체 프로필', 'Business Profile', '事業者プロフィール', '商家资料', '商家資料', 'Perfil de negocio', 'Profil commercial', 'Geschäftsprofil', 'Perfil comercial', 'Hồ sơ doanh nghiệp', 'โปรไฟล์ธุรกิจ', 'Profil bisnis', 'الملف التجاري', true),
+('admin.provider.profile.business_category', 'supplier', '업종', 'Business Category', '業種', '行业', '行業', 'Categoría', 'Catégorie', 'Branche', 'Categoria', 'Ngành nghề', 'ประเภทธุรกิจ', 'Kategori bisnis', 'فئة العمل', true),
+('admin.provider.profile.business_category_l2', 'supplier', '세부 업종', 'Sub Category', 'サブカテゴリ', '子类别', '子類別', 'Subcategoría', 'Sous-catégorie', 'Unterkategorie', 'Subcategoria', 'Phân loại phụ', 'หมวดหมู่ย่อย', 'Sub kategori', 'فئة فرعية', true),
+('admin.provider.profile.business_category_l3', 'supplier', '상세 업종', 'Detail Category', '詳細カテゴリ', '详细类别', '詳細類別', 'Categoría detallada', 'Catégorie détaillée', 'Detailkategorie', 'Categoria detalhada', 'Chi tiết ngành', 'หมวดหมู่ละเอียด', 'Kategori detail', 'فئة تفصيلية', true),
+('admin.provider.profile.pet_type', 'supplier', '반려동물 종류', 'Pet Type', 'ペット種類', '宠物类型', '寵物類型', 'Tipo de mascota', 'Type d''animal', 'Haustierart', 'Tipo de pet', 'Loại thú cưng', 'ประเภทสัตว์เลี้ยง', 'Jenis hewan', 'نوع الحيوان', true),
+('admin.provider.profile.registration_no', 'supplier', '사업자등록번호', 'Business Registration No.', '事業者登録番号', '营业执照号', '營業執照號', 'Nº de registro', 'Nº d''enregistrement', 'Registrierungsnr.', 'Nº de registro', 'Mã đăng ký KD', 'เลขทะเบียนธุรกิจ', 'No. registrasi', 'رقم السجل التجاري', true),
+('admin.provider.profile.operating_hours', 'supplier', '영업시간', 'Operating Hours', '営業時間', '营业时间', '營業時間', 'Horario', 'Heures d''ouverture', 'Öffnungszeiten', 'Horário', 'Giờ hoạt động', 'เวลาทำการ', 'Jam operasional', 'ساعات العمل', true),
+('admin.provider.profile.certifications', 'supplier', '자격증/인증', 'Certifications', '資格/認証', '资质证书', '資質證書', 'Certificaciones', 'Certifications', 'Zertifizierungen', 'Certificações', 'Chứng chỉ', 'ใบรับรอง', 'Sertifikasi', 'الشهادات', true),
+('admin.provider.profile.address', 'supplier', '주소', 'Address', '住所', '地址', '地址', 'Dirección', 'Adresse', 'Adresse', 'Endereço', 'Địa chỉ', 'ที่อยู่', 'Alamat', 'العنوان', true),
+('admin.provider.profile.save', 'supplier', '저장', 'Save', '保存', '保存', '儲存', 'Guardar', 'Enregistrer', 'Speichern', 'Salvar', 'Lưu', 'บันทึก', 'Simpan', 'حفظ', true),
+('admin.provider.profile.saved', 'supplier', '저장되었습니다', 'Saved successfully', '保存しました', '保存成功', '儲存成功', 'Guardado con éxito', 'Enregistré avec succès', 'Erfolgreich gespeichert', 'Salvo com sucesso', 'Đã lưu thành công', 'บันทึกสำเร็จ', 'Berhasil disimpan', 'تم الحفظ بنجاح', true),
+('admin.provider.profile.save_failed', 'supplier', '저장에 실패했습니다', 'Failed to save', '保存に失敗しました', '保存失败', '儲存失敗', 'Error al guardar', 'Échec de l''enregistrement', 'Speichern fehlgeschlagen', 'Falha ao salvar', 'Lưu thất bại', 'บันทึกล้มเหลว', 'Gagal menyimpan', 'فشل الحفظ', true),
+('admin.provider.approval.reapply', 'supplier', '다시 신청', 'Reapply', '再申請', '重新申请', '重新申請', 'Reaplicar', 'Refaire une demande', 'Erneut beantragen', 'Reaplicar', 'Nộp lại', 'สมัครใหม่', 'Ajukan ulang', 'إعادة التقديم', true)
+ON CONFLICT (key) DO UPDATE SET
+  ko = EXCLUDED.ko, en = EXCLUDED.en, ja = EXCLUDED.ja,
+  zh_cn = EXCLUDED.zh_cn, zh_tw = EXCLUDED.zh_tw,
+  es = EXCLUDED.es, fr = EXCLUDED.fr, de = EXCLUDED.de,
+  pt = EXCLUDED.pt, vi = EXCLUDED.vi, th = EXCLUDED.th,
+  id_lang = EXCLUDED.id_lang, ar = EXCLUDED.ar,
+  is_active = EXCLUDED.is_active;

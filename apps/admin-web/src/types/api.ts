@@ -202,15 +202,25 @@ export interface Booking {
   updated_at: string;
 }
 
+export interface OAuthBreakdown {
+  email: number;
+  google: number;
+  apple: number;
+  kakao: number;
+}
+
 export interface MemberSummary {
   total_members: number;
   new_members: number;
+  total_breakdown?: OAuthBreakdown;
+  new_breakdown?: OAuthBreakdown;
 }
 
 export interface MemberRecord {
   id: string;
   email: string;
   role: 'guardian' | 'provider' | 'admin';
+  oauth_provider?: string;
   status: string;
   created_at: string;
   full_name?: string | null;
@@ -662,6 +672,27 @@ export interface ExerciseSummary {
   total_duration_min: number;
   avg_duration_min: number;
   latest_date?: string | null;
+}
+
+export interface ProviderProfile {
+  business_category_l1_id: string | null;
+  business_category_l2_id: string | null;
+  business_category_l3_id: string | null;
+  pet_type_l1_id: string | null;
+  pet_type_l2_id: string | null;
+  business_l1_label: string;
+  business_l2_label: string;
+  business_l3_label: string;
+  pet_type_l1_label: string;
+  pet_type_l2_label: string;
+  business_registration_no: string | null;
+  operating_hours: string | null;
+  certifications: string[];
+  supported_pet_types: string[];
+  address_line: string | null;
+  approved_at: string | null;
+  created_at: string;
+  updated_at: string;
 }
 
 export interface PetLog {

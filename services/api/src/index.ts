@@ -143,8 +143,8 @@ async function dispatch(request: Request, env: Env, url: URL): Promise<Response>
     return handleFeeds(request, env, url);
   }
 
-  // S9: Provider (매장/서비스)
-  if (path.startsWith('/api/v1/stores') || path.startsWith('/api/v1/services')) {
+  // S9: Provider (매장/서비스/프로필)
+  if (path.startsWith('/api/v1/stores') || path.startsWith('/api/v1/services') || path.startsWith('/api/v1/providers')) {
     const { handleProviders } = await import('./routes/providers');
     return handleProviders(request, env, url);
   }

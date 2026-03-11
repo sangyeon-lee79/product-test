@@ -103,6 +103,7 @@ async function listMembers(env: Env, me: JwtPayload, url: URL): Promise<Response
       u.email,
       u.role,
       u.status,
+      COALESCE(u.oauth_provider, 'email') AS oauth_provider,
       u.created_at,
       COALESCE(uad.full_name, up.display_name, '') AS full_name,
       COALESCE(uad.nickname, '') AS nickname,
@@ -145,14 +146,39 @@ async function listMembers(env: Env, me: JwtPayload, url: URL): Promise<Response
   const summary = await env.DB.prepare(
     `SELECT
       COUNT(*) AS total_members,
-      SUM(CASE WHEN created_at >= CURRENT_DATE - INTERVAL '7 days' THEN 1 ELSE 0 END) AS new_members
+      SUM(CASE WHEN created_at >= CURRENT_DATE - INTERVAL '7 days' THEN 1 ELSE 0 END) AS new_members,
+      SUM(CASE WHEN oauth_provider IS NULL OR oauth_provider = '' THEN 1 ELSE 0 END) AS email_count,
+      SUM(CASE WHEN oauth_provider = 'google' THEN 1 ELSE 0 END) AS google_count,
+      SUM(CASE WHEN oauth_provider = 'apple' THEN 1 ELSE 0 END) AS apple_count,
+      SUM(CASE WHEN oauth_provider = 'kakao' THEN 1 ELSE 0 END) AS kakao_count
      FROM users`
-  ).first<{ total_members: number; new_members: number }>();
+  ).first<Record<string, unknown>>();
+
+  const newBreakdown = await env.DB.prepare(
+    `SELECT
+      SUM(CASE WHEN oauth_provider IS NULL OR oauth_provider = '' THEN 1 ELSE 0 END) AS email_count,
+      SUM(CASE WHEN oauth_provider = 'google' THEN 1 ELSE 0 END) AS google_count,
+      SUM(CASE WHEN oauth_provider = 'apple' THEN 1 ELSE 0 END) AS apple_count,
+      SUM(CASE WHEN oauth_provider = 'kakao' THEN 1 ELSE 0 END) AS kakao_count
+     FROM users WHERE created_at >= CURRENT_DATE - INTERVAL '7 days'`
+  ).first<Record<string, unknown>>();
 
   return ok({
     summary: {
       total_members: Number(summary?.total_members || 0),
       new_members: Number(summary?.new_members || 0),
+      total_breakdown: {
+        email: Number(summary?.email_count || 0),
+        google: Number(summary?.google_count || 0),
+        apple: Number(summary?.apple_count || 0),
+        kakao: Number(summary?.kakao_count || 0),
+      },
+      new_breakdown: {
+        email: Number(newBreakdown?.email_count || 0),
+        google: Number(newBreakdown?.google_count || 0),
+        apple: Number(newBreakdown?.apple_count || 0),
+        kakao: Number(newBreakdown?.kakao_count || 0),
+      },
     },
     members: (rows.results || []).map((row) => ({
       ...row,
@@ -403,6 +429,31 @@ async function decideRoleApplication(request: Request, env: Env, me: JwtPayload,
   return ok({ id: applicationId, status });
 }
 
+async function deleteMember(env: Env, me: JwtPayload, memberId: string): Promise<Response> {
+  const roleErr = requireRole(me, ['admin']);
+  if (roleErr) return roleErr;
+
+  const user = await env.DB.prepare(`SELECT id, status FROM users WHERE id = ?`).bind(memberId).first<{ id: string; status: string }>();
+  if (!user) return err('member not found', 404);
+  if (user.id === me.sub) return err('cannot delete own account', 400);
+
+  const petCount = await env.DB.prepare(`SELECT COUNT(*) AS cnt FROM pets WHERE guardian_id = ?`).bind(memberId).first<{ cnt: number }>();
+  const hasData = Number(petCount?.cnt || 0) > 0;
+
+  const timestamp = now();
+  if (hasData) {
+    await env.DB.prepare(`UPDATE users SET status = 'inactive', updated_at = ? WHERE id = ?`).bind(timestamp, memberId).run();
+    return ok({ action: 'deactivated', member_id: memberId });
+  } else {
+    await env.DB.prepare(`DELETE FROM user_account_details WHERE user_id = ?`).bind(memberId).run();
+    await env.DB.prepare(`DELETE FROM user_profiles WHERE user_id = ?`).bind(memberId).run();
+    await env.DB.prepare(`DELETE FROM provider_profiles WHERE user_id = ?`).bind(memberId).run();
+    await env.DB.prepare(`DELETE FROM role_applications WHERE user_id = ?`).bind(memberId).run();
+    await env.DB.prepare(`DELETE FROM users WHERE id = ?`).bind(memberId).run();
+    return ok({ action: 'deleted', member_id: memberId });
+  }
+}
+
 export async function handleMembers(request: Request, env: Env, url: URL): Promise<Response> {
   const auth = await requireAuth(request, env);
   if (auth instanceof Response) return auth;
@@ -419,6 +470,9 @@ export async function handleMembers(request: Request, env: Env, url: URL): Promi
   const memberMatch = path.match(/^\/api\/v1\/admin\/members\/([^/]+)$/);
   if (memberMatch && request.method === 'PUT') {
     return updateMember(request, env, me, memberMatch[1]);
+  }
+  if (memberMatch && request.method === 'DELETE') {
+    return deleteMember(env, me, memberMatch[1]);
   }
 
   const decisionMatch = path.match(/^\/api\/v1\/admin\/role-applications\/([^/]+)\/decision$/);
