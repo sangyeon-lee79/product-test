@@ -374,7 +374,12 @@ export default function DeviceManageModal({
                               background: isSelected ? 'var(--primary-light, #fffbeb)' : 'transparent',
                               display: 'flex', alignItems: 'center', gap: 8,
                             }}>
-                              <span style={{ fontSize: 16, flexShrink: 0, width: 20, textAlign: 'center' }}>{isSelected ? '✓' : ''}</span>
+                              <span style={{ fontSize: 14, flexShrink: 0, width: 18, textAlign: 'center', color: isSelected ? 'var(--primary)' : 'transparent' }}>✓</span>
+                              {m.image_url ? (
+                                <img src={m.image_url} alt="" style={{ width: 36, height: 36, borderRadius: 6, objectFit: 'cover', flexShrink: 0 }} onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }} />
+                              ) : (
+                                <div style={{ width: 36, height: 36, borderRadius: 6, background: 'var(--bg)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, fontSize: 18 }}>📱</div>
+                              )}
                               <div style={{ minWidth: 0, flex: 1 }}>
                                 <div style={{ fontSize: 14, fontWeight: isSelected ? 600 : 400, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{label}</div>
                                 {sub && <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 1 }}>{sub}</div>}
