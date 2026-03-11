@@ -76,8 +76,8 @@ export default function GuardianMainPage() {
   const [albumMedia, setAlbumMedia] = useState<PetAlbumMedia[]>([]);
   const [weightLogs, setWeightLogs] = useState<PetWeightLog[]>([]);
   const [measurementLogs, setMeasurementLogs] = useState<PetHealthMeasurementLog[]>([]);
-  const [weightSummary, setWeightSummary] = useState<WeightSummary | null>(null);
-  const [measurementSummary, setMeasurementSummary] = useState<HealthMeasurementSummary | null>(null);
+  const [, setWeightSummary] = useState<WeightSummary | null>(null);
+  const [, setMeasurementSummary] = useState<HealthMeasurementSummary | null>(null);
   const [weightRange] = useState<WeightRange>('1m');
   const [weightModalOpen, setWeightModalOpen] = useState(false);
   const [editingWeightLog, setEditingWeightLog] = useState<PetWeightLog | null>(null);
@@ -791,24 +791,6 @@ export default function GuardianMainPage() {
                     </div>
                   ) : (
                     <>
-                      <div className="gm-health-summary-card">
-                        <div className="gm-pet-avatar" style={{ width: 48, height: 48, fontSize: 20 }}>
-                          {selectedPet.name[0].toUpperCase()}
-                        </div>
-                        <div className="gm-health-summary-info">
-                          <div className="gm-health-summary-name">{selectedPet.name}</div>
-                          <div className="gm-health-summary-row">
-                            <span>{t('guardian.health.current_weight', '체중')}: <strong>{weightSummary?.latest_weight ?? selectedPet.current_weight ?? '-'} kg</strong></span>
-                            <span className="gm-health-summary-sep">·</span>
-                            <span>{t('guardian.health.last_measured', '측정')}: <strong>{formatDate(weightSummary?.latest_measured_at, '-', locale)}</strong></span>
-                          </div>
-                          <div className="gm-health-summary-row">
-                            <span>{t('guardian.health.latest_measurement', '수치')}: <strong>{measurementSummary?.latest_value ?? '-'}</strong></span>
-                            <span className="gm-health-summary-sep">·</span>
-                            <span>{t('guardian.health.judgement', '상태')}: <strong>{measurementSummary?.latest_judgement_label || measurementSummary?.latest_judgement_level || '-'}</strong></span>
-                          </div>
-                        </div>
-                      </div>
                       {/* ── Health Toolkit ── */}
                       <div className="gm-health-toolbar">
                         <div className="gm-toolbar-group gm-toolbar-record">
