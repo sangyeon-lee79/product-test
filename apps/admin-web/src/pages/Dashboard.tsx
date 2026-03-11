@@ -6,6 +6,7 @@ import {
   BarChart, Bar, PieChart, Pie, Cell, LineChart, Line,
   XAxis, YAxis, Tooltip, ResponsiveContainer, Legend,
 } from 'recharts';
+import type { PieLabelRenderProps } from 'recharts';
 
 const COLORS = ['#D97706', '#F59E0B', '#92400E', '#78716C', '#38A169', '#3B82F6', '#8B5CF6', '#EC4899', '#14B8A6', '#F97316'];
 const PERIODS = ['today', '7d', '30d', '3m'] as const;
@@ -310,7 +311,7 @@ function RPie({ data, nameKey, valueKey }: { data: Record<string, unknown>[]; na
       <PieChart>
         <Pie data={data} dataKey={valueKey} nameKey={nameKey} cx="50%" cy="50%"
           outerRadius={70} innerRadius={35} paddingAngle={2}
-          label={({ name, percent }: { name: string; percent?: number }) => `${name} ${((percent ?? 0) * 100).toFixed(0)}%`}
+          label={(props: PieLabelRenderProps) => `${props.name ?? ''} ${(((props.percent as number) ?? 0) * 100).toFixed(0)}%`}
           labelLine={false} style={{ fontSize: 10 }}>
           {data.map((_, i) => <Cell key={i} fill={COLORS[i % COLORS.length]} />)}
         </Pie>
