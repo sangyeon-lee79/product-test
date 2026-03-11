@@ -50,6 +50,7 @@ function parseServiceAccountJson(raw: string): { email: string; privateKey: stri
 function GoogleTab({ t }: { t: (key: string, fb?: string) => string }) {
   const [placesKey, setPlacesKey] = useState('');
   const [oauthClientId, setOauthClientId] = useState('');
+  const [oauthClientSecret, setOauthClientSecret] = useState('');
   const [redirectUri, setRedirectUri] = useState('');
   const [translateServiceJson, setTranslateServiceJson] = useState('');
   const [translateServiceEmail, setTranslateServiceEmail] = useState('');
@@ -79,6 +80,7 @@ function GoogleTab({ t }: { t: (key: string, fb?: string) => string }) {
       const parsed = parseServiceAccountJson(loadedJson);
       setPlacesKey(data.settings.google_places_api_key?.value || '');
       setOauthClientId(data.settings.google_oauth_client_id?.value || '');
+      setOauthClientSecret(data.settings.google_oauth_client_secret?.value || '');
       setRedirectUri(data.settings.google_oauth_redirect_uri?.value || '');
       setTranslateServiceJson(loadedJson);
       setTranslateServiceEmail(parsed?.email || data.settings.google_translate_service_account_email?.value || '');
@@ -112,9 +114,10 @@ function GoogleTab({ t }: { t: (key: string, fb?: string) => string }) {
       const placesChanged = placesKey !== initialValues.placesKey;
       const oauthChanged = oauthClientId !== initialValues.oauthClientId || redirectUri !== initialValues.redirectUri;
       const translateChanged = translateServiceJson !== initialValues.translateServiceJson;
-      const result = await api.platformSettings.google.update({
+      await api.platformSettings.google.update({
         google_places_api_key: placesKey,
         google_oauth_client_id: oauthClientId,
+        google_oauth_client_secret: oauthClientSecret,
         google_oauth_redirect_uri: redirectUri,
         google_translate_service_account_json: translateServiceJson,
         google_translate_service_account_email: translateServiceEmail,
@@ -123,12 +126,11 @@ function GoogleTab({ t }: { t: (key: string, fb?: string) => string }) {
         ...(oauthChanged ? { google_oauth_verified_at: '' } : {}),
         ...(translateChanged ? { google_translate_verified_at: '' } : {}),
       });
-      setUpdatedAt(result.updated_at);
-      setInitialValues({ placesKey, oauthClientId, redirectUri, translateServiceJson });
       if (placesChanged) setPlacesConnected(false);
       if (oauthChanged) setOauthConnected(false);
       if (translateChanged) setTranslateConnected(false);
       setSuccess(t('admin.api_connections.saved', '설정이 저장되었습니다.'));
+      await load();
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Failed to save');
     } finally {
@@ -245,6 +247,10 @@ function GoogleTab({ t }: { t: (key: string, fb?: string) => string }) {
               </button>
               {oauthTestMessage && <span className="text-muted" style={{ fontSize: 12 }}>{oauthTestMessage}</span>}
             </div>
+          </div>
+          <div className="form-group">
+            <label className="form-label">{t('admin.google.field.oauth_client_secret', 'Google OAuth Client Secret')}</label>
+            <input className="form-input" type="password" value={oauthClientSecret} onChange={e => setOauthClientSecret(e.target.value)} placeholder="GOCSPX-xxxxxxxxxxxxxxxxxxxxxxxx" />
           </div>
           <div className="form-group">
             <label className="form-label">{t('admin.google.field.oauth_redirect_uri', 'Google OAuth Redirect URI')}</label>

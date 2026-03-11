@@ -871,6 +871,7 @@ export const api = {
       update: (data: {
         google_places_api_key?: string;
         google_oauth_client_id?: string;
+        google_oauth_client_secret?: string;
         google_oauth_redirect_uri?: string;
         google_translate_service_account_json?: string;
         google_translate_service_account_email?: string;
