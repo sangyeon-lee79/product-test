@@ -53,8 +53,8 @@ export default function StorePage() {
 
   // Load reference data
   useEffect(() => {
-    api.countries.list(lang).then(setCountries).catch(() => {});
-    api.master.public.items(lang, undefined, 'business_category').then(setIndustries).catch(() => {});
+    api.countries.list().then(setCountries).catch(() => {});
+    api.master.public.items('business_category', undefined, lang).then(setIndustries).catch(() => {});
   }, [lang]);
 
   const loadStores = useCallback(async () => {
@@ -458,7 +458,7 @@ export default function StorePage() {
                 <label className="form-label">{t('admin.store.form.country', 'Country')}</label>
                 <select className="form-select" value={storeForm.country_id} onChange={e => setStoreForm(f => ({ ...f, country_id: e.target.value }))}>
                   <option value="">--</option>
-                  {countries.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+                  {countries.map(c => <option key={c.id} value={c.id}>{c.ko_name || c.code}</option>)}
                 </select>
               </div>
               <div>
@@ -488,7 +488,7 @@ export default function StorePage() {
               {industries.map(ind => (
                 <label key={ind.id} style={{ fontSize: 12, display: 'flex', alignItems: 'center', gap: 2, cursor: 'pointer' }}>
                   <input type="checkbox" checked={selectedIndustryIds.includes(ind.id)} onChange={() => toggleIndustry(ind.id)} />
-                  {ind.display_label || ind.code}
+                  {ind.display_label || ind.key}
                 </label>
               ))}
             </div>

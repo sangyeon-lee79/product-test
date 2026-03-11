@@ -77,7 +77,7 @@ export default function GuardianMainPage() {
   const [bookings, setBookings] = useState<Booking[]>([]);
   const [feeds, setFeeds] = useState<FeedPost[]>([]);
   const [albumMedia, setAlbumMedia] = useState<PetAlbumMedia[]>([]);
-  const [nearbyStores, setNearbyStores] = useState<Store[]>([]);
+  const [, /* nearbyStores */] = useState<Store[]>([]);
   const [weightLogs, setWeightLogs] = useState<PetWeightLog[]>([]);
   const [measurementLogs, setMeasurementLogs] = useState<PetHealthMeasurementLog[]>([]);
   const [, setWeightSummary] = useState<WeightSummary | null>(null);
@@ -1003,6 +1003,33 @@ export default function GuardianMainPage() {
                       </div>
                     )}
                     {serviceFeeds.length > 0 && <p className="mt-2 text-sm">{t('guardian.services.completed_feeds', '완료 피드')} {serviceFeeds.length}{t('common.count_suffix', '건')}</p>}
+                  </div>
+
+                  {/* Store Browse */}
+                  <div className="gm-section-header" style={{ marginTop: 16 }}>
+                    <span className="gm-section-title">{t('guardian.store.browse', 'Browse Stores')}</span>
+                    <button className="btn btn-secondary btn-sm" onClick={() => {
+                      api.stores.list({ lang, limit: 20 }).then(res => setNearbyStores(res.items || [])).catch(() => {});
+                    }}>{t('guardian.store.browse', 'Browse')}</button>
+                  </div>
+                  <div className="gm-section-body">
+                    {nearbyStores.length === 0 ? (
+                      <p className="text-muted" style={{ fontSize: 13 }}>{t('admin.store.list.empty', 'No stores')}</p>
+                    ) : (
+                      <div style={{ display: 'grid', gap: 8 }}>
+                        {nearbyStores.map(s => (
+                          <div key={s.id} className="guardian-pet-item" style={{ padding: 8 }}>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                              <strong style={{ fontSize: 14 }}>{s.display_name || s.name}</strong>
+                              <span className="text-muted" style={{ fontSize: 11 }}>
+                                {s.service_count || 0} {t('guardian.store.services', 'Services')}
+                              </span>
+                            </div>
+                            {s.address && <div className="text-muted" style={{ fontSize: 12 }}>{s.address}</div>}
+                          </div>
+                        ))}
+                      </div>
+                    )}
                   </div>
                 </div>
               )}
