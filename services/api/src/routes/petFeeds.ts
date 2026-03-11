@@ -1,5 +1,6 @@
-// Pet Feeds CRUD — per-pet feed registration
-// Guardian: /api/v1/pets/:petId/pet-feeds (delegated from pets/index.ts)
+// Pet Feeds / Supplements CRUD — per-pet feed & supplement registration
+// Guardian: /api/v1/pets/:petId/pet-feeds  (delegated from pets/index.ts)
+//           /api/v1/pets/:petId/pet-supplements
 // Pattern mirrors guardian-devices in devices.ts
 
 import type { Env, JwtPayload } from '../types';
@@ -16,10 +17,11 @@ export async function handlePetFeeds(request: Request, env: Env, url: URL): Prom
     if (authResult instanceof Response) return authResult;
     const user = authResult as JwtPayload;
 
-    const match = path.match(/^\/api\/v1\/pets\/([^/]+)\/pet-feeds(?:\/([^/]+))?$/);
+    const match = path.match(/^\/api\/v1\/pets\/([^/]+)\/(pet-feeds|pet-supplements)(?:\/([^/]+))?$/);
     if (!match) return err('Not Found', 404, 'not_found');
     const petId = match[1];
-    const feedId = match[2];
+    const category: 'feed' | 'supplement' = match[2] === 'pet-supplements' ? 'supplement' : 'feed';
+    const feedId = match[3];
 
     // Verify pet belongs to guardian
     const pet = await env.DB.prepare(
@@ -42,8 +44,8 @@ export async function handlePetFeeds(request: Request, env: Env, url: URL): Prom
 
       if (!hasFeedModels) {
         const rows = await env.DB.prepare(
-          `SELECT * FROM pet_feeds pf WHERE pf.pet_id = ? AND pf.status != 'deleted' ORDER BY ${orderBy}`
-        ).bind(petId).all();
+          `SELECT * FROM pet_feeds pf WHERE pf.pet_id = ? AND pf.status != 'deleted' AND COALESCE(pf.category_type, 'feed') = ? ORDER BY ${orderBy}`
+        ).bind(petId, category).all();
         return ok({ feeds: rows.results });
       }
 
@@ -63,7 +65,7 @@ export async function handlePetFeeds(request: Request, env: Env, url: URL): Prom
         }
 
         const rows = await env.DB.prepare(
-          `SELECT pf.*, fm.model_name, fm.model_code,
+          `SELECT pf.*, fm.model_name, fm.model_code, fm.description AS model_description,
                   mi.${codeCol} as type_key,
                   COALESCE(NULLIF(TRIM(tr_type.${langCol}), ''), NULLIF(TRIM(tr_type.en), ''), NULLIF(TRIM(tr_type.ko), ''), mi.${codeCol}) AS type_display_label,
                   mfr.name_ko as mfr_name_ko, mfr.name_en as mfr_name_en,
@@ -88,14 +90,15 @@ export async function handlePetFeeds(request: Request, env: Env, url: URL): Prom
            LEFT JOIN i18n_translations tr_model ON tr_model.key = fm.name_key
            ${nutritionJoin}
            WHERE pf.pet_id = ? AND pf.status != 'deleted'
+             AND COALESCE(pf.category_type, 'feed') = ?
            ORDER BY ${orderBy}`
-        ).bind(petId).all();
+        ).bind(petId, category).all();
         return ok({ feeds: rows.results });
       } catch {
         // Fallback: simple query without JOINs
         const rows = await env.DB.prepare(
-          `SELECT * FROM pet_feeds pf WHERE pf.pet_id = ? AND pf.status != 'deleted' ORDER BY ${orderBy}`
-        ).bind(petId).all();
+          `SELECT * FROM pet_feeds pf WHERE pf.pet_id = ? AND pf.status != 'deleted' AND COALESCE(pf.category_type, 'feed') = ? ORDER BY ${orderBy}`
+        ).bind(petId, category).all();
         return ok({ feeds: rows.results });
       }
     }
@@ -124,14 +127,14 @@ export async function handlePetFeeds(request: Request, env: Env, url: URL): Prom
       const isPrimary = body.is_primary === true;
       if (isPrimary) {
         await env.DB.prepare(
-          `UPDATE pet_feeds SET is_primary = false, updated_at = ? WHERE pet_id = ? AND is_primary = true`
-        ).bind(now(), petId).run();
+          `UPDATE pet_feeds SET is_primary = false, updated_at = ? WHERE pet_id = ? AND is_primary = true AND COALESCE(category_type, 'feed') = ?`
+        ).bind(now(), petId, category).run();
       }
 
       const id = newId();
       await env.DB.prepare(
-        `INSERT INTO pet_feeds (id, pet_id, feed_model_id, disease_item_id, nickname, daily_amount_g, daily_amount_unit, feeding_frequency, start_date, end_date, notes, is_primary, status, created_at, updated_at)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'active', ?, ?)`
+        `INSERT INTO pet_feeds (id, pet_id, feed_model_id, disease_item_id, nickname, daily_amount_g, daily_amount_unit, feeding_frequency, start_date, end_date, notes, is_primary, category_type, status, created_at, updated_at)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'active', ?, ?)`
       ).bind(
         id, petId, body.feed_model_id,
         body.disease_item_id ?? null,
@@ -143,6 +146,7 @@ export async function handlePetFeeds(request: Request, env: Env, url: URL): Prom
         body.end_date ?? null,
         body.notes ?? null,
         isPrimary,
+        category,
         now(), now(),
       ).run();
 
@@ -165,8 +169,8 @@ export async function handlePetFeeds(request: Request, env: Env, url: URL): Prom
 
       if (body.is_primary) {
         await env.DB.prepare(
-          `UPDATE pet_feeds SET is_primary = false, updated_at = ? WHERE pet_id = ? AND is_primary = true AND id != ?`
-        ).bind(now(), petId, feedId).run();
+          `UPDATE pet_feeds SET is_primary = false, updated_at = ? WHERE pet_id = ? AND is_primary = true AND id != ? AND COALESCE(category_type, 'feed') = ?`
+        ).bind(now(), petId, feedId, category).run();
       }
 
       const sets: string[] = ['updated_at = ?'];

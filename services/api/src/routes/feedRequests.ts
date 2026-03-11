@@ -219,9 +219,11 @@ export async function handleFeedRequests(request: Request, env: Env, url: URL): 
       omega3_pct?: number; omega6_pct?: number; carbohydrate_pct?: number;
       serving_size_g?: number; ingredients_text?: string;
       reference_url?: string; memo?: string;
+      category_type?: string;
     }>();
     const feedName = (body.feed_name || '').trim();
     if (!feedName) return err('feed_name required', 400, 'missing_field');
+    const categoryType = body.category_type === 'supplement' ? 'supplement' : 'feed';
     const id = newId();
     const ts = now();
     await env.DB.prepare(
@@ -230,8 +232,8 @@ export async function handleFeedRequests(request: Request, env: Env, url: URL): 
         calories_per_100g, protein_pct, fat_pct, fiber_pct, moisture_pct,
         ash_pct, calcium_pct, phosphorus_pct, omega3_pct, omega6_pct, carbohydrate_pct,
         serving_size_g, ingredients_text,
-        reference_url, memo, status, created_at, updated_at)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending', ?, ?)`
+        reference_url, memo, category_type, status, created_at, updated_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending', ?, ?)`
     ).bind(
       id, jwt.sub, body.pet_id || null, feedName,
       body.feed_type_item_id || null, body.manufacturer_name || null, body.brand_name || null,
@@ -241,6 +243,7 @@ export async function handleFeedRequests(request: Request, env: Env, url: URL): 
       body.omega3_pct ?? null, body.omega6_pct ?? null, body.carbohydrate_pct ?? null,
       body.serving_size_g ?? null, body.ingredients_text || null,
       body.reference_url || null, body.memo || null,
+      categoryType,
       ts, ts
     ).run();
     const row = await env.DB.prepare(`SELECT * FROM feed_registration_requests WHERE id = ?`).bind(id).first();
@@ -249,9 +252,16 @@ export async function handleFeedRequests(request: Request, env: Env, url: URL): 
 
   // GET /api/v1/feed-requests — list my requests
   if (path === '/api/v1/feed-requests' && method === 'GET') {
+    const categoryType = url.searchParams.get('category_type') || '';
+    let catFilter = '';
+    const binds: string[] = [jwt.sub];
+    if (categoryType) {
+      catFilter = ` AND COALESCE(category_type, 'feed') = ?`;
+      binds.push(categoryType);
+    }
     const rows = await env.DB.prepare(
-      `SELECT * FROM feed_registration_requests WHERE requester_user_id = ? ORDER BY created_at DESC`
-    ).bind(jwt.sub).all();
+      `SELECT * FROM feed_registration_requests WHERE requester_user_id = ?${catFilter} ORDER BY created_at DESC`
+    ).bind(...binds).all();
     return ok(rows.results);
   }
 

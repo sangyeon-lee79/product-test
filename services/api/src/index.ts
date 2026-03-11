@@ -199,6 +199,10 @@ async function dispatch(request: Request, env: Env, url: URL): Promise<Response>
 }
 
 async function dispatchAdmin(request: Request, env: Env, url: URL, path: string): Promise<Response> {
+  if (path.startsWith('/api/v1/admin/dashboard')) {
+    const { handleDashboard } = await import('./routes/dashboard');
+    return handleDashboard(request, env, url);
+  }
   if (path.startsWith('/api/v1/admin/devices')) {
     const { handleDevices } = await import('./routes/devices');
     return handleDevices(request, env, url);

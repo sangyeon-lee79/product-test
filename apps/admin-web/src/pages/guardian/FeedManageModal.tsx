@@ -1,4 +1,4 @@
-// 사료 관리 모달 — 등록된 사료 목록, 추가, 수정, 삭제 + 등록 요청
+// 사료/영양제 관리 모달 — 탭 전환, 등록/수정/삭제 + 등록 요청
 import { useEffect, useMemo, useState } from 'react';
 import { api, type FeedBrand, type FeedManufacturer, type FeedModel, type FeedNutrition, type FeedRegistrationRequest, type FeedType, type Pet, type PetFeed } from '../../lib/api';
 import type { Lang } from '../../lib/i18n';
@@ -14,6 +14,8 @@ interface Props {
   onChanged: (feeds: PetFeed[]) => void;
 }
 
+type Tab = 'feed' | 'supplement';
+
 const EMPTY_FORM = {
   feed_type_item_id: '',
   manufacturer_id: '',
@@ -23,18 +25,45 @@ const EMPTY_FORM = {
   is_primary: false,
 };
 
+const EMPTY_REQUEST_FORM = {
+  feed_name: '', manufacturer_name: '', manufacturer_id: '', brand_name: '', brand_id: '',
+  feed_type_item_id: '', feed_type_custom: false, manufacturer_custom: false, brand_custom: false,
+  calories_per_100g: '', protein_pct: '', fat_pct: '', fiber_pct: '', moisture_pct: '',
+  ash_pct: '', calcium_pct: '', phosphorus_pct: '', omega3_pct: '', omega6_pct: '',
+  carbohydrate_pct: '', serving_size_g: '', ingredients_text: '',
+  reference_url: '', memo: '',
+};
+
+function parseSupplementMeta(f: PetFeed): { ingredients?: string; dosage_unit?: string; calories_per_serving?: number; species_key?: string; prescribed?: boolean } {
+  try {
+    const desc = (f as unknown as Record<string, unknown>).model_description;
+    if (desc && typeof desc === 'string') return JSON.parse(desc);
+  } catch { /* ignore */ }
+  return {};
+}
+
 export default function FeedManageModal({
   open, selectedPet,
   lang, t, setError, onClose, onChanged,
 }: Props) {
+  const [activeTab, setActiveTab] = useState<Tab>('feed');
+
+  // --- Feed state ---
   const [feeds, setFeeds] = useState<PetFeed[]>([]);
-  const [loading, setLoading] = useState(false);
+  const [feedLoading, setFeedLoading] = useState(false);
+
+  // --- Supplement state ---
+  const [supplements, setSupplements] = useState<PetFeed[]>([]);
+  const [suppLoading, setSuppLoading] = useState(false);
+
+  // --- Shared form state ---
   const [showForm, setShowForm] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [form, setForm] = useState(EMPTY_FORM);
 
   // cascade state
   const [feedTypes, setFeedTypes] = useState<FeedType[]>([]);
+  const [suppTypes, setSuppTypes] = useState<FeedType[]>([]);
   const [manufacturers, setManufacturers] = useState<FeedManufacturer[]>([]);
   const [brands, setBrands] = useState<FeedBrand[]>([]);
   const [models, setModels] = useState<FeedModel[]>([]);
@@ -42,16 +71,10 @@ export default function FeedManageModal({
 
   // Registration request state
   const [showRequestForm, setShowRequestForm] = useState(false);
-  const [requestForm, setRequestForm] = useState({
-    feed_name: '', manufacturer_name: '', manufacturer_id: '', brand_name: '', brand_id: '',
-    feed_type_item_id: '', feed_type_custom: false, manufacturer_custom: false, brand_custom: false,
-    calories_per_100g: '', protein_pct: '', fat_pct: '', fiber_pct: '', moisture_pct: '',
-    ash_pct: '', calcium_pct: '', phosphorus_pct: '', omega3_pct: '', omega6_pct: '',
-    carbohydrate_pct: '', serving_size_g: '', ingredients_text: '',
-    reference_url: '', memo: '',
-  });
+  const [requestForm, setRequestForm] = useState(EMPTY_REQUEST_FORM);
   const [requestSaving, setRequestSaving] = useState(false);
   const [myRequests, setMyRequests] = useState<FeedRegistrationRequest[]>([]);
+  const [suppRequests, setSuppRequests] = useState<FeedRegistrationRequest[]>([]);
   const [showMyRequests, setShowMyRequests] = useState(false);
   const [showNutritionFields, setShowNutritionFields] = useState(false);
   const [nutritionStep, setNutritionStep] = useState(0);
@@ -60,6 +83,43 @@ export default function FeedManageModal({
   const [allBrands, setAllBrands] = useState<FeedBrand[]>([]);
 
   const petId = selectedPet?.id;
+  const isFeed = activeTab === 'feed';
+  const items = isFeed ? feeds : supplements;
+  const loading = isFeed ? feedLoading : suppLoading;
+  const currentRequests = isFeed ? myRequests : suppRequests;
+  const currentTypes = isFeed ? feedTypes : suppTypes;
+
+  // --- Catalog API helpers ---
+  const catalogApi = isFeed ? api.feedCatalog.public : api.supplementCatalog.public;
+  const itemApi = isFeed ? api.pets.petFeeds : api.pets.petSupplements;
+
+  // --- Load data ---
+  async function loadFeeds() {
+    if (!petId) return;
+    setFeedLoading(true);
+    try {
+      const res = await api.pets.petFeeds.list(petId);
+      setFeeds(res.feeds);
+      onChanged(res.feeds);
+    } catch (e) {
+      setError(uiErrorMessage(e, t('common.err.network', 'Failed to load data.')));
+    } finally {
+      setFeedLoading(false);
+    }
+  }
+
+  async function loadSupplements() {
+    if (!petId) return;
+    setSuppLoading(true);
+    try {
+      const res = await api.pets.petSupplements.list(petId);
+      setSupplements(res.feeds);
+    } catch (e) {
+      setError(uiErrorMessage(e, t('common.err.network', 'Failed to load data.')));
+    } finally {
+      setSuppLoading(false);
+    }
+  }
 
   async function loadMyRequests() {
     try {
@@ -68,133 +128,68 @@ export default function FeedManageModal({
     } catch { /* ignore */ }
   }
 
-  const EMPTY_REQUEST_FORM = {
-    feed_name: '', manufacturer_name: '', manufacturer_id: '', brand_name: '', brand_id: '',
-    feed_type_item_id: '', feed_type_custom: false, manufacturer_custom: false, brand_custom: false,
-    calories_per_100g: '', protein_pct: '', fat_pct: '', fiber_pct: '', moisture_pct: '',
-    ash_pct: '', calcium_pct: '', phosphorus_pct: '', omega3_pct: '', omega6_pct: '',
-    carbohydrate_pct: '', serving_size_g: '', ingredients_text: '',
-    reference_url: '', memo: '',
-  };
+  async function loadSuppRequests() {
+    try {
+      const rows = await api.supplementRequests.list();
+      setSuppRequests(rows);
+    } catch { /* ignore */ }
+  }
 
   async function loadRequestDropdowns() {
+    const pub = isFeed ? api.feedCatalog.public : api.supplementCatalog.public;
     try {
-      const mfrs = await api.feedCatalog.public.manufacturers();
+      const mfrs = await pub.manufacturers();
       setAllManufacturers(mfrs);
     } catch { setAllManufacturers([]); }
     try {
-      const brs = await api.feedCatalog.public.brands();
+      const brs = await pub.brands();
       setAllBrands(brs);
     } catch { setAllBrands([]); }
   }
 
-  const numOrUndef = (v: string) => v ? Number(v) : undefined;
-
-  async function handleSubmitRequest() {
-    const feedName = requestForm.feed_name.trim();
-    if (!feedName) { setError(t('guardian.feed.request_name', 'Feed Name') + ' required'); return; }
-    // Resolve manufacturer name: if dropdown selected, use its label
-    let mfrName = requestForm.manufacturer_name || undefined;
-    if (requestForm.manufacturer_id && !requestForm.manufacturer_custom) {
-      const m = allManufacturers.find((x) => x.id === requestForm.manufacturer_id);
-      if (m) mfrName = m.name_ko || m.name_en || m.key;
-    }
-    let brandName = requestForm.brand_name || undefined;
-    if (requestForm.brand_id && !requestForm.brand_custom) {
-      const b = allBrands.find((x) => x.id === requestForm.brand_id);
-      if (b) brandName = b.name_ko || b.name_en || b.id;
-    }
-    setRequestSaving(true);
-    try {
-      await api.feedRequests.create({
-        feed_name: feedName,
-        pet_id: petId || undefined,
-        feed_type_item_id: requestForm.feed_type_item_id || undefined,
-        manufacturer_name: mfrName,
-        brand_name: brandName,
-        calories_per_100g: numOrUndef(requestForm.calories_per_100g),
-        protein_pct: numOrUndef(requestForm.protein_pct),
-        fat_pct: numOrUndef(requestForm.fat_pct),
-        fiber_pct: numOrUndef(requestForm.fiber_pct),
-        moisture_pct: numOrUndef(requestForm.moisture_pct),
-        ash_pct: numOrUndef(requestForm.ash_pct),
-        calcium_pct: numOrUndef(requestForm.calcium_pct),
-        phosphorus_pct: numOrUndef(requestForm.phosphorus_pct),
-        omega3_pct: numOrUndef(requestForm.omega3_pct),
-        omega6_pct: numOrUndef(requestForm.omega6_pct),
-        carbohydrate_pct: numOrUndef(requestForm.carbohydrate_pct),
-        serving_size_g: numOrUndef(requestForm.serving_size_g),
-        ingredients_text: requestForm.ingredients_text || undefined,
-        reference_url: requestForm.reference_url || undefined,
-        memo: requestForm.memo || undefined,
-      });
-      setShowRequestForm(false);
-      setRequestForm(EMPTY_REQUEST_FORM);
-      setShowNutritionFields(false);
-      alert(t('guardian.feed.request_submitted', 'Registration request submitted.'));
-      void loadMyRequests();
-    } catch (e) {
-      setError(uiErrorMessage(e, t('common.err.save', 'Failed to save.')));
-    } finally {
-      setRequestSaving(false);
-    }
-  }
-
-  async function loadFeeds() {
-    if (!petId) return;
-    setLoading(true);
-    try {
-      const res = await api.pets.petFeeds.list(petId);
-      setFeeds(res.feeds);
-      onChanged(res.feeds);
-    } catch (e) {
-      setError(uiErrorMessage(e, t('common.err.network', 'Failed to load data.')));
-    } finally {
-      setLoading(false);
-    }
-  }
-
   useEffect(() => {
-    if (open && petId) void loadFeeds();
-    if (open) void loadMyRequests();
+    if (open && petId) {
+      void loadFeeds();
+      void loadSupplements();
+    }
+    if (open) {
+      void loadMyRequests();
+      void loadSuppRequests();
+    }
   }, [open, petId]);
 
   // Load feed types
   useEffect(() => {
     if (!open) return;
     const run = async () => {
-      try {
-        const types = await api.feedCatalog.public.types(lang);
-        setFeedTypes(types);
-      } catch { setFeedTypes([]); }
+      try { setFeedTypes(await api.feedCatalog.public.types(lang)); } catch { setFeedTypes([]); }
+      try { setSuppTypes(await api.supplementCatalog.public.types(lang)); } catch { setSuppTypes([]); }
     };
     void run();
   }, [open, lang]);
 
-  // Load manufacturers when feed type changes
+  // Load manufacturers when type changes
   useEffect(() => {
     if (!open || !showForm) return;
     if (!form.feed_type_item_id) { setManufacturers([]); return; }
     const run = async () => {
       try {
-        const rows = await api.feedCatalog.public.manufacturers(form.feed_type_item_id || undefined);
-        setManufacturers(rows);
+        setManufacturers(await catalogApi.manufacturers(form.feed_type_item_id || undefined));
       } catch { setManufacturers([]); }
     };
     void run();
-  }, [open, showForm, form.feed_type_item_id]);
+  }, [open, showForm, form.feed_type_item_id, activeTab]);
 
   // Load brands when manufacturer changes
   useEffect(() => {
     if (!open || !showForm || !form.manufacturer_id) { setBrands([]); return; }
     const run = async () => {
       try {
-        const rows = await api.feedCatalog.public.brands(form.manufacturer_id, form.feed_type_item_id || undefined);
-        setBrands(rows);
+        setBrands(await catalogApi.brands(form.manufacturer_id, form.feed_type_item_id || undefined));
       } catch { setBrands([]); }
     };
     void run();
-  }, [open, showForm, form.manufacturer_id]);
+  }, [open, showForm, form.manufacturer_id, activeTab]);
 
   // Load models when filter changes
   useEffect(() => {
@@ -202,49 +197,38 @@ export default function FeedManageModal({
     if (!form.feed_type_item_id && !form.manufacturer_id && !form.brand_id) { setModels([]); return; }
     const run = async () => {
       try {
-        const rows = await api.feedCatalog.public.models({
+        setModels(await catalogApi.models({
           feed_type_id: form.feed_type_item_id || undefined,
           manufacturer_id: form.manufacturer_id || undefined,
           brand_id: form.brand_id || undefined,
-        });
-        setModels(rows);
+        }));
       } catch { setModels([]); }
     };
     void run();
-  }, [open, showForm, form.feed_type_item_id, form.manufacturer_id, form.brand_id]);
+  }, [open, showForm, form.feed_type_item_id, form.manufacturer_id, form.brand_id, activeTab]);
 
   // Load nutrition when model changes
   useEffect(() => {
     if (!form.model_id) { setNutrition(null); return; }
     const run = async () => {
       try {
-        const data = await api.feedCatalog.public.nutrition(form.model_id);
-        setNutrition(data);
+        setNutrition(await catalogApi.nutrition(form.model_id));
       } catch { setNutrition(null); }
     };
     void run();
-  }, [form.model_id]);
+  }, [form.model_id, activeTab]);
 
-  // Feed type options: only types with model_count > 0 (for catalog select)
-  const feedTypeOptions = useMemo(
-    () => feedTypes
+  // --- Options ---
+  const typeOptions = useMemo(
+    () => currentTypes
       .filter((ft) => (ft.model_count ?? 0) > 0)
-      .map((ft) => ({
-        id: ft.id,
-        key: ft.key,
-        label: `${(ft.display_label || ft.key).trim()} (${ft.model_count})`,
-      })),
-    [feedTypes],
+      .map((ft) => ({ id: ft.id, key: ft.key, label: `${(ft.display_label || ft.key).trim()} (${ft.model_count})` })),
+    [currentTypes],
   );
 
-  // All feed types for registration request (including zero-model types)
-  const allFeedTypeOptions = useMemo(
-    () => feedTypes.map((ft) => ({
-      id: ft.id,
-      key: ft.key,
-      label: (ft.display_label || ft.key).trim(),
-    })),
-    [feedTypes],
+  const allTypeOptions = useMemo(
+    () => currentTypes.map((ft) => ({ id: ft.id, key: ft.key, label: (ft.display_label || ft.key).trim() })),
+    [currentTypes],
   );
 
   const allMfrOptions = useMemo(
@@ -266,28 +250,20 @@ export default function FeedManageModal({
   const mfrOptions = useMemo(
     () => manufacturers
       .filter((r) => r.status === 'active' && (r.model_count ?? 0) > 0)
-      .map((r) => {
-        const baseLabel = (r.display_label || '').trim() || (lang === 'ko' ? (r.name_ko || r.name_en || r.key) : (r.name_en || r.name_ko || r.key));
-        return {
-          id: r.id,
-          key: r.key,
-          label: `${baseLabel} (${r.model_count ?? 0})`,
-        };
-      }),
+      .map((r) => ({
+        id: r.id, key: r.key,
+        label: `${((r.display_label || '').trim() || (lang === 'ko' ? (r.name_ko || r.name_en || r.key) : (r.name_en || r.name_ko || r.key)))} (${r.model_count ?? 0})`,
+      })),
     [manufacturers, lang],
   );
 
   const brandOptions = useMemo(
     () => brands
       .filter((r) => r.status === 'active' && (r.model_count ?? 0) > 0)
-      .map((r) => {
-        const baseLabel = (r.display_label || '').trim() || (lang === 'ko' ? (r.name_ko || r.name_en || r.id) : (r.name_en || r.name_ko || r.id));
-        return {
-          id: r.id,
-          key: r.name_en || r.name_ko || r.id,
-          label: `${baseLabel} (${r.model_count ?? 0})`,
-        };
-      }),
+      .map((r) => ({
+        id: r.id, key: r.name_en || r.name_ko || r.id,
+        label: `${((r.display_label || '').trim() || (lang === 'ko' ? (r.name_ko || r.name_en || r.id) : (r.name_en || r.name_ko || r.id)))} (${r.model_count ?? 0})`,
+      })),
     [brands, lang],
   );
 
@@ -299,32 +275,37 @@ export default function FeedManageModal({
     [models],
   );
 
+  // --- Helpers ---
   function renderSelect(
-    label: string,
-    value: string,
-    options: Array<{ id: string; key: string; label: string }>,
-    onChange: (v: string) => void,
-    required = false,
-    name?: string,
-    placeholder?: string,
-    disabled = false,
+    label: string, value: string, options: Array<{ id: string; key: string; label: string }>,
+    onChange: (v: string) => void, required = false, name?: string, placeholder?: string, disabled = false,
   ) {
     return (
       <div className="form-group">
         <label className="form-label" htmlFor={name}>{label}{required ? ' *' : ''}</label>
-        <select
-          id={name}
-          name={name}
-          className="form-select"
-          value={value}
-          onChange={(e) => onChange(e.target.value)}
-          disabled={disabled}
-        >
+        <select id={name} name={name} className="form-select" value={value}
+          onChange={(e) => onChange(e.target.value)} disabled={disabled}>
           <option value="">{placeholder || t('common.select', 'Select')}</option>
           {options.map((o) => <option key={o.id} value={o.id}>{o.label}</option>)}
         </select>
       </div>
     );
+  }
+
+  function resetFormState() {
+    setShowForm(false);
+    setShowRequestForm(false);
+    setEditingId(null);
+    setForm(EMPTY_FORM);
+    setRequestForm(EMPTY_REQUEST_FORM);
+    setShowNutritionFields(false);
+    setNutrition(null);
+    setShowMyRequests(false);
+  }
+
+  function switchTab(tab: Tab) {
+    resetFormState();
+    setActiveTab(tab);
   }
 
   function openAddForm() {
@@ -335,38 +316,27 @@ export default function FeedManageModal({
 
   function openEditForm(f: PetFeed) {
     setEditingId(f.id);
-    setForm({
-      feed_type_item_id: '',
-      manufacturer_id: '',
-      brand_id: '',
-      model_id: f.feed_model_id,
-      nickname: f.nickname || '',
-      is_primary: !!f.is_primary,
-    });
+    setForm({ feed_type_item_id: '', manufacturer_id: '', brand_id: '', model_id: f.feed_model_id, nickname: f.nickname || '', is_primary: !!f.is_primary });
     setShowForm(true);
   }
 
   async function handleSave() {
     if (!petId) return;
-    if (!editingId && !form.model_id) { setError(t('guardian.feed.model_required', 'Please select a feed product.')); return; }
+    const modelRequiredMsg = isFeed
+      ? t('guardian.feed.model_required', 'Please select a feed product.')
+      : t('guardian.supplement.model_required', 'Please select a supplement product.');
+    if (!editingId && !form.model_id) { setError(modelRequiredMsg); return; }
     try {
       if (editingId) {
-        await api.pets.petFeeds.update(petId, editingId, {
-          nickname: form.nickname,
-          is_primary: form.is_primary,
-        });
+        await itemApi.update(petId, editingId, { nickname: form.nickname, is_primary: form.is_primary });
       } else {
-        await api.pets.petFeeds.create(petId, {
-          feed_model_id: form.model_id,
-          nickname: form.nickname || undefined,
-          is_primary: form.is_primary,
-        });
+        await itemApi.create(petId, { feed_model_id: form.model_id, nickname: form.nickname || undefined, is_primary: form.is_primary });
       }
       setShowForm(false);
       setEditingId(null);
       setForm(EMPTY_FORM);
       setNutrition(null);
-      await loadFeeds();
+      if (isFeed) await loadFeeds(); else await loadSupplements();
     } catch (e) {
       setError(uiErrorMessage(e, t('common.err.save', 'Failed to save.')));
     }
@@ -374,10 +344,11 @@ export default function FeedManageModal({
 
   async function handleDelete(id: string) {
     if (!petId) return;
-    if (!confirm(t('guardian.feed.delete_confirm', 'Delete this feed?'))) return;
+    const msg = isFeed ? t('guardian.feed.delete_confirm', 'Delete this feed?') : t('guardian.supplement.delete_confirm', 'Delete this supplement?');
+    if (!confirm(msg)) return;
     try {
-      await api.pets.petFeeds.remove(petId, id);
-      await loadFeeds();
+      await itemApi.remove(petId, id);
+      if (isFeed) await loadFeeds(); else await loadSupplements();
     } catch (e) {
       setError(uiErrorMessage(e, t('common.err.save', 'Failed to delete.')));
     }
@@ -386,18 +357,82 @@ export default function FeedManageModal({
   async function handleSetPrimary(id: string) {
     if (!petId) return;
     try {
-      await api.pets.petFeeds.update(petId, id, { is_primary: true });
-      await loadFeeds();
+      await itemApi.update(petId, id, { is_primary: true });
+      if (isFeed) await loadFeeds(); else await loadSupplements();
     } catch (e) {
       setError(uiErrorMessage(e, t('common.err.save', 'Failed to set primary.')));
     }
   }
 
-  function feedLabel(f: PetFeed): string {
+  const numOrUndef = (v: string) => v ? Number(v) : undefined;
+
+  async function handleSubmitRequest() {
+    const feedName = requestForm.feed_name.trim();
+    const nameLabel = isFeed ? t('guardian.feed.request_name', 'Feed Name') : t('guardian.supplement.request_name', 'Supplement Name');
+    if (!feedName) { setError(nameLabel + ' required'); return; }
+    let mfrName = requestForm.manufacturer_name || undefined;
+    if (requestForm.manufacturer_id && !requestForm.manufacturer_custom) {
+      const m = allMfrOptions.find((x) => x.id === requestForm.manufacturer_id);
+      if (m) mfrName = m.label;
+    }
+    let brandName = requestForm.brand_name || undefined;
+    if (requestForm.brand_id && !requestForm.brand_custom) {
+      const b = allBrandOptions.find((x) => x.id === requestForm.brand_id);
+      if (b) brandName = b.label;
+    }
+    setRequestSaving(true);
+    try {
+      if (isFeed) {
+        await api.feedRequests.create({
+          feed_name: feedName,
+          pet_id: petId || undefined,
+          feed_type_item_id: requestForm.feed_type_item_id || undefined,
+          manufacturer_name: mfrName,
+          brand_name: brandName,
+          calories_per_100g: numOrUndef(requestForm.calories_per_100g),
+          protein_pct: numOrUndef(requestForm.protein_pct),
+          fat_pct: numOrUndef(requestForm.fat_pct),
+          fiber_pct: numOrUndef(requestForm.fiber_pct),
+          moisture_pct: numOrUndef(requestForm.moisture_pct),
+          ash_pct: numOrUndef(requestForm.ash_pct),
+          calcium_pct: numOrUndef(requestForm.calcium_pct),
+          phosphorus_pct: numOrUndef(requestForm.phosphorus_pct),
+          omega3_pct: numOrUndef(requestForm.omega3_pct),
+          omega6_pct: numOrUndef(requestForm.omega6_pct),
+          carbohydrate_pct: numOrUndef(requestForm.carbohydrate_pct),
+          serving_size_g: numOrUndef(requestForm.serving_size_g),
+          ingredients_text: requestForm.ingredients_text || undefined,
+          reference_url: requestForm.reference_url || undefined,
+          memo: requestForm.memo || undefined,
+        });
+      } else {
+        await api.supplementRequests.create({
+          feed_name: feedName,
+          pet_id: petId || undefined,
+          feed_type_item_id: requestForm.feed_type_item_id || undefined,
+          manufacturer_name: mfrName,
+          brand_name: brandName,
+          reference_url: requestForm.reference_url || undefined,
+          memo: requestForm.memo || undefined,
+        });
+      }
+      setShowRequestForm(false);
+      setRequestForm(EMPTY_REQUEST_FORM);
+      setShowNutritionFields(false);
+      alert(t('guardian.feed.request_submitted', 'Registration request submitted.'));
+      if (isFeed) void loadMyRequests(); else void loadSuppRequests();
+    } catch (e) {
+      setError(uiErrorMessage(e, t('common.err.save', 'Failed to save.')));
+    } finally {
+      setRequestSaving(false);
+    }
+  }
+
+  function itemLabel(f: PetFeed): string {
     return f.model_display_label || f.model_name || f.model_code || f.feed_model_id;
   }
 
-  function feedSubLabel(f: PetFeed): string {
+  function itemSubLabel(f: PetFeed): string {
     const parts: string[] = [];
     const typeName = f.type_display_label || '';
     if (typeName) parts.push(typeName);
@@ -413,9 +448,40 @@ export default function FeedManageModal({
   const brandSelectDisabled = !form.manufacturer_id || !hasBrandOptions;
   const brandPlaceholder = !form.manufacturer_id
     ? t('admin.feed.select_manufacturer', '제조사를 먼저 선택하세요.')
-    : hasBrandOptions
-      ? t('common.select', 'Select')
-      : t('guardian.feed.no_brand_data', '브랜드 없음');
+    : hasBrandOptions ? t('common.select', 'Select') : t('guardian.feed.no_brand_data', '브랜드 없음');
+
+  // --- Labels per tab ---
+  const tabLabels = isFeed
+    ? {
+        emptyIcon: '🥣',
+        emptyTitle: t('guardian.feed.empty_title', '아직 등록된 사료가 없어요.'),
+        emptyDesc: t('guardian.feed.empty_desc', '반려동물의 사료를 추가해보세요!'),
+        addBtn: t('guardian.feed.add', '사료 추가'),
+        editBtn: t('guardian.feed.edit', '사료 수정'),
+        primaryLabel: t('guardian.feed.is_primary', '기본 사료'),
+        setPrimary: t('guardian.feed.set_primary', '기본 설정'),
+        nicknameLabel: t('guardian.feed.nickname', '별명'),
+        nicknamePlaceholder: t('guardian.feed.nickname_placeholder', '예: 방울이 처방식'),
+        typeLabel: t('admin.feed.type', '사료 유형'),
+        requestBtn: t('guardian.feed.request_btn', 'Request Feed Registration'),
+        requestDesc: t('guardian.feed.request_desc', "Can't find your feed? Request registration."),
+        requestNameLabel: t('guardian.feed.request_name', 'Feed Name'),
+      }
+    : {
+        emptyIcon: '💊',
+        emptyTitle: t('guardian.supplement.empty_title', '아직 등록된 영양제가 없어요.'),
+        emptyDesc: t('guardian.supplement.empty_desc', '반려동물의 영양제를 추가해보세요!'),
+        addBtn: t('guardian.supplement.add', '영양제 추가'),
+        editBtn: t('guardian.supplement.edit', '영양제 수정'),
+        primaryLabel: t('guardian.supplement.is_primary', '기본 영양제'),
+        setPrimary: t('guardian.supplement.set_primary', '기본 설정'),
+        nicknameLabel: t('guardian.supplement.nickname', '별명'),
+        nicknamePlaceholder: t('guardian.supplement.nickname_placeholder', '예: 방울이 관절 영양제'),
+        typeLabel: t('guardian.supplement.type', '영양제 유형'),
+        requestBtn: t('guardian.supplement.request_btn', 'Request Supplement Registration'),
+        requestDesc: t('guardian.supplement.request_desc', "Can't find your supplement? Request registration."),
+        requestNameLabel: t('guardian.supplement.request_name', 'Supplement Name'),
+      };
 
   if (!open) return null;
 
@@ -423,85 +489,137 @@ export default function FeedManageModal({
     <div className="modal-overlay">
       <div className="modal" style={{ maxWidth: 600 }}>
         <div className="modal-header">
-          <h3 className="modal-title">{t('guardian.feed.manage_title', '사료 관리')}</h3>
+          <h3 className="modal-title">{t('guardian.supplement.manage_title', '사료 / 영양제 관리')}</h3>
           <button className="modal-close" onClick={onClose}>&times;</button>
         </div>
         <div className="modal-body">
+          {/* ── Tab Bar ──────────────────────────────────────────── */}
+          <div style={{ display: 'flex', gap: 4, marginBottom: 16, background: 'var(--bg)', borderRadius: 8, padding: 3 }}>
+            {([
+              { key: 'feed' as Tab, icon: '🥣', label: t('guardian.modal.tab_feed', '사료') },
+              { key: 'supplement' as Tab, icon: '💊', label: t('guardian.modal.tab_supplement', '영양제') },
+            ]).map((tab) => (
+              <button
+                key={tab.key}
+                onClick={() => switchTab(tab.key)}
+                style={{
+                  flex: 1, padding: '8px 0', border: 'none', borderRadius: 6, cursor: 'pointer',
+                  fontSize: 14, fontWeight: activeTab === tab.key ? 600 : 400,
+                  background: activeTab === tab.key ? 'var(--primary)' : 'transparent',
+                  color: activeTab === tab.key ? '#fff' : 'var(--text-secondary)',
+                  transition: 'all 0.2s',
+                }}
+              >
+                {tab.icon} {tab.label}
+              </button>
+            ))}
+          </div>
+
           {loading && <p className="text-sm text-muted">{t('common.loading', 'Loading...')}</p>}
 
-          {!loading && feeds.length === 0 && !showForm && !showRequestForm && (
-            <p className="text-sm text-muted" style={{ textAlign: 'center', padding: '24px 0' }}>
-              {t('guardian.feed.no_feeds', '등록된 사료가 없습니다')}
-            </p>
+          {/* ── Empty State ──────────────────────────────────────── */}
+          {!loading && items.length === 0 && !showForm && !showRequestForm && (
+            <div style={{ textAlign: 'center', padding: '40px 20px' }}>
+              <div style={{ fontSize: 48, marginBottom: 12 }}>{tabLabels.emptyIcon}</div>
+              <div style={{ fontSize: 16, fontWeight: 600, color: 'var(--text)', marginBottom: 6 }}>
+                {tabLabels.emptyTitle}
+              </div>
+              <div style={{ fontSize: 14, color: 'var(--text-secondary)', marginBottom: 20 }}>
+                {tabLabels.emptyDesc}
+              </div>
+              <button
+                className="btn btn-primary"
+                style={{ fontSize: 15, padding: '10px 28px', borderRadius: 8 }}
+                onClick={openAddForm}
+              >
+                + {tabLabels.addBtn}
+              </button>
+            </div>
           )}
 
-          {!showForm && !showRequestForm && feeds.map((f) => (
-            <div key={f.id} style={{
-              border: '1px solid var(--border)', borderRadius: 8, padding: '12px 14px', marginBottom: 8,
-              background: f.is_primary ? 'var(--primary-light, #fffbeb)' : 'var(--surface)',
-            }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-                <div>
-                  <div style={{ fontWeight: 600, fontSize: 15 }}>
-                    {feedLabel(f)}
-                    {f.nickname && <span style={{ fontWeight: 400, color: 'var(--text-secondary)', marginLeft: 8 }}>({f.nickname})</span>}
-                  </div>
-                  <div style={{ fontSize: 13, color: 'var(--text-secondary)', marginTop: 2 }}>{feedSubLabel(f)}</div>
-                  {f.calories_per_100g != null && (
-                    <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 2 }}>
-                      {f.calories_per_100g} kcal/100g
-                      {f.protein_pct != null && ` · P${f.protein_pct}%`}
-                      {f.fat_pct != null && ` · F${f.fat_pct}%`}
+          {/* ── Item List ────────────────────────────────────────── */}
+          {!showForm && !showRequestForm && items.map((f) => {
+            const meta = !isFeed ? parseSupplementMeta(f) : null;
+            return (
+              <div key={f.id} style={{
+                border: '1px solid var(--border)', borderRadius: 8, padding: '12px 14px', marginBottom: 8,
+                background: f.is_primary ? 'var(--primary-light, #fffbeb)' : 'var(--surface)',
+              }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                  <div style={{ minWidth: 0, flex: 1 }}>
+                    <div style={{ fontWeight: 600, fontSize: 15 }}>
+                      {itemLabel(f)}
+                      {f.nickname && <span style={{ fontWeight: 400, color: 'var(--text-secondary)', marginLeft: 8 }}>({f.nickname})</span>}
                     </div>
-                  )}
-                  {!!f.is_primary && (
-                    <span style={{ display: 'inline-block', marginTop: 4, fontSize: 11, background: 'var(--primary)', color: '#fff', borderRadius: 4, padding: '1px 6px' }}>
-                      {t('guardian.feed.is_primary', '기본 사료')}
-                    </span>
-                  )}
-                </div>
-                <div style={{ display: 'flex', gap: 4, flexShrink: 0 }}>
-                  {!f.is_primary && (
-                    <button className="btn btn-sm" style={{ fontSize: 12 }} onClick={() => void handleSetPrimary(f.id)}>
-                      {t('guardian.feed.set_primary', '기본 설정')}
-                    </button>
-                  )}
-                  <button className="btn btn-sm" style={{ fontSize: 12 }} title={t('common.edit', 'Edit')} aria-label={t('common.edit', 'Edit')} onClick={() => openEditForm(f)}>✏️</button>
-                  <button className="btn btn-sm btn-danger" style={{ fontSize: 12 }} title={t('common.delete', 'Delete')} aria-label={t('common.delete', 'Delete')} onClick={() => void handleDelete(f.id)}>🗑️</button>
+                    <div style={{ fontSize: 13, color: 'var(--text-secondary)', marginTop: 2 }}>{itemSubLabel(f)}</div>
+                    {/* Feed: nutrition summary */}
+                    {isFeed && f.calories_per_100g != null && (
+                      <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 2 }}>
+                        {f.calories_per_100g} kcal/100g
+                        {f.protein_pct != null && ` · P${f.protein_pct}%`}
+                        {f.fat_pct != null && ` · F${f.fat_pct}%`}
+                      </div>
+                    )}
+                    {/* Supplement: meta info */}
+                    {!isFeed && meta && (
+                      <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 2 }}>
+                        {meta.dosage_unit && <span>{meta.dosage_unit}</span>}
+                        {meta.species_key && <span> · {meta.species_key}</span>}
+                        {meta.ingredients && <span> · {meta.ingredients}</span>}
+                      </div>
+                    )}
+                    <div style={{ display: 'flex', gap: 4, marginTop: 4, flexWrap: 'wrap' }}>
+                      {!!f.is_primary && (
+                        <span style={{ display: 'inline-block', fontSize: 11, background: 'var(--primary)', color: '#fff', borderRadius: 4, padding: '1px 6px' }}>
+                          {tabLabels.primaryLabel}
+                        </span>
+                      )}
+                      {!isFeed && meta?.prescribed && (
+                        <span style={{ display: 'inline-block', fontSize: 11, background: '#e53935', color: '#fff', borderRadius: 4, padding: '1px 6px' }}>
+                          {t('guardian.supplement.prescribed_badge', '처방')}
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                  <div style={{ display: 'flex', gap: 4, flexShrink: 0 }}>
+                    {!f.is_primary && (
+                      <button className="btn btn-sm" style={{ fontSize: 12 }} onClick={() => void handleSetPrimary(f.id)}>
+                        {tabLabels.setPrimary}
+                      </button>
+                    )}
+                    <button className="btn btn-sm" style={{ fontSize: 12 }} title={t('common.edit', 'Edit')} aria-label={t('common.edit', 'Edit')} onClick={() => openEditForm(f)}>✏️</button>
+                    <button className="btn btn-sm btn-danger" style={{ fontSize: 12 }} title={t('common.delete', 'Delete')} aria-label={t('common.delete', 'Delete')} onClick={() => void handleDelete(f.id)}>🗑️</button>
+                  </div>
                 </div>
               </div>
-            </div>
-          ))}
+            );
+          })}
 
+          {/* ── Add/Edit Form ────────────────────────────────────── */}
           {showForm && (
             <div style={{ border: '1px solid var(--border)', borderRadius: 8, padding: 14, background: 'var(--surface)' }}>
               <h4 style={{ margin: '0 0 12px', fontSize: 15 }}>
-                {editingId ? t('guardian.feed.edit', '사료 수정') : t('guardian.feed.add', '사료 추가')}
+                {editingId ? tabLabels.editBtn : tabLabels.addBtn}
               </h4>
               {!editingId && (
                 <>
-                  {renderSelect(t('admin.feed.type', '사료 유형'), form.feed_type_item_id, feedTypeOptions, (v) => setForm((p) => ({
+                  {renderSelect(tabLabels.typeLabel, form.feed_type_item_id, typeOptions, (v) => setForm((p) => ({
                     ...p, feed_type_item_id: v, manufacturer_id: '', brand_id: '', model_id: '',
-                  })), true, 'feed-type')}
+                  })), true, 'cat-type')}
                   {renderSelect(t('admin.feed.manufacturer', '제조사'), form.manufacturer_id, mfrOptions, (v) => setForm((p) => ({
                     ...p, manufacturer_id: v, brand_id: '', model_id: '',
-                  })), false, 'feed-manufacturer')}
+                  })), false, 'cat-manufacturer')}
                   {renderSelect(t('admin.feed.brand', '브랜드'), form.brand_id, brandOptions, (v) => setForm((p) => ({
                     ...p, brand_id: v, model_id: '',
-                  })), false, 'feed-brand', brandPlaceholder, brandSelectDisabled)}
-                  {renderSelect(t('admin.feed.models', '제품'), form.model_id, modelOptions, (v) => setForm((p) => ({ ...p, model_id: v })), true, 'feed-model')}
+                  })), false, 'cat-brand', brandPlaceholder, brandSelectDisabled)}
+                  {renderSelect(t('admin.feed.models', '제품'), form.model_id, modelOptions, (v) => setForm((p) => ({ ...p, model_id: v })), true, 'cat-model')}
                 </>
               )}
               <div className="form-group">
-                <label className="form-label" htmlFor="feed-nickname">{t('guardian.feed.nickname', '별명')}</label>
-                <input
-                  id="feed-nickname"
-                  name="feed-nickname"
-                  className="form-input"
-                  value={form.nickname}
-                  placeholder={t('guardian.feed.nickname_placeholder', '예: 방울이 처방식')}
-                  onChange={(e) => setForm((p) => ({ ...p, nickname: e.target.value }))}
-                />
+                <label className="form-label" htmlFor="item-nickname">{tabLabels.nicknameLabel}</label>
+                <input id="item-nickname" name="item-nickname" className="form-input"
+                  value={form.nickname} placeholder={tabLabels.nicknamePlaceholder}
+                  onChange={(e) => setForm((p) => ({ ...p, nickname: e.target.value }))} />
               </div>
               {/* Nutrition info (read-only, shown when model selected) */}
               {nutrition && (
@@ -514,12 +632,6 @@ export default function FeedManageModal({
                     {nutrition.fiber_pct != null && <span>{t('nutrition.fiber', '식이섬유')}: {nutrition.fiber_pct}%</span>}
                     {nutrition.moisture_pct != null && <span>{t('nutrition.moisture', '수분')}: {nutrition.moisture_pct}%</span>}
                     {nutrition.carbohydrate_pct != null && <span>{t('nutrition.carbohydrate', '탄수화물')}: {nutrition.carbohydrate_pct}%</span>}
-                    {nutrition.ash_pct != null && <span>{t('nutrition.ash', '조회분')}: {nutrition.ash_pct}%</span>}
-                    {nutrition.calcium_pct != null && <span>{t('nutrition.calcium', '칼슘')}: {nutrition.calcium_pct}%</span>}
-                    {nutrition.phosphorus_pct != null && <span>{t('nutrition.phosphorus', '인')}: {nutrition.phosphorus_pct}%</span>}
-                    {nutrition.omega3_pct != null && <span>{t('nutrition.omega3', '오메가3')}: {nutrition.omega3_pct}%</span>}
-                    {nutrition.omega6_pct != null && <span>{t('nutrition.omega6', '오메가6')}: {nutrition.omega6_pct}%</span>}
-                    {nutrition.serving_size_g != null && <span>{t('nutrition.serving_size', '1회급여량')}: {nutrition.serving_size_g}g</span>}
                   </div>
                   {nutrition.ingredients_text && (
                     <div style={{ marginTop: 6, fontSize: 11, color: 'var(--text-muted)' }}>
@@ -529,13 +641,9 @@ export default function FeedManageModal({
                 </div>
               )}
               <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 14, marginTop: 8, cursor: 'pointer' }}>
-                <input
-                  name="feed-is-primary"
-                  type="checkbox"
-                  checked={form.is_primary}
-                  onChange={(e) => setForm((p) => ({ ...p, is_primary: e.target.checked }))}
-                />
-                {t('guardian.feed.set_primary', '기본 사료로 설정')}
+                <input name="item-is-primary" type="checkbox" checked={form.is_primary}
+                  onChange={(e) => setForm((p) => ({ ...p, is_primary: e.target.checked }))} />
+                {tabLabels.setPrimary}
               </label>
               <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end', marginTop: 12 }}>
                 <button className="btn btn-secondary btn-sm" onClick={() => { setShowForm(false); setEditingId(null); }}>
@@ -547,43 +655,43 @@ export default function FeedManageModal({
               </div>
             </div>
           )}
-          {/* ── Feed Registration Request ────────────────────────── */}
+
+          {/* ── Registration Request ─────────────────────────────── */}
           {!showForm && !showRequestForm && (
             <div style={{ margin: '16px 0 8px', border: '2px dashed var(--border)', borderRadius: 8, padding: 12 }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                 <div>
-                  <div style={{ fontSize: 14, fontWeight: 600 }}>{t('guardian.feed.request_btn', 'Request Feed Registration')}</div>
-                  <div style={{ fontSize: 12, color: 'var(--text-secondary)', marginTop: 2 }}>{t('guardian.feed.request_desc', "Can't find your feed? Request registration.")}</div>
+                  <div style={{ fontSize: 14, fontWeight: 600 }}>{tabLabels.requestBtn}</div>
+                  <div style={{ fontSize: 12, color: 'var(--text-secondary)', marginTop: 2 }}>{tabLabels.requestDesc}</div>
                 </div>
                 <button className="btn btn-sm btn-primary" onClick={() => { setShowRequestForm(true); void loadRequestDropdowns(); }}>+</button>
               </div>
             </div>
           )}
+
           {!showForm && showRequestForm && (
             <div style={{ border: '2px solid var(--primary)', borderRadius: 8, padding: 14, background: 'var(--surface)' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
-                <h4 style={{ margin: 0, fontSize: 15 }}>{t('guardian.feed.request_btn', 'Request Feed Registration')}</h4>
+                <h4 style={{ margin: 0, fontSize: 15 }}>{tabLabels.requestBtn}</h4>
                 <button className="btn btn-sm btn-secondary" onClick={() => { setShowRequestForm(false); setRequestForm(EMPTY_REQUEST_FORM); setShowNutritionFields(false); }}>
                   {t('common.cancel', 'Cancel')}
                 </button>
               </div>
               <div className="form-group">
-                <label className="form-label">{t('guardian.feed.request_name', 'Feed Name')} *</label>
+                <label className="form-label">{tabLabels.requestNameLabel} *</label>
                 <input className="form-input" value={requestForm.feed_name} onChange={(e) => setRequestForm((p) => ({ ...p, feed_name: e.target.value }))} />
               </div>
-              {/* Feed Type: dropdown or custom */}
+              {/* Type: dropdown */}
               <div className="form-group">
-                <label className="form-label">{t('guardian.feed.request_type', 'Feed Type')}</label>
+                <label className="form-label">{tabLabels.typeLabel}</label>
                 <select className="form-select" value={requestForm.feed_type_item_id} onChange={(e) => setRequestForm((p) => ({ ...p, feed_type_item_id: e.target.value }))}>
                   <option value="">{t('common.select', 'Select')}</option>
-                  {allFeedTypeOptions.map((o) => <option key={o.id} value={o.id}>{o.label}</option>)}
+                  {allTypeOptions.map((o) => <option key={o.id} value={o.id}>{o.label}</option>)}
                 </select>
               </div>
               {/* Manufacturer: dropdown + custom toggle */}
               <div className="form-group">
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <label className="form-label" style={{ marginBottom: 0 }}>{t('guardian.feed.request_manufacturer', 'Manufacturer')}</label>
-                </div>
+                <label className="form-label" style={{ marginBottom: 4 }}>{t('guardian.feed.request_manufacturer', 'Manufacturer')}</label>
                 {!requestForm.manufacturer_custom ? (
                   <>
                     <select className="form-select" value={requestForm.manufacturer_id}
@@ -613,9 +721,7 @@ export default function FeedManageModal({
               </div>
               {/* Brand: dropdown + custom toggle */}
               <div className="form-group">
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <label className="form-label" style={{ marginBottom: 0 }}>{t('guardian.feed.request_brand', 'Brand')}</label>
-                </div>
+                <label className="form-label" style={{ marginBottom: 4 }}>{t('guardian.feed.request_brand', 'Brand')}</label>
                 {!requestForm.brand_custom ? (
                   <>
                     <select className="form-select" value={requestForm.brand_id}
@@ -643,111 +749,117 @@ export default function FeedManageModal({
                   </>
                 )}
               </div>
-              {/* Nutrition fields — 4-step Wizard */}
-              {!showNutritionFields ? (
-                <button className="btn btn-sm" style={{ fontSize: 12, marginBottom: 8 }} onClick={() => { setShowNutritionFields(true); setNutritionStep(0); }}>
-                  ▶ {t('guardian.feed.request_nutrition', 'Nutrition Info (Optional)')}
-                </button>
-              ) : (
-                <div style={{ border: '1px solid var(--border)', borderRadius: 8, padding: 12, marginBottom: 8, background: 'var(--bg)' }}>
-                  <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 8 }}>{t('guardian.feed.request_nutrition', 'Nutrition Info (Optional)')}</div>
-                  {/* Step indicator bar */}
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 1fr', gap: 4, marginBottom: 12 }}>
-                    {[
-                      t('guardian.feed.nutr_step1', '기본 영양소'),
-                      t('guardian.feed.nutr_step2', '상세 영양소'),
-                      t('guardian.feed.nutr_step3', '미네랄/기타'),
-                      t('guardian.feed.nutr_step4', '원재료'),
-                    ].map((label, i) => (
-                      <button key={i} type="button"
-                        onClick={() => setNutritionStep(i)}
-                        style={{
-                          padding: '4px 0', fontSize: 11, fontWeight: nutritionStep === i ? 700 : 400, textAlign: 'center',
-                          border: 'none', borderRadius: 4, cursor: 'pointer',
-                          background: nutritionStep === i ? 'var(--primary)' : 'var(--surface)',
-                          color: nutritionStep === i ? '#fff' : 'var(--text-secondary)',
-                        }}>
-                        {label}
-                      </button>
-                    ))}
-                  </div>
-                  {/* Step 0: Basic Nutrients */}
-                  {nutritionStep === 0 && (
-                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 6 }}>
-                      {([
-                        ['calories_per_100g', t('nutrition.calories', 'kcal/100g')],
-                        ['protein_pct', t('nutrition.protein', 'Protein') + ' %'],
-                        ['fat_pct', t('nutrition.fat', 'Fat') + ' %'],
-                        ['carbohydrate_pct', t('nutrition.carbohydrate', 'Carbohydrate') + ' %'],
-                      ] as const).map(([key, label]) => (
-                        <div key={key} className="form-group" style={{ marginBottom: 0 }}>
-                          <label className="form-label" style={{ fontSize: 11 }}>{label}</label>
-                          <input className="form-input" type="number" step="0.1" value={(requestForm as unknown as Record<string, string>)[key] || ''} onChange={(e) => setRequestForm((p) => ({ ...p, [key]: e.target.value }))} />
+              {/* Nutrition fields — Feed only (4-step Wizard) */}
+              {isFeed && (
+                <>
+                  {!showNutritionFields ? (
+                    <button className="btn btn-sm" style={{ fontSize: 12, marginBottom: 8 }} onClick={() => { setShowNutritionFields(true); setNutritionStep(0); }}>
+                      ▶ {t('guardian.feed.request_nutrition', 'Nutrition Info (Optional)')}
+                    </button>
+                  ) : (
+                    <div style={{ border: '1px solid var(--border)', borderRadius: 8, padding: 12, marginBottom: 8, background: 'var(--bg)' }}>
+                      <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 8 }}>{t('guardian.feed.request_nutrition', 'Nutrition Info (Optional)')}</div>
+                      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 1fr', gap: 4, marginBottom: 12 }}>
+                        {[
+                          t('guardian.feed.nutr_step1', '기본 영양소'),
+                          t('guardian.feed.nutr_step2', '상세 영양소'),
+                          t('guardian.feed.nutr_step3', '미네랄/기타'),
+                          t('guardian.feed.nutr_step4', '원재료'),
+                        ].map((label, i) => (
+                          <button key={i} type="button" onClick={() => setNutritionStep(i)}
+                            style={{
+                              padding: '4px 0', fontSize: 11, fontWeight: nutritionStep === i ? 700 : 400, textAlign: 'center',
+                              border: 'none', borderRadius: 4, cursor: 'pointer',
+                              background: nutritionStep === i ? 'var(--primary)' : 'var(--surface)',
+                              color: nutritionStep === i ? '#fff' : 'var(--text-secondary)',
+                            }}>
+                            {label}
+                          </button>
+                        ))}
+                      </div>
+                      {nutritionStep === 0 && (
+                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 6 }}>
+                          {(['calories_per_100g', 'protein_pct', 'fat_pct', 'carbohydrate_pct'] as const).map((key) => {
+                            const labels: Record<string, string> = {
+                              calories_per_100g: t('nutrition.calories', 'kcal/100g'),
+                              protein_pct: t('nutrition.protein', 'Protein') + ' %',
+                              fat_pct: t('nutrition.fat', 'Fat') + ' %',
+                              carbohydrate_pct: t('nutrition.carbohydrate', 'Carbohydrate') + ' %',
+                            };
+                            return (
+                              <div key={key} className="form-group" style={{ marginBottom: 0 }}>
+                                <label className="form-label" style={{ fontSize: 11 }}>{labels[key]}</label>
+                                <input className="form-input" type="number" step="0.1" value={(requestForm as unknown as Record<string, string>)[key] || ''} onChange={(e) => setRequestForm((p) => ({ ...p, [key]: e.target.value }))} />
+                              </div>
+                            );
+                          })}
                         </div>
-                      ))}
-                    </div>
-                  )}
-                  {/* Step 1: Detailed Nutrients */}
-                  {nutritionStep === 1 && (
-                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 6 }}>
-                      {([
-                        ['fiber_pct', t('nutrition.fiber', 'Fiber') + ' %'],
-                        ['moisture_pct', t('nutrition.moisture', 'Moisture') + ' %'],
-                        ['ash_pct', t('nutrition.ash', 'Ash') + ' %'],
-                        ['serving_size_g', t('nutrition.serving_size', 'Serving Size') + ' (g)'],
-                      ] as const).map(([key, label]) => (
-                        <div key={key} className="form-group" style={{ marginBottom: 0 }}>
-                          <label className="form-label" style={{ fontSize: 11 }}>{label}</label>
-                          <input className="form-input" type="number" step="0.1" value={(requestForm as unknown as Record<string, string>)[key] || ''} onChange={(e) => setRequestForm((p) => ({ ...p, [key]: e.target.value }))} />
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                  {/* Step 2: Minerals & Others */}
-                  {nutritionStep === 2 && (
-                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 6 }}>
-                      {([
-                        ['calcium_pct', t('nutrition.calcium', 'Calcium') + ' %'],
-                        ['phosphorus_pct', t('nutrition.phosphorus', 'Phosphorus') + ' %'],
-                        ['omega3_pct', t('nutrition.omega3', 'Omega-3') + ' %'],
-                        ['omega6_pct', t('nutrition.omega6', 'Omega-6') + ' %'],
-                      ] as const).map(([key, label]) => (
-                        <div key={key} className="form-group" style={{ marginBottom: 0 }}>
-                          <label className="form-label" style={{ fontSize: 11 }}>{label}</label>
-                          <input className="form-input" type="number" step="0.1" value={(requestForm as unknown as Record<string, string>)[key] || ''} onChange={(e) => setRequestForm((p) => ({ ...p, [key]: e.target.value }))} />
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                  {/* Step 3: Ingredients */}
-                  {nutritionStep === 3 && (
-                    <div className="form-group" style={{ marginBottom: 0 }}>
-                      <label className="form-label" style={{ fontSize: 11 }}>{t('nutrition.ingredients', 'Ingredients')}</label>
-                      <textarea className="form-input" rows={3} value={requestForm.ingredients_text} onChange={(e) => setRequestForm((p) => ({ ...p, ingredients_text: e.target.value }))} />
-                    </div>
-                  )}
-                  {/* Navigation buttons */}
-                  <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 10 }}>
-                    <div>
-                      {nutritionStep > 0 && (
-                        <button className="btn btn-sm btn-secondary" onClick={() => setNutritionStep((s) => s - 1)}>
-                          {t('guardian.feed.nutr_prev', '이전')}
-                        </button>
                       )}
-                    </div>
-                    <div>
-                      {nutritionStep < 3 ? (
-                        <button className="btn btn-sm btn-primary" onClick={() => setNutritionStep((s) => s + 1)}>
-                          {t('guardian.feed.nutr_next', '다음')}
-                        </button>
-                      ) : (
-                        <button className="btn btn-sm btn-primary" onClick={() => { setShowNutritionFields(false); setNutritionStep(0); }}>
-                          {t('guardian.feed.nutr_done', '완료')}
-                        </button>
+                      {nutritionStep === 1 && (
+                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 6 }}>
+                          {(['fiber_pct', 'moisture_pct', 'ash_pct', 'serving_size_g'] as const).map((key) => {
+                            const labels: Record<string, string> = {
+                              fiber_pct: t('nutrition.fiber', 'Fiber') + ' %',
+                              moisture_pct: t('nutrition.moisture', 'Moisture') + ' %',
+                              ash_pct: t('nutrition.ash', 'Ash') + ' %',
+                              serving_size_g: t('nutrition.serving_size', 'Serving Size') + ' (g)',
+                            };
+                            return (
+                              <div key={key} className="form-group" style={{ marginBottom: 0 }}>
+                                <label className="form-label" style={{ fontSize: 11 }}>{labels[key]}</label>
+                                <input className="form-input" type="number" step="0.1" value={(requestForm as unknown as Record<string, string>)[key] || ''} onChange={(e) => setRequestForm((p) => ({ ...p, [key]: e.target.value }))} />
+                              </div>
+                            );
+                          })}
+                        </div>
                       )}
+                      {nutritionStep === 2 && (
+                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 6 }}>
+                          {(['calcium_pct', 'phosphorus_pct', 'omega3_pct', 'omega6_pct'] as const).map((key) => {
+                            const labels: Record<string, string> = {
+                              calcium_pct: t('nutrition.calcium', 'Calcium') + ' %',
+                              phosphorus_pct: t('nutrition.phosphorus', 'Phosphorus') + ' %',
+                              omega3_pct: t('nutrition.omega3', 'Omega-3') + ' %',
+                              omega6_pct: t('nutrition.omega6', 'Omega-6') + ' %',
+                            };
+                            return (
+                              <div key={key} className="form-group" style={{ marginBottom: 0 }}>
+                                <label className="form-label" style={{ fontSize: 11 }}>{labels[key]}</label>
+                                <input className="form-input" type="number" step="0.1" value={(requestForm as unknown as Record<string, string>)[key] || ''} onChange={(e) => setRequestForm((p) => ({ ...p, [key]: e.target.value }))} />
+                              </div>
+                            );
+                          })}
+                        </div>
+                      )}
+                      {nutritionStep === 3 && (
+                        <div className="form-group" style={{ marginBottom: 0 }}>
+                          <label className="form-label" style={{ fontSize: 11 }}>{t('nutrition.ingredients', 'Ingredients')}</label>
+                          <textarea className="form-input" rows={3} value={requestForm.ingredients_text} onChange={(e) => setRequestForm((p) => ({ ...p, ingredients_text: e.target.value }))} />
+                        </div>
+                      )}
+                      <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 10 }}>
+                        <div>
+                          {nutritionStep > 0 && (
+                            <button className="btn btn-sm btn-secondary" onClick={() => setNutritionStep((s) => s - 1)}>
+                              {t('guardian.feed.nutr_prev', '이전')}
+                            </button>
+                          )}
+                        </div>
+                        <div>
+                          {nutritionStep < 3 ? (
+                            <button className="btn btn-sm btn-primary" onClick={() => setNutritionStep((s) => s + 1)}>
+                              {t('guardian.feed.nutr_next', '다음')}
+                            </button>
+                          ) : (
+                            <button className="btn btn-sm btn-primary" onClick={() => { setShowNutritionFields(false); setNutritionStep(0); }}>
+                              {t('guardian.feed.nutr_done', '완료')}
+                            </button>
+                          )}
+                        </div>
+                      </div>
                     </div>
-                  </div>
-                </div>
+                  )}
+                </>
               )}
               <div className="form-group" style={{ marginTop: 8 }}>
                 <label className="form-label">{t('guardian.feed.request_url', 'Reference URL')}</label>
@@ -766,12 +878,12 @@ export default function FeedManageModal({
           )}
 
           {/* ── My Requests ──────────────────────────────────────── */}
-          {!showForm && !showRequestForm && myRequests.length > 0 && (
+          {!showForm && !showRequestForm && currentRequests.length > 0 && (
             <div style={{ marginTop: 8 }}>
               <button className="btn btn-sm" style={{ fontSize: 12, marginBottom: 8 }} onClick={() => setShowMyRequests(!showMyRequests)}>
-                {showMyRequests ? '▼' : '▶'} {t('guardian.feed.my_requests', 'My Requests')} ({myRequests.length})
+                {showMyRequests ? '▼' : '▶'} {t('guardian.feed.my_requests', 'My Requests')} ({currentRequests.length})
               </button>
-              {showMyRequests && myRequests.map((r) => (
+              {showMyRequests && currentRequests.map((r) => (
                 <div key={r.id} style={{ border: '1px solid var(--border)', borderRadius: 6, padding: '8px 10px', marginBottom: 6, fontSize: 13 }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                     <span style={{ fontWeight: 600 }}>{r.feed_name}</span>
@@ -801,9 +913,9 @@ export default function FeedManageModal({
           )}
         </div>
         <div className="modal-footer">
-          {!showForm && (
+          {!showForm && items.length > 0 && (
             <button className="btn btn-primary" onClick={openAddForm}>
-              + {t('guardian.feed.add', '사료 추가')}
+              + {tabLabels.addBtn}
             </button>
           )}
           <button className="btn btn-secondary" onClick={onClose}>{t('common.close', 'Close')}</button>

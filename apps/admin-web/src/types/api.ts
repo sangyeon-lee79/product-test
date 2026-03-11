@@ -695,6 +695,42 @@ export interface ProviderProfile {
   updated_at: string;
 }
 
+// ─── Dashboard Stats ──────────────────────────────────────────────────────────
+
+export interface DashboardStats {
+  feeding: {
+    top5_feeds: { name: string; count: number }[];
+    manufacturer_ratio: { name: string; value: number }[];
+    type_distribution: { type: string; count: number }[];
+    supplement_category: { category: string; count: number }[];
+    prescribed_ratio: { prescribed: number; total: number };
+    avg_daily_calories: number | null;
+  };
+  exercise: {
+    type_count: { type: string; count: number }[];
+    avg_duration: { type: string; avg_min: number }[];
+    intensity_dist: { intensity: string; count: number }[];
+    location_dist: { location: string; count: number }[];
+    monthly_trend: { month: string; count: number }[];
+    pet_type_compare: { pet_type: string; exercise_type: string; count: number }[];
+  };
+  health: {
+    weight_trend: { date: string; avg_weight: number }[];
+    weight_by_size: { size: string; avg_weight: number }[];
+    top5_measurements: { name: string; count: number }[];
+    weight_change_dist: { direction: string; count: number }[];
+  };
+  members: {
+    total_users: number;
+    by_oauth: { provider: string; count: number }[];
+    signup_trend: { month: string; count: number }[];
+    active_guardians_30d: number;
+    feature_usage: { feature: string; count: number }[];
+    pet_type_dist: { type: string; count: number }[];
+    top10_breeds: { name: string; count: number }[];
+  };
+}
+
 export interface PetLog {
   id: string;
   pet_id: string;

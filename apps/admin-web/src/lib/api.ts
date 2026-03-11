@@ -16,7 +16,7 @@ export type {
   FeedRegistrationRequest,
   PetLog, GlucoseAlert, MemberSummary, MemberRecord, GoogleSettingItem, PublicGoogleConfig, OAuthLoginResponse,
   PublicKakaoConfig, PublicAppleConfig, PlatformSettingItem,
-  ProviderProfile,
+  ProviderProfile, DashboardStats,
 } from '../types/api';
 import type {
   I18nRow, MasterCategory, MasterItem, Country, Currency,
@@ -33,7 +33,7 @@ import type {
   FeedRegistrationRequest,
   PetLog, GlucoseAlert, MemberSummary, MemberRecord, GoogleSettingItem, PublicGoogleConfig, OAuthLoginResponse,
   PublicKakaoConfig, PublicAppleConfig, PlatformSettingItem,
-  ProviderProfile,
+  ProviderProfile, DashboardStats,
 } from '../types/api';
 
 const API_BASE = getApiBase();
@@ -526,6 +526,18 @@ export const api = {
       remove: (petId: string, feedId: string) =>
         request<{ id: string; deleted: boolean }>(`/api/v1/pets/${petId}/pet-feeds/${feedId}`, { method: 'DELETE' }),
     },
+    petSupplements: {
+      list: (petId: string) =>
+        request<{ feeds: PetFeed[] }>(`/api/v1/pets/${petId}/pet-supplements`),
+      create: (petId: string, data: {
+        feed_model_id: string; nickname?: string; is_primary?: boolean;
+      }) => request<{ id: string }>(`/api/v1/pets/${petId}/pet-supplements`, { method: 'POST', body: JSON.stringify(data) }),
+      update: (petId: string, id: string, data: Partial<{
+        nickname: string; is_primary: boolean;
+      }>) => request<{ id: string; updated: boolean }>(`/api/v1/pets/${petId}/pet-supplements/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
+      remove: (petId: string, id: string) =>
+        request<{ id: string; deleted: boolean }>(`/api/v1/pets/${petId}/pet-supplements/${id}`, { method: 'DELETE' }),
+    },
     feedingLogs: {
       list: (petId: string) =>
         request<{ logs: FeedingLog[] }>(`/api/v1/pets/${petId}/feeding-logs`),
@@ -956,6 +968,20 @@ export const api = {
       upsert: (modelId: string, data: Partial<Omit<FeedNutrition, 'id' | 'feed_model_id' | 'status' | 'created_at' | 'updated_at'>>) =>
         request<FeedNutrition>(`/api/v1/admin/supplement-catalog/models/${modelId}/nutrition`, { method: 'PUT', body: JSON.stringify(data) }),
     },
+    public: {
+      types: (lang?: string) => {
+        const q = lang ? `?lang=${encodeURIComponent(lang)}` : '';
+        return request<FeedType[]>(`/api/v1/supplement-catalog/types${q}`);
+      },
+      manufacturers: (feedTypeId?: string, lang?: string) =>
+        request<FeedManufacturer[]>(`/api/v1/supplement-catalog/manufacturers${buildQuery({ feed_type_id: feedTypeId, lang })}`),
+      brands: (manufacturerId?: string, feedTypeId?: string) =>
+        request<FeedBrand[]>(`/api/v1/supplement-catalog/brands${buildQuery({ manufacturer_id: manufacturerId, feed_type_id: feedTypeId })}`),
+      models: (filters?: { feed_type_id?: string; manufacturer_id?: string; brand_id?: string }, lang?: string) =>
+        request<FeedModel[]>(`/api/v1/supplement-catalog/models${buildQuery({ feed_type_id: filters?.feed_type_id, manufacturer_id: filters?.manufacturer_id, brand_id: filters?.brand_id, lang })}`),
+      nutrition: (modelId: string) =>
+        request<FeedNutrition | null>(`/api/v1/supplement-catalog/models/${modelId}/nutrition`),
+    },
   },
 
   feedRequests: {
@@ -982,5 +1008,21 @@ export const api = {
       reject: (id: string, data: { review_note?: string }) =>
         request<FeedRegistrationRequest>(`/api/v1/admin/feed-requests/${id}/reject`, { method: 'POST', body: JSON.stringify(data) }),
     },
+  },
+
+  dashboard: {
+    stats: (params?: { period?: string; pet_type?: string; lang?: string }) =>
+      request<DashboardStats>(`/api/v1/admin/dashboard/stats${buildQuery(params || {})}`),
+  },
+
+  supplementRequests: {
+    create: (data: {
+      feed_name: string; pet_id?: string; feed_type_item_id?: string;
+      manufacturer_name?: string; brand_name?: string;
+      reference_url?: string; memo?: string;
+    }) =>
+      request<FeedRegistrationRequest>('/api/v1/feed-requests', { method: 'POST', body: JSON.stringify({ ...data, category_type: 'supplement' }) }),
+    list: () =>
+      request<FeedRegistrationRequest[]>('/api/v1/feed-requests?category_type=supplement'),
   },
 };

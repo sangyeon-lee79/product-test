@@ -137,6 +137,12 @@ export async function handlePets(request: Request, env: Env, url: URL): Promise<
     if (request.method === 'DELETE') return deleteExerciseLog(env, payload, petId, logId);
   }
 
+  // /pets/:id/pet-supplements (delegated to petFeeds route — shared handler)
+  if (sub.includes('/pet-supplements')) {
+    const { handlePetFeeds } = await import('../petFeeds');
+    return handlePetFeeds(request, env, url);
+  }
+
   // /pets/:id/pet-feeds (delegated to petFeeds route)
   if (sub.includes('/pet-feeds')) {
     const { handlePetFeeds } = await import('../petFeeds');
