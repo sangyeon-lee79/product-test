@@ -623,88 +623,97 @@ export default function GuardianMainPage() {
   }
 
   return (
-    <div className="gm-page">
-      {/* ── Compact pet header ── */}
-      <div className="gm-pet-header">
-        <div className="gm-pet-avatar">
-          {selectedPet ? selectedPet.name[0].toUpperCase() : '🐾'}
-        </div>
-        <div className="gm-pet-info">
-          <h2>{selectedPet?.name || t('guardian.empty.no_pets_title', 'No pet selected')}</h2>
+    <div className="pf-gd-page">
+      {/* ── Dark hero header ── */}
+      <div className="pf-gd-hero">
+        <div className="pf-gd-hero-inner">
+          <div className="pf-gd-avatar-ring">
+            <div className="pf-gd-avatar-inner">
+              {selectedPet ? selectedPet.name[0].toUpperCase() : '🐾'}
+            </div>
+          </div>
+          <div className="pf-gd-hero-info">
+            <h2>{selectedPet?.name || t('guardian.empty.no_pets_title', 'No pet selected')}</h2>
+            {selectedPet && (
+              <p>
+                {labelOf(optPetType, selectedPet.pet_type_id, '')}
+                {labelOf(optBreed, selectedPet.breed_id, '') ? ` · ${labelOf(optBreed, selectedPet.breed_id, '')}` : ''}
+                {labelOf(optGender, selectedPet.gender_id, '') ? ` · ${labelOf(optGender, selectedPet.gender_id, '')}` : ''}
+              </p>
+            )}
+          </div>
           {selectedPet && (
-            <p>
-              {labelOf(optPetType, selectedPet.pet_type_id, '')}
-              {labelOf(optBreed, selectedPet.breed_id, '') ? ` · ${labelOf(optBreed, selectedPet.breed_id, '')}` : ''}
-              {labelOf(optGender, selectedPet.gender_id, '') ? ` · ${labelOf(optGender, selectedPet.gender_id, '')}` : ''}
-            </p>
+            <div className="pf-gd-hero-stats">
+              <div className="pf-gd-hero-stat"><strong>{feeds.length}</strong><span>{t('guardian.stats.posts', 'Posts')}</span></div>
+              <div className="pf-gd-hero-stat"><strong>{albumMedia.length}</strong><span>{t('guardian.stats.media', 'Media')}</span></div>
+              <div className="pf-gd-hero-stat"><strong>{friendCount}</strong><span>{t('guardian.stats.friends', 'Friends')}</span></div>
+            </div>
           )}
-        </div>
-        {selectedPet && (
-          <div className="gm-pet-stats">
-            <div className="gm-pet-stat"><strong>{feeds.length}</strong><span>{t('guardian.stats.posts', 'Posts')}</span></div>
-            <div className="gm-pet-stat"><strong>{albumMedia.length}</strong><span>{t('guardian.stats.media', 'Media')}</span></div>
-            <div className="gm-pet-stat"><strong>{friendCount}</strong><span>{t('guardian.stats.friends', 'Friends')}</span></div>
+          <div className="pf-gd-hero-actions">
+            {pets.length <= 1 && (
+              <button className="btn btn-primary btn-sm" style={{ borderRadius: 20, fontSize: 12 }} onClick={openCreatePet}>+ {t('common.add_pet', 'Add Pet')}</button>
+            )}
+            <Link className="btn btn-secondary btn-sm" style={{ borderRadius: 20, fontSize: 12 }} to="/">{t('guardian.main.public_feed', 'Feed')}</Link>
           </div>
-        )}
+        </div>
         {selectedPet && petSummaryDetails && (
-          <div className="gm-pet-chips">
-            {petSummaryDetails.diet.text && <span className="gm-pet-chip" title={petSummaryDetails.diet.tooltip}>{petSummaryDetails.diet.text}</span>}
-            {petSummaryDetails.disease.text && <span className="gm-pet-chip" title={petSummaryDetails.disease.tooltip}>{petSummaryDetails.disease.text}</span>}
-            {petSummaryDetails.vaccination.text && <span className="gm-pet-chip" title={petSummaryDetails.vaccination.tooltip}>{petSummaryDetails.vaccination.text}</span>}
+          <div className="pf-gd-hero-chips">
+            {petSummaryDetails.diet.text && <span className="pf-gd-chip" title={petSummaryDetails.diet.tooltip}>{petSummaryDetails.diet.text}</span>}
+            {petSummaryDetails.disease.text && <span className="pf-gd-chip" title={petSummaryDetails.disease.tooltip}>{petSummaryDetails.disease.text}</span>}
+            {petSummaryDetails.vaccination.text && <span className="pf-gd-chip" title={petSummaryDetails.vaccination.tooltip}>{petSummaryDetails.vaccination.text}</span>}
           </div>
         )}
-        <div className="gm-header-actions">
-          {pets.length <= 1 && (
-            <button className="btn btn-primary btn-sm" onClick={openCreatePet}>+ {t('common.add_pet', 'Add Pet')}</button>
-          )}
-          <Link className="btn btn-secondary btn-sm" to="/">{t('guardian.main.public_feed', 'Feed')}</Link>
-        </div>
       </div>
 
-      {/* ── Pet switching tabs (2+ pets) ── */}
+      {/* ── Pet switching (story-ring style) ── */}
       {pets.length >= 2 && (
-        <div className="gm-pet-switch-tabs">
+        <div className="pf-gd-pet-switch">
           {pets.map((p) => {
             const isActive = selectedPet?.id === p.id;
             return (
-              <button key={p.id} className={`gm-pet-switch-tab${isActive ? ' active' : ''}`} onClick={() => setSelectedPetId(p.id)}>
-                <span className="gm-pet-switch-dot" style={{ background: isActive ? 'var(--primary)' : 'var(--text-muted)' }} />
-                {p.name}
+              <button key={p.id} className="pf-gd-pet-btn" onClick={() => setSelectedPetId(p.id)}>
+                <div className={`pf-gd-pet-ring${isActive ? ' active' : ''}`}>
+                  <div className="pf-gd-pet-ring-inner">{p.name[0].toUpperCase()}</div>
+                </div>
+                <span className="pf-gd-pet-name">{p.name}</span>
               </button>
             );
           })}
-          <button className="gm-pet-switch-tab add" onClick={openCreatePet} title={t('common.add_pet', 'Add Pet')} aria-label={t('common.add_pet', 'Add Pet')}>+</button>
+          <button className="pf-gd-pet-btn" onClick={openCreatePet} title={t('common.add_pet', 'Add Pet')} aria-label={t('common.add_pet', 'Add Pet')}>
+            <div className="pf-gd-pet-ring--add">+</div>
+            <span className="pf-gd-pet-name">{t('common.add', 'Add')}</span>
+          </button>
         </div>
       )}
 
       {/* ── Sticky tab bar ── */}
-      <div className="gm-tabs-wrapper">
-        {(tabScrollState === 'left' || tabScrollState === 'both') && (
-          <button className="gm-tabs-arrow left" onClick={() => tabsRef.current?.scrollBy({ left: -120, behavior: 'smooth' })} aria-label="scroll left">‹</button>
-        )}
-        <div className={`gm-tabs ${tabScrollState !== 'none' ? `gm-tabs--scroll-${tabScrollState}` : ''}`} ref={tabsRef}>
-          <button className={`gm-tab${petTab === 'timeline' ? ' active' : ''}`} onClick={() => setPetTab('timeline')}>
-            <span className="gm-tab-icon">📋</span>{t('guardian.tab.timeline', 'Timeline')}
+      <div className="pf-gd-tabs-wrap">
+        <div className="pf-gd-tabs-inner" ref={tabsRef}>
+          {(tabScrollState === 'left' || tabScrollState === 'both') && (
+            <button className="pf-gd-tab-arrow left" onClick={() => tabsRef.current?.scrollBy({ left: -120, behavior: 'smooth' })} aria-label="scroll left">‹</button>
+          )}
+          <button className={`pf-feed-tab${petTab === 'timeline' ? ' active' : ''}`} onClick={() => setPetTab('timeline')}>
+            📋 {t('guardian.tab.timeline', 'Timeline')}
           </button>
-          <button className={`gm-tab${petTab === 'health' ? ' active' : ''}`} onClick={() => setPetTab('health')}>
-            <span className="gm-tab-icon">❤️</span>{t('guardian.tab.health', 'Health')}
+          <button className={`pf-feed-tab${petTab === 'health' ? ' active' : ''}`} onClick={() => setPetTab('health')}>
+            ❤️ {t('guardian.tab.health', 'Health')}
           </button>
-          <button className={`gm-tab${petTab === 'services' ? ' active' : ''}`} onClick={() => setPetTab('services')}>
-            <span className="gm-tab-icon">🛎️</span>{t('guardian.tab.services', 'Services')}
+          <button className={`pf-feed-tab${petTab === 'services' ? ' active' : ''}`} onClick={() => setPetTab('services')}>
+            🛎️ {t('guardian.tab.services', 'Services')}
           </button>
-          <button className={`gm-tab${petTab === 'gallery' ? ' active' : ''}`} onClick={() => setPetTab('gallery')}>
-            <span className="gm-tab-icon">🖼️</span>{t('guardian.tab.gallery', 'Gallery')}
+          <button className={`pf-feed-tab${petTab === 'gallery' ? ' active' : ''}`} onClick={() => setPetTab('gallery')}>
+            🖼️ {t('guardian.tab.gallery', 'Gallery')}
           </button>
-          <button className={`gm-tab${petTab === 'profile' ? ' active' : ''}`} onClick={() => setPetTab('profile')}>
-            <span className="gm-tab-icon">👤</span>{t('guardian.tab.profile', 'Profile')}
+          <button className={`pf-feed-tab${petTab === 'profile' ? ' active' : ''}`} onClick={() => setPetTab('profile')}>
+            👤 {t('guardian.tab.profile', 'Profile')}
           </button>
-          <button className={`gm-tab${petTab === 'report' ? ' active' : ''}`} onClick={() => setPetTab('report')}>
-            <span className="gm-tab-icon">📊</span>{t('guardian.tab.report', 'Report')}
+          <button className={`pf-feed-tab${petTab === 'report' ? ' active' : ''}`} onClick={() => setPetTab('report')}>
+            📊 {t('guardian.tab.report', 'Report')}
           </button>
+          {(tabScrollState === 'right' || tabScrollState === 'both') && (
+            <button className="pf-gd-tab-arrow right" onClick={() => tabsRef.current?.scrollBy({ left: 120, behavior: 'smooth' })} aria-label="scroll right">›</button>
+          )}
         </div>
-        {(tabScrollState === 'right' || tabScrollState === 'both') && (
-          <button className="gm-tabs-arrow right" onClick={() => tabsRef.current?.scrollBy({ left: 120, behavior: 'smooth' })} aria-label="scroll right">›</button>
-        )}
       </div>
 
       {error && <div className="alert alert-error" style={{ margin: '12px 24px 0' }}>{error}</div>}
@@ -712,15 +721,15 @@ export default function GuardianMainPage() {
       {loading ? (
         <div className="loading-center"><span className="spinner" /></div>
       ) : (
-        <div className="gm-content">
-          <div className="gm-layout">
-            <main className="gm-main">
+        <div className="pf-gd-content">
+          <div className="pf-gd-layout">
+            <main className="pf-gd-main">
               {pets.length === 0 && (
-                <div className="gm-onboard-card">
-                  <div className="gm-onboard-icon">🐾</div>
-                  <div className="gm-onboard-title">{t('guardian.empty.onboard_title', '아직 등록된 반려동물이 없어요')}</div>
-                  <p className="gm-onboard-desc">{t('guardian.empty.onboard_desc', '반려동물을 추가하고 건강을 기록해보세요!')}</p>
-                  <button className="gm-onboard-btn" onClick={openCreatePet}>{t('guardian.empty.onboard_cta', '+ 반려동물 추가하기')}</button>
+                <div className="pf-gd-onboard">
+                  <div className="pf-gd-onboard-icon">🐾</div>
+                  <div className="pf-gd-onboard-title">{t('guardian.empty.onboard_title', '아직 등록된 반려동물이 없어요')}</div>
+                  <p className="pf-gd-onboard-desc">{t('guardian.empty.onboard_desc', '반려동물을 추가하고 건강을 기록해보세요!')}</p>
+                  <button className="pf-gd-onboard-cta" onClick={openCreatePet}>{t('guardian.empty.onboard_cta', '+ 반려동물 추가하기')}</button>
                 </div>
               )}
 
@@ -729,11 +738,10 @@ export default function GuardianMainPage() {
                 <>
                   {albumMedia.length > 0 ? (
                     <>
-                      <div className="gm-gallery-grid">
+                      <div className="pf-gd-gallery">
                         {albumMedia.map((item, idx) => (
-                          <div key={item.id} className="gm-gallery-tile" onClick={() => { setLightboxItems(albumMedia.map((m) => m.media_url)); setLightboxIndex(idx); }}>
+                          <div key={item.id} className="pf-gd-gallery-tile" onClick={() => { setLightboxItems(albumMedia.map((m) => m.media_url)); setLightboxIndex(idx); }}>
                             <img src={item.media_url} alt={item.caption || 'media'} loading="lazy" />
-                            <div className="gm-gallery-tile-overlay"><span>🖼️</span></div>
                           </div>
                         ))}
                       </div>
@@ -768,56 +776,56 @@ export default function GuardianMainPage() {
               {/* ── Timeline ── */}
               {petTab === 'timeline' && (
                 <>
-                  <div className="gm-compose-bar" onClick={() => setComposeModalOpen(true)}>
-                    <div className="gm-compose-avatar">{selectedPet ? selectedPet.name[0].toUpperCase() : '?'}</div>
-                    <div className="gm-compose-placeholder">{t('guardian.feed.compose_placeholder', '무슨 일이 있었나요?')}</div>
+                  <div className="pf-gd-compose" onClick={() => setComposeModalOpen(true)}>
+                    <div className="pf-gd-compose-avatar">{selectedPet ? selectedPet.name[0].toUpperCase() : '?'}</div>
+                    <div className="pf-gd-compose-text">{t('guardian.feed.compose_placeholder', '무슨 일이 있었나요?')}</div>
                     <span style={{ fontSize: 18, color: 'var(--text-muted)' }}>📷</span>
                   </div>
-                  <div className="gm-section">
-                    <div className="gm-feed-tabs">
-                      <button className={`gm-feed-tab${feedTab === 'all' ? ' active' : ''}`} onClick={() => { setFeedTab('all'); loadAll('all'); }}>{t('guardian.feed.filter.all', 'All')}</button>
-                      <button className={`gm-feed-tab${feedTab === 'friends' ? ' active' : ''}`} onClick={() => { setFeedTab('friends'); loadAll('friends'); }}>{t('guardian.feed.filter.friends', 'Friends Feed')}</button>
+                  <div className="pf-gd-section">
+                    <div className="pf-gd-section-header">
+                      <div className="pf-feed-tabs" style={{ margin: 0 }}>
+                        <button className={`pf-feed-tab${feedTab === 'all' ? ' active' : ''}`} onClick={() => { setFeedTab('all'); loadAll('all'); }}>{t('guardian.feed.filter.all', 'All')}</button>
+                        <button className={`pf-feed-tab${feedTab === 'friends' ? ' active' : ''}`} onClick={() => { setFeedTab('friends'); loadAll('friends'); }}>{t('guardian.feed.filter.friends', 'Friends Feed')}</button>
+                      </div>
                     </div>
-                    <div style={{ padding: '12px' }}>
-                      <div className="sns-feed-list">
-                        {feeds.map((f) => (
-                          <article key={f.id} className="sns-card">
-                            <div className="sns-card-header">
-                              <div className="sns-author-row">
-                                <div className="sns-avatar">{(f.author_email || '?')[0].toUpperCase()}</div>
-                                <div className="sns-author-info">
-                                  <p className="sns-meta">{feedTypeLabel(t, f.feed_type)}</p>
-                                  <span className="sns-author-name">{f.author_email || t('common.none', '-')}</span>
-                                  <p className="text-sm text-muted">{formatDate(f.created_at, t('common.none', '-'), locale)}</p>
-                                </div>
-                              </div>
-                              <div className="sns-card-right">
-                                <div className="sns-badges"><span className="badge badge-green">{visibilityLabel(t, f.visibility_scope)}</span></div>
-                                {currentUserId && f.author_user_id === currentUserId && (
-                                  <button className="btn btn-danger btn-sm" title={t('common.delete', 'Delete')} aria-label={t('common.delete', 'Delete')} onClick={() => removeFeedPost(f.id)}>🗑️</button>
-                                )}
-                              </div>
+                    <div className="pf-gd-section-body">
+                      {feeds.map((f) => (
+                        <div key={f.id} className="pf-gd-feed-card">
+                          <div className="pf-gd-feed-header">
+                            <div className="pf-gd-feed-avatar">{(f.author_email || '?')[0].toUpperCase()}</div>
+                            <div className="pf-gd-feed-info">
+                              <div className="pf-gd-feed-type">{feedTypeLabel(t, f.feed_type)}</div>
+                              <div className="pf-gd-feed-author">{f.author_email || t('common.none', '-')}</div>
+                              <div className="pf-gd-feed-time">{formatDate(f.created_at, t('common.none', '-'), locale)}</div>
                             </div>
-                            {f.pet_name && <span className="sns-pet-chip">{f.pet_name}</span>}
-                            {f.caption && <p className="sns-caption">{f.caption}</p>}
+                            <div className="pf-gd-feed-right">
+                              <span className="pf-gd-feed-badge">{visibilityLabel(t, f.visibility_scope)}</span>
+                              {currentUserId && f.author_user_id === currentUserId && (
+                                <button className="btn btn-danger btn-sm" style={{ fontSize: 12 }} title={t('common.delete', 'Delete')} aria-label={t('common.delete', 'Delete')} onClick={() => removeFeedPost(f.id)}>🗑️</button>
+                              )}
+                            </div>
+                          </div>
+                          <div className="pf-gd-feed-body">
+                            {f.pet_name && <span className="pf-gd-feed-pet-chip">{f.pet_name}</span>}
+                            {f.caption && <p className="pf-gd-feed-caption">{f.caption}</p>}
                             {Array.isArray(f.media_urls) && f.media_urls[0] && (
-                              <div className="sns-feed-image-wrap">
-                                <img className="sns-feed-image" src={f.media_urls[0]} alt={f.caption || 'feed'} loading="lazy" />
+                              <div className="pf-gd-feed-image-wrap">
+                                <img className="pf-gd-feed-image" src={f.media_urls[0]} alt={f.caption || 'feed'} loading="lazy" />
                               </div>
                             )}
-                            <div className="sns-actions">
-                              <button className="sns-action-btn" onClick={() => api.feeds.like(f.id).then(() => loadAll(feedTab)).catch((e) => setError(uiErrorMessage(e, t('guardian.alert.like_failed', '좋아요 처리에 실패했습니다.'))))}>♥ {f.like_count || 0}</button>
-                              <button className="sns-action-btn" onClick={() => api.feeds.comments.list(f.id).then(() => null).catch((e) => setError(uiErrorMessage(e, t('guardian.alert.comment_failed', '댓글을 불러오지 못했습니다.'))))}>○ {f.comment_count || 0}</button>
-                            </div>
-                          </article>
-                        ))}
-                        {feeds.length === 0 && (
-                          <div className="gm-empty" style={{ padding: '24px 0' }}>
-                            <div className="gm-empty-icon">📭</div>
-                            <p>{t('guardian.feed.no_feeds', 'No feeds to display.')}</p>
                           </div>
-                        )}
-                      </div>
+                          <div className="pf-gd-feed-actions">
+                            <button className="pf-gd-feed-action" onClick={() => api.feeds.like(f.id).then(() => loadAll(feedTab)).catch((e) => setError(uiErrorMessage(e, t('guardian.alert.like_failed', '좋아요 처리에 실패했습니다.'))))}>♥ {f.like_count || 0}</button>
+                            <button className="pf-gd-feed-action" onClick={() => api.feeds.comments.list(f.id).then(() => null).catch((e) => setError(uiErrorMessage(e, t('guardian.alert.comment_failed', '댓글을 불러오지 못했습니다.'))))}>💬 {f.comment_count || 0}</button>
+                          </div>
+                        </div>
+                      ))}
+                      {feeds.length === 0 && (
+                        <div className="pf-gd-empty" style={{ padding: '24px 0' }}>
+                          <div className="pf-gd-empty-icon">📭</div>
+                          <p>{t('guardian.feed.no_feeds', 'No feeds to display.')}</p>
+                        </div>
+                      )}
                     </div>
                   </div>
                 </>
@@ -827,67 +835,65 @@ export default function GuardianMainPage() {
               {petTab === 'health' && (
                 <>
                   {!selectedPet ? (
-                    <div className="gm-section">
-                      <div className="gm-section-body gm-empty">
-                        <div className="gm-empty-icon">🐾</div>
-                        <div className="gm-empty-title">{t('guardian.empty.no_pets_title', 'Register your first pet')}</div>
-                        <p style={{ fontSize: 14, color: 'var(--text-muted)', marginBottom: 12 }}>{t('guardian.empty.no_pets_desc', 'Without a pet profile, feed/health/booking links are limited.')}</p>
-                        <button className="btn btn-primary" onClick={openCreatePet}>{t('guardian.empty.no_pets_cta', 'Register your first pet')}</button>
-                      </div>
+                    <div className="pf-gd-onboard">
+                      <div className="pf-gd-onboard-icon">🐾</div>
+                      <div className="pf-gd-onboard-title">{t('guardian.empty.no_pets_title', 'Register your first pet')}</div>
+                      <p className="pf-gd-onboard-desc">{t('guardian.empty.no_pets_desc', 'Without a pet profile, feed/health/booking links are limited.')}</p>
+                      <button className="pf-gd-onboard-cta" onClick={openCreatePet}>{t('guardian.empty.no_pets_cta', 'Register your first pet')}</button>
                     </div>
                   ) : (
                     <>
                       {/* ── Health Toolkit ── */}
-                      <div className="gm-health-toolbar">
-                        <div className="gm-toolbar-group gm-toolbar-record">
-                          <button className="gm-toolbar-tile gm-tile-weight" onClick={() => { setEditingWeightLog(null); setWeightModalOpen(true); }}>
-                            <span className="gm-tile-icon">⚖️</span>
-                            <span className="gm-tile-label">{t('guardian.health.weight_log', '체중 기록')}</span>
+                      <div className="pf-gd-toolkit">
+                        <div className="pf-gd-toolkit-group">
+                          <button className="pf-gd-tool-tile" onClick={() => { setEditingWeightLog(null); setWeightModalOpen(true); }}>
+                            <span className="pf-gd-tool-icon">⚖️</span>
+                            <span className="pf-gd-tool-label">{t('guardian.health.weight_log', '체중 기록')}</span>
                           </button>
-                          <button className="gm-toolbar-tile gm-tile-measure" onClick={openCreateHealthMeasurementModal}>
-                            <span className="gm-tile-icon">📊</span>
-                            <span className="gm-tile-label">{t('guardian.health.measure_log', '수치 기록')}</span>
+                          <button className="pf-gd-tool-tile" onClick={openCreateHealthMeasurementModal}>
+                            <span className="pf-gd-tool-icon">📊</span>
+                            <span className="pf-gd-tool-label">{t('guardian.health.measure_log', '수치 기록')}</span>
                           </button>
-                          <button className="gm-toolbar-tile gm-tile-feed" onClick={() => { setEditingFeedingLog(null); setFeedingLogModalOpen(true); }}>
-                            <span className="gm-tile-icon">🍽️</span>
-                            <span className="gm-tile-label">{t('guardian.health.feeding_log', '급여 기록')}</span>
+                          <button className="pf-gd-tool-tile" onClick={() => { setEditingFeedingLog(null); setFeedingLogModalOpen(true); }}>
+                            <span className="pf-gd-tool-icon">🍽️</span>
+                            <span className="pf-gd-tool-label">{t('guardian.health.feeding_log', '급여 기록')}</span>
                           </button>
-                          <button className="gm-toolbar-tile gm-tile-exercise" onClick={() => { setEditingExerciseLog(null); setExerciseLogModalOpen(true); }}>
-                            <span className="gm-tile-icon">🏃</span>
-                            <span className="gm-tile-label">{t('guardian.health.exercise_log', '운동 기록')}</span>
+                          <button className="pf-gd-tool-tile" onClick={() => { setEditingExerciseLog(null); setExerciseLogModalOpen(true); }}>
+                            <span className="pf-gd-tool-icon">🏃</span>
+                            <span className="pf-gd-tool-label">{t('guardian.health.exercise_log', '운동 기록')}</span>
                           </button>
-                          <button className="gm-toolbar-tile gm-tile-medication" onClick={() => { setEditingMedicationLog(null); setMedicationLogModalOpen(true); }}>
-                            <span className="gm-tile-icon">💉</span>
-                            <span className="gm-tile-label">{t('guardian.health.medication_log', '약품 기록')}</span>
+                          <button className="pf-gd-tool-tile" onClick={() => { setEditingMedicationLog(null); setMedicationLogModalOpen(true); }}>
+                            <span className="pf-gd-tool-icon">💉</span>
+                            <span className="pf-gd-tool-label">{t('guardian.health.medication_log', '약품 기록')}</span>
                           </button>
                         </div>
-                        <div className="gm-toolbar-divider" />
-                        <div className="gm-toolbar-group gm-toolbar-manage">
-                          <button className="gm-toolbar-tile gm-tile-devices" onClick={() => setDeviceManageModalOpen(true)}>
-                            <span className="gm-tile-icon">🩺</span>
-                            <span className="gm-tile-label">{t('guardian.health.device_manage', '장비 관리')}</span>
+                        <div className="pf-gd-toolkit-divider" />
+                        <div className="pf-gd-toolkit-group">
+                          <button className="pf-gd-tool-tile" onClick={() => setDeviceManageModalOpen(true)}>
+                            <span className="pf-gd-tool-icon">🩺</span>
+                            <span className="pf-gd-tool-label">{t('guardian.health.device_manage', '장비 관리')}</span>
                           </button>
-                          <button className="gm-toolbar-tile gm-tile-feeds" onClick={() => setFeedManageModalOpen(true)}>
-                            <span className="gm-tile-icon">🥣</span>
-                            <span className="gm-tile-label">{t('guardian.health.feed_manage', '사료 관리')}</span>
+                          <button className="pf-gd-tool-tile" onClick={() => setFeedManageModalOpen(true)}>
+                            <span className="pf-gd-tool-icon">🥣</span>
+                            <span className="pf-gd-tool-label">{t('guardian.health.feed_manage', '사료 관리')}</span>
                           </button>
                         </div>
                       </div>
 
 
                       {/* ── Timeline ── */}
-                      <div className="gm-section">
-                        <div className="gm-section-header">
-                          <span className="gm-section-title">{t('guardian.health.subtab_timeline', '타임라인')}</span>
+                      <div className="pf-gd-section">
+                        <div className="pf-gd-section-header">
+                          <span>{t('guardian.health.subtab_timeline', '타임라인')}</span>
                         </div>
-                        <div className="gm-section-body">
+                        <div className="pf-gd-section-body">
                           {unifiedTimeline.length === 0 ? (
-                            <div className="gm-tl-empty">
-                              <div className="gm-tl-empty-icon">📋</div>
+                            <div className="pf-gd-empty">
+                              <div className="pf-gd-empty-icon">📋</div>
                               <p>{t('guardian.log.no_records', 'No records yet.')}</p>
                             </div>
                           ) : (
-                            <div className="gm-timeline">
+                            <div className="pf-gd-timeline">
                               {(() => {
                                 let lastDateKey = '';
                                 const pageItems = unifiedTimeline.slice((timelinePage - 1) * PAGE_SIZE, timelinePage * PAGE_SIZE);
@@ -899,21 +905,21 @@ export default function GuardianMainPage() {
                                   const hhmm = `${d.getHours().toString().padStart(2, '0')}:${d.getMinutes().toString().padStart(2, '0')}`;
                                   const emoji = item.type === 'weight' ? '⚖️' : item.type === 'feeding' ? '🍽️' : item.type === 'exercise' ? '🏃' : '📊';
                                   const els = [];
-                                  if (showDateHeader) els.push(<div key={`date-${dateKey}`} className="gm-tl-date">{dateKey}</div>);
+                                  if (showDateHeader) els.push(<div key={`date-${dateKey}`} className="pf-gd-tl-date">{dateKey}</div>);
 
                                   if (item.type === 'weight') {
                                     const log = item.source as PetWeightLog;
                                     els.push(
-                                      <div key={item.id} className="gm-tl-card" data-type={item.type}>
-                                        <div className="gm-tl-icon">{emoji}</div>
-                                        <div className="gm-tl-content">
-                                          <div className="gm-tl-main">
-                                            <span className="gm-tl-time">{hhmm}</span>
-                                            <span className="gm-tl-sep">·</span>
+                                      <div key={item.id} className="pf-gd-tl-card" data-type={item.type}>
+                                        <div className="pf-gd-tl-icon">{emoji}</div>
+                                        <div className="pf-gd-tl-body">
+                                          <div className="pf-gd-tl-body">
+                                            <span className="pf-gd-tl-time">{hhmm}</span>
+                                            <span className="pf-gd-tl-sep">·</span>
                                             <span>{log.weight_value}kg</span>
-                                            {log.notes && <><span className="gm-tl-sep">·</span><span className="gm-tl-note">{log.notes}</span></>}
+                                            {log.notes && <><span className="pf-gd-tl-sep">·</span><span className="pf-gd-tl-note">{log.notes}</span></>}
                                           </div>
-                                          <div className="gm-tl-actions">
+                                          <div className="pf-gd-tl-actions">
                                             <button title={t('common.edit', 'Edit')} aria-label={t('common.edit', 'Edit')} onClick={() => { setEditingWeightLog(log); setWeightModalOpen(true); }}>✏️</button>
                                             <button title={t('common.delete', 'Delete')} aria-label={t('common.delete', 'Delete')} onClick={() => removeWeightLog(log.id)}>🗑️</button>
                                           </div>
@@ -931,17 +937,17 @@ export default function GuardianMainPage() {
                                       ? (measurementContext.i18nKey ? t(measurementContext.i18nKey, measurementContext.label) : measurementContext.label)
                                       : undefined;
                                     els.push(
-                                      <div key={item.id} className="gm-tl-card" data-type={item.type}>
-                                        <div className="gm-tl-icon">{emoji}</div>
-                                        <div className="gm-tl-content">
-                                          <div className="gm-tl-main">
-                                            <span className="gm-tl-time">{hhmm}</span>
-                                            <span className="gm-tl-sep">·</span>
+                                      <div key={item.id} className="pf-gd-tl-card" data-type={item.type}>
+                                        <div className="pf-gd-tl-icon">{emoji}</div>
+                                        <div className="pf-gd-tl-body">
+                                          <div className="pf-gd-tl-body">
+                                            <span className="pf-gd-tl-time">{hhmm}</span>
+                                            <span className="pf-gd-tl-sep">·</span>
                                             <span>{log.value}</span>
-                                            {ctxLabel && <><span className="gm-tl-sep">·</span><span>{ctxLabel}</span></>}
-                                            {metricLabel && <><span className="gm-tl-sep">·</span><span>{metricLabel}</span></>}
+                                            {ctxLabel && <><span className="pf-gd-tl-sep">·</span><span>{ctxLabel}</span></>}
+                                            {metricLabel && <><span className="pf-gd-tl-sep">·</span><span>{metricLabel}</span></>}
                                           </div>
-                                          <div className="gm-tl-actions">
+                                          <div className="pf-gd-tl-actions">
                                             <button title={t('common.edit', 'Edit')} aria-label={t('common.edit', 'Edit')} onClick={() => openEditHealthMeasurementLog(log)}>✏️</button>
                                             <button title={t('common.delete', 'Delete')} aria-label={t('common.delete', 'Delete')} onClick={() => removeHealthMeasurementLog(log.id)}>🗑️</button>
                                           </div>
@@ -956,18 +962,18 @@ export default function GuardianMainPage() {
                                     const typeLabel = t(`master.exercise_type.${log.exercise_type}`, log.exercise_type);
                                     const intensityLabel = t(`guardian.exercise.intensity_${log.intensity}`, log.intensity);
                                     els.push(
-                                      <div key={item.id} className="gm-tl-card" data-type={item.type}>
-                                        <div className="gm-tl-icon">{emoji}</div>
-                                        <div className="gm-tl-content">
-                                          <div className="gm-tl-main">
-                                            <span className="gm-tl-time">{hhmm}</span>
-                                            <span className="gm-tl-sep">·</span>
+                                      <div key={item.id} className="pf-gd-tl-card" data-type={item.type}>
+                                        <div className="pf-gd-tl-icon">{emoji}</div>
+                                        <div className="pf-gd-tl-body">
+                                          <div className="pf-gd-tl-body">
+                                            <span className="pf-gd-tl-time">{hhmm}</span>
+                                            <span className="pf-gd-tl-sep">·</span>
                                             <span>{typeLabel} {log.duration_min}min</span>
-                                            <span className="gm-tl-sep">·</span>
+                                            <span className="pf-gd-tl-sep">·</span>
                                             <span>{intensityLabel}</span>
-                                            {log.distance_km != null && <><span className="gm-tl-sep">·</span><span>{log.distance_km}km</span></>}
+                                            {log.distance_km != null && <><span className="pf-gd-tl-sep">·</span><span>{log.distance_km}km</span></>}
                                           </div>
-                                          <div className="gm-tl-actions">
+                                          <div className="pf-gd-tl-actions">
                                             <button title={t('common.edit', 'Edit')} aria-label={t('common.edit', 'Edit')} onClick={() => { setEditingExerciseLog(log); setExerciseLogModalOpen(true); }}>✏️</button>
                                             <button title={t('common.delete', 'Delete')} aria-label={t('common.delete', 'Delete')} onClick={() => removeExerciseLog(log.id)}>🗑️</button>
                                           </div>
@@ -989,17 +995,17 @@ export default function GuardianMainPage() {
                                     ? getMixedFeedLabel(log)
                                     : (log.feed_nickname || log.model_display_label || log.model_name || t('common.none', '-'));
                                   els.push(
-                                    <div key={item.id} className="gm-tl-card" data-type={item.type}>
-                                      <div className="gm-tl-icon">{emoji}</div>
-                                      <div className="gm-tl-content">
-                                        <div className="gm-tl-main">
-                                          <span className="gm-tl-time">{hhmm}</span>
-                                          <span className="gm-tl-sep">·</span>
+                                    <div key={item.id} className="pf-gd-tl-card" data-type={item.type}>
+                                      <div className="pf-gd-tl-icon">{emoji}</div>
+                                      <div className="pf-gd-tl-body">
+                                        <div className="pf-gd-tl-body">
+                                          <span className="pf-gd-tl-time">{hhmm}</span>
+                                          <span className="pf-gd-tl-sep">·</span>
                                           <span>{totalG != null ? `${totalG}g` : '-'}{totalKcal ? ` / ${totalKcal}kcal` : ''}</span>
-                                          <span className="gm-tl-sep">·</span>
+                                          <span className="pf-gd-tl-sep">·</span>
                                           <span>{feedLabel}</span>
                                         </div>
-                                        <div className="gm-tl-actions">
+                                        <div className="pf-gd-tl-actions">
                                           <button title={t('common.edit', 'Edit')} aria-label={t('common.edit', 'Edit')} onClick={() => { setEditingFeedingLog(log); setFeedingLogModalOpen(true); }}>✏️</button>
                                           <button title={t('common.delete', 'Delete')} aria-label={t('common.delete', 'Delete')} onClick={() => removeFeedingLog(log.id)}>🗑️</button>
                                         </div>
@@ -1017,15 +1023,17 @@ export default function GuardianMainPage() {
                     </>
                   )}
                   {selectedPet && healthFeeds.length > 0 && (
-                    <div className="gm-section">
-                      <div className="gm-section-header"><span className="gm-section-title">{t('guardian.health.updates', 'Health Updates')}</span></div>
-                      <div className="gm-section-body">
+                    <div className="pf-gd-section">
+                      <div className="pf-gd-section-header"><span>{t('guardian.health.updates', 'Health Updates')}</span></div>
+                      <div className="pf-gd-section-body">
                         {healthFeeds.map((f) => (
-                          <article key={f.id} className="sns-card">
-                            <p className="sns-meta">{feedTypeLabel(t, f.feed_type)}</p>
-                            <p className="text-sm text-muted">{formatDate(f.created_at, t('common.none', '-'), locale)}</p>
-                            <p>{f.caption || t('common.none', '-')}</p>
-                          </article>
+                          <div key={f.id} className="pf-gd-feed-card" style={{ margin: '0 0 8px' }}>
+                            <div className="pf-gd-feed-body" style={{ padding: '12px 14px' }}>
+                              <div className="pf-gd-feed-type" style={{ marginBottom: 4 }}>{feedTypeLabel(t, f.feed_type)}</div>
+                              <div className="pf-gd-feed-time">{formatDate(f.created_at, t('common.none', '-'), locale)}</div>
+                              <p style={{ fontSize: 14, marginTop: 6 }}>{f.caption || t('common.none', '-')}</p>
+                            </div>
+                          </div>
                         ))}
                       </div>
                     </div>
@@ -1035,102 +1043,112 @@ export default function GuardianMainPage() {
 
               {/* ── Services ── */}
               {petTab === 'services' && (
-                <div className="gm-section">
-                  <div className="gm-section-header"><span className="gm-section-title">{t('guardian.tab.services', 'Services & Bookings')}</span></div>
-                  <div className="gm-section-body">
-                    {bookings.filter((b) => !selectedPet || !b.pet_id || b.pet_id === selectedPet.id).map((b) => (
-                      <div key={b.id} className="guardian-pet-item">
-                        <p className="text-sm">#{b.id.slice(0, 8)} · {b.status}</p>
-                        <p className="text-sm text-muted">{formatDate(b.updated_at, t('common.none', '-'), locale)}</p>
-                      </div>
-                    ))}
-                    {bookings.filter((b) => !selectedPet || !b.pet_id || b.pet_id === selectedPet.id).length === 0 && (
-                      <div className="gm-empty" style={{ padding: '20px 0' }}>
-                        <div className="gm-empty-icon">📅</div>
-                        <p>{t('guardian.services.no_bookings', '예약 내역이 없습니다.')}</p>
-                      </div>
-                    )}
-                    {serviceFeeds.length > 0 && <p className="mt-2 text-sm">{t('guardian.services.completed_feeds', '완료 피드')} {serviceFeeds.length}{t('common.count_suffix', '건')}</p>}
+                <>
+                  <div className="pf-gd-section">
+                    <div className="pf-gd-section-header"><span>{t('guardian.tab.services', 'Services & Bookings')}</span></div>
+                    <div className="pf-gd-section-body">
+                      {bookings.filter((b) => !selectedPet || !b.pet_id || b.pet_id === selectedPet.id).map((b) => (
+                        <div key={b.id} className="pf-gd-tl-card">
+                          <div className="pf-gd-tl-icon">📅</div>
+                          <div className="pf-gd-tl-body">
+                            <span>#{b.id.slice(0, 8)}</span>
+                            <span className="pf-gd-tl-sep">·</span>
+                            <span style={{ fontWeight: 500 }}>{b.status}</span>
+                            <span className="pf-gd-tl-sep">·</span>
+                            <span className="pf-gd-tl-time">{formatDate(b.updated_at, t('common.none', '-'), locale)}</span>
+                          </div>
+                        </div>
+                      ))}
+                      {bookings.filter((b) => !selectedPet || !b.pet_id || b.pet_id === selectedPet.id).length === 0 && (
+                        <div className="pf-gd-empty" style={{ padding: '20px 0' }}>
+                          <div className="pf-gd-empty-icon">📅</div>
+                          <p>{t('guardian.services.no_bookings', '예약 내역이 없습니다.')}</p>
+                        </div>
+                      )}
+                      {serviceFeeds.length > 0 && <p style={{ marginTop: 8, fontSize: 13, color: 'var(--text-muted)' }}>{t('guardian.services.completed_feeds', '완료 피드')} {serviceFeeds.length}{t('common.count_suffix', '건')}</p>}
+                    </div>
                   </div>
 
                   {/* Store Browse */}
-                  <div className="gm-section-header" style={{ marginTop: 16 }}>
-                    <span className="gm-section-title">{t('guardian.store.browse', 'Browse Stores')}</span>
-                    <button className="btn btn-secondary btn-sm" onClick={() => {
-                      api.stores.list({ lang, limit: 20 }).then(res => setNearbyStores(res.items || [])).catch(() => {});
-                    }}>{t('guardian.store.browse', 'Browse')}</button>
-                  </div>
-                  <div className="gm-section-body">
-                    {nearbyStores.length === 0 ? (
-                      <p className="text-muted" style={{ fontSize: 13 }}>{t('admin.store.list.empty', 'No stores')}</p>
-                    ) : (
-                      <div style={{ display: 'grid', gap: 8 }}>
-                        {nearbyStores.map(s => (
-                          <div key={s.id} className="guardian-pet-item" style={{ padding: 8 }}>
-                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                              <strong style={{ fontSize: 14 }}>{s.display_name || s.name}</strong>
-                              <span className="text-muted" style={{ fontSize: 11 }}>
-                                {s.service_count || 0} {t('guardian.store.services', 'Services')}
-                              </span>
+                  <div className="pf-gd-section">
+                    <div className="pf-gd-section-header">
+                      <span>{t('guardian.store.browse', 'Browse Stores')}</span>
+                      <button className="btn btn-secondary btn-sm" style={{ borderRadius: 16, fontSize: 11 }} onClick={() => {
+                        api.stores.list({ lang, limit: 20 }).then(res => setNearbyStores(res.items || [])).catch(() => {});
+                      }}>{t('guardian.store.browse', 'Browse')}</button>
+                    </div>
+                    <div className="pf-gd-section-body">
+                      {nearbyStores.length === 0 ? (
+                        <p style={{ fontSize: 13, color: 'var(--text-muted)' }}>{t('admin.store.list.empty', 'No stores')}</p>
+                      ) : (
+                        <div style={{ display: 'grid', gap: 6 }}>
+                          {nearbyStores.map(s => (
+                            <div key={s.id} className="pf-gd-store-card">
+                              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                <strong style={{ fontSize: 14 }}>{s.display_name || s.name}</strong>
+                                <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>
+                                  {s.service_count || 0} {t('guardian.store.services', 'Services')}
+                                </span>
+                              </div>
+                              {s.address && <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 2 }}>{s.address}</div>}
                             </div>
-                            {s.address && <div className="text-muted" style={{ fontSize: 12 }}>{s.address}</div>}
-                          </div>
-                        ))}
-                      </div>
-                    )}
+                          ))}
+                        </div>
+                      )}
+                    </div>
                   </div>
-                </div>
+                </>
               )}
 
               {/* ── Profile ── */}
               {petTab === 'profile' && (
                 <>
-                  {/* Guardian Profile — 항상 고정 */}
+                  {/* Guardian Profile */}
                   {guardianProfile && (
-                    <div className="gm-section" style={{ marginBottom: 16 }}>
-                      <div className="gm-section-header">
-                        <span className="gm-section-title">{t('guardian.profile.title', 'Guardian Profile')}</span>
-                        <button className="btn btn-secondary btn-sm" title={t('guardian.profile.edit_profile', 'Edit Profile')} aria-label={t('guardian.profile.edit_profile', 'Edit Profile')} onClick={() => setGuardianProfileEditOpen(true)}>✏️</button>
+                    <div className="pf-gd-section" style={{ marginBottom: 16 }}>
+                      <div className="pf-gd-section-header">
+                        <span>{t('guardian.profile.title', 'Guardian Profile')}</span>
+                        <button className="btn btn-secondary btn-sm" style={{ borderRadius: 16, fontSize: 11 }} title={t('guardian.profile.edit_profile', 'Edit Profile')} aria-label={t('guardian.profile.edit_profile', 'Edit Profile')} onClick={() => setGuardianProfileEditOpen(true)}>✏️</button>
                       </div>
-                      <div className="gm-section-body">
-                        <div className="gm-info-grid">
-                          <div className="gm-info-item"><div className="gm-info-label">{t('guardian.form.name', 'Name')}</div><div className="gm-info-value">{guardianProfile.display_name || guardianProfile.full_name || t('common.none', '-')}</div></div>
-                          <div className="gm-info-item"><div className="gm-info-label">{t('guardian.profile.email', 'Email')}</div><div className="gm-info-value">{guardianProfile.email || t('common.none', '-')}</div></div>
-                          <div className="gm-info-item"><div className="gm-info-label">{t('guardian.profile.country', 'Country')}</div><div className="gm-info-value">{(() => { const c = guardianCountries.find((x) => x.id === guardianProfile.country_id); if (!c) return t('common.none', '-'); const lbl = c[lang as keyof Country]; return (typeof lbl === 'string' && lbl.trim()) ? lbl.trim() : c.ko_name || c.code; })()}</div></div>
-                          <div className="gm-info-item"><div className="gm-info-label">{t('guardian.profile.language', 'Language')}</div><div className="gm-info-value">{LANG_LABELS[guardianProfile.language as Lang] || guardianProfile.language || t('common.none', '-')}</div></div>
-                          <div className="gm-info-item"><div className="gm-info-label">{t('guardian.profile.phone', 'Phone')}</div><div className="gm-info-value">{guardianProfile.phone || t('common.none', '-')}</div></div>
-                          <div className="gm-info-item"><div className="gm-info-label">{t('guardian.profile.auth_method', 'Sign-up Method')}</div><div className="gm-info-value">{guardianProfile.oauth_provider ? guardianProfile.oauth_provider.charAt(0).toUpperCase() + guardianProfile.oauth_provider.slice(1) : 'Email'}</div></div>
-                          <div className="gm-info-item" style={{ gridColumn: '1 / -1' }}><div className="gm-info-label">{t('guardian.profile.joined_date', 'Joined')}</div><div className="gm-info-value">{guardianProfile.user_created_at ? fmtDate(guardianProfile.user_created_at, '-', locale) : t('common.none', '-')}</div></div>
+                      <div className="pf-gd-section-body">
+                        <div className="pf-gd-info-grid">
+                          <div><div className="pf-gd-info-label">{t('guardian.form.name', 'Name')}</div><div className="pf-gd-info-value">{guardianProfile.display_name || guardianProfile.full_name || t('common.none', '-')}</div></div>
+                          <div><div className="pf-gd-info-label">{t('guardian.profile.email', 'Email')}</div><div className="pf-gd-info-value">{guardianProfile.email || t('common.none', '-')}</div></div>
+                          <div><div className="pf-gd-info-label">{t('guardian.profile.country', 'Country')}</div><div className="pf-gd-info-value">{(() => { const c = guardianCountries.find((x) => x.id === guardianProfile.country_id); if (!c) return t('common.none', '-'); const lbl = c[lang as keyof Country]; return (typeof lbl === 'string' && lbl.trim()) ? lbl.trim() : c.ko_name || c.code; })()}</div></div>
+                          <div><div className="pf-gd-info-label">{t('guardian.profile.language', 'Language')}</div><div className="pf-gd-info-value">{LANG_LABELS[guardianProfile.language as Lang] || guardianProfile.language || t('common.none', '-')}</div></div>
+                          <div><div className="pf-gd-info-label">{t('guardian.profile.phone', 'Phone')}</div><div className="pf-gd-info-value">{guardianProfile.phone || t('common.none', '-')}</div></div>
+                          <div><div className="pf-gd-info-label">{t('guardian.profile.auth_method', 'Sign-up Method')}</div><div className="pf-gd-info-value">{guardianProfile.oauth_provider ? guardianProfile.oauth_provider.charAt(0).toUpperCase() + guardianProfile.oauth_provider.slice(1) : 'Email'}</div></div>
+                          <div style={{ gridColumn: '1 / -1' }}><div className="pf-gd-info-label">{t('guardian.profile.joined_date', 'Joined')}</div><div className="pf-gd-info-value">{guardianProfile.user_created_at ? fmtDate(guardianProfile.user_created_at, '-', locale) : t('common.none', '-')}</div></div>
                         </div>
                       </div>
                     </div>
                   )}
 
-                  {/* Pet Profile — 사이드바 선택된 펫 기준 */}
+                  {/* Pet Profile */}
                   {selectedPet && (
-                    <div className="gm-section">
-                      <div className="gm-section-header">
-                        <span className="gm-section-title">{t('guardian.profile.pet_profile', 'Pet Profile')}</span>
-                        <button className="btn btn-secondary btn-sm" title={t('common.edit', 'Edit')} aria-label={t('common.edit', 'Edit')} onClick={() => openEditPet(selectedPet.id)}>✏️</button>
+                    <div className="pf-gd-section">
+                      <div className="pf-gd-section-header">
+                        <span>{t('guardian.profile.pet_profile', 'Pet Profile')}</span>
+                        <button className="btn btn-secondary btn-sm" style={{ borderRadius: 16, fontSize: 11 }} title={t('common.edit', 'Edit')} aria-label={t('common.edit', 'Edit')} onClick={() => openEditPet(selectedPet.id)}>✏️</button>
                       </div>
-                      <div className="gm-section-body">
-                        <div className="gm-info-grid" style={{ marginBottom: 16 }}>
-                          <div className="gm-info-item"><div className="gm-info-label">{t('guardian.form.name', 'Name')}</div><div className="gm-info-value">{selectedPet.name}</div></div>
-                          <div className="gm-info-item"><div className="gm-info-label">{t('master.pet_type', 'Pet Type')}</div><div className="gm-info-value">{labelOf(optPetType, selectedPet.pet_type_id, t('common.none', '-'))}</div></div>
-                          <div className="gm-info-item"><div className="gm-info-label">{t('master.pet_breed', 'Breed')}</div><div className="gm-info-value">{labelOf(optBreed, selectedPet.breed_id, t('common.none', '-'))}</div></div>
-                          <div className="gm-info-item"><div className="gm-info-label">{t('master.pet_gender', 'Gender')}</div><div className="gm-info-value">{labelOf(optGender, selectedPet.gender_id, t('common.none', '-'))}</div></div>
-                          <div className="gm-info-item"><div className="gm-info-label">{t('master.life_stage', 'Life Stage')}</div><div className="gm-info-value">{labelOf(optLifeStage, selectedPet.life_stage_id, t('common.none', '-'))}</div></div>
-                          <div className="gm-info-item"><div className="gm-info-label">{t('guardian.form.birthday', 'Birthday')}</div><div className="gm-info-value">{selectedPet.birthday || selectedPet.birth_date || t('common.none', '-')}</div></div>
-                          <div className="gm-info-item"><div className="gm-info-label">{t('guardian.form.current_weight', 'Weight')}</div><div className="gm-info-value">{selectedPet.current_weight ?? selectedPet.weight_kg ?? t('common.none', '-')}</div></div>
-                          <div className="gm-info-item"><div className="gm-info-label">{t('master.health_condition_level', 'Health Level')}</div><div className="gm-info-value">{labelOf(optHealthLevel, selectedPet.health_condition_level_id, t('common.none', '-'))}</div></div>
+                      <div className="pf-gd-section-body">
+                        <div className="pf-gd-info-grid" style={{ marginBottom: 16 }}>
+                          <div><div className="pf-gd-info-label">{t('guardian.form.name', 'Name')}</div><div className="pf-gd-info-value">{selectedPet.name}</div></div>
+                          <div><div className="pf-gd-info-label">{t('master.pet_type', 'Pet Type')}</div><div className="pf-gd-info-value">{labelOf(optPetType, selectedPet.pet_type_id, t('common.none', '-'))}</div></div>
+                          <div><div className="pf-gd-info-label">{t('master.pet_breed', 'Breed')}</div><div className="pf-gd-info-value">{labelOf(optBreed, selectedPet.breed_id, t('common.none', '-'))}</div></div>
+                          <div><div className="pf-gd-info-label">{t('master.pet_gender', 'Gender')}</div><div className="pf-gd-info-value">{labelOf(optGender, selectedPet.gender_id, t('common.none', '-'))}</div></div>
+                          <div><div className="pf-gd-info-label">{t('master.life_stage', 'Life Stage')}</div><div className="pf-gd-info-value">{labelOf(optLifeStage, selectedPet.life_stage_id, t('common.none', '-'))}</div></div>
+                          <div><div className="pf-gd-info-label">{t('guardian.form.birthday', 'Birthday')}</div><div className="pf-gd-info-value">{selectedPet.birthday || selectedPet.birth_date || t('common.none', '-')}</div></div>
+                          <div><div className="pf-gd-info-label">{t('guardian.form.current_weight', 'Weight')}</div><div className="pf-gd-info-value">{selectedPet.current_weight ?? selectedPet.weight_kg ?? t('common.none', '-')}</div></div>
+                          <div><div className="pf-gd-info-label">{t('master.health_condition_level', 'Health Level')}</div><div className="pf-gd-info-value">{labelOf(optHealthLevel, selectedPet.health_condition_level_id, t('common.none', '-'))}</div></div>
                         </div>
-                        <div className="gm-health-tags">
-                          {petSummaryDetails?.diet.text && <span className="gm-health-tag" title={petSummaryDetails.diet.tooltip}>{t('master.diet_type', 'Diet')}: {petSummaryDetails.diet.text}</span>}
-                          {petSummaryDetails?.disease.text && <span className="gm-health-tag" title={petSummaryDetails.disease.tooltip}>{t('master.disease_type', 'Disease')}: {petSummaryDetails.disease.text}</span>}
-                          {petSummaryDetails?.vaccination.text && <span className="gm-health-tag" title={petSummaryDetails.vaccination.tooltip}>{t('master.vaccination_type', 'Vaccination')}: {petSummaryDetails.vaccination.text}</span>}
-                          {petSummaryDetails?.temperament.text && <span className="gm-health-tag" title={petSummaryDetails.temperament.tooltip}>{t('master.temperament_type', 'Temperament')}: {petSummaryDetails.temperament.text}</span>}
-                          {petSummaryDetails?.color.text && <span className="gm-health-tag" title={petSummaryDetails.color.tooltip}>{t('master.pet_color', 'Color')}: {petSummaryDetails.color.text}</span>}
-                          {petSummaryDetails?.grooming.text && <span className="gm-health-tag" title={petSummaryDetails.grooming.tooltip}>{t('master.grooming_cycle', 'Grooming')}: {petSummaryDetails.grooming.text}</span>}
+                        <div className="pf-gd-health-tags">
+                          {petSummaryDetails?.diet.text && <span className="pf-gd-health-tag" title={petSummaryDetails.diet.tooltip}>{t('master.diet_type', 'Diet')}: {petSummaryDetails.diet.text}</span>}
+                          {petSummaryDetails?.disease.text && <span className="pf-gd-health-tag" title={petSummaryDetails.disease.tooltip}>{t('master.disease_type', 'Disease')}: {petSummaryDetails.disease.text}</span>}
+                          {petSummaryDetails?.vaccination.text && <span className="pf-gd-health-tag" title={petSummaryDetails.vaccination.tooltip}>{t('master.vaccination_type', 'Vaccination')}: {petSummaryDetails.vaccination.text}</span>}
+                          {petSummaryDetails?.temperament.text && <span className="pf-gd-health-tag" title={petSummaryDetails.temperament.tooltip}>{t('master.temperament_type', 'Temperament')}: {petSummaryDetails.temperament.text}</span>}
+                          {petSummaryDetails?.color.text && <span className="pf-gd-health-tag" title={petSummaryDetails.color.tooltip}>{t('master.pet_color', 'Color')}: {petSummaryDetails.color.text}</span>}
+                          {petSummaryDetails?.grooming.text && <span className="pf-gd-health-tag" title={petSummaryDetails.grooming.tooltip}>{t('master.grooming_cycle', 'Grooming')}: {petSummaryDetails.grooming.text}</span>}
                         </div>
                       </div>
                     </div>
@@ -1145,14 +1163,14 @@ export default function GuardianMainPage() {
             </main>
 
             {/* ── Sidebar ── */}
-            <aside className="gm-sidebar">
-              <div className="gm-sidebar-section">
-                <div className="gm-sidebar-header">{t('guardian.mypets.title', 'My Pets')}</div>
-                <div className="gm-sidebar-body" style={{ padding: pets.length ? '8px' : undefined }}>
+            <aside className="pf-gd-aside">
+              <div className="pf-gd-aside-section">
+                <div className="pf-gd-aside-header">{t('guardian.mypets.title', 'My Pets')}</div>
+                <div className="pf-gd-aside-body">
                   {pets.length === 0 ? (
                     <div style={{ textAlign: 'center', padding: '12px 0' }}>
                       <p style={{ fontSize: 13, color: 'var(--text-muted)', marginBottom: 8 }}>{t('guardian.empty.onboard_title', '아직 등록된 반려동물이 없어요')}</p>
-                      <button className="gm-quick-btn primary" style={{ width: '100%' }} onClick={openCreatePet}>+ {t('common.add_pet', 'Add Pet')}</button>
+                      <button className="pf-gd-onboard-cta" style={{ width: '100%', fontSize: 12, padding: '8px 16px' }} onClick={openCreatePet}>+ {t('common.add_pet', 'Add Pet')}</button>
                     </div>
                   ) : (
                     <>
@@ -1163,36 +1181,36 @@ export default function GuardianMainPage() {
                         const genderLabel = labelOf(optGender, p.gender_id, '');
                         const infoLine = [weight != null ? `${weight}kg` : null, breedLabel || null, genderLabel || null].filter(Boolean).join(' · ');
                         return (
-                          <div key={p.id} className={`gm-pet-card${isSelected ? ' selected' : ''}`} onClick={() => setSelectedPetId(p.id)}>
-                            <div className="gm-pet-card-avatar">{p.name[0].toUpperCase()}</div>
-                            <div className="gm-pet-card-info">
-                              <div className="gm-pet-card-name">{p.name}</div>
-                              {infoLine && <div className="gm-pet-card-detail">{infoLine}</div>}
+                          <div key={p.id} className={`pf-gd-pet-card${isSelected ? ' selected' : ''}`} onClick={() => setSelectedPetId(p.id)}>
+                            <div className="pf-gd-pet-card-avatar">{p.name[0].toUpperCase()}</div>
+                            <div className="pf-gd-pet-card-info">
+                              <div className="pf-gd-pet-card-name">{p.name}</div>
+                              {infoLine && <div className="pf-gd-pet-card-detail">{infoLine}</div>}
                             </div>
-                            <div className="gm-pet-card-actions">
-                              <button className="gm-pet-card-action" title={t('common.edit', 'Edit')} aria-label={t('common.edit', 'Edit')} onClick={(e) => { e.stopPropagation(); openEditPet(p.id); }}>✏️</button>
-                              <button className="gm-pet-card-action danger" title={t('common.delete', 'Delete')} aria-label={t('common.delete', 'Delete')} onClick={(e) => { e.stopPropagation(); removePet(p.id); }}>🗑️</button>
+                            <div className="pf-gd-pet-card-actions">
+                              <button className="pf-gd-pet-card-action" title={t('common.edit', 'Edit')} aria-label={t('common.edit', 'Edit')} onClick={(e) => { e.stopPropagation(); openEditPet(p.id); }}>✏️</button>
+                              <button className="pf-gd-pet-card-action danger" title={t('common.delete', 'Delete')} aria-label={t('common.delete', 'Delete')} onClick={(e) => { e.stopPropagation(); removePet(p.id); }}>🗑️</button>
                             </div>
                           </div>
                         );
                       })}
-                      <button className="gm-sidebar-add-btn" onClick={openCreatePet}>+ {t('common.add_pet', 'Add Pet')}</button>
+                      <button className="pf-gd-aside-add-btn" onClick={openCreatePet}>+ {t('common.add_pet', 'Add Pet')}</button>
                     </>
                   )}
                 </div>
               </div>
-              <div className="gm-sidebar-section">
-                <div className="gm-sidebar-header">{t('guardian.summary.health_booking', 'Bookings')}</div>
-                <div className="gm-sidebar-body">
-                  <p className="text-sm">{t('guardian.summary.latest_booking', 'Latest')}: <strong>{latestBooking?.status || t('common.none', '-')}</strong></p>
-                  <p className="text-sm">{t('guardian.summary.pending_completion_approvals', 'Pending')}: <strong>{pendingApprovalsCount}</strong></p>
+              <div className="pf-gd-aside-section">
+                <div className="pf-gd-aside-header">{t('guardian.summary.health_booking', 'Bookings')}</div>
+                <div className="pf-gd-aside-body">
+                  <p className="pf-gd-aside-stat">{t('guardian.summary.latest_booking', 'Latest')}: <strong>{latestBooking?.status || t('common.none', '-')}</strong></p>
+                  <p className="pf-gd-aside-stat">{t('guardian.summary.pending_completion_approvals', 'Pending')}: <strong>{pendingApprovalsCount}</strong></p>
                 </div>
               </div>
-              <div className="gm-sidebar-section">
-                <div className="gm-sidebar-header">{t('guardian.connections.title', 'Connections')}</div>
-                <div className="gm-sidebar-body">
-                  <p className="text-sm">{t('guardian.connections.connected_suppliers', 'Connected')}: <strong>{friendCount}</strong></p>
-                  <p className="text-sm">{t('guardian.connections.pending_friend_requests', 'Pending')}: <strong>{pendingRequests.length}</strong></p>
+              <div className="pf-gd-aside-section">
+                <div className="pf-gd-aside-header">{t('guardian.connections.title', 'Connections')}</div>
+                <div className="pf-gd-aside-body">
+                  <p className="pf-gd-aside-stat">{t('guardian.connections.connected_suppliers', 'Connected')}: <strong>{friendCount}</strong></p>
+                  <p className="pf-gd-aside-stat">{t('guardian.connections.pending_friend_requests', 'Pending')}: <strong>{pendingRequests.length}</strong></p>
                 </div>
               </div>
             </aside>
@@ -1202,15 +1220,15 @@ export default function GuardianMainPage() {
 
       {/* ── Lightbox ── */}
       {lightboxIndex >= 0 && lightboxItems.length > 0 && (
-        <div className="gm-lightbox" onClick={() => setLightboxIndex(-1)}>
+        <div className="pf-gd-lightbox" onClick={() => setLightboxIndex(-1)}>
           {lightboxIndex > 0 && (
-            <button className="gm-lightbox-nav prev" onClick={(e) => { e.stopPropagation(); setLightboxIndex((i) => i - 1); }}>‹</button>
+            <button className="pf-gd-lightbox-nav prev" onClick={(e) => { e.stopPropagation(); setLightboxIndex((i) => i - 1); }}>‹</button>
           )}
-          <img className="gm-lightbox-img" src={lightboxItems[lightboxIndex]} alt="media" onClick={(e) => e.stopPropagation()} />
+          <img className="pf-gd-lightbox-img" src={lightboxItems[lightboxIndex]} alt="media" onClick={(e) => e.stopPropagation()} />
           {lightboxIndex < lightboxItems.length - 1 && (
-            <button className="gm-lightbox-nav next" onClick={(e) => { e.stopPropagation(); setLightboxIndex((i) => i + 1); }}>›</button>
+            <button className="pf-gd-lightbox-nav next" onClick={(e) => { e.stopPropagation(); setLightboxIndex((i) => i + 1); }}>›</button>
           )}
-          <button className="gm-lightbox-close" onClick={() => setLightboxIndex(-1)}>✕</button>
+          <button className="pf-gd-lightbox-close" onClick={() => setLightboxIndex(-1)}>✕</button>
         </div>
       )}
 
