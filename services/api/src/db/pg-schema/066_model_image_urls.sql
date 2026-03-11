@@ -24,15 +24,15 @@ UPDATE feed_models SET image_url = 'https://www.tasteofthewildpetfood.com/wp-con
 UPDATE feed_models SET image_url = 'https://www.tasteofthewildpetfood.com/wp-content/uploads/2025/01/taste-of-the-wild-high-prairie-canine-can-front-100920.webp' WHERE id = '5f1613fb343b8291f36528a4c074f57e';
 UPDATE feed_models SET image_url = 'https://www.tasteofthewildpetfood.com/wp-content/uploads/2025/01/pacific-stream-can-canine-formula.webp' WHERE id = '86e8ee0bc8548d37a19273b16d6c56ac';
 
--- Wellness (URLs contain double-dashes, use concatenation to avoid psql comment interpretation)
-UPDATE feed_models SET image_url = 'https://images.salsify.com/image/upload/s' || chr(45) || chr(45) || 'esA4k2FV' || chr(45) || chr(45) || '/w_500/uhrqyxhfotijusb6yyyk.jpg' WHERE id = '42fcf6f8dc310296aa9f394e73a28531';
-UPDATE feed_models SET image_url = 'https://images.salsify.com/image/upload/s' || chr(45) || chr(45) || 'fkcqg-3z' || chr(45) || chr(45) || '/w_500/htuizijrbvbhpnqlbpgt.jpg' WHERE id = '4a95414c6e8e866b154ac4a8a8c5b6f6';
-UPDATE feed_models SET image_url = 'https://images.salsify.com/image/upload/s' || chr(45) || chr(45) || '2vkyGUIU' || chr(45) || chr(45) || '/w_500/n5vklq5jqx73pqkkmsyl.jpg' WHERE id = 'e67508bf3e5d2ac0e1b1231a83c5af04';
-UPDATE feed_models SET image_url = 'https://images.salsify.com/image/upload/s' || chr(45) || chr(45) || 'gzqf4Lwb' || chr(45) || chr(45) || '/w_500/rwzwfxfxuiciclunt7gd.png' WHERE id = 'f33c85ac3ae831b5574556766da338e5';
-UPDATE feed_models SET image_url = 'https://images.salsify.com/image/upload/s' || chr(45) || chr(45) || 'D1yEDxv2' || chr(45) || chr(45) || '/w_500/sqvf8p3bgxgyllf0djfg.jpg' WHERE id = '22165166695274ccb72396c3d5328ddf';
-UPDATE feed_models SET image_url = 'https://images.salsify.com/image/upload/s' || chr(45) || chr(45) || '2cBi5CC-' || chr(45) || chr(45) || '/w_500/ubicpquzs15e8vikylpu.jpg' WHERE id = '46992bf015a7f5bbb06b0756879c2aa3';
-UPDATE feed_models SET image_url = 'https://images.salsify.com/image/upload/s' || chr(45) || chr(45) || '_a1FpmOz' || chr(45) || chr(45) || '/w_500/brzchmvfkesytt9wfmzs.jpg' WHERE id = 'ff94ff550b82522411b477eea53745a0';
-UPDATE feed_models SET image_url = 'https://images.salsify.com/image/upload/s' || chr(45) || chr(45) || 'FtHGwUKN' || chr(45) || chr(45) || '/w_500/xxevlrbalsyxvvilgyhl.jpg' WHERE id = '57c54c08fdd95e8b74f6580b2ea2a637';
+-- Wellness (note: URLs contain double-dashes which are safe inside SQL string literals)
+UPDATE feed_models SET image_url = 'https://images.salsify.com/image/upload/s--esA4k2FV--/w_500/uhrqyxhfotijusb6yyyk.jpg' WHERE id = '42fcf6f8dc310296aa9f394e73a28531';
+UPDATE feed_models SET image_url = 'https://images.salsify.com/image/upload/s--fkcqg-3z--/w_500/htuizijrbvbhpnqlbpgt.jpg' WHERE id = '4a95414c6e8e866b154ac4a8a8c5b6f6';
+UPDATE feed_models SET image_url = 'https://images.salsify.com/image/upload/s--2vkyGUIU--/w_500/n5vklq5jqx73pqkkmsyl.jpg' WHERE id = 'e67508bf3e5d2ac0e1b1231a83c5af04';
+UPDATE feed_models SET image_url = 'https://images.salsify.com/image/upload/s--gzqf4Lwb--/w_500/rwzwfxfxuiciclunt7gd.png' WHERE id = 'f33c85ac3ae831b5574556766da338e5';
+UPDATE feed_models SET image_url = 'https://images.salsify.com/image/upload/s--D1yEDxv2--/w_500/sqvf8p3bgxgyllf0djfg.jpg' WHERE id = '22165166695274ccb72396c3d5328ddf';
+UPDATE feed_models SET image_url = 'https://images.salsify.com/image/upload/s--2cBi5CC---/w_500/ubicpquzs15e8vikylpu.jpg' WHERE id = '46992bf015a7f5bbb06b0756879c2aa3';
+UPDATE feed_models SET image_url = 'https://images.salsify.com/image/upload/s--_a1FpmOz--/w_500/brzchmvfkesytt9wfmzs.jpg' WHERE id = 'ff94ff550b82522411b477eea53745a0';
+UPDATE feed_models SET image_url = 'https://images.salsify.com/image/upload/s--FtHGwUKN--/w_500/xxevlrbalsyxvvilgyhl.jpg' WHERE id = '57c54c08fdd95e8b74f6580b2ea2a637';
 
 -- Supplements: Zesty Paws
 UPDATE feed_models SET image_url = 'https://cdn.shopify.com/s/files/1/0812/2615/files/API_3.0_SkinCoat_Chicken_90-250ct_1_Hero-900x900-c4cc11b.png?v=1757961713' WHERE id = 'cc09d0e1f2a3b4c5d6e7f8a9b0c1d2e3';
