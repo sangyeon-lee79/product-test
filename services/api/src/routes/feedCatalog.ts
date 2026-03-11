@@ -282,6 +282,27 @@ export async function handleFeedCatalog(request: Request, env: Env, url: URL): P
   const lang = resolveLang(url);
   const langCol = lang;
 
+  // ── Stats ────────────────────────────────────────────────────────────────
+  if (path === '/api/v1/admin/feed-catalog/stats' && method === 'GET') {
+    const [totalRow, activeRow, userRegRow, usageRow] = await Promise.all([
+      env.DB.prepare(`SELECT COUNT(*) AS cnt FROM feed_models WHERE COALESCE(category_type, 'feed') = 'feed'`).first<{ cnt: number }>(),
+      env.DB.prepare(`SELECT COUNT(*) AS cnt FROM feed_models WHERE COALESCE(category_type, 'feed') = 'feed' AND status = 'active'`).first<{ cnt: number }>(),
+      env.DB.prepare(`SELECT COUNT(*) AS cnt FROM pet_feeds WHERE COALESCE(category_type, 'feed') = 'feed' AND status = 'active'`).first<{ cnt: number }>(),
+      env.DB.prepare(
+        `SELECT COUNT(*) AS cnt FROM pet_feeding_logs pfl
+         JOIN pet_feeds pf ON pf.id = pfl.pet_feed_id
+         WHERE COALESCE(pf.category_type, 'feed') = 'feed'
+           AND pfl.created_at >= NOW() - INTERVAL '30 days'`
+      ).first<{ cnt: number }>(),
+    ]);
+    return ok({
+      total_models: totalRow?.cnt || 0,
+      active_models: activeRow?.cnt || 0,
+      user_registered: userRegRow?.cnt || 0,
+      actual_usage: usageRow?.cnt || 0,
+    });
+  }
+
   if (path === '/api/v1/admin/feed-catalog/types' && method === 'GET') {
     const rows = await env.DB.prepare(
       `SELECT

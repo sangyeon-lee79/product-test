@@ -528,6 +528,22 @@ export async function handleDevices(request: Request, env: Env, url: URL): Promi
   const langCol = lang;
   const normalizedMaster = await hasColumn(env, 'master_categories', 'code');
 
+  // ── Stats ────────────────────────────────────────────────────────────────
+  if (path === '/api/v1/admin/devices/stats' && method === 'GET') {
+    const [totalRow, activeRow, userRegRow, usageRow] = await Promise.all([
+      env.DB.prepare(`SELECT COUNT(*) AS cnt FROM device_models`).first<{ cnt: number }>(),
+      env.DB.prepare(`SELECT COUNT(*) AS cnt FROM device_models WHERE status = 'active'`).first<{ cnt: number }>(),
+      env.DB.prepare(`SELECT COUNT(*) AS cnt FROM guardian_devices WHERE status = 'active'`).first<{ cnt: number }>(),
+      env.DB.prepare(`SELECT COUNT(*) AS cnt FROM pet_health_measurement_logs WHERE measured_at >= NOW() - INTERVAL '30 days'`).first<{ cnt: number }>(),
+    ]);
+    return ok({
+      total_models: totalRow?.cnt || 0,
+      active_models: activeRow?.cnt || 0,
+      user_registered: userRegRow?.cnt || 0,
+      actual_usage: usageRow?.cnt || 0,
+    });
+  }
+
   // ── Device Types ──────────────────────────────────────────────────────────
   if (path === '/api/v1/admin/devices/types' && method === 'GET') {
     const rows = normalizedMaster
