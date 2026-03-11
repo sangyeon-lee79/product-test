@@ -18,7 +18,7 @@ export type {
   PetLog, GlucoseAlert, MemberSummary, MemberRecord, GoogleSettingItem, PublicGoogleConfig, OAuthLoginResponse,
   PublicKakaoConfig, PublicAppleConfig, PlatformSettingItem,
   ProviderProfile, DashboardStats, PetReport,
-  Store, StoreIndustry, StoreService, ServiceDiscount,
+  Store, StoreIndustry, StoreService, ServiceDiscount, StoreStats,
   CatalogStats,
 } from '../types/api';
 import type {
@@ -38,7 +38,7 @@ import type {
   PetLog, GlucoseAlert, MemberSummary, MemberRecord, GoogleSettingItem, PublicGoogleConfig, OAuthLoginResponse,
   PublicKakaoConfig, PublicAppleConfig, PlatformSettingItem,
   ProviderProfile, DashboardStats, PetReport,
-  Store, StoreIndustry, StoreService, ServiceDiscount,
+  Store, StoreIndustry, StoreService, ServiceDiscount, StoreStats,
   CatalogStats,
 } from '../types/api';
 
@@ -1130,6 +1130,8 @@ export const api = {
         request<{ updated: boolean }>(`/api/v1/admin/stores/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
       delete: (id: string) =>
         request<{ deleted: boolean }>(`/api/v1/admin/stores/${id}`, { method: 'DELETE' }),
+      stats: () =>
+        request<StoreStats>('/api/v1/admin/stores/stats'),
     },
     services: {
       list: (storeId: string, lang?: string) =>

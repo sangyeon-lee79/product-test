@@ -125,11 +125,12 @@ async function getStoreDetail(env: Env, storeId: string, url: URL): Promise<Resp
   const store = await env.DB.prepare(
     `SELECT
        s.*, c.name AS country_name, cur.code AS currency_code,
-       u.email AS owner_email, u.nickname AS owner_name
+       u.email AS owner_email, COALESCE(uad.nickname, uad.full_name, u.email) AS owner_name
      FROM stores s
      LEFT JOIN countries c ON c.id = s.country_id
      LEFT JOIN currencies cur ON cur.id = s.currency_id
      LEFT JOIN users u ON u.id = s.owner_id
+     LEFT JOIN user_account_details uad ON uad.user_id = s.owner_id
      WHERE s.id = ?`
   ).bind(storeId).first<Record<string, unknown>>();
 
@@ -552,11 +553,12 @@ async function adminListStores(env: Env, url: URL): Promise<Response> {
 
   const rows = await env.DB.prepare(
     `SELECT
-       s.*, u.email AS owner_email, u.nickname AS owner_name,
+       s.*, u.email AS owner_email, COALESCE(uad.nickname, uad.full_name, u.email) AS owner_name,
        c.name AS country_name, cur.code AS currency_code,
        (SELECT COUNT(*) FROM services sv WHERE sv.store_id = s.id) AS service_count
      FROM stores s
      LEFT JOIN users u ON u.id = s.owner_id
+     LEFT JOIN user_account_details uad ON uad.user_id = s.owner_id
      LEFT JOIN countries c ON c.id = s.country_id
      LEFT JOIN currencies cur ON cur.id = s.currency_id
      WHERE ${where}
@@ -592,6 +594,17 @@ export async function handleStores(request: Request, env: Env, url: URL): Promis
     const me = auth as JwtPayload;
     const roleErr = requireRole(me, ['admin']);
     if (roleErr) return roleErr;
+
+    // GET /api/v1/admin/stores/stats
+    if (path === '/api/v1/admin/stores/stats' && method === 'GET') {
+      const row = await env.DB.prepare(
+        `SELECT COUNT(*) AS total,
+                COUNT(*) FILTER (WHERE status = 'active') AS active,
+                COUNT(*) FILTER (WHERE created_at >= NOW() - INTERVAL '30 days') AS new_30d
+         FROM stores`
+      ).first<{ total: number; active: number; new_30d: number }>();
+      return ok(row || { total: 0, active: 0, new_30d: 0 });
+    }
 
     // GET /api/v1/admin/stores
     if (path === '/api/v1/admin/stores' && method === 'GET') {

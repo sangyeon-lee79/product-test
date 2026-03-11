@@ -892,3 +892,9 @@ export interface ServiceDiscount {
   is_active: boolean;
   created_at: string;
 }
+
+export interface StoreStats {
+  total: number;
+  active: number;
+  new_30d: number;
+}

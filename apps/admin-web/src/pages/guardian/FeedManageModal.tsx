@@ -76,8 +76,12 @@ export default function FeedManageModal({
   const [suppTypes, setSuppTypes] = useState<FeedType[]>([]);
   const [manufacturers, setManufacturers] = useState<FeedManufacturer[]>([]);
   const [brands, setBrands] = useState<FeedBrand[]>([]);
-  const [models, setModels] = useState<FeedModel[]>([]);
   const [nutrition, setNutrition] = useState<FeedNutrition | null>(null);
+
+  // Search-first state
+  const [searchTerm, setSearchTerm] = useState('');
+  const [allModels, setAllModels] = useState<FeedModel[]>([]);
+  const [allModelsLoading, setAllModelsLoading] = useState(false);
 
   // Registration request state
   const [showRequestForm, setShowRequestForm] = useState(false);
@@ -178,44 +182,55 @@ export default function FeedManageModal({
     void run();
   }, [open, lang]);
 
-  // Load manufacturers when type changes
+  // Load ALL models + manufacturers + brands when add form opens (search-first)
   useEffect(() => {
-    if (!open || !showForm) return;
-    if (!form.feed_type_item_id) { setManufacturers([]); return; }
-    const run = async () => {
+    if (!open || !showForm || editingId) return;
+    setAllModelsLoading(true);
+    void (async () => {
       try {
-        setManufacturers(await catalogApi.manufacturers(form.feed_type_item_id || undefined));
-      } catch { setManufacturers([]); }
-    };
-    void run();
-  }, [open, showForm, form.feed_type_item_id, activeTab]);
+        const [m, mfrs, brs] = await Promise.all([
+          catalogApi.models({}, lang),
+          catalogApi.manufacturers(undefined, lang),
+          catalogApi.brands(),
+        ]);
+        setAllModels(m);
+        setManufacturers(mfrs);
+        setBrands(brs);
+      } catch { setAllModels([]); setManufacturers([]); setBrands([]); }
+      finally { setAllModelsLoading(false); }
+    })();
+  }, [open, showForm, editingId, activeTab, lang]);
 
-  // Load brands when manufacturer changes
-  useEffect(() => {
-    if (!open || !showForm || !form.manufacturer_id) { setBrands([]); return; }
-    const run = async () => {
-      try {
-        setBrands(await catalogApi.brands(form.manufacturer_id, form.feed_type_item_id || undefined));
-      } catch { setBrands([]); }
-    };
-    void run();
-  }, [open, showForm, form.manufacturer_id, activeTab]);
+  // Client-side filtered models
+  const filteredModels = useMemo(() => {
+    let result = allModels;
+    if (searchTerm.trim()) {
+      const term = searchTerm.trim().toLowerCase();
+      result = result.filter((m) =>
+        [m.model_display_label, m.model_name, m.model_code, m.mfr_display_label, m.brand_display_label]
+          .some(s => s?.toLowerCase().includes(term))
+      );
+    }
+    if (form.feed_type_item_id) result = result.filter(m => m.feed_type_item_id === form.feed_type_item_id);
+    if (form.manufacturer_id) result = result.filter(m => m.manufacturer_id === form.manufacturer_id);
+    if (form.brand_id) result = result.filter(m => m.brand_id === form.brand_id);
+    return result;
+  }, [allModels, searchTerm, form.feed_type_item_id, form.manufacturer_id, form.brand_id]);
 
-  // Load models when filter changes
-  useEffect(() => {
-    if (!open || !showForm) return;
-    if (!form.feed_type_item_id && !form.manufacturer_id && !form.brand_id) { setModels([]); return; }
-    const run = async () => {
-      try {
-        setModels(await catalogApi.models({
-          feed_type_id: form.feed_type_item_id || undefined,
-          manufacturer_id: form.manufacturer_id || undefined,
-          brand_id: form.brand_id || undefined,
-        }));
-      } catch { setModels([]); }
-    };
-    void run();
-  }, [open, showForm, form.feed_type_item_id, form.manufacturer_id, form.brand_id, activeTab]);
+  function handleSelectModel(model: FeedModel) {
+    if (form.model_id === model.id) {
+      // Deselect
+      setForm(p => ({ ...p, model_id: '', feed_type_item_id: '', manufacturer_id: '', brand_id: '' }));
+    } else {
+      // Select → auto-fill
+      setForm(p => ({
+        ...p, model_id: model.id,
+        feed_type_item_id: model.feed_type_item_id || '',
+        manufacturer_id: model.manufacturer_id || '',
+        brand_id: model.brand_id || '',
+      }));
+    }
+  }
 
   // Load nutrition when model changes
   useEffect(() => {
@@ -277,13 +292,6 @@ export default function FeedManageModal({
     [brands, lang],
   );
 
-  const modelOptions = useMemo(
-    () => models.filter((r) => r.status === 'active').map((r) => ({
-      id: r.id, key: r.model_code || r.model_name || r.id,
-      label: r.model_display_label || r.model_name || r.model_code || r.id,
-    })),
-    [models],
-  );
 
   // --- Helpers ---
   function renderSelect(
@@ -311,6 +319,8 @@ export default function FeedManageModal({
     setShowNutritionFields(false);
     setNutrition(null);
     setShowMyRequests(false);
+    setSearchTerm('');
+    setAllModels([]);
   }
 
   function switchTab(tab: Tab) {
@@ -351,7 +361,7 @@ export default function FeedManageModal({
       } else {
         const res = await itemApi.create(petId, { feed_model_id: form.model_id, nickname: form.nickname || undefined, is_primary: form.is_primary });
         // Optimistic update — build item from cascade data so it shows immediately
-        const selectedModel = models.find((m) => m.id === form.model_id);
+        const selectedModel = allModels.find((m) => m.id === form.model_id);
         const selectedType = currentTypes.find((ft) => ft.id === form.feed_type_item_id);
         const selectedMfr = manufacturers.find((m) => m.id === form.manufacturer_id);
         const selectedBrand = brands.find((b) => b.id === form.brand_id);
@@ -508,11 +518,6 @@ export default function FeedManageModal({
     return parts.join(' · ');
   }
 
-  const hasBrandOptions = brandOptions.length > 0;
-  const brandSelectDisabled = !form.manufacturer_id || !hasBrandOptions;
-  const brandPlaceholder = !form.manufacturer_id
-    ? t('admin.feed.select_manufacturer', '제조사를 먼저 선택하세요.')
-    : hasBrandOptions ? t('common.select', 'Select') : t('guardian.feed.no_brand_data', '브랜드 없음');
 
   // --- Labels per tab ---
   const tabLabels = isFeed
@@ -527,6 +532,8 @@ export default function FeedManageModal({
         nicknameLabel: t('guardian.feed.nickname', '별명'),
         nicknamePlaceholder: t('guardian.feed.nickname_placeholder', '예: 방울이 처방식'),
         typeLabel: t('admin.feed.type', '사료 유형'),
+        searchLabel: t('guardian.feed.search_label', '사료명 검색'),
+        searchPlaceholder: t('guardian.feed.search_placeholder', '사료를 검색하세요...'),
         requestBtn: t('guardian.feed.request_btn', 'Request Feed Registration'),
         requestDesc: t('guardian.feed.request_desc', "Can't find your feed? Request registration."),
         requestNameLabel: t('guardian.feed.request_name', 'Feed Name'),
@@ -542,6 +549,8 @@ export default function FeedManageModal({
         nicknameLabel: t('guardian.supplement.nickname', '별명'),
         nicknamePlaceholder: t('guardian.supplement.nickname_placeholder', '예: 방울이 관절 영양제'),
         typeLabel: t('guardian.supplement.type', '영양제 유형'),
+        searchLabel: t('guardian.supplement.search_label', '영양제명 검색'),
+        searchPlaceholder: t('guardian.supplement.search_placeholder', '영양제를 검색하세요...'),
         requestBtn: t('guardian.supplement.request_btn', 'Request Supplement Registration'),
         requestDesc: t('guardian.supplement.request_desc', "Can't find your supplement? Request registration."),
         requestNameLabel: t('guardian.supplement.request_name', 'Supplement Name'),
@@ -680,16 +689,65 @@ export default function FeedManageModal({
               </h4>
               {!editingId && (
                 <>
-                  {renderSelect(tabLabels.typeLabel, form.feed_type_item_id, typeOptions, (v) => setForm((p) => ({
-                    ...p, feed_type_item_id: v, manufacturer_id: '', brand_id: '', model_id: '',
-                  })), true, 'cat-type')}
-                  {renderSelect(t('admin.feed.manufacturer', '제조사'), form.manufacturer_id, mfrOptions, (v) => setForm((p) => ({
-                    ...p, manufacturer_id: v, brand_id: '', model_id: '',
-                  })), false, 'cat-manufacturer')}
-                  {renderSelect(t('admin.feed.brand', '브랜드'), form.brand_id, brandOptions, (v) => setForm((p) => ({
-                    ...p, brand_id: v, model_id: '',
-                  })), false, 'cat-brand', brandPlaceholder, brandSelectDisabled)}
-                  {renderSelect(t('admin.feed.models', '제품'), form.model_id, modelOptions, (v) => setForm((p) => ({ ...p, model_id: v })), true, 'cat-model')}
+                  {/* Search input */}
+                  <div className="form-group">
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
+                      <label className="form-label" htmlFor="model-search">{tabLabels.searchLabel} *</label>
+                      <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>
+                        {t('common.total', 'Total')} {filteredModels.length}
+                      </span>
+                    </div>
+                    <input
+                      id="model-search" className="form-input" type="text"
+                      value={searchTerm} placeholder={`🔍 ${tabLabels.searchPlaceholder}`}
+                      onChange={(e) => setSearchTerm(e.target.value)} autoFocus
+                    />
+                  </div>
+
+                  {/* Results list */}
+                  {allModelsLoading ? (
+                    <p style={{ fontSize: 13, color: 'var(--text-muted)', margin: '8px 0' }}>{t('guardian.catalog.loading_models', '제품 목록 불러오는 중...')}</p>
+                  ) : (
+                    <div style={{ maxHeight: 240, overflowY: 'auto', border: '1px solid var(--border)', borderRadius: 8, marginBottom: 12 }}>
+                      {filteredModels.length === 0 ? (
+                        <div style={{ padding: '20px 12px', textAlign: 'center', color: 'var(--text-muted)', fontSize: 13 }}>
+                          {t('guardian.catalog.no_results', '검색 결과가 없습니다')}
+                        </div>
+                      ) : (
+                        filteredModels.map((m) => {
+                          const isSelected = form.model_id === m.id;
+                          const label = m.model_display_label || m.model_name || m.model_code || m.id;
+                          const sub = [m.type_display_label, [m.mfr_display_label, m.brand_display_label].filter(Boolean).join(' > ')].filter(Boolean).join(' · ');
+                          return (
+                            <div key={m.id} onClick={() => handleSelectModel(m)} style={{
+                              padding: '10px 12px', cursor: 'pointer', borderBottom: '1px solid var(--border)',
+                              background: isSelected ? 'var(--primary-light, #fffbeb)' : 'transparent',
+                              display: 'flex', alignItems: 'center', gap: 8,
+                            }}>
+                              <span style={{ fontSize: 16, flexShrink: 0, width: 20, textAlign: 'center' }}>{isSelected ? '✓' : ''}</span>
+                              <div style={{ minWidth: 0, flex: 1 }}>
+                                <div style={{ fontSize: 14, fontWeight: isSelected ? 600 : 400, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{label}</div>
+                                {sub && <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 1 }}>{sub}</div>}
+                              </div>
+                            </div>
+                          );
+                        })
+                      )}
+                    </div>
+                  )}
+
+                  {/* Filter dropdowns (auto-filled & disabled when model selected) */}
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
+                    {renderSelect(tabLabels.typeLabel, form.feed_type_item_id, typeOptions,
+                      (v) => { if (!form.model_id) setForm(p => ({ ...p, feed_type_item_id: v })); },
+                      false, 'cat-type', undefined, !!form.model_id)}
+                    {renderSelect(t('admin.feed.manufacturer', '제조사'), form.manufacturer_id, mfrOptions,
+                      (v) => { if (!form.model_id) setForm(p => ({ ...p, manufacturer_id: v })); },
+                      false, 'cat-manufacturer', undefined, !!form.model_id)}
+                  </div>
+                  {renderSelect(t('admin.feed.brand', '브랜드'), form.brand_id, brandOptions,
+                    (v) => { if (!form.model_id) setForm(p => ({ ...p, brand_id: v })); },
+                    false, 'cat-brand', undefined, !!form.model_id)}
                 </>
               )}
               <div className="form-group">

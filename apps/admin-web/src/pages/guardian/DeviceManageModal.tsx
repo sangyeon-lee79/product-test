@@ -37,7 +37,11 @@ export default function DeviceManageModal({
   const [deviceTypes, setDeviceTypes] = useState<DeviceType[]>([]);
   const [manufacturers, setManufacturers] = useState<DeviceManufacturer[]>([]);
   const [brands, setBrands] = useState<DeviceBrand[]>([]);
-  const [models, setModels] = useState<DeviceModel[]>([]);
+
+  // Search-first state
+  const [searchTerm, setSearchTerm] = useState('');
+  const [allModels, setAllModels] = useState<DeviceModel[]>([]);
+  const [allModelsLoading, setAllModelsLoading] = useState(false);
 
   const petId = selectedPet?.id;
 
@@ -59,7 +63,7 @@ export default function DeviceManageModal({
     if (open && petId) void loadDevices();
   }, [open, petId]);
 
-  // Load device types with model_count from device API (not master items)
+  // Load device types
   useEffect(() => {
     if (!open) return;
     const run = async () => {
@@ -71,47 +75,55 @@ export default function DeviceManageModal({
     void run();
   }, [open, lang]);
 
-  // Load manufacturers when device type changes
+  // Load ALL models + manufacturers + brands when add form opens (search-first)
   useEffect(() => {
-    if (!open || !showForm) return;
-    if (!form.device_type_item_id) { setManufacturers([]); return; }
-    const run = async () => {
+    if (!open || !showForm || editingId) return;
+    setAllModelsLoading(true);
+    void (async () => {
       try {
-        const rows = await api.devices.public.manufacturers(form.device_type_item_id || undefined);
-        setManufacturers(rows);
-      } catch { setManufacturers([]); }
-    };
-    void run();
-  }, [open, showForm, form.device_type_item_id]);
+        const [m, mfrs, brs] = await Promise.all([
+          api.devices.public.models({}, lang),
+          api.devices.public.manufacturers(undefined, lang),
+          api.devices.public.brands(),
+        ]);
+        setAllModels(m);
+        setManufacturers(mfrs);
+        setBrands(brs);
+      } catch { setAllModels([]); setManufacturers([]); setBrands([]); }
+      finally { setAllModelsLoading(false); }
+    })();
+  }, [open, showForm, editingId, lang]);
 
-  // Load brands when manufacturer changes
-  useEffect(() => {
-    if (!open || !showForm || !form.manufacturer_id) { setBrands([]); return; }
-    const run = async () => {
-      try {
-        const rows = await api.devices.public.brands(form.manufacturer_id, form.device_type_item_id || undefined);
-        setBrands(rows);
-      } catch { setBrands([]); }
-    };
-    void run();
-  }, [open, showForm, form.manufacturer_id, form.device_type_item_id]);
+  // Client-side filtered models
+  const filteredModels = useMemo(() => {
+    let result = allModels;
+    if (searchTerm.trim()) {
+      const term = searchTerm.trim().toLowerCase();
+      result = result.filter((m) =>
+        [m.model_display_label, m.model_name, m.model_code, m.mfr_display_label, m.brand_display_label]
+          .some(s => s?.toLowerCase().includes(term))
+      );
+    }
+    if (form.device_type_item_id) result = result.filter(m => m.device_type_item_id === form.device_type_item_id || m.device_type_id === form.device_type_item_id);
+    if (form.manufacturer_id) result = result.filter(m => m.manufacturer_id === form.manufacturer_id);
+    if (form.brand_id) result = result.filter(m => m.brand_id === form.brand_id);
+    return result;
+  }, [allModels, searchTerm, form.device_type_item_id, form.manufacturer_id, form.brand_id]);
 
-  // Load models when filter changes
-  useEffect(() => {
-    if (!open || !showForm) return;
-    if (!form.device_type_item_id && !form.manufacturer_id && !form.brand_id) { setModels([]); return; }
-    const run = async () => {
-      try {
-        const rows = await api.devices.public.models({
-          device_type_id: form.device_type_item_id || undefined,
-          manufacturer_id: form.manufacturer_id || undefined,
-          brand_id: form.brand_id || undefined,
-        });
-        setModels(rows);
-      } catch { setModels([]); }
-    };
-    void run();
-  }, [open, showForm, form.device_type_item_id, form.manufacturer_id, form.brand_id]);
+  function handleSelectModel(model: DeviceModel) {
+    if (form.model_id === model.id) {
+      // Deselect
+      setForm(p => ({ ...p, model_id: '', device_type_item_id: '', manufacturer_id: '', brand_id: '' }));
+    } else {
+      // Select → auto-fill
+      setForm(p => ({
+        ...p, model_id: model.id,
+        device_type_item_id: model.device_type_item_id || model.device_type_id || '',
+        manufacturer_id: model.manufacturer_id || '',
+        brand_id: model.brand_id || '',
+      }));
+    }
+  }
 
   // Device type options: only types with model_count > 0, showing count
   const deviceTypeOptions = useMemo(
@@ -153,14 +165,6 @@ export default function DeviceManageModal({
     [brands, lang],
   );
 
-  const modelOptions = useMemo(
-    () => models.filter((r) => r.status === 'active').map((r) => ({
-      id: r.id, key: r.model_code || r.model_name || r.id,
-      label: r.model_display_label || r.model_name || r.model_code || r.id,
-    })),
-    [models],
-  );
-
   function renderSelect(
     label: string,
     value: string,
@@ -192,6 +196,8 @@ export default function DeviceManageModal({
   function openAddForm() {
     setEditingId(null);
     setForm(EMPTY_FORM);
+    setSearchTerm('');
+    setAllModels([]);
     setShowForm(true);
   }
 
@@ -227,6 +233,8 @@ export default function DeviceManageModal({
       setShowForm(false);
       setEditingId(null);
       setForm(EMPTY_FORM);
+      setSearchTerm('');
+      setAllModels([]);
       await loadDevices();
     } catch (e) {
       setError(uiErrorMessage(e, t('common.err.save', 'Failed to save.')));
@@ -269,14 +277,6 @@ export default function DeviceManageModal({
     else if (brand) parts.push(brand);
     return parts.join(' · ');
   }
-
-  const hasBrandOptions = brandOptions.length > 0;
-  const brandSelectDisabled = !form.manufacturer_id || !hasBrandOptions;
-  const brandPlaceholder = !form.manufacturer_id
-    ? t('admin.device.select_manufacturer', '제조사를 먼저 선택하세요')
-    : hasBrandOptions
-      ? t('common.select', 'Select')
-      : t('guardian.feed.no_brand_data', '브랜드 없음');
 
   if (!open) return null;
 
@@ -339,16 +339,65 @@ export default function DeviceManageModal({
               </h4>
               {!editingId && (
                 <>
-                  {renderSelect(t('guardian.health.measurement.device_type', '장치 유형'), form.device_type_item_id, deviceTypeOptions, (v) => setForm((p) => ({
-                    ...p, device_type_item_id: v, manufacturer_id: '', brand_id: '', model_id: '',
-                  })), true, 'device-type')}
-                  {renderSelect(t('guardian.health.measurement.manufacturer', '제조사'), form.manufacturer_id, mfrOptions, (v) => setForm((p) => ({
-                    ...p, manufacturer_id: v, brand_id: '', model_id: '',
-                  })), false, 'device-manufacturer')}
-                  {renderSelect(t('guardian.health.measurement.brand', '브랜드'), form.brand_id, brandOptions, (v) => setForm((p) => ({
-                    ...p, brand_id: v, model_id: '',
-                  })), false, 'device-brand', brandPlaceholder, brandSelectDisabled)}
-                  {renderSelect(t('guardian.health.measurement.model', '모델'), form.model_id, modelOptions, (v) => setForm((p) => ({ ...p, model_id: v })), true, 'device-model')}
+                  {/* Search input */}
+                  <div className="form-group">
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
+                      <label className="form-label" htmlFor="device-search">{t('guardian.device.search_label', '장비명 검색')} *</label>
+                      <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>
+                        {t('common.total', 'Total')} {filteredModels.length}
+                      </span>
+                    </div>
+                    <input
+                      id="device-search" className="form-input" type="text"
+                      value={searchTerm} placeholder={`🔍 ${t('guardian.device.search_placeholder', '장비를 검색하세요...')}`}
+                      onChange={(e) => setSearchTerm(e.target.value)} autoFocus
+                    />
+                  </div>
+
+                  {/* Results list */}
+                  {allModelsLoading ? (
+                    <p style={{ fontSize: 13, color: 'var(--text-muted)', margin: '8px 0' }}>{t('guardian.catalog.loading_models', '제품 목록 불러오는 중...')}</p>
+                  ) : (
+                    <div style={{ maxHeight: 240, overflowY: 'auto', border: '1px solid var(--border)', borderRadius: 8, marginBottom: 12 }}>
+                      {filteredModels.length === 0 ? (
+                        <div style={{ padding: '20px 12px', textAlign: 'center', color: 'var(--text-muted)', fontSize: 13 }}>
+                          {t('guardian.catalog.no_results', '검색 결과가 없습니다')}
+                        </div>
+                      ) : (
+                        filteredModels.map((m) => {
+                          const isSelected = form.model_id === m.id;
+                          const label = m.model_display_label || m.model_name || m.model_code || m.id;
+                          const sub = [m.type_display_label, [m.mfr_display_label, m.brand_display_label].filter(Boolean).join(' > ')].filter(Boolean).join(' · ');
+                          return (
+                            <div key={m.id} onClick={() => handleSelectModel(m)} style={{
+                              padding: '10px 12px', cursor: 'pointer', borderBottom: '1px solid var(--border)',
+                              background: isSelected ? 'var(--primary-light, #fffbeb)' : 'transparent',
+                              display: 'flex', alignItems: 'center', gap: 8,
+                            }}>
+                              <span style={{ fontSize: 16, flexShrink: 0, width: 20, textAlign: 'center' }}>{isSelected ? '✓' : ''}</span>
+                              <div style={{ minWidth: 0, flex: 1 }}>
+                                <div style={{ fontSize: 14, fontWeight: isSelected ? 600 : 400, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{label}</div>
+                                {sub && <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 1 }}>{sub}</div>}
+                              </div>
+                            </div>
+                          );
+                        })
+                      )}
+                    </div>
+                  )}
+
+                  {/* Filter dropdowns (auto-filled & disabled when model selected) */}
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
+                    {renderSelect(t('guardian.health.measurement.device_type', '장치 유형'), form.device_type_item_id, deviceTypeOptions,
+                      (v) => { if (!form.model_id) setForm(p => ({ ...p, device_type_item_id: v })); },
+                      false, 'device-type', undefined, !!form.model_id)}
+                    {renderSelect(t('guardian.health.measurement.manufacturer', '제조사'), form.manufacturer_id, mfrOptions,
+                      (v) => { if (!form.model_id) setForm(p => ({ ...p, manufacturer_id: v })); },
+                      false, 'device-manufacturer', undefined, !!form.model_id)}
+                  </div>
+                  {renderSelect(t('guardian.health.measurement.brand', '브랜드'), form.brand_id, brandOptions,
+                    (v) => { if (!form.model_id) setForm(p => ({ ...p, brand_id: v })); },
+                    false, 'device-brand', undefined, !!form.model_id)}
                 </>
               )}
               <div className="form-group">
@@ -372,7 +421,7 @@ export default function DeviceManageModal({
                 {t('guardian.device.set_default', '기본 설정')}
               </label>
               <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end', marginTop: 12 }}>
-                <button className="btn btn-secondary btn-sm" onClick={() => { setShowForm(false); setEditingId(null); }}>
+                <button className="btn btn-secondary btn-sm" onClick={() => { setShowForm(false); setEditingId(null); setSearchTerm(''); setAllModels([]); }}>
                   {t('common.cancel', 'Cancel')}
                 </button>
                 <button className="btn btn-primary btn-sm" onClick={() => void handleSave()}>
