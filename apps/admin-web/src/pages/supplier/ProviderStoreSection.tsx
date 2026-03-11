@@ -49,7 +49,7 @@ export default function ProviderStoreSection() {
   const [industries, setIndustries] = useState<MasterItem[]>([]);
 
   useEffect(() => {
-    api.countries.list().then(setCountries).catch(() => {});
+    api.countries.publicList().then(setCountries).catch(() => {});
     api.master.public.items('business_category', undefined, lang).then(setIndustries).catch(() => {});
   }, [lang]);
 

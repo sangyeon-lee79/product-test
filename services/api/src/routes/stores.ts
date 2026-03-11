@@ -62,7 +62,7 @@ async function listStores(env: Env, url: URL): Promise<Response> {
        s.id, s.owner_id, s.name, s.name_translations, s.description, s.description_translations,
        s.address, s.phone, s.country_id, s.currency_id, s.latitude, s.longitude,
        s.avatar_url, s.status, s.created_at, s.updated_at,
-       c.name AS country_name, cur.code AS currency_code,
+       c.name_key AS country_name, cur.code AS currency_code,
        (SELECT COUNT(*) FROM services sv WHERE sv.store_id = s.id AND sv.is_active = true) AS service_count
      FROM stores s
      LEFT JOIN countries c ON c.id = s.country_id
@@ -99,7 +99,7 @@ async function getMyStores(env: Env, me: JwtPayload, url: URL): Promise<Response
        s.id, s.name, s.name_translations, s.description, s.description_translations,
        s.address, s.phone, s.country_id, s.currency_id, s.avatar_url, s.status,
        s.created_at, s.updated_at,
-       c.name AS country_name, cur.code AS currency_code,
+       c.name_key AS country_name, cur.code AS currency_code,
        (SELECT COUNT(*) FROM services sv WHERE sv.store_id = s.id AND sv.is_active = true) AS service_count
      FROM stores s
      LEFT JOIN countries c ON c.id = s.country_id
@@ -124,7 +124,7 @@ async function getStoreDetail(env: Env, storeId: string, url: URL): Promise<Resp
 
   const store = await env.DB.prepare(
     `SELECT
-       s.*, c.name AS country_name, cur.code AS currency_code,
+       s.*, c.name_key AS country_name, cur.code AS currency_code,
        u.email AS owner_email, COALESCE(uad.nickname, uad.full_name, u.email) AS owner_name
      FROM stores s
      LEFT JOIN countries c ON c.id = s.country_id
@@ -554,7 +554,7 @@ async function adminListStores(env: Env, url: URL): Promise<Response> {
   const rows = await env.DB.prepare(
     `SELECT
        s.*, u.email AS owner_email, COALESCE(uad.nickname, uad.full_name, u.email) AS owner_name,
-       c.name AS country_name, cur.code AS currency_code,
+       c.name_key AS country_name, cur.code AS currency_code,
        (SELECT COUNT(*) FROM services sv WHERE sv.store_id = s.id) AS service_count
      FROM stores s
      LEFT JOIN users u ON u.id = s.owner_id
