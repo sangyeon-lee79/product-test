@@ -978,6 +978,12 @@ tbody tr:hover { background: #FAF7F2; }
   display: inline-block;
 }
 .loading-center { display: flex; justify-content: center; align-items: center; padding: 48px; }
+.oauth-processing {
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  min-height: 100vh; gap: 16px;
+}
+.oauth-processing .spinner { width: 32px; height: 32px; border-width: 3px; }
+.oauth-processing p { color: var(--text-muted); font-size: 14px; margin: 0; }
 
 /* ── Portfolio View (.folio-*) ──────────────────────────────── */
 /*

@@ -28,7 +28,7 @@ export default function Login() {
     if (err instanceof Error) {
       const msg = err.message || '';
       if (msg.includes('Failed to fetch') || msg.includes('NetworkError')) {
-        return '데이터를 불러오지 못했습니다. 잠시 후 다시 시도해주세요.';
+        return t('common.err.network', 'Network error. Please try again later.');
       }
       return msg;
     }
@@ -145,7 +145,7 @@ export default function Login() {
           </p>
           {!forcedAdmin && (
             <p className="text-sm mt-3" style={{ textAlign: 'center' }}>
-              계정이 없나요? <Link to="/signup">회원가입</Link>
+              {t('public.login.no_account', "Don't have an account?")} <Link to="/signup">{t('public.signup.title', 'Sign up')}</Link>
             </p>
           )}
         </div>
