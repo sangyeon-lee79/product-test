@@ -157,7 +157,31 @@ function buildQuery(params: Record<string, string | number | boolean | undefined
   return s ? `?${s}` : '';
 }
 
+/* ── Catalog API return types ── */
+interface CatalogPublicApi {
+  types: (lang?: string) => Promise<FeedType[]>;
+  manufacturers: (feedTypeId?: string, lang?: string) => Promise<FeedManufacturer[]>;
+  brands: (manufacturerId?: string, feedTypeId?: string) => Promise<FeedBrand[]>;
+  models: (filters?: { feed_type_id?: string; manufacturer_id?: string; brand_id?: string }, lang?: string) => Promise<FeedModel[]>;
+}
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+type CatalogCrud<T> = { list: (...args: any[]) => Promise<T[]>; create: (data: any) => Promise<T>; update: (id: string, data: any) => Promise<T>; delete: (id: string) => Promise<{ id: string; deleted: boolean }> };
+interface CatalogApiBase {
+  stats: () => Promise<CatalogStats>;
+  types: { list: (lang?: string) => Promise<FeedType[]> };
+  manufacturers: CatalogCrud<FeedManufacturer>;
+  brands: CatalogCrud<FeedBrand>;
+  models: CatalogCrud<FeedModel>;
+  public: CatalogPublicApi;
+}
+export interface CatalogApiWithNutrition extends Omit<CatalogApiBase, 'public'> {
+  nutrition: { get: (modelId: string) => Promise<FeedNutrition | null>; upsert: (modelId: string, data: any) => Promise<FeedNutrition> };
+  public: CatalogPublicApi & { nutrition: (modelId: string) => Promise<FeedNutrition | null> };
+}
+
 /* ── Catalog API factory ── */
+function createCatalogApi(adminPrefix: string, publicPrefix: string, hasNutrition: true): CatalogApiWithNutrition;
+function createCatalogApi(adminPrefix: string, publicPrefix: string, hasNutrition: false): CatalogApiBase;
 function createCatalogApi(adminPrefix: string, publicPrefix: string, hasNutrition: boolean) {
   const base = {
     stats: () => request<CatalogStats>(`${adminPrefix}/stats`),

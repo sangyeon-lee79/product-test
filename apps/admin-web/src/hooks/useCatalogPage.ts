@@ -1,7 +1,7 @@
 import { useEffect, useState, useCallback } from 'react';
 import { api, type FeedType, type FeedManufacturer, type FeedBrand, type FeedModel, type FeedNutrition } from '../lib/api';
 import { useI18n, useT, SUPPORTED_LANGS, LANG_LABELS } from '../lib/i18n';
-import { emptyTrans, sortCatalog, i18nRowToTranslations, autoTranslate, findMissingTranslationLangs, type CatalogSortMode } from '../lib/catalogUtils';
+import { emptyTrans, sortCatalog, i18nRowToTranslations, findMissingTranslationLangs, type CatalogSortMode } from '../lib/catalogUtils';
 import type { CatalogStats } from '../types/api';
 
 export type ModalTarget = 'manufacturer' | 'brand' | 'model';
@@ -12,20 +12,20 @@ interface CatalogApiShape {
   types: { list: (lang?: string) => Promise<FeedType[]> };
   manufacturers: {
     list: (lang?: string, typeItemId?: string) => Promise<FeedManufacturer[]>;
-    create: (data: Record<string, unknown>) => Promise<FeedManufacturer>;
-    update: (id: string, data: Record<string, unknown>) => Promise<FeedManufacturer>;
+    create: (data: any) => Promise<FeedManufacturer>;
+    update: (id: string, data: any) => Promise<FeedManufacturer>;
     delete: (id: string) => Promise<{ id: string; deleted: boolean }>;
   };
   brands: {
     list: (manufacturerId?: string, typeItemId?: string) => Promise<FeedBrand[]>;
-    create: (data: Record<string, unknown>) => Promise<FeedBrand>;
-    update: (id: string, data: Record<string, unknown>) => Promise<FeedBrand>;
+    create: (data: any) => Promise<FeedBrand>;
+    update: (id: string, data: any) => Promise<FeedBrand>;
     delete: (id: string) => Promise<{ id: string; deleted: boolean }>;
   };
   models: {
     list: (filters?: { feed_type_id?: string; manufacturer_id?: string; brand_id?: string }) => Promise<FeedModel[]>;
-    create: (data: Record<string, unknown>) => Promise<FeedModel>;
-    update: (id: string, data: Record<string, unknown>) => Promise<FeedModel>;
+    create: (data: any) => Promise<FeedModel>;
+    update: (id: string, data: any) => Promise<FeedModel>;
     delete: (id: string) => Promise<{ id: string; deleted: boolean }>;
   };
   nutrition?: {

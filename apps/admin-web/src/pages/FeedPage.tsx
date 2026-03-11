@@ -1,6 +1,6 @@
 import { useEffect, useState, useCallback } from 'react';
 import { api, type FeedType, type FeedManufacturer, type FeedBrand, type FeedRegistrationRequest } from '../lib/api';
-import { useI18n, useT } from '../lib/i18n';
+import { useI18n } from '../lib/i18n';
 import { itemLabel } from '../lib/catalogUtils';
 import { CatalogCol, CatalogStatusBadge, CatalogModelDetail, CatalogListThumb, type ModelDetailField } from '../components/CatalogGrid';
 import { CatalogStatsBar } from '../components/CatalogStatsBar';
@@ -17,7 +17,7 @@ const I18N = {
 type FeedPageTab = 'catalog' | 'requests';
 
 export default function FeedPage() {
-  const h = useCatalogPage({ catalogApi: api.feedCatalog as Parameters<typeof useCatalogPage>[0]['catalogApi'], imageSubdir: 'feed' });
+  const h = useCatalogPage({ catalogApi: api.feedCatalog, imageSubdir: 'feed' });
   const { t } = h;
   const { lang } = useI18n();
 

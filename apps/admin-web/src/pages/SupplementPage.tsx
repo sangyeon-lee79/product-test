@@ -18,7 +18,7 @@ function parseModelMeta(model: FeedModel): { ingredients?: string; dosage_unit?:
 }
 
 export default function SupplementPage() {
-  const h = useCatalogPage({ catalogApi: api.supplementCatalog as Parameters<typeof useCatalogPage>[0]['catalogApi'], imageSubdir: 'supplement' });
+  const h = useCatalogPage({ catalogApi: api.supplementCatalog, imageSubdir: 'supplement' });
   const { t } = h;
   const addLabel = t('admin.master.btn_add');
   function SBadge({ status }: { status: string }) { return <CatalogStatusBadge status={status} t={t} />; }
