@@ -16,7 +16,7 @@ export type {
   FeedRegistrationRequest,
   PetLog, GlucoseAlert, MemberSummary, MemberRecord, GoogleSettingItem, PublicGoogleConfig, OAuthLoginResponse,
   PublicKakaoConfig, PublicAppleConfig, PlatformSettingItem,
-  ProviderProfile, DashboardStats,
+  ProviderProfile, DashboardStats, PetReport,
 } from '../types/api';
 import type {
   I18nRow, MasterCategory, MasterItem, Country, Currency,
@@ -33,7 +33,7 @@ import type {
   FeedRegistrationRequest,
   PetLog, GlucoseAlert, MemberSummary, MemberRecord, GoogleSettingItem, PublicGoogleConfig, OAuthLoginResponse,
   PublicKakaoConfig, PublicAppleConfig, PlatformSettingItem,
-  ProviderProfile, DashboardStats,
+  ProviderProfile, DashboardStats, PetReport,
 } from '../types/api';
 
 const API_BASE = getApiBase();
@@ -581,6 +581,10 @@ export const api = {
         request<{ id: string }>(`/api/v1/pets/${petId}/feeding-mix-favorites`, { method: 'POST', body: JSON.stringify(data) }),
       remove: (petId: string, favId: string) =>
         request<{ deleted: boolean; id: string }>(`/api/v1/pets/${petId}/feeding-mix-favorites/${favId}`, { method: 'DELETE' }),
+    },
+    report: {
+      get: (petId: string, params?: { period?: 'today' | '7d' | '30d' | '3m'; lang?: string }) =>
+        request<PetReport>(`/api/v1/pets/${petId}/report${buildQuery({ period: params?.period, lang: params?.lang })}`),
     },
     guardianDevices: {
       list: (petId: string) =>

@@ -741,6 +741,41 @@ export interface DashboardStats {
   };
 }
 
+// ─── Pet Report ───────────────────────────────────────────────────────────────
+
+export interface PetReport {
+  pet: { id: string; name: string; pet_type_code: string | null; current_weight: number | null };
+  period: string;
+  feeding: {
+    today_calories: number;
+    target_calories: number | null;
+    weekly_calories: { date: string; calories: number }[];
+    nutrient_ratio: { nutrient: string; pct: number }[];
+    top3_feeds: { name: string; count: number }[];
+    supplements: { name: string; is_prescribed: boolean; taken_today: boolean }[];
+  };
+  exercise: {
+    week_summary: { count: number; total_min: number; avg_intensity: number };
+    weekly_calendar: { date: string; exercised: boolean }[];
+    type_ratio: { type: string; count: number }[];
+    monthly_trend: { month: string; total_min: number }[];
+    recent: { date: string; type: string; duration_min: number; intensity: string }[];
+  };
+  health: {
+    weight_trend: { date: string; weight: number }[];
+    current_weight: number | null;
+    weight_delta: number | null;
+    measurement_trends: { metric: string; data: { date: string; value: number }[] }[];
+    recent_records: { date: string; type: string; value: number }[];
+  };
+  weekly_summary: {
+    feeding_card: { avg_calories: number; prev_avg_calories: number; delta_pct: number };
+    exercise_card: { count: number; prev_count: number; delta: number };
+    health_card: { weight: number | null; prev_weight: number | null; delta: number | null };
+    alerts: { type: string; message_key: string; severity: string }[];
+  };
+}
+
 export interface PetLog {
   id: string;
   pet_id: string;

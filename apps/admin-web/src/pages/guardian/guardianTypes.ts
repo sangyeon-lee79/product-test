@@ -5,7 +5,7 @@ import type { Lang } from '../../lib/i18n';
 // ── 타입 ──────────────────────────────────────────────────
 export type FeedTab = 'all' | 'friends';
 export type Mode = 'create' | 'edit';
-export type PetProfileTab = 'timeline' | 'health' | 'services' | 'gallery' | 'profile';
+export type PetProfileTab = 'timeline' | 'health' | 'services' | 'gallery' | 'profile' | 'report';
 export type WeightRange = '7d' | '15d' | '1m' | '3m' | '6m' | '1y' | 'all';
 export type PetWizardStep = 1 | 2 | 3 | 4 | 5 | 6;
 export type MeasurementWizardStep = 1 | 2; // kept for backwards compat

@@ -22,6 +22,7 @@ import {
   listHealthMeasurementLogs, createHealthMeasurementLog, updateHealthMeasurementLog, deleteHealthMeasurementLog,
 } from './healthMeasurements';
 import { listExerciseLogs, createExerciseLog, updateExerciseLog, deleteExerciseLog } from './exerciseLogs';
+import { getPetReport } from './report';
 
 export async function handlePets(request: Request, env: Env, url: URL): Promise<Response> {
   const auth = await requireAuth(request, env);
@@ -135,6 +136,12 @@ export async function handlePets(request: Request, env: Env, url: URL): Promise<
     const [, petId, logId] = exerciseLogItemMatch;
     if (request.method === 'PUT') return updateExerciseLog(request, env, payload, petId, logId);
     if (request.method === 'DELETE') return deleteExerciseLog(env, payload, petId, logId);
+  }
+
+  // /pets/:id/report
+  const reportMatch = sub.match(/^\/([^/]+)\/report$/);
+  if (reportMatch) {
+    if (request.method === 'GET') return getPetReport(env, payload, reportMatch[1], url);
   }
 
   // /pets/:id/pet-supplements (delegated to petFeeds route — shared handler)
