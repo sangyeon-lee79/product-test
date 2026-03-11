@@ -1989,6 +1989,103 @@ html[data-theme="dark"] .gm-timeline::before { background: linear-gradient(to bo
 .gm-empty-icon { font-size: 40px; margin-bottom: 12px; }
 .gm-empty-title { font-size: 16px; font-weight: 700; color: var(--text); margin-bottom: 6px; }
 
+/* Onboarding card (empty state, no pets) */
+.gm-onboard-card {
+  border: 2px dashed var(--border);
+  border-radius: 16px;
+  padding: 48px 32px;
+  text-align: center;
+  background: var(--surface);
+  max-width: 480px;
+  margin: 40px auto;
+}
+.gm-onboard-icon { font-size: 56px; margin-bottom: 16px; }
+.gm-onboard-title { font-size: 18px; font-weight: 700; color: var(--text); margin-bottom: 8px; }
+.gm-onboard-desc { font-size: 14px; color: var(--text-muted); margin-bottom: 20px; line-height: 1.5; }
+.gm-onboard-btn {
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 12px 28px; font-size: 15px; font-weight: 700;
+  color: #fff; background: var(--primary); border: none; border-radius: 10px;
+  cursor: pointer; transition: opacity .15s;
+}
+.gm-onboard-btn:hover { opacity: .9; }
+
+/* Sidebar pet cards (enhanced) */
+.gm-pet-card {
+  display: flex; align-items: center; gap: 10px; padding: 10px;
+  border: 2px solid transparent; border-radius: 10px;
+  cursor: pointer; transition: border-color .15s, background .15s;
+  margin-bottom: 4px;
+}
+.gm-pet-card:hover { background: var(--input-bg); }
+.gm-pet-card.selected {
+  border-color: var(--primary);
+  background: color-mix(in srgb, var(--primary) 6%, var(--surface));
+}
+.gm-pet-card-avatar {
+  width: 40px; height: 40px; border-radius: 50%;
+  background: linear-gradient(135deg, var(--primary) 0%, #f59e0b 100%);
+  color: #fff; font-size: 16px; font-weight: 700;
+  display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+}
+.gm-pet-card-info { flex: 1; min-width: 0; }
+.gm-pet-card-name {
+  font-size: 14px; font-weight: 600; color: var(--text);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.gm-pet-card-detail {
+  font-size: 11px; color: var(--text-muted); margin-top: 2px;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.gm-pet-card-actions {
+  display: flex; gap: 2px; flex-shrink: 0;
+  opacity: 0; transition: opacity .15s;
+}
+.gm-pet-card:hover .gm-pet-card-actions,
+.gm-pet-card.selected .gm-pet-card-actions { opacity: 1; }
+.gm-pet-card-action {
+  background: none; border: none; font-size: 14px; cursor: pointer;
+  padding: 4px; border-radius: 6px; transition: background .15s;
+}
+.gm-pet-card-action:hover { background: var(--border); }
+.gm-pet-card-action.danger:hover { background: color-mix(in srgb, red 10%, var(--surface)); }
+
+/* Sidebar add button (small outline) */
+.gm-sidebar-add-btn {
+  width: 100%; padding: 8px; font-size: 12px; font-weight: 600;
+  color: var(--primary); background: none;
+  border: 1px dashed var(--primary); border-radius: 8px;
+  cursor: pointer; text-align: center; transition: background .15s; margin-top: 4px;
+}
+.gm-sidebar-add-btn:hover { background: color-mix(in srgb, var(--primary) 8%, var(--surface)); }
+
+/* Pet switching tabs (multi-pet navigation) */
+.gm-pet-switch-tabs {
+  display: flex; align-items: center; gap: 4px;
+  padding: 8px 24px; background: var(--surface);
+  border-bottom: 1px solid var(--border);
+  overflow-x: auto; scrollbar-width: none;
+}
+.gm-pet-switch-tabs::-webkit-scrollbar { display: none; }
+.gm-pet-switch-tab {
+  display: flex; align-items: center; gap: 6px;
+  padding: 6px 14px; font-size: 13px; font-weight: 500;
+  color: var(--text-muted); background: var(--input-bg);
+  border: 1.5px solid var(--border); border-radius: 20px;
+  cursor: pointer; white-space: nowrap; transition: all .15s;
+}
+.gm-pet-switch-tab:hover { border-color: var(--primary); color: var(--text); }
+.gm-pet-switch-tab.active {
+  background: color-mix(in srgb, var(--primary) 10%, var(--surface));
+  border-color: var(--primary); color: var(--primary); font-weight: 700;
+}
+.gm-pet-switch-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+.gm-pet-switch-tab.add {
+  padding: 6px 10px; font-size: 16px; font-weight: 700;
+  color: var(--text-muted); background: none; border-style: dashed;
+}
+.gm-pet-switch-tab.add:hover { color: var(--primary); border-color: var(--primary); }
+
 /* Feed filter mini-tabs inside gm-section */
 .gm-feed-tabs { display: flex; border-bottom: 1px solid var(--border); }
 .gm-feed-tab {
@@ -2002,6 +2099,7 @@ html[data-theme="dark"] .gm-timeline::before { background: linear-gradient(to bo
 @media (max-width: 960px) {
   .gm-layout { grid-template-columns: 1fr; }
   .gm-sidebar { display: none; }
+  .gm-pet-switch-tabs { padding: 6px 16px; }
 }
 @media (max-width: 600px) {
   .gm-pet-header { padding: 12px 16px; gap: 12px; }
@@ -2013,6 +2111,11 @@ html[data-theme="dark"] .gm-timeline::before { background: linear-gradient(to bo
   .gm-health-stats { grid-template-columns: 1fr 1fr; }
   .gm-info-grid { grid-template-columns: 1fr; }
   .gm-tab { padding: 10px 14px; font-size: 12px; }
+  .gm-pet-switch-tabs { padding: 4px 12px; gap: 4px; }
+  .gm-pet-switch-tab { padding: 5px 10px; font-size: 12px; }
+  .gm-onboard-card { padding: 32px 20px; margin: 20px auto; }
+  .gm-onboard-icon { font-size: 44px; }
+  .gm-onboard-title { font-size: 16px; }
 }
 
 /* ── Responsive ─────────────────────────────────────────────── */
