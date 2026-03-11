@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { api, type Booking } from '../lib/api';
+import { api, type Booking, type ProviderProfile } from '../lib/api';
 import { logout } from '../lib/auth';
 import { useI18n, useT } from '../lib/i18n';
 
@@ -18,19 +18,9 @@ const STATUS_META: Record<string, { labelKey: string; badge: string }> = {
 };
 
 const LANG_TO_LOCALE: Record<string, string> = {
-  ko: 'ko-KR',
-  en: 'en-US',
-  ja: 'ja-JP',
-  zh_cn: 'zh-CN',
-  zh_tw: 'zh-TW',
-  es: 'es-ES',
-  fr: 'fr-FR',
-  de: 'de-DE',
-  pt: 'pt-PT',
-  vi: 'vi-VN',
-  th: 'th-TH',
-  id_lang: 'id-ID',
-  ar: 'ar-SA',
+  ko: 'ko-KR', en: 'en-US', ja: 'ja-JP', zh_cn: 'zh-CN', zh_tw: 'zh-TW',
+  es: 'es-ES', fr: 'fr-FR', de: 'de-DE', pt: 'pt-PT', vi: 'vi-VN',
+  th: 'th-TH', id_lang: 'id-ID', ar: 'ar-SA',
 };
 
 function decodeToken(): { sub?: string; email?: string } {
@@ -58,18 +48,114 @@ function fmtRelativeDate(value: string | null | undefined, locale: string): stri
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return value;
   return new Intl.DateTimeFormat(locale, {
-    year: 'numeric',
-    month: '2-digit',
-    day: '2-digit',
-    hour: '2-digit',
-    minute: '2-digit',
+    year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit',
   }).format(date);
 }
 
+/* ─── Profile Edit Form (pending/rejected) ─── */
+function ProfileEditSection({
+  profile, onSaved,
+}: { profile: ProviderProfile | null; onSaved: () => void }) {
+  const t = useT();
+  const [regNo, setRegNo] = useState(profile?.business_registration_no || '');
+  const [hours, setHours] = useState(profile?.operating_hours || '');
+  const [certs, setCerts] = useState((profile?.certifications || []).join(', '));
+  const [address, setAddress] = useState(profile?.address_line || '');
+  const [saving, setSaving] = useState(false);
+  const [msg, setMsg] = useState('');
+  const [errMsg, setErrMsg] = useState('');
+
+  useEffect(() => {
+    setRegNo(profile?.business_registration_no || '');
+    setHours(profile?.operating_hours || '');
+    setCerts((profile?.certifications || []).join(', '));
+    setAddress(profile?.address_line || '');
+  }, [profile]);
+
+  async function handleSave() {
+    setSaving(true);
+    setMsg('');
+    setErrMsg('');
+    try {
+      await api.providers.updateMe({
+        business_registration_no: regNo.trim() || null,
+        operating_hours: hours.trim() || null,
+        certifications: certs.split(',').map((s) => s.trim()).filter(Boolean),
+        address_line: address.trim() || null,
+      });
+      setMsg(t('admin.provider.profile.saved'));
+      onSaved();
+    } catch (e) {
+      setErrMsg(e instanceof Error ? e.message : t('admin.provider.profile.save_failed'));
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  return (
+    <div className="card">
+      <div className="card-header">
+        <div className="card-title">{t('admin.provider.profile.title')}</div>
+      </div>
+      <div className="card-body" style={{ display: 'grid', gap: 16 }}>
+        {msg && <div className="alert alert-success">{msg}</div>}
+        {errMsg && <div className="alert alert-error">{errMsg}</div>}
+
+        {/* 현재 업종 (읽기전용 — 수정은 Admin에서) */}
+        {profile && (profile.business_l1_label || profile.business_l2_label || profile.business_l3_label) && (
+          <div className="form-group" style={{ marginBottom: 0 }}>
+            <label className="form-label">{t('admin.provider.profile.business_category')}</label>
+            <div style={{ color: 'var(--text)', fontSize: 14 }}>
+              {[profile.business_l1_label, profile.business_l2_label, profile.business_l3_label].filter(Boolean).join(' > ') || '-'}
+            </div>
+          </div>
+        )}
+
+        {profile && (profile.pet_type_l1_label || profile.pet_type_l2_label) && (
+          <div className="form-group" style={{ marginBottom: 0 }}>
+            <label className="form-label">{t('admin.provider.profile.pet_type')}</label>
+            <div style={{ color: 'var(--text)', fontSize: 14 }}>
+              {[profile.pet_type_l1_label, profile.pet_type_l2_label].filter(Boolean).join(' > ') || '-'}
+            </div>
+          </div>
+        )}
+
+        <div className="form-group" style={{ marginBottom: 0 }}>
+          <label className="form-label">{t('admin.provider.profile.registration_no')}</label>
+          <input className="form-input" value={regNo} onChange={(e) => setRegNo(e.target.value)} />
+        </div>
+        <div className="form-group" style={{ marginBottom: 0 }}>
+          <label className="form-label">{t('admin.provider.profile.operating_hours')}</label>
+          <input className="form-input" value={hours} onChange={(e) => setHours(e.target.value)} placeholder="09:00 - 18:00" />
+        </div>
+        <div className="form-group" style={{ marginBottom: 0 }}>
+          <label className="form-label">{t('admin.provider.profile.certifications')}</label>
+          <input className="form-input" value={certs} onChange={(e) => setCerts(e.target.value)} placeholder="Cert1, Cert2" />
+        </div>
+        <div className="form-group" style={{ marginBottom: 0 }}>
+          <label className="form-label">{t('admin.provider.profile.address')}</label>
+          <input className="form-input" value={address} onChange={(e) => setAddress(e.target.value)} />
+        </div>
+        <button className="btn btn-primary" onClick={() => void handleSave()} disabled={saving}>
+          {saving ? '...' : t('admin.provider.profile.save')}
+        </button>
+      </div>
+    </div>
+  );
+}
+
+/* ─── Main Page ─── */
 export default function SupplierDashboardPage() {
   const navigate = useNavigate();
   const t = useT();
   const { lang } = useI18n();
+
+  // Approval state
+  const [approvalStatus, setApprovalStatus] = useState<string>('loading');
+  const [providerProfile, setProviderProfile] = useState<ProviderProfile | null>(null);
+  const [rejectionReason, setRejectionReason] = useState('');
+
+  // Booking state (used only when approved)
   const [bookings, setBookings] = useState<Booking[]>([]);
   const [loading, setLoading] = useState(true);
   const [busyId, setBusyId] = useState('');
@@ -86,6 +172,17 @@ export default function SupplierDashboardPage() {
     () => Object.entries(STATUS_META).map(([value, meta]) => ({ value, label: t(meta.labelKey) })),
     [t],
   );
+
+  async function loadApprovalStatus() {
+    try {
+      const data = await api.providers.me();
+      setApprovalStatus(data.approval_status || 'pending');
+      setProviderProfile(data.profile);
+      setRejectionReason(data.rejection_reason || '');
+    } catch {
+      setApprovalStatus('pending');
+    }
+  }
 
   async function loadBookings(opts?: { silent?: boolean }) {
     if (!opts?.silent) setLoading(true);
@@ -104,8 +201,15 @@ export default function SupplierDashboardPage() {
   }
 
   useEffect(() => {
-    void loadBookings();
+    void loadApprovalStatus();
   }, []);
+
+  // Load bookings only when approved
+  useEffect(() => {
+    if (approvalStatus === 'approved') {
+      void loadBookings();
+    }
+  }, [approvalStatus]);
 
   const filteredBookings = useMemo(() => {
     const sorted = [...bookings].sort((a, b) => new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime());
@@ -157,11 +261,7 @@ export default function SupplierDashboardPage() {
 
   async function requestCompletion() {
     if (!selectedBooking) return;
-    const mediaUrls = completionMedia
-      .split('\n')
-      .map((value) => value.trim())
-      .filter(Boolean);
-
+    const mediaUrls = completionMedia.split('\n').map((v) => v.trim()).filter(Boolean);
     setBusyId(selectedBooking.id);
     setMessage('');
     setError('');
@@ -185,6 +285,63 @@ export default function SupplierDashboardPage() {
     navigate('/', { replace: true });
   }
 
+  /* ─── Loading state ─── */
+  if (approvalStatus === 'loading') {
+    return (
+      <div className="provider-page" style={{ padding: 24, display: 'grid', gap: 20 }}>
+        <div className="card"><div className="card-body" style={{ textAlign: 'center', padding: 40, color: 'var(--text-muted)' }}>...</div></div>
+      </div>
+    );
+  }
+
+  /* ─── Pending / Rejected state ─── */
+  if (approvalStatus !== 'approved') {
+    const isPending = approvalStatus === 'pending';
+    return (
+      <div className="provider-page" style={{ padding: 24, display: 'grid', gap: 20, maxWidth: 720, margin: '0 auto' }}>
+        {/* Header */}
+        <section className="card" style={{ overflow: 'hidden' }}>
+          <div className="card-body" style={{ background: 'linear-gradient(135deg, #fff7ed 0%, #ffffff 60%, #fef3c7 100%)' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: 16 }}>
+              <div>
+                <p className="hero-eyebrow">{t('admin.provider.hero.eyebrow')}</p>
+                <h2 style={{ fontSize: 26, lineHeight: 1.1, marginBottom: 8 }}>{t('admin.provider.hero.title')}</h2>
+              </div>
+              <div style={{ textAlign: 'right' }}>
+                <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>{me.email || ''}</div>
+                <button className="btn btn-secondary btn-sm" style={{ marginTop: 8 }} onClick={handleLogout}>
+                  {t('admin.common.logout', '로그아웃')}
+                </button>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        {/* Approval status banner */}
+        <section className="card" style={{ border: isPending ? '2px solid #f59e0b' : '2px solid #ef4444' }}>
+          <div className="card-body" style={{ textAlign: 'center', padding: '40px 24px' }}>
+            <div style={{ fontSize: 48, marginBottom: 16 }}>{isPending ? '\u23f3' : '\u274c'}</div>
+            <h3 style={{ fontSize: 22, marginBottom: 12, color: isPending ? '#b45309' : '#dc2626' }}>
+              {t(isPending ? 'admin.provider.approval.pending_title' : 'admin.provider.approval.rejected_title')}
+            </h3>
+            <p style={{ color: 'var(--text-muted)', maxWidth: 480, margin: '0 auto', lineHeight: 1.6 }}>
+              {t(isPending ? 'admin.provider.approval.pending_description' : 'admin.provider.approval.rejected_description')}
+            </p>
+            {!isPending && rejectionReason && (
+              <div style={{ marginTop: 16, padding: 12, background: '#fef2f2', borderRadius: 8, color: '#991b1b', fontSize: 14 }}>
+                {rejectionReason}
+              </div>
+            )}
+          </div>
+        </section>
+
+        {/* Profile edit form */}
+        <ProfileEditSection profile={providerProfile} onSaved={() => void loadApprovalStatus()} />
+      </div>
+    );
+  }
+
+  /* ─── Approved: full dashboard ─── */
   return (
     <div className="provider-page" style={{ padding: 24, display: 'grid', gap: 20 }}>
       <section className="card" style={{ overflow: 'hidden' }}>
