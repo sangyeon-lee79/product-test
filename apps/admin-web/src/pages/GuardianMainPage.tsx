@@ -77,7 +77,7 @@ export default function GuardianMainPage() {
   const [bookings, setBookings] = useState<Booking[]>([]);
   const [feeds, setFeeds] = useState<FeedPost[]>([]);
   const [albumMedia, setAlbumMedia] = useState<PetAlbumMedia[]>([]);
-  const [, /* nearbyStores */] = useState<Store[]>([]);
+  const [nearbyStores, setNearbyStores] = useState<Store[]>([]);
   const [weightLogs, setWeightLogs] = useState<PetWeightLog[]>([]);
   const [measurementLogs, setMeasurementLogs] = useState<PetHealthMeasurementLog[]>([]);
   const [, setWeightSummary] = useState<WeightSummary | null>(null);
