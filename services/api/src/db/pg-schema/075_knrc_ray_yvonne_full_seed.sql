@@ -18,7 +18,7 @@ VALUES
 ON CONFLICT (key) DO NOTHING;
 
 -- brand-manufacturer link
-INSERT INTO feed_brand_manufacturers (id, brand_id, manufacturer_id, created_at)
+INSERT INTO feed_brand_manufacturer_map (id, brand_id, manufacturer_id, created_at)
 VALUES
   ('b8d4f0a2c4e6a8d0f2a4c6e8b0d2f4a6', 'a7c3e9f1b2d4a6c8e0f2a4c6e8b0d2f4', '5147d84c6992d4248142d3bc8e74a571', NOW())
 ON CONFLICT (id) DO NOTHING;
@@ -269,7 +269,7 @@ ON CONFLICT (id) DO NOTHING;
 -- ═══════════════════════════════════════════════════════════════
 -- 6. manufacturer_type_links 추가 (간식 타입)
 -- ═══════════════════════════════════════════════════════════════
-INSERT INTO manufacturer_type_links (id, manufacturer_id, feed_type_item_id, created_at)
+INSERT INTO feed_manufacturer_type_map (id, manufacturer_id, type_item_id, created_at)
 VALUES
   ('f4a6c8e0d2b4a6c8e0f2a4c6e8b0d2f4', '5147d84c6992d4248142d3bc8e74a571', 'mi-diet-feed-snack-treat-core', NOW())
 ON CONFLICT (id) DO NOTHING;
