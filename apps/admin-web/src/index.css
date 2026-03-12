@@ -3538,6 +3538,7 @@ html[data-theme="dark"] .pf-card--health .pf-friend-btn--add { border-color: #F5
   width: 58px; height: 58px; border-radius: 50%; background: #1C1C1E;
   display: flex; align-items: center; justify-content: center;
   font-size: 22px; font-weight: 700; color: #fff; font-family: var(--font-serif);
+  overflow: hidden;
 }
 .pf-gd-hero-info { flex: 1; min-width: 120px; }
 .pf-gd-hero-info h2 { font-family: var(--font-serif); font-size: 22px; font-weight: 700; margin: 0; color: #fff; }
@@ -3574,7 +3575,7 @@ html[data-theme="dark"] .pf-card--health .pf-friend-btn--add { border-color: #F5
 .pf-gd-pet-ring-inner {
   width: 46px; height: 46px; border-radius: 50%; background: var(--surface);
   display: flex; align-items: center; justify-content: center;
-  font-size: 16px; font-weight: 700; color: var(--text);
+  font-size: 16px; font-weight: 700; color: var(--text); overflow: hidden;
 }
 .pf-gd-pet-ring.active .pf-gd-pet-ring-inner { font-weight: 800; }
 .pf-gd-pet-ring--add {
@@ -3676,6 +3677,122 @@ html[data-theme="dark"] .pf-card--health .pf-friend-btn--add { border-color: #F5
 }
 .pf-gd-tl-actions button:hover { background: rgba(0,0,0,.06); }
 
+/* ── Record Card (unified health timeline cards) ── */
+.rc-card {
+  display: flex; flex-direction: column;
+  border-radius: 12px; background: var(--surface);
+  border: 1px solid var(--border); border-left: 4px solid var(--primary);
+  margin-bottom: 8px; overflow: hidden;
+  transition: box-shadow .15s;
+  animation: gm-tl-slide-in .3s var(--ease) backwards;
+}
+.rc-card:hover { box-shadow: 0 2px 12px rgba(0,0,0,.06); }
+.rc-card[data-type="feeding"]     { border-left-color: #F5823A; }
+.rc-card[data-type="measurement"] { border-left-color: #4A7CF7; }
+.rc-card[data-type="exercise"]    { border-left-color: #4CAF7D; }
+.rc-card[data-type="weight"]      { border-left-color: #9B5DE5; }
+.rc-card[data-type="medication"]  { border-left-color: #FF4D4D; }
+
+.rc-header {
+  display: flex; align-items: center; gap: 10px;
+  padding: 12px 14px 8px;
+}
+.rc-icon {
+  font-size: 18px; width: 36px; height: 36px; border-radius: 10px;
+  background: var(--bg); display: flex; align-items: center; justify-content: center;
+  flex-shrink: 0;
+}
+.rc-card[data-type="feeding"]     .rc-icon { background: rgba(245,130,58,.1); }
+.rc-card[data-type="measurement"] .rc-icon { background: rgba(74,124,247,.1); }
+.rc-card[data-type="exercise"]    .rc-icon { background: rgba(76,175,125,.1); }
+.rc-card[data-type="weight"]      .rc-icon { background: rgba(155,93,229,.1); }
+.rc-card[data-type="medication"]  .rc-icon { background: rgba(255,77,77,.1); }
+
+.rc-header-text { flex: 1; min-width: 0; }
+.rc-title {
+  font-size: 14px; font-weight: 600; color: var(--text);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.rc-time { font-size: 12px; color: var(--text-muted); margin-top: 1px; }
+.rc-badge {
+  display: inline-block; padding: 2px 8px; font-size: 11px; font-weight: 600;
+  border-radius: 6px; background: var(--warning-bg, #fff3cd); color: var(--warning-text, #856404);
+  flex-shrink: 0;
+}
+.rc-actions {
+  display: flex; gap: 4px; flex-shrink: 0; opacity: 0; transition: opacity .2s;
+}
+.rc-card:hover .rc-actions { opacity: 1; }
+.rc-actions button {
+  background: none; border: none; cursor: pointer; font-size: 13px; padding: 4px;
+  border-radius: 6px; transition: background .15s; color: var(--text-muted);
+}
+.rc-actions button:hover { background: rgba(0,0,0,.06); color: var(--text); }
+
+.rc-body { padding: 0 14px 10px; }
+.rc-values { display: flex; flex-wrap: wrap; gap: 6px; }
+.rc-pill {
+  display: inline-flex; align-items: baseline; gap: 4px;
+  padding: 4px 10px; border-radius: 8px; background: var(--bg); font-size: 13px;
+}
+.rc-pill-label { color: var(--text-muted); font-size: 11px; font-weight: 500; }
+.rc-pill-value { color: var(--text); font-weight: 600; }
+.rc-pill-unit { color: var(--text-muted); font-size: 11px; }
+.rc-notes {
+  margin-top: 6px; font-size: 12px; color: var(--text-muted);
+  font-style: italic; line-height: 1.4;
+  overflow: hidden; text-overflow: ellipsis;
+  display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical;
+}
+
+.rc-footer { padding: 0 14px 12px; }
+.rc-img-grid { display: grid; gap: 4px; border-radius: 8px; overflow: hidden; }
+.rc-img-grid--single { grid-template-columns: 1fr; }
+.rc-img-grid--two { grid-template-columns: 1fr 1fr; }
+.rc-img-grid--multi { grid-template-columns: 1fr 1fr; }
+.rc-img-grid img {
+  width: 100%; height: 120px; object-fit: cover; cursor: pointer;
+  border-radius: 6px; transition: opacity .15s; background: var(--bg);
+}
+.rc-img-grid img:hover { opacity: .85; }
+.rc-img-overlay {
+  position: relative; cursor: pointer; border-radius: 6px; overflow: hidden;
+}
+.rc-img-overlay img { width: 100%; height: 120px; object-fit: cover; }
+.rc-img-overlay::after {
+  content: attr(data-count);
+  position: absolute; inset: 0;
+  background: rgba(0,0,0,.5); color: #fff;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 16px; font-weight: 700; border-radius: 6px;
+  pointer-events: none;
+}
+
+/* Record Card — dark mode */
+html[data-theme="dark"] .rc-card { border-color: rgba(255,255,255,.08); }
+html[data-theme="dark"] .rc-card:hover { box-shadow: 0 2px 12px rgba(0,0,0,.2); }
+html[data-theme="dark"] .rc-actions button:hover { background: rgba(255,255,255,.08); }
+html[data-theme="dark"] .rc-pill { background: rgba(255,255,255,.06); }
+html[data-theme="dark"] .rc-card[data-type="feeding"]     .rc-icon { background: rgba(245,130,58,.15); }
+html[data-theme="dark"] .rc-card[data-type="measurement"] .rc-icon { background: rgba(74,124,247,.15); }
+html[data-theme="dark"] .rc-card[data-type="exercise"]    .rc-icon { background: rgba(76,175,125,.15); }
+html[data-theme="dark"] .rc-card[data-type="weight"]      .rc-icon { background: rgba(155,93,229,.15); }
+html[data-theme="dark"] .rc-card[data-type="medication"]  .rc-icon { background: rgba(255,77,77,.15); }
+html[data-theme="dark"] .rc-card[data-type="feeding"]     { border-left-color: #F5823A; }
+html[data-theme="dark"] .rc-card[data-type="measurement"] { border-left-color: #4A7CF7; }
+html[data-theme="dark"] .rc-card[data-type="exercise"]    { border-left-color: #4CAF7D; }
+html[data-theme="dark"] .rc-card[data-type="weight"]      { border-left-color: #9B5DE5; }
+html[data-theme="dark"] .rc-card[data-type="medication"]  { border-left-color: #FF4D4D; }
+
+/* Record Card — mobile responsive */
+@media (max-width: 767px) {
+  .rc-img-grid img, .rc-img-overlay img { height: 90px; }
+  .rc-header { padding: 10px 12px 6px; }
+  .rc-body { padding: 0 12px 8px; }
+  .rc-footer { padding: 0 12px 10px; }
+  .rc-actions { opacity: 1; }
+}
+
 /* ── Empty & Onboard ── */
 .pf-gd-empty { text-align: center; padding: 32px 16px; color: var(--text-muted); }
 .pf-gd-empty-icon { font-size: 36px; margin-bottom: 8px; }
@@ -3706,7 +3823,7 @@ html[data-theme="dark"] .pf-card--health .pf-friend-btn--add { border-color: #F5
   width: 36px; height: 36px; border-radius: 50%;
   background: linear-gradient(135deg, #F5823A, #E8722A);
   display: flex; align-items: center; justify-content: center;
-  color: #fff; font-weight: 700; font-size: 14px; flex-shrink: 0;
+  color: #fff; font-weight: 700; font-size: 14px; flex-shrink: 0; overflow: hidden;
 }
 .pf-gd-compose-text { flex: 1; font-size: 14px; color: var(--text-muted); }
 
@@ -3720,7 +3837,7 @@ html[data-theme="dark"] .pf-card--health .pf-friend-btn--add { border-color: #F5
   width: 36px; height: 36px; border-radius: 50%;
   background: linear-gradient(135deg, #E8E6E1, #ddd);
   display: flex; align-items: center; justify-content: center;
-  font-size: 14px; font-weight: 600; color: var(--text); flex-shrink: 0;
+  font-size: 14px; font-weight: 600; color: var(--text); flex-shrink: 0; overflow: hidden;
 }
 .pf-gd-feed-info { flex: 1; min-width: 0; }
 .pf-gd-feed-type { font-size: 11px; color: #F5823A; font-weight: 500; }
@@ -3788,7 +3905,7 @@ html[data-theme="dark"] .pf-card--health .pf-friend-btn--add { border-color: #F5
   width: 34px; height: 34px; border-radius: 50%;
   background: linear-gradient(135deg, #F5823A, #E8722A);
   display: flex; align-items: center; justify-content: center;
-  color: #fff; font-weight: 700; font-size: 13px; flex-shrink: 0;
+  color: #fff; font-weight: 700; font-size: 13px; flex-shrink: 0; overflow: hidden;
 }
 .pf-gd-pet-card-info { flex: 1; min-width: 0; }
 .pf-gd-pet-card-name { font-size: 13px; font-weight: 600; color: var(--text); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
@@ -3809,6 +3926,38 @@ html[data-theme="dark"] .pf-card--health .pf-friend-btn--add { border-color: #F5
 .pf-gd-aside-add-btn:hover { border-color: #F5823A; color: #F5823A; }
 .pf-gd-aside-stat { font-size: 13px; color: var(--text-muted); margin-bottom: 4px; }
 .pf-gd-aside-stat strong { color: var(--text); font-weight: 600; }
+
+/* ── Avatar image (shared) ── */
+.pf-avatar-img { width: 100%; height: 100%; border-radius: 50%; object-fit: cover; display: block; }
+
+/* ── Avatar Upload Component ── */
+.pf-avatar-upload {
+  position: relative; cursor: pointer; display: inline-block;
+}
+.pf-avatar-upload-circle {
+  border-radius: 50%; overflow: hidden;
+  display: flex; align-items: center; justify-content: center;
+  background: linear-gradient(135deg, #E8E6E1, #ddd);
+  font-weight: 700; color: var(--text);
+}
+.pf-avatar-upload-overlay {
+  position: absolute; inset: 0; border-radius: 50%;
+  background: rgba(0,0,0,0.45);
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  opacity: 0; transition: opacity .2s; color: #fff; font-size: 11px; gap: 2px;
+}
+.pf-avatar-upload:hover .pf-avatar-upload-overlay { opacity: 1; }
+.pf-avatar-upload-icon { font-size: 18px; }
+.pf-avatar-upload-progress {
+  position: absolute; inset: 0; border-radius: 50%;
+  background: rgba(0,0,0,0.5);
+  display: flex; align-items: center; justify-content: center;
+  color: #fff; font-size: 13px; font-weight: 600;
+}
+.pf-avatar-upload-error {
+  position: absolute; bottom: -22px; left: 50%; transform: translateX(-50%);
+  white-space: nowrap; font-size: 11px; color: var(--error, #e74c3c);
+}
 
 /* ── Clickable stat hover ── */
 .pf-gd-hero-stat--clickable { cursor: pointer; position: relative; transition: opacity .15s; }

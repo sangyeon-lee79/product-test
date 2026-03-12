@@ -46,6 +46,8 @@ import MedicationLogModal from './guardian/MedicationLogModal';
 import FriendsModal from './guardian/FriendsModal';
 import BookingModal from './guardian/BookingModal';
 import GroomingApprovalModal from './guardian/GroomingApprovalModal';
+import RecordCard, { type RecordCardImage } from '../components/health/RecordCard';
+import { mapWeightLog, mapMeasurementLog, mapFeedingLog, mapExerciseLog, mapMedicationLog } from '../components/health/recordCardMappers';
 import {
   type FeedTab,
   type Mode,
@@ -148,6 +150,11 @@ export default function GuardianMainPage() {
   const [optMetric, setOptMetric] = useState<MasterItem[]>([]);
   const [lightboxIndex, setLightboxIndex] = useState(-1);
   const [lightboxItems, setLightboxItems] = useState<string[]>([]);
+
+  const handleRecordCardImageClick = useCallback((images: RecordCardImage[], startIndex: number) => {
+    setLightboxItems(images.map((img) => img.url));
+    setLightboxIndex(startIndex);
+  }, []);
 
   const [friendCount, setFriendCount] = useState(0);
   const [pendingRequests, setPendingRequests] = useState<FriendRequest[]>([]);
@@ -955,143 +962,60 @@ export default function GuardianMainPage() {
                                   const dateKey = formatTimelineDate(item.date);
                                   const showDateHeader = dateKey !== lastDateKey;
                                   lastDateKey = dateKey;
-                                  const d = new Date(item.date);
-                                  const hhmm = `${d.getHours().toString().padStart(2, '0')}:${d.getMinutes().toString().padStart(2, '0')}`;
-                                  const emoji = item.type === 'weight' ? '⚖️' : item.type === 'feeding' ? '🍽️' : item.type === 'exercise' ? '🏃' : item.type === 'medication' ? '💉' : '📊';
-                                  const els = [];
+                                  const els: React.ReactNode[] = [];
                                   if (showDateHeader) els.push(<div key={`date-${dateKey}`} className="pf-gd-tl-date">{dateKey}</div>);
 
-                                  if (item.type === 'weight') {
-                                    const log = item.source as PetWeightLog;
-                                    els.push(
-                                      <div key={item.id} className="pf-gd-tl-card" data-type={item.type}>
-                                        <div className="pf-gd-tl-icon">{emoji}</div>
-                                        <div className="pf-gd-tl-body">
-                                          <div className="pf-gd-tl-body">
-                                            <span className="pf-gd-tl-time">{hhmm}</span>
-                                            <span className="pf-gd-tl-sep">·</span>
-                                            <span>{log.weight_value}{t('unit.kg', 'kg')}</span>
-                                            {log.notes && <><span className="pf-gd-tl-sep">·</span><span className="pf-gd-tl-note">{log.notes}</span></>}
-                                          </div>
-                                          <div className="pf-gd-tl-actions">
-                                            <button title={t('common.edit', 'Edit')} aria-label={t('common.edit', 'Edit')} onClick={() => { setEditingWeightLog(log); setWeightModalOpen(true); }}>✏️</button>
-                                            <button title={t('common.delete', 'Delete')} aria-label={t('common.delete', 'Delete')} onClick={() => removeWeightLog(log.id)}>🗑️</button>
-                                          </div>
-                                        </div>
-                                      </div>,
-                                    );
-                                    return els;
+                                  let cardData;
+                                  let onEdit: () => void;
+                                  let onDelete: () => void;
+
+                                  switch (item.type) {
+                                    case 'weight': {
+                                      const log = item.source as PetWeightLog;
+                                      cardData = mapWeightLog(log, t);
+                                      onEdit = () => { setEditingWeightLog(log); setWeightModalOpen(true); };
+                                      onDelete = () => removeWeightLog(log.id);
+                                      break;
+                                    }
+                                    case 'measurement': {
+                                      const log = item.source as PetHealthMeasurementLog;
+                                      cardData = mapMeasurementLog(log, optMetric as unknown as import('./guardian/guardianTypes').Option[], optMeasurementContext, t);
+                                      onEdit = () => openEditHealthMeasurementLog(log);
+                                      onDelete = () => removeHealthMeasurementLog(log.id);
+                                      break;
+                                    }
+                                    case 'feeding': {
+                                      const log = item.source as FeedingLog;
+                                      cardData = mapFeedingLog(log, petFeeds, getMixedFeedLabel, t);
+                                      onEdit = () => { setEditingFeedingLog(log); setFeedingLogModalOpen(true); };
+                                      onDelete = () => removeFeedingLog(log.id);
+                                      break;
+                                    }
+                                    case 'exercise': {
+                                      const log = item.source as PetExerciseLog;
+                                      cardData = mapExerciseLog(log, t);
+                                      onEdit = () => { setEditingExerciseLog(log); setExerciseLogModalOpen(true); };
+                                      onDelete = () => removeExerciseLog(log.id);
+                                      break;
+                                    }
+                                    case 'medication': {
+                                      const log = item.source as PetLog;
+                                      cardData = mapMedicationLog(log, t);
+                                      onEdit = () => { setEditingMedicationLog(log); setMedicationLogModalOpen(true); };
+                                      onDelete = () => removeMedicationLog(log.id);
+                                      break;
+                                    }
                                   }
 
-                                  if (item.type === 'measurement') {
-                                    const log = item.source as PetHealthMeasurementLog;
-                                    const measurementContext = optMeasurementContext.find((o) => o.id === log.measurement_context_id);
-                                    const metricLabel = optMetric.find((m) => m.id === log.measurement_item_id)?.display_label;
-                                    const ctxLabel = measurementContext
-                                      ? (measurementContext.i18nKey ? t(measurementContext.i18nKey, measurementContext.label) : measurementContext.label)
-                                      : undefined;
-                                    els.push(
-                                      <div key={item.id} className="pf-gd-tl-card" data-type={item.type}>
-                                        <div className="pf-gd-tl-icon">{emoji}</div>
-                                        <div className="pf-gd-tl-body">
-                                          <div className="pf-gd-tl-body">
-                                            <span className="pf-gd-tl-time">{hhmm}</span>
-                                            <span className="pf-gd-tl-sep">·</span>
-                                            <span>{log.value}</span>
-                                            {ctxLabel && <><span className="pf-gd-tl-sep">·</span><span>{ctxLabel}</span></>}
-                                            {metricLabel && <><span className="pf-gd-tl-sep">·</span><span>{metricLabel}</span></>}
-                                          </div>
-                                          <div className="pf-gd-tl-actions">
-                                            <button title={t('common.edit', 'Edit')} aria-label={t('common.edit', 'Edit')} onClick={() => openEditHealthMeasurementLog(log)}>✏️</button>
-                                            <button title={t('common.delete', 'Delete')} aria-label={t('common.delete', 'Delete')} onClick={() => removeHealthMeasurementLog(log.id)}>🗑️</button>
-                                          </div>
-                                        </div>
-                                      </div>,
-                                    );
-                                    return els;
-                                  }
-
-                                  if (item.type === 'exercise') {
-                                    const log = item.source as PetExerciseLog;
-                                    const typeLabel = t(`master.exercise_type.${log.exercise_type}`, log.exercise_type);
-                                    const intensityLabel = t(`guardian.exercise.intensity_${log.intensity}`, log.intensity);
-                                    els.push(
-                                      <div key={item.id} className="pf-gd-tl-card" data-type={item.type}>
-                                        <div className="pf-gd-tl-icon">{emoji}</div>
-                                        <div className="pf-gd-tl-body">
-                                          <div className="pf-gd-tl-body">
-                                            <span className="pf-gd-tl-time">{hhmm}</span>
-                                            <span className="pf-gd-tl-sep">·</span>
-                                            <span>{typeLabel} {log.duration_min}{t('unit.min', 'min')}</span>
-                                            <span className="pf-gd-tl-sep">·</span>
-                                            <span>{intensityLabel}</span>
-                                            {log.distance_km != null && <><span className="pf-gd-tl-sep">·</span><span>{log.distance_km}{t('unit.km', 'km')}</span></>}
-                                          </div>
-                                          <div className="pf-gd-tl-actions">
-                                            <button title={t('common.edit', 'Edit')} aria-label={t('common.edit', 'Edit')} onClick={() => { setEditingExerciseLog(log); setExerciseLogModalOpen(true); }}>✏️</button>
-                                            <button title={t('common.delete', 'Delete')} aria-label={t('common.delete', 'Delete')} onClick={() => removeExerciseLog(log.id)}>🗑️</button>
-                                          </div>
-                                        </div>
-                                      </div>,
-                                    );
-                                    return els;
-                                  }
-
-                                  if (item.type === 'medication') {
-                                    const log = item.source as PetLog;
-                                    const meta = (log.metadata || {}) as Record<string, unknown>;
-                                    const medicineName = String(meta.medicine_name || log.title || t('guardian.health.medication_log', '약품 기록'));
-                                    const doseAmount = meta.dose_amount ? String(meta.dose_amount) : '';
-                                    const doseUnit = meta.dose_unit ? String(meta.dose_unit) : '';
-                                    const prescribed = meta.prescribed === true;
-                                    els.push(
-                                      <div key={item.id} className="pf-gd-tl-card" data-type={item.type}>
-                                        <div className="pf-gd-tl-icon">{emoji}</div>
-                                        <div className="pf-gd-tl-body">
-                                          <div className="pf-gd-tl-body">
-                                            <span className="pf-gd-tl-time">{hhmm}</span>
-                                            <span className="pf-gd-tl-sep">·</span>
-                                            <span>{medicineName}{doseAmount ? ` ${doseAmount}${doseUnit}` : ''}</span>
-                                            {prescribed && <><span className="pf-gd-tl-sep">·</span><span className="pf-gd-tl-badge">{t('guardian.medication.prescribed', 'Rx')}</span></>}
-                                          </div>
-                                          <div className="pf-gd-tl-actions">
-                                            <button title={t('common.edit', 'Edit')} aria-label={t('common.edit', 'Edit')} onClick={() => { setEditingMedicationLog(log); setMedicationLogModalOpen(true); }}>✏️</button>
-                                            <button title={t('common.delete', 'Delete')} aria-label={t('common.delete', 'Delete')} onClick={() => removeMedicationLog(log.id)}>🗑️</button>
-                                          </div>
-                                        </div>
-                                      </div>,
-                                    );
-                                    return els;
-                                  }
-
-                                  const log = item.source as FeedingLog;
-                                  const isMixed = !!log.is_mixed && !!log.items?.length;
-                                  const totalG = isMixed
-                                    ? log.items!.reduce((sum, feedItem) => sum + (feedItem.amount_g ?? 0), 0)
-                                    : (log.amount_g ?? null);
-                                  const totalKcal = isMixed
-                                    ? Math.round(log.items!.reduce((sum, feedItem) => sum + ((feedItem.amount_g ?? 0) * (feedItem.calories_per_100g ?? 0) / 100), 0))
-                                    : ((log.amount_g && log.calories_per_100g) ? Math.round(log.amount_g * log.calories_per_100g / 100) : null);
-                                  const feedLabel = isMixed
-                                    ? getMixedFeedLabel(log)
-                                    : (log.feed_nickname || log.model_display_label || log.model_name || t('common.none', '-'));
                                   els.push(
-                                    <div key={item.id} className="pf-gd-tl-card" data-type={item.type}>
-                                      <div className="pf-gd-tl-icon">{emoji}</div>
-                                      <div className="pf-gd-tl-body">
-                                        <div className="pf-gd-tl-body">
-                                          <span className="pf-gd-tl-time">{hhmm}</span>
-                                          <span className="pf-gd-tl-sep">·</span>
-                                          <span>{totalG != null ? `${totalG}${t('unit.g', 'g')}` : '-'}{totalKcal ? ` / ${totalKcal}${t('unit.kcal', 'kcal')}` : ''}</span>
-                                          <span className="pf-gd-tl-sep">·</span>
-                                          <span>{feedLabel}</span>
-                                        </div>
-                                        <div className="pf-gd-tl-actions">
-                                          <button title={t('common.edit', 'Edit')} aria-label={t('common.edit', 'Edit')} onClick={() => { setEditingFeedingLog(log); setFeedingLogModalOpen(true); }}>✏️</button>
-                                          <button title={t('common.delete', 'Delete')} aria-label={t('common.delete', 'Delete')} onClick={() => removeFeedingLog(log.id)}>🗑️</button>
-                                        </div>
-                                      </div>
-                                    </div>,
+                                    <RecordCard
+                                      key={cardData.id}
+                                      {...cardData}
+                                      onEdit={onEdit}
+                                      onDelete={onDelete}
+                                      onImageClick={handleRecordCardImageClick}
+                                      t={t}
+                                    />,
                                   );
                                   return els;
                                 });
