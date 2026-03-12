@@ -167,6 +167,7 @@ async function guardianChoice(request: Request, env: Env, me: JwtPayload, id: st
 async function listGroomingRecords(env: Env, me: JwtPayload, url: URL): Promise<Response> {
   const petId = url.searchParams.get('petId');
   const supplierId = url.searchParams.get('supplierId');
+  const appointmentId = url.searchParams.get('appointmentId');
 
   let sql = `SELECT gr.*,
       p.name AS pet_name, p.avatar_url AS pet_avatar,
@@ -181,7 +182,10 @@ async function listGroomingRecords(env: Env, me: JwtPayload, url: URL): Promise<
     WHERE 1=1`;
   const binds: unknown[] = [];
 
-  if (petId) {
+  if (appointmentId) {
+    sql += ' AND gr.appointment_id = ?';
+    binds.push(appointmentId);
+  } else if (petId) {
     sql += ' AND gr.pet_id = ?';
     binds.push(petId);
   } else if (supplierId) {

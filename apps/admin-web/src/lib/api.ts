@@ -21,6 +21,7 @@ import type {
   Store, StoreIndustry, StoreService, ServiceDiscount, StoreStats,
   CatalogStats,
   Appointment, GroomingRecord, GroomingPhoto,
+  FeedCardSetting, FeedDummyCard, FeedPreviewItem,
 } from '../types/api';
 export type {
   I18nRow, MasterCategory, MasterItem, Country, Currency,
@@ -42,6 +43,7 @@ export type {
   Store, StoreIndustry, StoreService, ServiceDiscount, StoreStats,
   CatalogStats,
   Appointment, GroomingRecord, GroomingPhoto,
+  FeedCardSetting, FeedDummyCard, FeedPreviewItem,
 };
 
 const API_BASE = getApiBase();
@@ -1124,7 +1126,7 @@ export const api = {
 
   // ─── Grooming Records ──────────────────────────────────────────────────
   groomingRecords: {
-    list: (params?: { petId?: string; supplierId?: string }) =>
+    list: (params?: { petId?: string; supplierId?: string; appointmentId?: string }) =>
       request<{ grooming_records: GroomingRecord[] }>(`/api/v1/grooming-records${buildQuery(params || {})}`),
     get: (id: string) =>
       request<{ grooming_record: GroomingRecord }>(`/api/v1/grooming-records/${id}`),
@@ -1138,5 +1140,42 @@ export const api = {
       request<{ id: string; status: string; post_id: string | null }>(`/api/v1/grooming-records/${id}/guardian-choice`, {
         method: 'PATCH', body: JSON.stringify({ choice }),
       }),
+  },
+
+  // ─── Feed Card Settings (Admin) ─────────────────────────────
+  feedCardSettings: {
+    list: () =>
+      request<{ settings: FeedCardSetting[] }>('/api/v1/admin/feed-card-settings'),
+    bulkUpdate: (settings: Array<{
+      id: string;
+      is_enabled?: boolean;
+      interval_n?: number;
+      sort_order?: number;
+      rotation_order?: number;
+    }>) =>
+      request<{ updated: boolean }>('/api/v1/admin/feed-card-settings', {
+        method: 'PUT',
+        body: JSON.stringify({ settings }),
+      }),
+    preview: () =>
+      request<{ preview: FeedPreviewItem[] }>('/api/v1/admin/feed-card-settings/preview'),
+    dummyCards: {
+      list: (params?: { tab_type?: string; is_active?: string }) =>
+        request<{ cards: FeedDummyCard[] }>(`/api/v1/admin/feed-card-settings/dummy-cards${buildQuery(params || {})}`),
+      create: (data: Partial<FeedDummyCard> & { tab_type: string }) =>
+        request<{ id: string }>('/api/v1/admin/feed-card-settings/dummy-cards', {
+          method: 'POST',
+          body: JSON.stringify(data),
+        }),
+      update: (id: string, data: Partial<FeedDummyCard>) =>
+        request<{ id: string; updated: boolean }>(`/api/v1/admin/feed-card-settings/dummy-cards/${id}`, {
+          method: 'PUT',
+          body: JSON.stringify(data),
+        }),
+      delete: (id: string) =>
+        request<{ id: string; deleted: boolean }>(`/api/v1/admin/feed-card-settings/dummy-cards/${id}`, {
+          method: 'DELETE',
+        }),
+    },
   },
 };

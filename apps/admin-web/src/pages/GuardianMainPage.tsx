@@ -23,6 +23,9 @@ import {
   type PetWeightLog,
   type WeightSummary,
   type Store,
+  type StoreService,
+  type Appointment,
+  type GroomingRecord,
 } from '../lib/api';
 
 
@@ -41,6 +44,8 @@ import PetWizardModal from './guardian/PetWizardModal';
 import GuardianProfileEditModal from './guardian/GuardianProfileEditModal';
 import MedicationLogModal from './guardian/MedicationLogModal';
 import FriendsModal from './guardian/FriendsModal';
+import BookingModal from './guardian/BookingModal';
+import GroomingApprovalModal from './guardian/GroomingApprovalModal';
 import {
   type FeedTab,
   type Mode,
@@ -148,6 +153,13 @@ export default function GuardianMainPage() {
   const [pendingRequests, setPendingRequests] = useState<FriendRequest[]>([]);
   const [friendsModalOpen, setFriendsModalOpen] = useState(false);
   const [friendsModalTab, setFriendsModalTab] = useState<'friends' | 'pending'>('friends');
+
+  const [bookingModalOpen, setBookingModalOpen] = useState(false);
+  const [bookingStore, setBookingStore] = useState<Store | null>(null);
+  const [bookingStoreServices, setBookingStoreServices] = useState<StoreService[]>([]);
+  const [groomingApprovalOpen, setGroomingApprovalOpen] = useState(false);
+  const [groomingApprovalRecord, setGroomingApprovalRecord] = useState<GroomingRecord | null>(null);
+  const [appointments, setAppointments] = useState<Appointment[]>([]);
 
   const [optPetType, setOptPetType] = useState<Option[]>([]);
   const [optBreed, setOptBreed] = useState<Option[]>([]);
@@ -306,6 +318,7 @@ export default function GuardianMainPage() {
         exerciseLocationRows,
         friendPetsRes,
         medicineTypesRes,
+        appointmentsRes,
       ] = await Promise.all([
         safe(api.pets.list(), { pets: [] }, 'pets.list'),
         safe(api.bookings.list(), { bookings: [] }, 'bookings.list'),
@@ -340,6 +353,7 @@ export default function GuardianMainPage() {
         loadCategoryItems(CATEGORY_KEYS.exercise_location, lang),
         safe(api.friends.pets(), { pets: [] }, 'friends.pets'),
         safe(api.medicineCatalog.public.types(lang), [] as FeedType[], 'medicineCatalog.types'),
+        safe(api.appointments.list(), { appointments: [] }, 'appointments.list'),
       ]);
 
       setPets(petsRes.pets || []);
@@ -377,6 +391,7 @@ export default function GuardianMainPage() {
       setExerciseLocationItems(exerciseLocationRows);
       setFriendPets(friendPetsRes.pets || []);
       setMedicineTypes(medicineTypesRes || []);
+      setAppointments(appointmentsRes.appointments || []);
 
       if (!silent && failedApis.length > 0) {
         setError(t('guardian.alert.partial_load_failed', 'Some data could not be loaded. Please try again shortly.'));
@@ -386,6 +401,28 @@ export default function GuardianMainPage() {
     } finally {
       setLoading(false);
     }
+  }
+
+  async function openBookingForStore(store: Store) {
+    setBookingStore(store);
+    try {
+      const res = await api.stores.services.list(store.id, lang);
+      setBookingStoreServices(res.items || []);
+    } catch {
+      setBookingStoreServices([]);
+    }
+    setBookingModalOpen(true);
+  }
+
+  async function openGroomingApproval(apt: Appointment) {
+    try {
+      const res = await api.groomingRecords.list({ appointmentId: apt.id });
+      const rec = (res.grooming_records || [])[0];
+      if (rec) {
+        setGroomingApprovalRecord(rec);
+        setGroomingApprovalOpen(true);
+      }
+    } catch { /* silently fail */ }
   }
 
   useEffect(() => {
@@ -1072,28 +1109,57 @@ export default function GuardianMainPage() {
               {/* ── Services ── */}
               {petTab === 'services' && (
                 <>
+                  {/* Appointments */}
+                  {appointments.length > 0 && (
+                    <div className="pf-gd-section">
+                      <div className="pf-gd-section-header"><span>{t('booking.title', 'Appointments')}</span></div>
+                      <div className="pf-gd-section-body">
+                        {appointments
+                          .filter(a => !selectedPet || !a.pet_id || a.pet_id === selectedPet.id)
+                          .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
+                          .map(apt => (
+                          <div key={apt.id} className="pf-gd-tl-card" style={{ cursor: apt.status === 'completed' ? 'pointer' : undefined }} onClick={() => { if (apt.status === 'completed') void openGroomingApproval(apt); }}>
+                            <div className="pf-gd-tl-icon">{apt.status === 'completed' ? '\u2702\uFE0F' : '\uD83D\uDCC5'}</div>
+                            <div className="pf-gd-tl-body">
+                              <span>{apt.supplier_name || apt.supplier_id.slice(0, 8)}</span>
+                              <span className="pf-gd-tl-sep">&middot;</span>
+                              <span style={{ fontWeight: 500 }}>{t(`supplier.appointment.status.${apt.status}`, apt.status)}</span>
+                              {apt.service_type && <><span className="pf-gd-tl-sep">&middot;</span><span>{apt.service_type}</span></>}
+                              <span className="pf-gd-tl-sep">&middot;</span>
+                              <span className="pf-gd-tl-time">{formatDate(apt.scheduled_at, '-', locale)}</span>
+                              {apt.status === 'completed' && (
+                                <span style={{ marginLeft: 6, fontSize: 11, color: '#E87C2B', fontWeight: 600 }}>{t('grooming.guardian.noti_title', 'Review')}</span>
+                              )}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Legacy bookings */}
                   <div className="pf-gd-section">
                     <div className="pf-gd-section-header"><span>{t('guardian.tab.services', 'Services & Bookings')}</span></div>
                     <div className="pf-gd-section-body">
                       {bookings.filter((b) => !selectedPet || !b.pet_id || b.pet_id === selectedPet.id).map((b) => (
                         <div key={b.id} className="pf-gd-tl-card">
-                          <div className="pf-gd-tl-icon">📅</div>
+                          <div className="pf-gd-tl-icon">{'\uD83D\uDCC5'}</div>
                           <div className="pf-gd-tl-body">
                             <span>#{b.id.slice(0, 8)}</span>
-                            <span className="pf-gd-tl-sep">·</span>
+                            <span className="pf-gd-tl-sep">&middot;</span>
                             <span style={{ fontWeight: 500 }}>{b.status}</span>
-                            <span className="pf-gd-tl-sep">·</span>
+                            <span className="pf-gd-tl-sep">&middot;</span>
                             <span className="pf-gd-tl-time">{formatDate(b.updated_at, t('common.none', '-'), locale)}</span>
                           </div>
                         </div>
                       ))}
-                      {bookings.filter((b) => !selectedPet || !b.pet_id || b.pet_id === selectedPet.id).length === 0 && (
+                      {bookings.filter((b) => !selectedPet || !b.pet_id || b.pet_id === selectedPet.id).length === 0 && appointments.length === 0 && (
                         <div className="pf-gd-empty" style={{ padding: '20px 0' }}>
-                          <div className="pf-gd-empty-icon">📅</div>
-                          <p>{t('guardian.services.no_bookings', '예약 내역이 없습니다.')}</p>
+                          <div className="pf-gd-empty-icon">{'\uD83D\uDCC5'}</div>
+                          <p>{t('guardian.services.no_bookings', 'No bookings yet')}</p>
                         </div>
                       )}
-                      {serviceFeeds.length > 0 && <p style={{ marginTop: 8, fontSize: 13, color: 'var(--text-muted)' }}>{t('guardian.services.completed_feeds', '완료 피드')} {serviceFeeds.length}{t('common.count_suffix', '건')}</p>}
+                      {serviceFeeds.length > 0 && <p style={{ marginTop: 8, fontSize: 13, color: 'var(--text-muted)' }}>{t('guardian.services.completed_feeds', 'Completed Feeds')} {serviceFeeds.length}{t('common.count_suffix', '')}</p>}
                     </div>
                   </div>
 
@@ -1114,9 +1180,14 @@ export default function GuardianMainPage() {
                             <div key={s.id} className="pf-gd-store-card">
                               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                                 <strong style={{ fontSize: 14 }}>{s.display_name || s.name}</strong>
-                                <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>
-                                  {s.service_count || 0} {t('guardian.store.services', 'Services')}
-                                </span>
+                                <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+                                  <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>
+                                    {s.service_count || 0} {t('guardian.store.services', 'Services')}
+                                  </span>
+                                  <button className="btn btn-primary btn-sm" style={{ borderRadius: 16, fontSize: 11, padding: '2px 10px' }} onClick={() => void openBookingForStore(s)}>
+                                    {t('booking.confirm_btn', 'Book')}
+                                  </button>
+                                </div>
                               </div>
                               {s.address && <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 2 }}>{s.address}</div>}
                             </div>
@@ -1402,6 +1473,30 @@ export default function GuardianMainPage() {
         onClose={() => setFriendsModalOpen(false)}
         onSuccess={() => void loadAll(feedTab, { silent: true })}
       />
+
+      {bookingModalOpen && bookingStore && (
+        <BookingModal
+          open={bookingModalOpen}
+          pets={pets}
+          supplierId={bookingStore.owner_id}
+          supplierName={bookingStore.display_name || bookingStore.name}
+          storeId={bookingStore.id}
+          services={bookingStoreServices}
+          t={t}
+          onClose={() => { setBookingModalOpen(false); setBookingStore(null); setBookingStoreServices([]); }}
+          onSuccess={() => void loadAll(feedTab, { silent: true })}
+        />
+      )}
+
+      {groomingApprovalOpen && groomingApprovalRecord && (
+        <GroomingApprovalModal
+          open={groomingApprovalOpen}
+          record={groomingApprovalRecord}
+          t={t}
+          onClose={() => { setGroomingApprovalOpen(false); setGroomingApprovalRecord(null); }}
+          onSuccess={() => void loadAll(feedTab, { silent: true })}
+        />
+      )}
     </div>
   );
 }

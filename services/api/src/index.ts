@@ -277,6 +277,10 @@ async function dispatchAdmin(request: Request, env: Env, url: URL, path: string)
     const { handleMembers } = await import('./routes/members');
     return handleMembers(request, env, url);
   }
+  if (path.startsWith('/api/v1/admin/feed-card-settings')) {
+    const { handleFeedCardSettings } = await import('./routes/feedCardSettings');
+    return handleFeedCardSettings(request, env, url);
+  }
   if (path.startsWith('/api/v1/admin/settings/')) {
     const { handlePlatformSettings } = await import('./routes/platformSettings');
     return handlePlatformSettings(request, env, url);

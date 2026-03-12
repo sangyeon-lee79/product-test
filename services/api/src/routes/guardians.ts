@@ -83,7 +83,7 @@ async function updateMe(request: Request, env: Env, payload: JwtPayload): Promis
       WHERE user_id = ?
     `).bind(
       body.handle ?? null,
-      body.display_name ?? null,
+      body.display_name ? String(body.display_name).normalize('NFC') : null,
       body.bio ?? null,
       bioTranslations,
       body.country_id ?? null,
@@ -104,7 +104,7 @@ async function updateMe(request: Request, env: Env, payload: JwtPayload): Promis
       newId(),
       payload.sub,
       body.handle ?? null,
-      body.display_name ?? null,
+      body.display_name ? String(body.display_name).normalize('NFC') : null,
       body.bio ?? null,
       bioTranslations,
       body.country_id ?? null,

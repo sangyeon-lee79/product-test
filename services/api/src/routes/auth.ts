@@ -530,7 +530,7 @@ async function googleOAuthLogin(credential: string, isCode: boolean, env: Env): 
   }
 
   const email = String(googleUser.email || '').trim().toLowerCase();
-  const displayName = String(googleUser.name || googleUser.given_name || email).trim();
+  const displayName = String(googleUser.name || googleUser.given_name || email).trim().normalize('NFC');
   const pictureUrl = googleUser.picture ? String(googleUser.picture).trim() : null;
   const googleSub = String(googleUser.sub || '').trim();
 
@@ -570,7 +570,7 @@ async function kakaoOAuthLogin(code: string, env: Env): Promise<Response> {
   if (!kakaoId) return err('kakao account id missing', 401);
 
   const email = (kakaoUser.kakao_account?.email || '').trim().toLowerCase();
-  const displayName = kakaoUser.kakao_account?.profile?.nickname || email || `kakao_${kakaoId}`;
+  const displayName = String(kakaoUser.kakao_account?.profile?.nickname || email || `kakao_${kakaoId}`).normalize('NFC');
   const pictureUrl = kakaoUser.kakao_account?.profile?.profile_image_url || null;
 
   const user = await upsertOAuthUser(env, 'kakao', kakaoId, email, displayName, pictureUrl);
@@ -617,7 +617,7 @@ async function appleOAuthLogin(credential: string, isCode: boolean, userName: st
 
   const appleSub = String(applePayload.sub || '').trim();
   const email = (applePayload.email || '').trim().toLowerCase();
-  const displayName = (userName || email || `apple_${appleSub}`).trim();
+  const displayName = (userName || email || `apple_${appleSub}`).trim().normalize('NFC');
 
   const user = await upsertOAuthUser(env, 'apple', appleSub, email, displayName, null);
   const tokens = await issueTokens(user.id, user.role, env.JWT_SECRET);
@@ -851,9 +851,9 @@ async function signup(request: Request, env: Env): Promise<Response> {
 
   const email = (body.email || '').trim().toLowerCase();
   const password = String(body.password || '');
-  const displayName = (body.display_name || '').trim();
+  const displayName = (body.display_name || '').trim().normalize('NFC');
   const countryCode = (body.country_code || '').trim().toUpperCase();
-  const nickname = (body.nickname || '').trim();
+  const nickname = (body.nickname || '').trim().normalize('NFC');
   const phone = (body.phone || '').trim();
   const addressLine = (body.address_line || '').trim();
   const addressPlaceId = (body.address_place_id || '').trim();

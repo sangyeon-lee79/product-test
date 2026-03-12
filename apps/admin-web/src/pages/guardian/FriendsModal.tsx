@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { api, type FriendRequest, type FriendConnection, type FriendSearchResult } from '../../lib/api';
 import { formatDate, uiErrorMessage } from './guardianTypes';
 
@@ -40,6 +40,10 @@ function petEmoji(typeCode: string | null | undefined): string {
   return '🐾';
 }
 
+const PLACEHOLDER_AVATAR = 'data:image/svg+xml,' + encodeURIComponent(
+  '<svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 64 64"><rect width="64" height="64" rx="32" fill="%23F0E8DF"/><text x="32" y="38" text-anchor="middle" font-size="24" fill="%23E87C2B">?</text></svg>'
+);
+
 export default function FriendsModal({ open, initialTab = 'friends', pendingRequests, lang, t, setError, onClose, onSuccess }: Props) {
   const [tab, setTab] = useState<FriendsTab>(initialTab);
   const [friends, setFriends] = useState<FriendConnection[]>([]);
@@ -47,6 +51,7 @@ export default function FriendsModal({ open, initialTab = 'friends', pendingRequ
   const [enrichedPending, setEnrichedPending] = useState<FriendRequest[]>([]);
   const [loadingPending, setLoadingPending] = useState(false);
   const [respondingId, setRespondingId] = useState<string | null>(null);
+  const [fadingOutId, setFadingOutId] = useState<string | null>(null);
 
   // Search states
   const [searchEmail, setSearchEmail] = useState('');
@@ -63,6 +68,7 @@ export default function FriendsModal({ open, initialTab = 'friends', pendingRequ
       setSearchResult(null);
       setSearchError(null);
       setRequestSent(false);
+      setFadingOutId(null);
       loadFriends();
       loadEnrichedPending();
     }
@@ -86,11 +92,16 @@ export default function FriendsModal({ open, initialTab = 'friends', pendingRequ
     finally { setLoadingPending(false); }
   }
 
-  async function handleRespond(requestId: string, action: 'accept' | 'reject') {
+  const handleRespond = useCallback(async (requestId: string, action: 'accept' | 'reject') => {
     setRespondingId(requestId);
     try {
       await api.friends.requests.respond(requestId, action);
-      setEnrichedPending(prev => prev.filter(r => r.id !== requestId));
+      // Fade-out animation before removing
+      setFadingOutId(requestId);
+      setTimeout(() => {
+        setEnrichedPending(prev => prev.filter(r => r.id !== requestId));
+        setFadingOutId(null);
+      }, 300);
       onSuccess();
       if (action === 'accept') await loadFriends();
     } catch (e) {
@@ -98,7 +109,7 @@ export default function FriendsModal({ open, initialTab = 'friends', pendingRequ
     } finally {
       setRespondingId(null);
     }
-  }
+  }, [onSuccess, setError, t]);
 
   async function handleSearch() {
     const trimmed = searchEmail.trim();
@@ -137,9 +148,8 @@ export default function FriendsModal({ open, initialTab = 'friends', pendingRequ
   }
 
   function handleImgError(e: React.SyntheticEvent<HTMLImageElement>) {
-    e.currentTarget.style.display = 'none';
-    const fallback = e.currentTarget.nextElementSibling as HTMLElement | null;
-    if (fallback) fallback.style.display = '';
+    e.currentTarget.src = PLACEHOLDER_AVATAR;
+    e.currentTarget.onerror = null;
   }
 
   if (!open) return null;
@@ -185,12 +195,14 @@ export default function FriendsModal({ open, initialTab = 'friends', pendingRequ
               <div className="pf-friends-search-card">
                 <div className="pf-friends-card-header">
                   <div className="pf-friends-card-avatar">
-                    {searchResult.avatar_url && (
-                      <img src={searchResult.avatar_url} alt="" onError={handleImgError} />
+                    <img
+                      src={searchResult.avatar_url || PLACEHOLDER_AVATAR}
+                      alt=""
+                      onError={handleImgError}
+                    />
+                    {!searchResult.avatar_url && (
+                      <span className="pf-friends-card-avatar-initial">{initial(searchResult.display_name)}</span>
                     )}
-                    <span style={searchResult.avatar_url ? { display: 'none' } : undefined}>
-                      {initial(searchResult.display_name)}
-                    </span>
                   </div>
                   <div className="pf-friends-card-info">
                     <div className="pf-friends-card-name">{searchResult.display_name}</div>
@@ -283,12 +295,18 @@ export default function FriendsModal({ open, initialTab = 'friends', pendingRequ
               )}
               {friends.map((f) => {
                 const displayName = f.friend_display_name || f.friend_email;
-                const hasAvatar = !!f.friend_avatar_url;
                 return (
                   <div key={f.id} className="pf-friends-item">
                     <div className="pf-friends-avatar">
-                      {hasAvatar && <img src={f.friend_avatar_url!} alt="" className="pf-friends-avatar-img" onError={handleImgError} />}
-                      <span style={hasAvatar ? { display: 'none' } : undefined}>{initial(displayName)}</span>
+                      <img
+                        src={f.friend_avatar_url || PLACEHOLDER_AVATAR}
+                        alt=""
+                        className="pf-friends-avatar-img"
+                        onError={handleImgError}
+                      />
+                      {!f.friend_avatar_url && (
+                        <span className="pf-friends-avatar-initial">{initial(displayName)}</span>
+                      )}
                     </div>
                     <div className="pf-friends-info">
                       <div className="pf-friends-name">{displayName}</div>
@@ -300,7 +318,7 @@ export default function FriendsModal({ open, initialTab = 'friends', pendingRequ
             </div>
           )}
 
-          {/* ── Pending requests (rich cards) ── */}
+          {/* ── Pending requests (redesigned rich cards) ── */}
           {tab === 'pending' && (
             <div>
               {loadingPending && <div className="loading-center"><span className="spinner" /></div>}
@@ -313,22 +331,34 @@ export default function FriendsModal({ open, initialTab = 'friends', pendingRequ
               )}
               {enrichedPending.map((r) => {
                 const displayName = r.requester_display_name || r.requester_email || '?';
-                const hasAvatar = !!r.requester_avatar_url;
                 const pets = r.requester_pets || [];
                 const petsTotal = r.requester_pets_total || pets.length;
                 const feedImages = r.requester_feed_images || [];
                 const isResponding = respondingId === r.id;
+                const isFadingOut = fadingOutId === r.id;
 
                 return (
-                  <div key={r.id} className="pf-friends-card">
-                    {/* [1] Guardian header */}
+                  <div
+                    key={r.id}
+                    className={`pf-friends-card${isFadingOut ? ' pf-friends-card--fadeout' : ''}`}
+                  >
+                    {/* [1] Guardian header — 64px avatar with amber border */}
                     <div className="pf-friends-card-header">
-                      <div className="pf-friends-card-avatar">
-                        {hasAvatar && <img src={r.requester_avatar_url!} alt="" onError={handleImgError} />}
-                        <span style={hasAvatar ? { display: 'none' } : undefined}>{initial(displayName)}</span>
+                      <div className="pf-friends-card-avatar pf-friends-card-avatar--lg">
+                        <img
+                          src={r.requester_avatar_url || PLACEHOLDER_AVATAR}
+                          alt=""
+                          onError={handleImgError}
+                        />
+                        {!r.requester_avatar_url && (
+                          <span className="pf-friends-card-avatar-initial">{initial(displayName)}</span>
+                        )}
                       </div>
                       <div className="pf-friends-card-info">
                         <div className="pf-friends-card-name">{displayName}</div>
+                        <div className="pf-friends-card-role">
+                          {t('guardian.friends.card.guardian_label', 'Guardian')}
+                        </div>
                         {r.requester_country_name && (
                           <div className="pf-friends-card-location">📍 {r.requester_country_name}</div>
                         )}
@@ -341,21 +371,22 @@ export default function FriendsModal({ open, initialTab = 'friends', pendingRequ
                       </div>
                     </div>
 
-                    {/* [2] Pet list */}
+                    {/* [2] Pet list — max 3 visible + overflow */}
                     {pets.length > 0 ? (
                       <div className="pf-friends-card-section">
                         <div className="pf-friends-card-section-title">
                           {t('guardian.friends.card.pets_title', 'Pets')} ({petsTotal})
                         </div>
                         <div className="pf-friends-card-pets">
-                          {pets.map((pet) => {
+                          {pets.slice(0, 3).map((pet) => {
                             const age = calcAge(pet.birth_date);
-                            const hasPetAvatar = !!pet.avatar_url;
                             return (
                               <div key={pet.id} className="pf-friends-card-pet">
                                 <div className="pf-friends-card-pet-avatar">
-                                  {hasPetAvatar && <img src={pet.avatar_url!} alt="" onError={handleImgError} />}
-                                  <span style={hasPetAvatar ? { display: 'none' } : undefined}>{petEmoji(pet.pet_type_code)}</span>
+                                  {pet.avatar_url
+                                    ? <img src={pet.avatar_url} alt="" onError={handleImgError} />
+                                    : <span>{petEmoji(pet.pet_type_code)}</span>
+                                  }
                                 </div>
                                 <div className="pf-friends-card-pet-name">{pet.name}</div>
                                 {pet.breed_code && <div className="pf-friends-card-pet-breed">{pet.breed_code}</div>}
@@ -367,9 +398,9 @@ export default function FriendsModal({ open, initialTab = 'friends', pendingRequ
                               </div>
                             );
                           })}
-                          {petsTotal > 4 && (
+                          {petsTotal > 3 && (
                             <div className="pf-friends-card-pet pf-friends-card-pet--more">
-                              {t('guardian.friends.card.more_pets', '+{count} more').replace('{count}', String(petsTotal - 4))}
+                              {t('guardian.friends.card.more_pets', '+{count} more').replace('{count}', String(petsTotal - 3))}
                             </div>
                           )}
                         </div>
@@ -380,11 +411,11 @@ export default function FriendsModal({ open, initialTab = 'friends', pendingRequ
                       </div>
                     )}
 
-                    {/* [3] Public feed preview */}
+                    {/* [3] Public feed preview — 80px thumbnails */}
                     {feedImages.length > 0 && (
                       <div className="pf-friends-card-section">
                         <div className="pf-friends-card-section-title">
-                          {t('guardian.friends.card.recent_posts', 'Recent Posts')}
+                          {t('guardian.friends.card.feed_title', 'Feed')}
                         </div>
                         <div className="pf-friends-card-feed-preview">
                           {feedImages.map((img) => (
@@ -401,19 +432,19 @@ export default function FriendsModal({ open, initialTab = 'friends', pendingRequ
                       </div>
                     )}
 
-                    {/* [4] Accept / Reject buttons */}
+                    {/* [4] Full-width Accept / Reject buttons */}
                     <div className="pf-friends-card-actions">
                       <button
                         className="pf-friends-card-btn pf-friends-card-btn--accept"
                         disabled={isResponding}
-                        onClick={() => handleRespond(r.id, 'accept')}
+                        onClick={() => void handleRespond(r.id, 'accept')}
                       >
                         {isResponding ? <span className="spinner" style={{ width: 16, height: 16, borderWidth: 2 }} /> : t('guardian.friends.accept', 'Accept')}
                       </button>
                       <button
                         className="pf-friends-card-btn pf-friends-card-btn--reject"
                         disabled={isResponding}
-                        onClick={() => handleRespond(r.id, 'reject')}
+                        onClick={() => void handleRespond(r.id, 'reject')}
                       >
                         {t('guardian.friends.reject', 'Reject')}
                       </button>

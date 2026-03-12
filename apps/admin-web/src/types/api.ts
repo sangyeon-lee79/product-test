@@ -104,6 +104,7 @@ export interface Pet {
   current_weight?: number | null;
   microchip_no?: string | null;
   weight_kg?: number | null;
+  avatar_url?: string | null;
   status?: string;
   created_at?: string;
   updated_at?: string;
@@ -335,6 +336,11 @@ export interface FeedPost {
   comment_count?: number;
   liked_by_me?: number;
   created_at: string;
+  // Grooming feed fields
+  author_type?: string | null;
+  supplier_id?: string | null;
+  grooming_record_id?: string | null;
+  grooming_tags?: Array<{ icon: string; label: string }> | string | null;
 }
 
 export interface FeedComment {
@@ -1036,4 +1042,47 @@ export interface GroomingRecord {
   pet_avatar?: string | null;
   guardian_name?: string | null;
   supplier_name?: string | null;
+}
+
+// Feed Card Settings
+export interface FeedCardSetting {
+  id: string;
+  card_type: string;
+  is_enabled: boolean;
+  interval_n: number;
+  sort_order: number;
+  rotation_order: number;
+  metadata: Record<string, unknown>;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface FeedDummyCard {
+  id: string;
+  tab_type: string;
+  title: string | null;
+  subtitle: string | null;
+  description: string | null;
+  image_url: string | null;
+  link_url: string | null;
+  avatar_url: string | null;
+  display_name: string | null;
+  badge_text: string | null;
+  score: number;
+  region: string | null;
+  breed_info: string | null;
+  pet_type: string | null;
+  is_active: boolean;
+  sort_order: number;
+  metadata: Record<string, unknown>;
+  start_date: string | null;
+  end_date: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface FeedPreviewItem {
+  position: number;
+  type: 'post' | 'ranking' | 'recommended' | 'ad';
+  label: string;
 }

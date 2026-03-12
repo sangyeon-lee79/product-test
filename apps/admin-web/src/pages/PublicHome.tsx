@@ -426,7 +426,11 @@ export default function PublicHome() {
     const imgKey = `${feed.id}-0`;
     const imgSrc = brokenImages.has(imgKey) ? IMG_PLACEHOLDER : media[0];
     const supplier = isSupplierPost(feed);
-    const cardCls = `pf-card pf-card--photo${supplier ? ' pf-card--supplier' : ''}`;
+    const isGrooming = feed.post_type === 'GROOMING';
+    const cardCls = `pf-card pf-card--photo${supplier ? ' pf-card--supplier' : ''}${isGrooming ? ' pf-card--grooming' : ''}`;
+    const groomingTags: Array<{ icon: string; label: string }> = isGrooming
+      ? (typeof feed.grooming_tags === 'string' ? (() => { try { return JSON.parse(feed.grooming_tags); } catch { return []; } })() : feed.grooming_tags || [])
+      : [];
 
     return (
       <article key={feed.id} className={cardCls} style={{ animationDelay: `${idx * 60}ms` }}>
@@ -434,13 +438,20 @@ export default function PublicHome() {
           <div className="pf-card-image">
             <img src={imgSrc} alt={feed.caption || t('public.post', '게시')} loading="lazy" onError={() => handleImgError(imgKey)} />
             {media.length > 1 && <span className="pf-card-image-count">+{media.length - 1}</span>}
+            {isGrooming && groomingTags.length > 0 && (
+              <div className="pf-grooming-tags-overlay">
+                {groomingTags.map((gt, i) => (
+                  <span key={i} className="pf-grooming-tag">{gt.icon} {gt.label}</span>
+                ))}
+              </div>
+            )}
           </div>
         )}
         <div className="pf-card-body">
           <div className="pf-card-header">
             {renderAvatar(feed, avatarLetter)}
             <div className="pf-card-author">
-              <span className="pf-card-username" style={supplier ? { fontWeight: 700 } : undefined}>{authorLine.split('@')[0] || authorLine}</span>
+              <span className="pf-card-username" style={supplier || isGrooming ? { fontWeight: 700 } : undefined}>{authorLine.split('@')[0] || authorLine}</span>
               <span className="pf-card-time">{relativeTime(feed.created_at)}</span>
             </div>
             {renderFriendButton(feed)}
@@ -450,7 +461,7 @@ export default function PublicHome() {
               </button>
             )}
           </div>
-          {(feed.pet_name || feed.business_category_key || supplier) && (
+          {(feed.pet_name || feed.business_category_key || supplier || isGrooming) && (
             <div className="pf-card-badges">
               {supplier && <span className="pf-badge pf-badge--supplier">{t('supplier.badge.supplier', 'Business')}</span>}
               {feed.post_type && feed.post_type !== 'GENERAL' && (
@@ -464,6 +475,11 @@ export default function PublicHome() {
           )}
           {feed.caption && <p className="pf-card-caption">{feed.caption}</p>}
           {tags.length > 0 && <div className="pf-card-tags">{tags.map((tg) => <span key={tg}>#{tg}</span>)}</div>}
+          {isGrooming && !supplier && feed.supplier_id && (
+            <button className="pf-action--store" onClick={() => navigate(`/supplier/${feed.supplier_id}`)} style={{ marginTop: 4 }}>
+              {t('supplier.card.view_store', 'View Store')}
+            </button>
+          )}
           <div className="pf-card-actions">
             <button className={`pf-action${isLiked ? ' liked' : ''}`} onClick={() => toggleLike(feed)} disabled={!loggedIn}>
               {isLiked ? '❤️' : '🤍'} <span>{feed.like_count || ''}</span>
