@@ -14,6 +14,7 @@ import {
   normalizeSingleStableId,
   uiErrorMessage,
 } from './guardianTypes';
+import AvatarUpload from '../../components/AvatarUpload';
 
 interface Props {
   open: boolean;
@@ -63,6 +64,7 @@ export default function PetWizardModal({ open, mode, editingPetId, locale, optio
   const [microchipStatus, setMicrochipStatus] = useState<MicrochipStatus>('idle');
   const [microchipMessage, setMicrochipMessage] = useState('');
   const [lastCheckedMicrochip, setLastCheckedMicrochip] = useState('');
+  const [petAvatarUrl, setPetAvatarUrl] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
 
   const defaultCountryCode = useMemo(() => localeCountryCode(locale), [locale]);
@@ -95,6 +97,7 @@ export default function PetWizardModal({ open, mode, editingPetId, locale, optio
       setPetForm(DEFAULT_PET_FORM);
       setPetWizardStep(1);
       setActivePet(null);
+      setPetAvatarUrl(null);
       setMicrochipCountryCode(defaultCountryCode);
       setMicrochipUnknown(false);
       setMicrochipStatus('idle');
@@ -109,6 +112,7 @@ export default function PetWizardModal({ open, mode, editingPetId, locale, optio
         const p = res.pet;
         const splitMicrochip = splitMicrochipValue(p.microchip_no, defaultCountryCode);
         setActivePet(p);
+        setPetAvatarUrl(p.avatar_url || null);
         setPetWizardStep(1);
         setMicrochipCountryCode(splitMicrochip.countryCode);
         setMicrochipUnknown(!splitMicrochip.localValue);
@@ -402,6 +406,7 @@ export default function PetWizardModal({ open, mode, editingPetId, locale, optio
       coat_length_id: normalizeSingleStableId(petForm.coat_length_id, options.optCoatLength, false) || null,
       coat_type_id: petForm.coat_type_id || null,
       grooming_cycle_id: normalizeSingleStableId(petForm.grooming_cycle_id, options.optGrooming, false) || null,
+      avatar_url: petAvatarUrl || null,
     };
 
     setSaving(true);
@@ -487,6 +492,17 @@ export default function PetWizardModal({ open, mode, editingPetId, locale, optio
 
           {petWizardStep === 1 && (
             <>
+              <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 8 }}>
+                <AvatarUpload
+                  currentUrl={petAvatarUrl}
+                  fallbackLetter={(petForm.name || '?')[0].toUpperCase()}
+                  size={80}
+                  storageType="pet_avatar"
+                  onUploaded={(url) => setPetAvatarUrl(url)}
+                  disabled={saving}
+                  t={t}
+                />
+              </div>
               <div className="form-row col2">
                 <div className="form-group">
                   <label className="form-label" htmlFor="pet-name">{t('guardian.form.name', '이름')} *</label>

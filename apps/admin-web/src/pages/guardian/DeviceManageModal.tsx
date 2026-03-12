@@ -1,5 +1,5 @@
 // 장비 관리 모달 — 등록된 측정 장비 목록, 추가, 수정, 삭제
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { api, type DeviceModel, type GuardianDevice, type Pet } from '../../lib/api';
 import type { Lang } from '../../lib/i18n';
 import { uiErrorMessage } from './guardianTypes';
@@ -38,7 +38,6 @@ export default function DeviceManageModal({
   const [searchTerm, setSearchTerm] = useState('');
   const [allModels, setAllModels] = useState<DeviceModel[]>([]);
   const [allModelsLoading, setAllModelsLoading] = useState(false);
-  const composingRef = useRef(false);
 
   const petId = selectedPet?.id;
 
@@ -250,9 +249,7 @@ export default function DeviceManageModal({
                       id="device-search" className="form-input" type="text"
                       value={searchTerm} placeholder={`🔍 ${t('guardian.device.search_placeholder', '장비를 검색하세요...')}`}
                       autoComplete="off" autoCorrect="off"
-                      onChange={(e) => { if (!composingRef.current) setSearchTerm(e.target.value); }}
-                      onCompositionStart={() => { composingRef.current = true; }}
-                      onCompositionEnd={(e) => { composingRef.current = false; setSearchTerm((e.target as HTMLInputElement).value); }}
+                      onChange={(e) => setSearchTerm(e.target.value)}
                       autoFocus
                     />
                   </div>

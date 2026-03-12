@@ -17,6 +17,7 @@ const PAGE_TITLES: Record<string, string> = {
   '/admin/members': 'admin.nav.members',
   '/admin/api-connections': 'admin.nav.api_connections',
   '/admin/ads': 'admin.nav.ads',
+  '/admin/feed-card-settings': 'admin.nav.feed_card_settings',
 };
 
 export default function Layout({ children }: { children: React.ReactNode }) {
@@ -45,6 +46,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
     ]},
     { section: t('admin.section.content', 'Content'), items: [
       { to: '/admin/feeds', icon: '📝', label: t('admin.nav.feed_mgmt', 'Feed Management') },
+      { to: '/admin/feed-card-settings', icon: '🃏', label: t('admin.nav.feed_card_settings', 'Feed Card Settings') },
       { to: '/admin/ads', icon: '📢', label: t('admin.nav.ads', 'Ad Management') },
     ]},
     { section: t('admin.section.master_data', 'Master Data'), items: [

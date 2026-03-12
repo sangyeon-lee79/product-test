@@ -4,6 +4,7 @@ import { createPortal } from 'react-dom';
 import { api, type GuardianProfile, type Country } from '../../lib/api';
 import { useT } from '../../lib/i18n';
 import { LANG_LABELS, SUPPORTED_LANGS, type Lang } from '@petfolio/shared';
+import AvatarUpload from '../../components/AvatarUpload';
 import { COUNTRY_REGIONS, type Region } from '../../data/countryRegions';
 
 interface Props {
@@ -39,6 +40,7 @@ export default function GuardianProfileEditModal({ open, profile, countries, lan
   const [regionName, setRegionName] = useState('');
   const [cityName, setCityName] = useState('');
   const [language, setLanguage] = useState('ko');
+  const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
 
@@ -51,6 +53,7 @@ export default function GuardianProfileEditModal({ open, profile, countries, lan
       setRegionName(parsed.region);
       setCityName(parsed.city);
       setLanguage(profile.language || 'ko');
+      setAvatarUrl(profile.avatar_url || null);
       setError('');
     }
   }, [open, profile]);
@@ -108,6 +111,7 @@ export default function GuardianProfileEditModal({ open, profile, countries, lan
         country_id: countryId || undefined,
         region_text: buildRegionText(regionName, cityName),
         language: language || undefined,
+        avatar_url: avatarUrl || undefined,
       });
       onSaved(res.profile);
       onClose();
@@ -156,6 +160,19 @@ export default function GuardianProfileEditModal({ open, profile, countries, lan
         </div>
         <div className="modal-body" style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
           {error && <div className="alert alert-error">{error}</div>}
+
+          {/* 0. Avatar */}
+          <div style={{ display: 'flex', justifyContent: 'center' }}>
+            <AvatarUpload
+              currentUrl={avatarUrl}
+              fallbackLetter={(displayName || profile.email || '?')[0].toUpperCase()}
+              size={72}
+              storageType="user_avatar"
+              onUploaded={(url) => setAvatarUrl(url)}
+              disabled={saving}
+              t={t}
+            />
+          </div>
 
           {/* 1. Name */}
           <div>

@@ -694,7 +694,9 @@ export default function GuardianMainPage() {
         <div className="pf-gd-hero-inner">
           <div className="pf-gd-avatar-ring">
             <div className="pf-gd-avatar-inner">
-              {selectedPet ? selectedPet.name[0].toUpperCase() : '🐾'}
+              {selectedPet?.avatar_url
+                ? <img src={selectedPet.avatar_url} alt={selectedPet.name} className="pf-avatar-img" />
+                : (selectedPet ? selectedPet.name[0].toUpperCase() : '🐾')}
             </div>
           </div>
           <div className="pf-gd-hero-info">
@@ -742,7 +744,11 @@ export default function GuardianMainPage() {
             return (
               <button key={p.id} className="pf-gd-pet-btn" onClick={() => setSelectedPetId(p.id)}>
                 <div className={`pf-gd-pet-ring${isActive ? ' active' : ''}`}>
-                  <div className="pf-gd-pet-ring-inner">{p.name[0].toUpperCase()}</div>
+                  <div className="pf-gd-pet-ring-inner">
+                    {p.avatar_url
+                      ? <img src={p.avatar_url} alt={p.name} className="pf-avatar-img" />
+                      : p.name[0].toUpperCase()}
+                  </div>
                 </div>
                 <span className="pf-gd-pet-name">{p.name}</span>
               </button>
@@ -826,7 +832,11 @@ export default function GuardianMainPage() {
               {petTab === 'timeline' && (
                 <>
                   <div className="pf-gd-compose" onClick={() => setComposeModalOpen(true)}>
-                    <div className="pf-gd-compose-avatar">{selectedPet ? selectedPet.name[0].toUpperCase() : '?'}</div>
+                    <div className="pf-gd-compose-avatar">
+                      {selectedPet?.avatar_url
+                        ? <img src={selectedPet.avatar_url} alt={selectedPet.name} className="pf-avatar-img" />
+                        : (selectedPet ? selectedPet.name[0].toUpperCase() : '?')}
+                    </div>
                     <div className="pf-gd-compose-text">{t('guardian.feed.compose_placeholder', '무슨 일이 있었나요?')}</div>
                     <span style={{ fontSize: 18, color: 'var(--text-muted)' }}>📷</span>
                   </div>
@@ -841,7 +851,11 @@ export default function GuardianMainPage() {
                       {feeds.map((f) => (
                         <div key={f.id} className="pf-gd-feed-card">
                           <div className="pf-gd-feed-header">
-                            <div className="pf-gd-feed-avatar">{(f.author_email || '?')[0].toUpperCase()}</div>
+                            <div className="pf-gd-feed-avatar">
+                              {guardianProfile?.avatar_url
+                                ? <img src={guardianProfile.avatar_url} alt="" className="pf-avatar-img" />
+                                : (f.author_email || '?')[0].toUpperCase()}
+                            </div>
                             <div className="pf-gd-feed-info">
                               <div className="pf-gd-feed-type">{feedTypeLabel(t, f.feed_type)}</div>
                               <div className="pf-gd-feed-author">{f.author_email || t('common.none', '-')}</div>
@@ -1281,7 +1295,11 @@ export default function GuardianMainPage() {
                         const infoLine = [weight != null ? `${weight}${t('unit.kg', 'kg')}` : null, breedLabel || null, genderLabel || null].filter(Boolean).join(' · ');
                         return (
                           <div key={p.id} className={`pf-gd-pet-card${isSelected ? ' selected' : ''}`} onClick={() => setSelectedPetId(p.id)}>
-                            <div className="pf-gd-pet-card-avatar">{p.name[0].toUpperCase()}</div>
+                            <div className="pf-gd-pet-card-avatar">
+                              {p.avatar_url
+                                ? <img src={p.avatar_url} alt={p.name} className="pf-avatar-img" />
+                                : p.name[0].toUpperCase()}
+                            </div>
                             <div className="pf-gd-pet-card-info">
                               <div className="pf-gd-pet-card-name">{p.name}</div>
                               {infoLine && <div className="pf-gd-pet-card-detail">{infoLine}</div>}

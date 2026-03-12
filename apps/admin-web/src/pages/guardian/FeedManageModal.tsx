@@ -1,5 +1,5 @@
 // 사료/영양제 관리 모달 — 탭 전환, 등록/수정/삭제 + 등록 요청
-import { useEffect, useMemo, useRef, useState, useCallback } from 'react';
+import { useEffect, useMemo, useState, useCallback } from 'react';
 import { api, type FeedBrand, type FeedManufacturer, type FeedModel, type FeedNutrition, type FeedRegistrationRequest, type FeedType, type Pet, type PetFeed } from '../../lib/api';
 import type { Lang } from '../../lib/i18n';
 import { uiErrorMessage } from './guardianTypes';
@@ -82,7 +82,6 @@ export default function FeedManageModal({
   const [searchTerm, setSearchTerm] = useState('');
   const [allModels, setAllModels] = useState<FeedModel[]>([]);
   const [allModelsLoading, setAllModelsLoading] = useState(false);
-  const composingRef = useRef(false);
 
   // Registration request state
   const [showRequestForm, setShowRequestForm] = useState(false);
@@ -658,9 +657,7 @@ export default function FeedManageModal({
                       id="model-search" className="form-input" type="text"
                       value={searchTerm} placeholder={`🔍 ${tabLabels.searchPlaceholder}`}
                       autoComplete="off" autoCorrect="off"
-                      onChange={(e) => { if (!composingRef.current) setSearchTerm(e.target.value); }}
-                      onCompositionStart={() => { composingRef.current = true; }}
-                      onCompositionEnd={(e) => { composingRef.current = false; setSearchTerm((e.target as HTMLInputElement).value); }}
+                      onChange={(e) => setSearchTerm(e.target.value)}
                       autoFocus
                     />
                   </div>

@@ -18,6 +18,7 @@ import GuardianMainPage from './pages/GuardianMainPage';
 import SupplierDashboardPage from './pages/SupplierDashboardPage';
 import ExplorePage from './pages/ExplorePage';
 import MembersPage from './pages/MembersPage';
+import FeedCardSettingsPage from './pages/FeedCardSettingsPage';
 import ApiConnectionsPage from './pages/ApiConnectionsPage';
 import OAuthRedirectHandler from './components/OAuthRedirectHandler';
 import NotificationToast, { showNotificationToast } from './components/NotificationToast';
@@ -106,6 +107,7 @@ export default function App() {
                 <Route path="supplements" element={<SupplementPage />} />
                 <Route path="medicines" element={<MedicinePage />} />
                 <Route path="members" element={<MembersPage />} />
+                <Route path="feed-card-settings" element={<FeedCardSettingsPage />} />
                 <Route path="api-connections" element={<ApiConnectionsPage />} />
                 <Route path="*" element={<Navigate to="/admin" replace />} />
               </Route>
