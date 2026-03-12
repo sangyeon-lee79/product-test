@@ -351,6 +351,28 @@ export default function PublicHome() {
     </aside>
   );
 
+  /* ── Supplier helpers ─────────────────────────────────── */
+  const isSupplierPost = (feed: FeedPost) => feed.author_role === 'provider';
+
+  const renderAvatar = (feed: FeedPost, letter: string, sm = false) => {
+    if (!isSupplierPost(feed)) return <div className={`pf-avatar${sm ? ' pf-avatar--sm' : ''}`}>{letter}</div>;
+    return (
+      <div className="pf-avatar-wrap">
+        <div className={`pf-avatar${sm ? ' pf-avatar--sm' : ''}`}>{letter}</div>
+        <span className="pf-avatar-badge">💼</span>
+      </div>
+    );
+  };
+
+  const renderSupplierFooter = (feed: FeedPost) => {
+    if (!isSupplierPost(feed)) return null;
+    const catLabel = feed.business_category_key
+      ? translateMasterLabel(feed.business_category_key, feed.business_category_ko, feed.business_category_id)
+      : null;
+    if (!catLabel) return null;
+    return <div className="pf-card-footer-line"><span>{catLabel}</span></div>;
+  };
+
   /* ── Photo card ────────────────────────────────────────── */
   const renderPhotoCard = (feed: FeedPost, idx: number) => {
     const media = ensureArray(feed.media_urls);
@@ -365,9 +387,11 @@ export default function PublicHome() {
     const isSaved = savedPosts.has(feed.id);
     const imgKey = `${feed.id}-0`;
     const imgSrc = brokenImages.has(imgKey) ? IMG_PLACEHOLDER : media[0];
+    const supplier = isSupplierPost(feed);
+    const cardCls = `pf-card pf-card--photo${supplier ? ' pf-card--supplier' : ''}`;
 
     return (
-      <article key={feed.id} className="pf-card pf-card--photo" style={{ animationDelay: `${idx * 60}ms` }}>
+      <article key={feed.id} className={cardCls} style={{ animationDelay: `${idx * 60}ms` }}>
         {media.length > 0 && (
           <div className="pf-card-image">
             <img src={imgSrc} alt={feed.caption || t('public.post', '게시')} loading="lazy" onError={() => handleImgError(imgKey)} />
@@ -376,9 +400,9 @@ export default function PublicHome() {
         )}
         <div className="pf-card-body">
           <div className="pf-card-header">
-            <div className="pf-avatar">{avatarLetter}</div>
+            {renderAvatar(feed, avatarLetter)}
             <div className="pf-card-author">
-              <span className="pf-card-username">{authorLine.split('@')[0] || authorLine}</span>
+              <span className="pf-card-username" style={supplier ? { fontWeight: 700 } : undefined}>{authorLine.split('@')[0] || authorLine}</span>
               <span className="pf-card-time">{relativeTime(feed.created_at)}</span>
             </div>
             {renderFriendButton(feed)}
@@ -388,16 +412,16 @@ export default function PublicHome() {
               </button>
             )}
           </div>
-          {(feed.pet_name || feed.business_category_key || feed.author_role === 'provider') && (
+          {(feed.pet_name || feed.business_category_key || supplier) && (
             <div className="pf-card-badges">
-              {feed.author_role === 'provider' && <span className="pf-badge pf-badge--supplier">🏪 {t('supplier.badge.supplier', 'Business')}</span>}
+              {supplier && <span className="pf-badge pf-badge--supplier">{t('supplier.badge.supplier', 'Business')}</span>}
               {feed.post_type && feed.post_type !== 'GENERAL' && (
                 <span className={`pf-badge pf-badge--post-type pf-badge--${(feed.post_type || '').toLowerCase()}`}>
                   {t(`supplier.post.type.${(feed.post_type || '').toLowerCase()}`, feed.post_type || '')}
                 </span>
               )}
               {feed.pet_name && <span className="pf-badge pf-badge--pet">{feed.pet_name}</span>}
-              {feed.business_category_key && <span className="pf-badge pf-badge--biz">{translateMasterLabel(feed.business_category_key, feed.business_category_ko, feed.business_category_id)}</span>}
+              {!supplier && feed.business_category_key && <span className="pf-badge pf-badge--biz">{translateMasterLabel(feed.business_category_key, feed.business_category_ko, feed.business_category_id)}</span>}
             </div>
           )}
           {feed.caption && <p className="pf-card-caption">{feed.caption}</p>}
@@ -408,11 +432,12 @@ export default function PublicHome() {
             </button>
             <button className="pf-action" onClick={() => toggleComments(feed.id)}>💬 <span>{feed.comment_count || ''}</span></button>
             <button className={`pf-action${isSaved ? ' saved' : ''}`} onClick={() => toggleSave(feed.id)}>{isSaved ? '🔖' : '📑'}</button>
-            <div className="pf-spacer" />
-            <button className="pf-action pf-action--share">↗️</button>
+            {!supplier && <><div className="pf-spacer" /><button className="pf-action pf-action--share">↗️</button></>}
+            {supplier && <button className="pf-action--store" onClick={() => navigate(`/supplier/${feed.author_user_id}`)}>{t('supplier.card.view_store', 'View Store')}</button>}
           </div>
           {openComments[feed.id] && renderComments(feed, comments)}
         </div>
+        {renderSupplierFooter(feed)}
       </article>
     );
   };
@@ -485,16 +510,28 @@ export default function PublicHome() {
     const isLiked = Number(feed.liked_by_me || 0) > 0;
     const isSaved = savedPosts.has(feed.id);
     const comments = commentMap[feed.id] || [];
+    const supplier = isSupplierPost(feed);
+    const cardCls = `pf-card pf-card--text${supplier ? ' pf-card--supplier' : ''}`;
 
     return (
-      <article key={feed.id} className="pf-card pf-card--text" style={{ animationDelay: `${idx * 60}ms` }}>
+      <article key={feed.id} className={cardCls} style={{ animationDelay: `${idx * 60}ms` }}>
         <div className="pf-card-body">
+          {supplier && (
+            <div className="pf-card-badges" style={{ marginBottom: 8 }}>
+              <span className="pf-badge pf-badge--supplier">{t('supplier.badge.supplier', 'Business')}</span>
+              {feed.post_type && feed.post_type !== 'GENERAL' && (
+                <span className={`pf-badge pf-badge--post-type pf-badge--${(feed.post_type || '').toLowerCase()}`}>
+                  {t(`supplier.post.type.${(feed.post_type || '').toLowerCase()}`, feed.post_type || '')}
+                </span>
+              )}
+            </div>
+          )}
           {feed.caption && <blockquote className="pf-text-quote">{feed.caption}</blockquote>}
           {tags.length > 0 && <div className="pf-card-tags">{tags.map((tg) => <span key={tg}>#{tg}</span>)}</div>}
           <div className="pf-card-header" style={{ marginTop: 8 }}>
-            <div className="pf-avatar pf-avatar--sm">{authorLine[0]?.toUpperCase() || '?'}</div>
+            {renderAvatar(feed, authorLine[0]?.toUpperCase() || '?', true)}
             <div className="pf-card-author">
-              <span className="pf-card-username">{authorLine.split('@')[0]}</span>
+              <span className="pf-card-username" style={supplier ? { fontWeight: 700 } : undefined}>{authorLine.split('@')[0]}</span>
               {feed.pet_name && <span className="pf-badge pf-badge--pet" style={{ marginLeft: 6 }}>{feed.pet_name}</span>}
             </div>
             {renderFriendButton(feed)}
@@ -504,11 +541,12 @@ export default function PublicHome() {
             <button className={`pf-action${isLiked ? ' liked' : ''}`} onClick={() => toggleLike(feed)} disabled={!loggedIn}>{isLiked ? '❤️' : '🤍'} <span>{feed.like_count || ''}</span></button>
             <button className="pf-action" onClick={() => toggleComments(feed.id)}>💬 <span>{feed.comment_count || ''}</span></button>
             <button className={`pf-action${isSaved ? ' saved' : ''}`} onClick={() => toggleSave(feed.id)}>{isSaved ? '🔖' : '📑'}</button>
-            <div className="pf-spacer" />
-            <button className="pf-action pf-action--share">↗️</button>
+            {!supplier && <><div className="pf-spacer" /><button className="pf-action pf-action--share">↗️</button></>}
+            {supplier && <button className="pf-action--store" onClick={() => navigate(`/supplier/${feed.author_user_id}`)}>{t('supplier.card.view_store', 'View Store')}</button>}
           </div>
           {openComments[feed.id] && renderComments(feed, comments)}
         </div>
+        {renderSupplierFooter(feed)}
       </article>
     );
   };
