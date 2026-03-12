@@ -118,19 +118,19 @@ INSERT INTO feed_dummy_cards (id, tab_type, title, subtitle, badge_text, score, 
 (gen_random_uuid()::text, 'ad', '반려동물 DNA 검사 키트', '마이펫진', 'AD', 0, NULL, '집에서 간편하게! 품종, 건강 위험도, 유전 질환 분석. 결과 2주 내 제공.', 'MyPetGene', 'https://placehold.co/600x300/ef4444/fff?text=MyPetGene+DNA', 'https://example.com/mypetgene', '{"ad_format":"banner","cta":"검사 신청","advertiser":"마이펫진 바이오"}', true, 10, now(), now());
 
 -- ─── 4. i18n keys ────────────────────────────────────────────────────────────
-INSERT INTO i18n (key, ko, en, ja, zh_cn, zh_tw, es, fr, de, pt, vi, th, id_lang, ar) VALUES
-('admin.feed_card.type_store', '공급자', 'Store', '店舗', '店铺', '店鋪', 'Tienda', 'Magasin', 'Geschäft', 'Loja', 'Cửa hàng', 'ร้านค้า', 'Toko', 'متجر'),
-('admin.feed_card.dummy_tab_store', '공급자 매장', 'Store', '店舗', '店铺', '店鋪', 'Tiendas', 'Magasins', 'Geschäfte', 'Lojas', 'Cửa hàng', 'ร้านค้า', 'Toko', 'المتاجر'),
-('admin.feed_card.dummy_tab_ad', '광고', 'Ads', '広告', '广告', '廣告', 'Anuncios', 'Publicités', 'Anzeigen', 'Anúncios', 'Quảng cáo', 'โฆษณา', 'Iklan', 'إعلانات'),
-('admin.feed_card.store_category', '업종', 'Category', 'カテゴリ', '分类', '分類', 'Categoría', 'Catégorie', 'Kategorie', 'Categoria', 'Danh mục', 'หมวดหมู่', 'Kategori', 'الفئة'),
-('admin.feed_card.store_cat_all', '전체', 'All', 'すべて', '全部', '全部', 'Todos', 'Tous', 'Alle', 'Todos', 'Tất cả', 'ทั้งหมด', 'Semua', 'الكل'),
-('admin.feed_card.store_cat_grooming', '미용', 'Grooming', 'グルーミング', '美容', '美容', 'Peluquería', 'Toilettage', 'Pflege', 'Banho e Tosa', 'Chăm sóc lông', 'ตัดขน', 'Grooming', 'تجميل'),
-('admin.feed_card.store_cat_hospital', '동물병원', 'Hospital', '動物病院', '动物医院', '動物醫院', 'Hospital', 'Hôpital', 'Tierklinik', 'Hospital', 'Bệnh viện', 'โรงพยาบาล', 'Rumah Sakit', 'مستشفى'),
-('admin.feed_card.store_cat_hotel', '호텔', 'Hotel', 'ホテル', '酒店', '飯店', 'Hotel', 'Hôtel', 'Hotel', 'Hotel', 'Khách sạn', 'โรงแรม', 'Hotel', 'فندق'),
-('admin.feed_card.store_cat_training', '훈련', 'Training', 'トレーニング', '训练', '訓練', 'Entrenamiento', 'Entraînement', 'Training', 'Treinamento', 'Huấn luyện', 'ฝึกสอน', 'Pelatihan', 'تدريب'),
-('admin.feed_card.store_cat_shop', '샵', 'Shop', 'ショップ', '商店', '商店', 'Tienda', 'Boutique', 'Shop', 'Loja', 'Cửa hàng', 'ร้าน', 'Toko', 'متجر'),
-('admin.feed_card.store_cat_cafe', '카페', 'Café', 'カフェ', '咖啡馆', '咖啡館', 'Café', 'Café', 'Café', 'Café', 'Quán cà phê', 'คาเฟ่', 'Kafe', 'مقهى'),
-('admin.feed_card.store_cat_photo', '사진', 'Photo', 'フォト', '摄影', '攝影', 'Foto', 'Photo', 'Foto', 'Foto', 'Ảnh', 'ถ่ายรูป', 'Foto', 'تصوير')
+INSERT INTO i18n_translations (id, key, page, is_active, ko, en, ja, zh_cn, zh_tw, es, fr, de, pt, vi, th, id_lang, ar, created_at, updated_at) VALUES
+(gen_random_uuid()::text, 'admin.feed_card.type_store', 'admin', true, '공급자', 'Store', '店舗', '店铺', '店鋪', 'Tienda', 'Magasin', 'Geschäft', 'Loja', 'Cửa hàng', 'ร้านค้า', 'Toko', 'متجر', now(), now()),
+(gen_random_uuid()::text, 'admin.feed_card.dummy_tab_store', 'admin', true, '공급자 매장', 'Store', '店舗', '店铺', '店鋪', 'Tiendas', 'Magasins', 'Geschäfte', 'Lojas', 'Cửa hàng', 'ร้านค้า', 'Toko', 'المتاجر', now(), now()),
+(gen_random_uuid()::text, 'admin.feed_card.dummy_tab_ad', 'admin', true, '광고', 'Ads', '広告', '广告', '廣告', 'Anuncios', 'Publicités', 'Anzeigen', 'Anúncios', 'Quảng cáo', 'โฆษณา', 'Iklan', 'إعلانات', now(), now()),
+(gen_random_uuid()::text, 'admin.feed_card.store_category', 'admin', true, '업종', 'Category', 'カテゴリ', '分类', '分類', 'Categoría', 'Catégorie', 'Kategorie', 'Categoria', 'Danh mục', 'หมวดหมู่', 'Kategori', 'الفئة', now(), now()),
+(gen_random_uuid()::text, 'admin.feed_card.store_cat_all', 'admin', true, '전체', 'All', 'すべて', '全部', '全部', 'Todos', 'Tous', 'Alle', 'Todos', 'Tất cả', 'ทั้งหมด', 'Semua', 'الكل', now(), now()),
+(gen_random_uuid()::text, 'admin.feed_card.store_cat_grooming', 'admin', true, '미용', 'Grooming', 'グルーミング', '美容', '美容', 'Peluquería', 'Toilettage', 'Pflege', 'Banho e Tosa', 'Chăm sóc lông', 'ตัดขน', 'Grooming', 'تجميل', now(), now()),
+(gen_random_uuid()::text, 'admin.feed_card.store_cat_hospital', 'admin', true, '동물병원', 'Hospital', '動物病院', '动物医院', '動物醫院', 'Hospital', 'Hôpital', 'Tierklinik', 'Hospital', 'Bệnh viện', 'โรงพยาบาล', 'Rumah Sakit', 'مستشفى', now(), now()),
+(gen_random_uuid()::text, 'admin.feed_card.store_cat_hotel', 'admin', true, '호텔', 'Hotel', 'ホテル', '酒店', '飯店', 'Hotel', 'Hôtel', 'Hotel', 'Hotel', 'Khách sạn', 'โรงแรม', 'Hotel', 'فندق', now(), now()),
+(gen_random_uuid()::text, 'admin.feed_card.store_cat_training', 'admin', true, '훈련', 'Training', 'トレーニング', '训练', '訓練', 'Entrenamiento', 'Entraînement', 'Training', 'Treinamento', 'Huấn luyện', 'ฝึกสอน', 'Pelatihan', 'تدريب', now(), now()),
+(gen_random_uuid()::text, 'admin.feed_card.store_cat_shop', 'admin', true, '샵', 'Shop', 'ショップ', '商店', '商店', 'Tienda', 'Boutique', 'Shop', 'Loja', 'Cửa hàng', 'ร้าน', 'Toko', 'متجر', now(), now()),
+(gen_random_uuid()::text, 'admin.feed_card.store_cat_cafe', 'admin', true, '카페', 'Café', 'カフェ', '咖啡馆', '咖啡館', 'Café', 'Café', 'Café', 'Café', 'Quán cà phê', 'คาเฟ่', 'Kafe', 'مقهى', now(), now()),
+(gen_random_uuid()::text, 'admin.feed_card.store_cat_photo', 'admin', true, '사진', 'Photo', 'フォト', '摄影', '攝影', 'Foto', 'Photo', 'Foto', 'Foto', 'Ảnh', 'ถ่ายรูป', 'Foto', 'تصوير', now(), now())
 ON CONFLICT (key) DO UPDATE SET
   ko = EXCLUDED.ko, en = EXCLUDED.en, ja = EXCLUDED.ja,
   zh_cn = EXCLUDED.zh_cn, zh_tw = EXCLUDED.zh_tw, es = EXCLUDED.es,
