@@ -27,6 +27,74 @@ async function userByEmail(env: Env, email: string): Promise<{ id: string; role:
   return { id: row.id, role: normalizeRole(row.role), email: row.email };
 }
 
+// ─── GET /friends/search?email=xxx ─────────────────────────────────────────────
+
+async function searchUser(env: Env, me: JwtPayload, url: URL): Promise<Response> {
+  const email = (url.searchParams.get('email') || '').trim().toLowerCase();
+  if (!email) return err('email parameter required');
+
+  const target = await userByEmail(env, email);
+  if (!target) return ok({ user: null });
+
+  // Determine friend_status
+  let friend_status: 'self' | 'friend' | 'pending' | 'none' = 'none';
+  if (target.id === me.sub) {
+    friend_status = 'self';
+  } else {
+    const friendship = await env.DB.prepare(
+      `SELECT id FROM friendships
+       WHERE status = 'active'
+         AND ((user_a_id = ? AND user_b_id = ?) OR (user_a_id = ? AND user_b_id = ?))`
+    ).bind(me.sub, target.id, target.id, me.sub).first<{ id: string }>();
+    if (friendship) {
+      friend_status = 'friend';
+    } else {
+      const pending = await env.DB.prepare(
+        `SELECT id FROM friend_requests
+         WHERE requester_user_id = ? AND receiver_user_id = ? AND status = 'request_sent'`
+      ).bind(me.sub, target.id).first<{ id: string }>();
+      if (pending) friend_status = 'pending';
+    }
+  }
+
+  // Profile + account details
+  const profile = await env.DB.prepare(
+    `SELECT COALESCE(up.display_name, u.email) AS display_name,
+            up.avatar_url,
+            c.name_key AS country_name,
+            uad.region_text
+     FROM users u
+     LEFT JOIN user_profiles up ON up.user_id = u.id
+     LEFT JOIN countries c ON c.id = up.country_id
+     LEFT JOIN user_account_details uad ON uad.user_id = u.id
+     WHERE u.id = ?`
+  ).bind(target.id).first<Record<string, unknown>>();
+
+  // Pets (up to 2)
+  const petRows = await env.DB.prepare(
+    `SELECT p.name, pt.code AS pet_type_code, br.code AS breed_code
+     FROM pets p
+     LEFT JOIN master_items pt ON pt.id = p.pet_type_id
+     LEFT JOIN master_items br ON br.id = p.breed_id
+     WHERE p.guardian_user_id = ? AND COALESCE(p.status, 'active') = 'active'
+     ORDER BY p.created_at
+     LIMIT 2`
+  ).bind(target.id).all<Record<string, unknown>>();
+
+  return ok({
+    user: {
+      id: target.id,
+      display_name: profile?.display_name || target.email,
+      email: target.email,
+      avatar_url: profile?.avatar_url || null,
+      country_name: profile?.country_name || null,
+      region_text: profile?.region_text || null,
+      pets: petRows.results || [],
+      friend_status,
+    },
+  });
+}
+
 async function listFriends(env: Env, me: JwtPayload): Promise<Response> {
   const rows = await env.DB.prepare(
     `SELECT f.id, f.relation_type, f.status, f.created_at,
@@ -260,6 +328,7 @@ export async function handleFriends(request: Request, env: Env, url: URL): Promi
   const sub = url.pathname.replace('/api/v1/friends', '');
 
   if ((sub === '' || sub === '/') && request.method === 'GET') return listFriends(env, me);
+  if ((sub === '/search' || sub === '/search/') && request.method === 'GET') return searchUser(env, me, url);
   if ((sub === '/pets' || sub === '/pets/') && request.method === 'GET') return listFriendPets(env, me);
   if ((sub === '/requests' || sub === '/requests/') && request.method === 'GET') return listRequests(env, me, url);
   if ((sub === '/requests' || sub === '/requests/') && request.method === 'POST') return createRequest(request, env, me);

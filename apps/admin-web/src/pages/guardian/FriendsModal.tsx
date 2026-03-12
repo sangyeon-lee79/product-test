@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { api, type FriendRequest, type FriendConnection } from '../../lib/api';
+import { api, type FriendRequest, type FriendConnection, type FriendSearchResult } from '../../lib/api';
 import { formatDate, uiErrorMessage } from './guardianTypes';
 
 type FriendsTab = 'friends' | 'pending';
@@ -47,9 +47,21 @@ export default function FriendsModal({ open, initialTab = 'friends', pendingRequ
   const [loadingPending, setLoadingPending] = useState(false);
   const [respondingId, setRespondingId] = useState<string | null>(null);
 
+  // Search states
+  const [searchEmail, setSearchEmail] = useState('');
+  const [searching, setSearching] = useState(false);
+  const [searchResult, setSearchResult] = useState<FriendSearchResult | null>(null);
+  const [searchError, setSearchError] = useState<string | null>(null);
+  const [sendingRequest, setSendingRequest] = useState(false);
+  const [requestSent, setRequestSent] = useState(false);
+
   useEffect(() => {
     if (open) {
       setTab(initialTab);
+      setSearchEmail('');
+      setSearchResult(null);
+      setSearchError(null);
+      setRequestSent(false);
       loadFriends();
       loadEnrichedPending();
     }
@@ -87,6 +99,42 @@ export default function FriendsModal({ open, initialTab = 'friends', pendingRequ
     }
   }
 
+  async function handleSearch() {
+    const trimmed = searchEmail.trim();
+    if (!trimmed) return;
+    setSearching(true);
+    setSearchResult(null);
+    setSearchError(null);
+    setRequestSent(false);
+    try {
+      const res = await api.friends.search(trimmed);
+      if (!res.user) {
+        setSearchError(t('friends.search.not_found', 'No user found with this email'));
+      } else {
+        setSearchResult(res.user);
+      }
+    } catch {
+      setSearchError(t('friends.search.error', 'Search failed'));
+    } finally {
+      setSearching(false);
+    }
+  }
+
+  async function handleSendRequest() {
+    if (!searchResult) return;
+    setSendingRequest(true);
+    try {
+      await api.friends.requests.create({ receiver_user_id: searchResult.id });
+      setRequestSent(true);
+      setSearchResult(prev => prev ? { ...prev, friend_status: 'pending' } : null);
+      onSuccess();
+    } catch (e) {
+      setError(uiErrorMessage(e, t('friends.search.error', 'Failed')));
+    } finally {
+      setSendingRequest(false);
+    }
+  }
+
   function handleImgError(e: React.SyntheticEvent<HTMLImageElement>) {
     e.currentTarget.style.display = 'none';
     const fallback = e.currentTarget.nextElementSibling as HTMLElement | null;
@@ -105,6 +153,111 @@ export default function FriendsModal({ open, initialTab = 'friends', pendingRequ
           <button className="modal-close" onClick={onClose}>&times;</button>
         </div>
         <div className="modal-body guardian-modal-body">
+          {/* ── Friend search ── */}
+          <div className="pf-friends-search">
+            <div className="pf-friends-search-input-row">
+              <input
+                className="pf-friends-search-input"
+                type="email"
+                placeholder={t('friends.search.placeholder', 'Search by email')}
+                value={searchEmail}
+                onChange={(e) => setSearchEmail(e.target.value)}
+                onKeyDown={(e) => { if (e.key === 'Enter') void handleSearch(); }}
+                disabled={searching}
+              />
+              <button
+                className="pf-friends-search-btn"
+                onClick={() => void handleSearch()}
+                disabled={searching || !searchEmail.trim()}
+              >
+                {searching
+                  ? <span className="spinner" style={{ width: 16, height: 16, borderWidth: 2 }} />
+                  : t('friends.search.button', 'Search')}
+              </button>
+            </div>
+
+            {searchError && (
+              <div className="pf-friends-search-msg pf-friends-search-msg--error">{searchError}</div>
+            )}
+
+            {searchResult && (
+              <div className="pf-friends-search-card">
+                <div className="pf-friends-card-header">
+                  <div className="pf-friends-card-avatar">
+                    {searchResult.avatar_url && (
+                      <img src={searchResult.avatar_url} alt="" onError={handleImgError} />
+                    )}
+                    <span style={searchResult.avatar_url ? { display: 'none' } : undefined}>
+                      {initial(searchResult.display_name)}
+                    </span>
+                  </div>
+                  <div className="pf-friends-card-info">
+                    <div className="pf-friends-card-name">{searchResult.display_name}</div>
+                    <div className="pf-friends-card-meta" style={{ color: 'var(--text-muted)', fontSize: 13 }}>
+                      {searchResult.email}
+                    </div>
+                    {searchResult.pets.length > 0 && (
+                      <div className="pf-friends-card-meta" style={{ marginTop: 4 }}>
+                        {searchResult.pets.map((pet, i) => (
+                          <span key={i}>
+                            {i > 0 && ' · '}
+                            {petEmoji(pet.pet_type_code)} {pet.name}
+                            {pet.breed_code && <span style={{ color: 'var(--text-muted)' }}> · {pet.breed_code}</span>}
+                          </span>
+                        ))}
+                      </div>
+                    )}
+                    {searchResult.pets.length === 0 && (
+                      <div className="pf-friends-card-meta" style={{ color: 'var(--text-muted)', marginTop: 4 }}>
+                        {t('friends.search.no_pets', 'No pets registered')}
+                      </div>
+                    )}
+                    {(searchResult.country_name || searchResult.region_text) && (
+                      <div className="pf-friends-card-location" style={{ marginTop: 2 }}>
+                        📍 {[searchResult.country_name, searchResult.region_text?.split('|')[0]].filter(Boolean).join(' · ')}
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                <div className="pf-friends-card-actions">
+                  {searchResult.friend_status === 'self' && (
+                    <div className="pf-friends-search-status pf-friends-search-status--muted">
+                      {t('friends.search.self_search', 'You cannot add yourself')}
+                    </div>
+                  )}
+                  {searchResult.friend_status === 'friend' && (
+                    <div className="pf-friends-search-status pf-friends-search-status--success">
+                      ✓ {t('friends.search.already_friend', 'Already friends')}
+                    </div>
+                  )}
+                  {searchResult.friend_status === 'pending' && (
+                    <div className="pf-friends-search-status pf-friends-search-status--pending">
+                      ⏳ {t('friends.search.pending', 'Request pending')}
+                    </div>
+                  )}
+                  {searchResult.friend_status === 'none' && !requestSent && (
+                    <button
+                      className="pf-friends-card-btn pf-friends-card-btn--accept"
+                      style={{ width: '100%' }}
+                      onClick={() => void handleSendRequest()}
+                      disabled={sendingRequest}
+                    >
+                      {sendingRequest
+                        ? <span className="spinner" style={{ width: 16, height: 16, borderWidth: 2 }} />
+                        : t('friends.search.send_request', 'Send Friend Request')}
+                    </button>
+                  )}
+                  {requestSent && (
+                    <div className="pf-friends-search-status pf-friends-search-status--success">
+                      ✓ {t('friends.search.sent_success', 'Request sent')}
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+          </div>
+
           {/* Tab bar */}
           <div className="pf-friends-tabs">
             <button className={`pf-friends-tab${tab === 'friends' ? ' active' : ''}`} onClick={() => setTab('friends')}>

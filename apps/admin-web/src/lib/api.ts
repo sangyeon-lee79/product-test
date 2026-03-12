@@ -10,7 +10,7 @@ import type {
   PetHealthMeasurementLog, HealthMeasurementSummary,
   PetExerciseLog, ExerciseSummary, FriendPet, Notification,
   Booking, FeedPost, FeedComment, PetAlbumMedia,
-  FriendRequest, FriendConnection, RequesterPet, RequesterFeedImage,
+  FriendRequest, FriendConnection, FriendSearchResult, RequesterPet, RequesterFeedImage,
   DeviceType, DeviceManufacturer, DeviceBrand, DeviceModel, MeasurementUnit, GuardianDevice,
   FeedType, FeedManufacturer, FeedBrand, FeedModel,
   PetFeed, FeedNutrition, FeedingLog, FeedingMixFavorite,
@@ -30,7 +30,7 @@ export type {
   PetHealthMeasurementLog, HealthMeasurementSummary,
   PetExerciseLog, ExerciseSummary, FriendPet, Notification,
   Booking, FeedPost, FeedComment, PetAlbumMedia,
-  FriendRequest, FriendConnection, RequesterPet, RequesterFeedImage,
+  FriendRequest, FriendConnection, FriendSearchResult, RequesterPet, RequesterFeedImage,
   DeviceType, DeviceManufacturer, DeviceBrand, DeviceModel, MeasurementUnit, GuardianDevice,
   FeedType, FeedManufacturer, FeedBrand, FeedModel,
   PetFeed, FeedNutrition, FeedingLog, FeedingMixFavorite,
@@ -499,6 +499,8 @@ export const api = {
     },
   },
   friends: {
+    search: (email: string) =>
+      request<{ user: FriendSearchResult | null }>(`/api/v1/friends/search${buildQuery({ email })}`),
     list: () =>
       request<{ friends: FriendConnection[] }>('/api/v1/friends'),
     pets: () =>

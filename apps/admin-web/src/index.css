@@ -3487,6 +3487,7 @@ html[data-theme="dark"] .pf-card--health .pf-friend-btn--add { border-color: #F5
 .pf-gd-tl-time { color: var(--text-muted); font-size: 12px; font-weight: 500; }
 .pf-gd-tl-sep { color: var(--border); }
 .pf-gd-tl-note { color: var(--text-muted); font-style: italic; font-size: 12px; }
+.pf-gd-tl-badge { display: inline-block; padding: 1px 6px; font-size: 11px; font-weight: 600; border-radius: 4px; background: var(--warning-bg, #fff3cd); color: var(--warning-text, #856404); }
 .pf-gd-tl-actions { display: flex; gap: 4px; flex-shrink: 0; opacity: 0; transition: opacity .2s; }
 .pf-gd-tl-card:hover .pf-gd-tl-actions { opacity: 1; }
 .pf-gd-tl-actions button {
@@ -3789,6 +3790,39 @@ html[data-theme="dark"] .pf-card--health .pf-friend-btn--add { border-color: #F5
 }
 .pf-friends-card-btn--reject:hover:not(:disabled) { background: rgba(0,0,0,.04); color: var(--text); }
 
+/* ── Friend search section ── */
+.pf-friends-search { margin-bottom: 16px; padding-bottom: 16px; border-bottom: 1px solid var(--border); }
+.pf-friends-search-input-row { display: flex; gap: 8px; }
+.pf-friends-search-input {
+  flex: 1; padding: 10px 12px; border: 1px solid var(--border);
+  border-radius: 8px; font-size: 14px; background: var(--bg);
+  color: var(--text); outline: none; transition: border-color .2s;
+}
+.pf-friends-search-input:focus { border-color: var(--primary); }
+.pf-friends-search-input:disabled { opacity: .6; cursor: not-allowed; }
+.pf-friends-search-btn {
+  padding: 10px 16px; border-radius: 8px; border: none;
+  background: var(--primary); color: #fff; font-size: 14px;
+  font-weight: 600; cursor: pointer; white-space: nowrap;
+  display: flex; align-items: center; justify-content: center;
+  min-width: 64px; transition: opacity .15s;
+}
+.pf-friends-search-btn:disabled { opacity: .5; cursor: not-allowed; }
+.pf-friends-search-msg { font-size: 13px; margin-top: 8px; padding: 0 2px; }
+.pf-friends-search-msg--error { color: #EF4444; }
+.pf-friends-search-card {
+  background: #FFFBF7; border: 1px solid #F0E8DF;
+  border-radius: 12px; padding: 16px; margin-top: 12px;
+  animation: pfFadeUp .4s var(--ease) both;
+}
+.pf-friends-search-status {
+  width: 100%; padding: 10px; border-radius: 8px;
+  font-size: 14px; font-weight: 600; text-align: center;
+}
+.pf-friends-search-status--muted { color: var(--text-muted); background: var(--bg); }
+.pf-friends-search-status--success { color: #16A34A; background: rgba(22,163,74,.06); }
+.pf-friends-search-status--pending { color: #D97706; background: rgba(217,119,6,.06); }
+
 /* Dark mode */
 html[data-theme="dark"] .pf-friends-item:hover { background: rgba(245,130,58,.08); }
 html[data-theme="dark"] .pf-gd-pending-badge { box-shadow: 0 1px 3px rgba(0,0,0,.5); }
@@ -3796,6 +3830,10 @@ html[data-theme="dark"] .pf-friends-card { border-color: rgba(255,255,255,.1); }
 html[data-theme="dark"] .pf-friends-card:hover { box-shadow: 0 4px 16px rgba(0,0,0,.2); }
 html[data-theme="dark"] .pf-friends-card-btn--reject:hover:not(:disabled) { background: rgba(255,255,255,.06); }
 html[data-theme="dark"] .pf-friends-card-pet--more { background: rgba(245,130,58,.15); }
+html[data-theme="dark"] .pf-friends-search-card { background: var(--surface); border-color: rgba(255,255,255,.1); }
+html[data-theme="dark"] .pf-friends-search-status--muted { background: rgba(255,255,255,.05); }
+html[data-theme="dark"] .pf-friends-search-status--success { background: rgba(22,163,74,.12); }
+html[data-theme="dark"] .pf-friends-search-status--pending { background: rgba(217,119,6,.12); }
 
 /* Mobile bottom-sheet */
 @media (max-width: 767px) {

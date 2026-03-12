@@ -415,6 +415,23 @@ export interface FriendConnection {
   friend_avatar_url?: string | null;
 }
 
+export interface FriendSearchResultPet {
+  name: string;
+  pet_type_code: string | null;
+  breed_code: string | null;
+}
+
+export interface FriendSearchResult {
+  id: string;
+  display_name: string;
+  email: string;
+  avatar_url: string | null;
+  country_name: string | null;
+  region_text: string | null;
+  pets: FriendSearchResultPet[];
+  friend_status: 'none' | 'pending' | 'friend' | 'self';
+}
+
 export interface DeviceType {
   id: string; key: string; name_ko?: string | null; name_en?: string | null; display_label?: string | null;
   model_count?: number;
