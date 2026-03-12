@@ -20,7 +20,6 @@ interface DisplayStore {
   addressText: string;
   rating: number;
   reviewCount: number;
-  isDemo: boolean;
   avatarUrl?: string | null;
   services: StoreService[];
   supplierId?: string;

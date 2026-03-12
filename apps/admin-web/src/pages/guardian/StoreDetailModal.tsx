@@ -16,7 +16,6 @@ interface DisplayStore {
   addressText: string;
   rating: number;
   reviewCount: number;
-  isDemo: boolean;
   avatarUrl?: string | null;
   services: StoreService[];
 }
@@ -57,9 +56,6 @@ export default function StoreDetailModal({ store, onClose, onBook }: Props) {
             <h3 className="gm-store-detail-name">{store.displayName}</h3>
             {store.category && (
               <span className="gm-store-card-badge">{t(`guardian.store.filter.${store.category}`, store.category)}</span>
-            )}
-            {store.isDemo && (
-              <span className="gm-store-card-demo-badge">{t('guardian.store.card.demo', 'Demo')}</span>
             )}
           </div>
           {store.rating > 0 && (
@@ -110,8 +106,7 @@ export default function StoreDetailModal({ store, onClose, onBook }: Props) {
                     </div>
                     <button
                       className="btn btn-primary btn-sm gm-store-book-btn"
-                      disabled={store.isDemo}
-                      onClick={() => { if (!store.isDemo) onBook(svc); }}
+                      onClick={() => onBook(svc)}
                     >
                       {t('guardian.store.card.book_btn', 'Book Now')}
                     </button>
@@ -123,15 +118,12 @@ export default function StoreDetailModal({ store, onClose, onBook }: Props) {
 
           {tab === 'info' && (
             <div className="gm-store-detail-info">
-              {/* Address */}
               {store.addressText && (
                 <div className="gm-store-info-row">
                   <div className="gm-store-info-label">{t('guardian.store.detail.address', 'Address')}</div>
                   <div className="gm-store-info-value">{store.addressText}</div>
                 </div>
               )}
-
-              {/* Description */}
               {store.displayDescription && (
                 <div className="gm-store-info-row">
                   <div className="gm-store-info-label">{t('guardian.store.detail.about', 'About')}</div>
@@ -143,13 +135,11 @@ export default function StoreDetailModal({ store, onClose, onBook }: Props) {
         </div>
 
         {/* Footer: book entire store */}
-        {!store.isDemo && (
-          <div className="gm-store-detail-footer">
-            <button className="btn btn-primary" style={{ width: '100%' }} onClick={() => onBook()}>
-              {t('guardian.store.card.book_btn', 'Book Now')}
-            </button>
-          </div>
-        )}
+        <div className="gm-store-detail-footer">
+          <button className="btn btn-primary" style={{ width: '100%' }} onClick={() => onBook()}>
+            {t('guardian.store.card.book_btn', 'Book Now')}
+          </button>
+        </div>
       </div>
     </div>
   );

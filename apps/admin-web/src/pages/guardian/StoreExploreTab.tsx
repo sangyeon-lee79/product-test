@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
-import { api, type Appointment, type DummyStore, type Pet, type Store, type StoreService } from '../../lib/api';
+import { api, type Appointment, type Pet, type Store, type StoreService } from '../../lib/api';
 import { useI18n, useT } from '../../lib/i18n';
 import { BCP47_LOCALE_MAP, type Lang } from '@petfolio/shared';
 import StoreDetailModal from './StoreDetailModal';
@@ -24,9 +24,9 @@ const CATEGORY_CHIPS: { key: string; i18nKey: string }[] = [
   { key: 'photo', i18nKey: 'guardian.store.filter.photo' },
 ];
 
-/* ─── Unified display store ───────────────────────────────────────────── */
+/* ─── Display store type ──────────────────────────────────────────────── */
 
-interface DisplayStore {
+export interface DisplayStore {
   id: string;
   displayName: string;
   displayDescription: string;
@@ -34,15 +34,14 @@ interface DisplayStore {
   addressText: string;
   rating: number;
   reviewCount: number;
-  isDemo: boolean;
+  isDemo: false;
   avatarUrl?: string | null;
   services: { id: string; displayName: string; price: number | null; durationMin: number | null }[];
-  // For real store booking
-  supplierId?: string;
-  storeId?: string;
+  supplierId: string;
+  storeId: string;
 }
 
-function realToDisplay(s: Store, services: StoreService[]): DisplayStore {
+function storeToDisplay(s: Store, services: StoreService[]): DisplayStore {
   return {
     id: s.id,
     displayName: s.display_name || s.name || '',
@@ -64,27 +63,6 @@ function realToDisplay(s: Store, services: StoreService[]): DisplayStore {
   };
 }
 
-function dummyToDisplay(d: DummyStore): DisplayStore {
-  const addr = d.address;
-  return {
-    id: d.id,
-    displayName: d.display_name || '',
-    displayDescription: d.display_description || '',
-    category: d.category || '',
-    addressText: addr ? [addr.state_code, addr.city_code, addr.detail].filter(Boolean).join(' ') : '',
-    rating: d.rating || 0,
-    reviewCount: d.review_count || 0,
-    isDemo: true,
-    avatarUrl: null,
-    services: (d.services || []).map(svc => ({
-      id: svc.id,
-      displayName: svc.display_name || '',
-      price: svc.price,
-      durationMin: svc.duration_min,
-    })),
-  };
-}
-
 /* ─── Props ────────────────────────────────────────────────────────────── */
 
 interface Props {
@@ -94,6 +72,13 @@ interface Props {
   onOpenGroomingApproval: (apt: Appointment) => void;
   onRefresh: () => void;
 }
+
+/* ─── Category emoji ──────────────────────────────────────────────────── */
+
+const catEmoji: Record<string, string> = {
+  grooming: '\u2702\uFE0F', hospital: '\uD83C\uDFE5', hotel: '\uD83C\uDFE8',
+  training: '\uD83C\uDFAF', shop: '\uD83D\uDED2', cafe: '\u2615', photo: '\uD83D\uDCF7',
+};
 
 /* ─── Component ────────────────────────────────────────────────────────── */
 
@@ -111,24 +96,24 @@ export default function StoreExploreTab({ pets, selectedPet, appointments, onOpe
 
   // Data state
   const [stores, setStores] = useState<DisplayStore[]>([]);
-  const [loading, setLoading] = useState(false);
-  const [, setIsUsingDummy] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
 
   // Detail modal
   const [detailStore, setDetailStore] = useState<DisplayStore | null>(null);
 
   // Booking modal
   const [bookingStore, setBookingStore] = useState<DisplayStore | null>(null);
-  const [bookingService, setBookingService] = useState<{ id: string; displayName: string; price: number | null; durationMin: number | null } | null>(null);
+  const [bookingService, setBookingService] = useState<DisplayStore['services'][0] | null>(null);
 
   // Appointments collapse
   const [aptCollapsed, setAptCollapsed] = useState(false);
 
-  // Fetch stores
+  // Fetch real stores only
   const loadStores = useCallback(async () => {
     setLoading(true);
+    setError('');
     try {
-      // Try real stores first
       const res = await api.stores.list({
         lang,
         limit: 50,
@@ -138,38 +123,27 @@ export default function StoreExploreTab({ pets, selectedPet, appointments, onOpe
       });
       const realStores = res.items || [];
 
-      if (realStores.length > 0) {
-        // Fetch services for each store in parallel
-        const withServices = await Promise.all(
-          realStores.map(async (store) => {
-            try {
-              const svcRes = await api.stores.services.list(store.id, lang);
-              return realToDisplay(store, svcRes.items || []);
-            } catch {
-              return realToDisplay(store, []);
-            }
-          }),
-        );
-        // Filter by category client-side if needed
-        const filtered = category
-          ? withServices.filter(s => s.category.toLowerCase().includes(category.toLowerCase()))
-          : withServices;
-        setStores(filtered);
-        setIsUsingDummy(false);
-      } else {
-        // Fallback to dummy stores
-        const dummyRes = await api.dummyStores.list({
-          lang,
-          limit: 50,
-          category: category || undefined,
-          state_code: stateCode || undefined,
-          city_code: cityCode || undefined,
-          q: keyword || undefined,
-        });
-        setStores((dummyRes.items || []).map(dummyToDisplay));
-        setIsUsingDummy(true);
-      }
-    } catch {
+      // Fetch services for each store in parallel
+      const withServices = await Promise.all(
+        realStores.map(async (store) => {
+          try {
+            const svcRes = await api.stores.services.list(store.id, lang);
+            return storeToDisplay(store, svcRes.items || []);
+          } catch {
+            return storeToDisplay(store, []);
+          }
+        }),
+      );
+
+      // Filter by category client-side if needed
+      const filtered = category
+        ? withServices.filter(s => s.category.toLowerCase().includes(category.toLowerCase()))
+        : withServices;
+
+      setStores(filtered);
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : String(e);
+      setError(msg);
       setStores([]);
     } finally {
       setLoading(false);
@@ -189,17 +163,11 @@ export default function StoreExploreTab({ pets, selectedPet, appointments, onOpe
     setCityCode('');
   }
 
-  // Category emoji map
-  const catEmoji: Record<string, string> = {
-    grooming: '\u2702\uFE0F', hospital: '\uD83C\uDFE5', hotel: '\uD83C\uDFE8',
-    training: '\uD83C\uDFAF', shop: '\uD83D\uDED2', cafe: '\u2615', photo: '\uD83D\uDCF7',
-  };
-
   function openDetail(store: DisplayStore) {
     setDetailStore(store);
   }
 
-  function openBooking(store: DisplayStore, service?: typeof bookingService) {
+  function openBooking(store: DisplayStore, service?: DisplayStore['services'][0] | null) {
     setBookingStore(store);
     setBookingService(service || null);
   }
@@ -247,7 +215,6 @@ export default function StoreExploreTab({ pets, selectedPet, appointments, onOpe
 
       {/* ── Filter Bar ── */}
       <div className="gm-store-filter-bar">
-        {/* Region selectors */}
         <div className="gm-store-filter-row">
           <select
             className="gm-store-filter-select"
@@ -279,7 +246,6 @@ export default function StoreExploreTab({ pets, selectedPet, appointments, onOpe
           </div>
         </div>
 
-        {/* Category chips */}
         <div className="gm-store-category-chips">
           {CATEGORY_CHIPS.map(chip => (
             <button
@@ -294,10 +260,18 @@ export default function StoreExploreTab({ pets, selectedPet, appointments, onOpe
       </div>
 
       {/* ── Store Cards ── */}
-      <div className="pf-gd-section" style={{ border: 'none', background: 'transparent', boxShadow: 'none' }}>
+      <div style={{ marginTop: 8 }}>
         {loading ? (
           <div className="pf-gd-empty" style={{ padding: '40px 0' }}>
             <p>{t('common.loading', 'Loading...')}</p>
+          </div>
+        ) : error ? (
+          <div className="pf-gd-empty" style={{ padding: '40px 0' }}>
+            <div className="pf-gd-empty-icon">{'\u26A0\uFE0F'}</div>
+            <p style={{ fontWeight: 600, color: '#ef4444' }}>{error}</p>
+            <button className="btn btn-secondary btn-sm" style={{ marginTop: 8 }} onClick={() => void loadStores()}>
+              {t('common.retry', 'Retry')}
+            </button>
           </div>
         ) : stores.length === 0 ? (
           <div className="pf-gd-empty" style={{ padding: '40px 0' }}>
@@ -324,9 +298,6 @@ export default function StoreExploreTab({ pets, selectedPet, appointments, onOpe
                     {store.category && (
                       <span className="gm-store-card-badge">{t(`guardian.store.filter.${store.category}`, store.category)}</span>
                     )}
-                    {store.isDemo && (
-                      <span className="gm-store-card-demo-badge">{t('guardian.store.card.demo', 'Demo')}</span>
-                    )}
                   </div>
                   {store.addressText && (
                     <div className="gm-store-card-address">{store.addressText}</div>
@@ -348,10 +319,9 @@ export default function StoreExploreTab({ pets, selectedPet, appointments, onOpe
                 <div className="gm-store-card-action">
                   <button
                     className="btn btn-primary btn-sm gm-store-book-btn"
-                    disabled={store.isDemo}
                     onClick={e => {
                       e.stopPropagation();
-                      if (!store.isDemo) openBooking(store);
+                      openBooking(store);
                     }}
                   >
                     {t('guardian.store.card.book_btn', 'Book Now')}
@@ -369,14 +339,15 @@ export default function StoreExploreTab({ pets, selectedPet, appointments, onOpe
           store={detailStore}
           onClose={() => setDetailStore(null)}
           onBook={(service) => {
+            const ds = detailStore;
             setDetailStore(null);
-            openBooking(detailStore, service);
+            openBooking(ds, service);
           }}
         />
       )}
 
       {/* ── Step Booking Modal ── */}
-      {bookingStore && !bookingStore.isDemo && (
+      {bookingStore && (
         <StepBookingModal
           store={bookingStore}
           initialService={bookingService}
