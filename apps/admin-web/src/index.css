@@ -4647,3 +4647,362 @@ html[data-theme="dark"] .fcs-modal { background: var(--surface); }
 .pf-injected-card--ad { border-color: #a7f3d0; }
 .pf-injected-card--store .pf-injected-header { color: #9b5de5; }
 .pf-injected-card--store { border-color: #ddd6fe; }
+
+/* ═══════════════════════════════════════════════════════════════════════
+   Guardian Store Explore (gm-store-*)
+   ═══════════════════════════════════════════════════════════════════════ */
+
+/* Filter bar */
+.gm-store-filter-bar {
+  background: var(--surface); border: 1px solid var(--border); border-radius: 14px;
+  padding: 14px 16px; margin-bottom: 12px;
+  display: flex; flex-direction: column; gap: 10px;
+}
+.gm-store-filter-row {
+  display: flex; gap: 8px; flex-wrap: wrap; align-items: center;
+}
+.gm-store-filter-select {
+  padding: 7px 12px; border: 1px solid var(--border); border-radius: 10px;
+  font-size: 13px; background: var(--bg); color: var(--text);
+  min-width: 100px; outline: none; cursor: pointer;
+}
+.gm-store-filter-select:focus { border-color: var(--amber); }
+.gm-store-filter-search-wrap {
+  flex: 1; min-width: 140px; position: relative;
+}
+.gm-store-filter-search {
+  width: 100%; padding: 7px 32px 7px 12px; border: 1px solid var(--border);
+  border-radius: 10px; font-size: 13px; background: var(--bg); color: var(--text); outline: none;
+}
+.gm-store-filter-search:focus { border-color: var(--amber); }
+.gm-store-filter-clear {
+  position: absolute; right: 8px; top: 50%; transform: translateY(-50%);
+  background: none; border: none; cursor: pointer; font-size: 16px; color: var(--mid);
+  line-height: 1;
+}
+
+/* Category chips */
+.gm-store-category-chips {
+  display: flex; gap: 6px; flex-wrap: wrap;
+}
+.gm-store-category-chip {
+  padding: 5px 14px; border-radius: 20px; font-size: 12px; font-weight: 500;
+  border: 1px solid var(--border); background: var(--surface); color: var(--text);
+  cursor: pointer; transition: all .15s; white-space: nowrap;
+}
+.gm-store-category-chip:hover { border-color: var(--amber); color: var(--amber); }
+.gm-store-category-chip.active {
+  background: var(--amber); border-color: var(--amber); color: #fff;
+}
+
+/* Store list */
+.gm-store-list { display: flex; flex-direction: column; gap: 10px; }
+
+/* Store card */
+.gm-store-explore-card {
+  display: flex; gap: 14px; align-items: flex-start;
+  padding: 14px 16px; border-radius: 14px;
+  background: var(--surface); border: 1px solid var(--border);
+  cursor: pointer; transition: border-color .15s, box-shadow .15s;
+}
+.gm-store-explore-card:hover {
+  border-color: rgba(245,130,58,.35);
+  box-shadow: 0 2px 12px rgba(245,130,58,.08);
+}
+
+/* Card photo */
+.gm-store-card-photo {
+  width: 72px; height: 72px; border-radius: 12px; overflow: hidden;
+  flex-shrink: 0; background: var(--bg);
+}
+.gm-store-card-photo img {
+  width: 100%; height: 100%; object-fit: cover;
+}
+.gm-store-card-photo-placeholder {
+  width: 100%; height: 100%; display: flex; align-items: center; justify-content: center;
+  font-size: 28px; background: linear-gradient(135deg, #FFF7ED, #FDE68A);
+}
+
+/* Card info */
+.gm-store-card-info { flex: 1; min-width: 0; }
+.gm-store-card-title-row {
+  display: flex; align-items: center; gap: 6px; flex-wrap: wrap; margin-bottom: 4px;
+}
+.gm-store-card-name { font-size: 15px; font-weight: 600; color: var(--text); }
+.gm-store-card-badge {
+  padding: 2px 8px; border-radius: 10px; font-size: 11px; font-weight: 600;
+  background: var(--amber); color: #fff; white-space: nowrap;
+}
+.gm-store-card-demo-badge {
+  padding: 2px 8px; border-radius: 10px; font-size: 10px; font-weight: 700;
+  background: #6B7280; color: #fff; white-space: nowrap;
+}
+.gm-store-card-address {
+  font-size: 12px; color: var(--text-muted); margin-bottom: 4px;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.gm-store-card-meta {
+  display: flex; gap: 10px; font-size: 12px; color: var(--text-muted); align-items: center;
+}
+.gm-store-card-rating { display: flex; align-items: center; gap: 3px; }
+.gm-store-card-reviews { color: var(--mid); margin-left: 2px; }
+.gm-store-card-service-count { color: var(--mid); }
+
+/* Card action */
+.gm-store-card-action { flex-shrink: 0; display: flex; align-items: center; }
+.gm-store-book-btn {
+  border-radius: 20px !important; font-size: 12px !important; padding: 5px 16px !important;
+  white-space: nowrap;
+}
+.gm-store-book-btn:disabled { opacity: .5; cursor: not-allowed; }
+
+/* ═══════════════════════════════════════════════════════════════════════
+   Store Detail Modal (gm-store-detail-*)
+   ═══════════════════════════════════════════════════════════════════════ */
+
+.gm-store-detail-modal {
+  max-width: 520px; max-height: 85vh; overflow-y: auto; padding: 0;
+}
+.gm-store-detail-hero {
+  position: relative; width: 100%; height: 180px;
+  background: linear-gradient(135deg, #FFF7ED, #FDE68A); overflow: hidden;
+}
+.gm-store-detail-hero-img { width: 100%; height: 100%; object-fit: cover; }
+.gm-store-detail-hero-placeholder {
+  width: 100%; height: 100%; display: flex; align-items: center; justify-content: center;
+  font-size: 56px;
+}
+.gm-store-detail-close {
+  position: absolute; top: 10px; right: 10px; width: 32px; height: 32px;
+  border-radius: 50%; background: rgba(0,0,0,.4); color: #fff;
+  border: none; cursor: pointer; font-size: 18px;
+  display: flex; align-items: center; justify-content: center;
+}
+.gm-store-detail-close:hover { background: rgba(0,0,0,.6); }
+
+.gm-store-detail-header { padding: 16px 20px 0; }
+.gm-store-detail-title-row {
+  display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-bottom: 4px;
+}
+.gm-store-detail-name { margin: 0; font-size: 18px; font-weight: 700; color: var(--text); }
+.gm-store-detail-rating { font-size: 14px; color: var(--text); margin-top: 2px; }
+
+/* Tabs */
+.gm-store-detail-tabs {
+  display: flex; border-bottom: 2px solid var(--border); margin: 12px 20px 0;
+}
+.gm-store-detail-tab {
+  flex: 1; padding: 10px 0; border: none; background: none;
+  cursor: pointer; font-size: 14px; font-weight: 500;
+  color: var(--text-muted); text-align: center;
+  border-bottom: 2px solid transparent; margin-bottom: -2px;
+  transition: all .15s;
+}
+.gm-store-detail-tab:hover { color: var(--amber); }
+.gm-store-detail-tab.active { color: var(--amber); border-bottom-color: var(--amber); font-weight: 600; }
+
+.gm-store-detail-body { padding: 16px 20px; }
+
+/* Service cards */
+.gm-store-detail-services { display: flex; flex-direction: column; gap: 8px; }
+.gm-store-service-card {
+  display: flex; align-items: center; justify-content: space-between; gap: 12px;
+  padding: 12px 14px; border-radius: 12px;
+  background: var(--bg); border: 1px solid var(--border);
+  transition: border-color .15s;
+}
+.gm-store-service-card:hover { border-color: rgba(245,130,58,.3); }
+.gm-store-service-info { min-width: 0; flex: 1; }
+.gm-store-service-name { font-size: 14px; font-weight: 600; color: var(--text); }
+.gm-store-service-meta {
+  display: flex; gap: 12px; font-size: 12px; color: var(--text-muted); margin-top: 4px;
+}
+
+/* Info section */
+.gm-store-detail-info { display: flex; flex-direction: column; gap: 14px; }
+.gm-store-info-row { }
+.gm-store-info-label {
+  font-size: 12px; font-weight: 600; color: var(--text-muted); margin-bottom: 2px;
+  text-transform: uppercase; letter-spacing: .3px;
+}
+.gm-store-info-value { font-size: 14px; color: var(--text); line-height: 1.5; }
+
+.gm-store-detail-footer {
+  padding: 12px 20px 16px; border-top: 1px solid var(--border);
+}
+
+/* ═══════════════════════════════════════════════════════════════════════
+   Step Booking Modal (gm-booking-*)
+   ═══════════════════════════════════════════════════════════════════════ */
+
+.gm-booking-modal {
+  max-width: 480px; max-height: 90vh; overflow-y: auto; padding: 0; position: relative;
+}
+
+/* Progress bar */
+.gm-booking-progress {
+  display: flex; justify-content: center; gap: 0; padding: 20px 20px 12px;
+  border-bottom: 1px solid var(--border);
+}
+.gm-booking-progress-step {
+  display: flex; flex-direction: column; align-items: center; gap: 4px;
+  flex: 1; position: relative;
+}
+.gm-booking-progress-step::before {
+  content: ''; position: absolute; top: 12px; left: -50%; right: 50%;
+  height: 2px; background: var(--border); z-index: 0;
+}
+.gm-booking-progress-step:first-child::before { display: none; }
+.gm-booking-progress-step.completed::before { background: var(--amber); }
+.gm-booking-progress-step.active::before { background: var(--amber); }
+
+.gm-booking-progress-dot {
+  width: 26px; height: 26px; border-radius: 50%; display: flex;
+  align-items: center; justify-content: center;
+  font-size: 12px; font-weight: 700; z-index: 1;
+  background: var(--bg); border: 2px solid var(--border); color: var(--text-muted);
+  transition: all .2s;
+}
+.gm-booking-progress-step.active .gm-booking-progress-dot {
+  background: var(--amber); border-color: var(--amber); color: #fff;
+}
+.gm-booking-progress-step.completed .gm-booking-progress-dot {
+  background: var(--amber); border-color: var(--amber); color: #fff;
+}
+.gm-booking-progress-label {
+  font-size: 11px; color: var(--text-muted); font-weight: 500;
+}
+.gm-booking-progress-step.active .gm-booking-progress-label { color: var(--amber); font-weight: 600; }
+.gm-booking-progress-step.completed .gm-booking-progress-label { color: var(--amber); }
+
+/* Store banner */
+.gm-booking-store-banner {
+  padding: 10px 20px; background: var(--bg);
+  font-size: 14px; border-bottom: 1px solid var(--border);
+}
+
+/* Step title */
+.gm-booking-step-title {
+  font-size: 15px; font-weight: 600; color: var(--text); margin: 0 0 14px;
+}
+
+/* ─── Calendar ─── */
+.gm-cal-nav {
+  display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px;
+}
+.gm-cal-nav-btn {
+  background: none; border: 1px solid var(--border); cursor: pointer;
+  width: 32px; height: 32px; border-radius: 8px; font-size: 18px;
+  color: var(--text); display: flex; align-items: center; justify-content: center;
+}
+.gm-cal-nav-btn:hover { border-color: var(--amber); color: var(--amber); }
+.gm-cal-month { font-size: 15px; font-weight: 600; color: var(--text); }
+
+.gm-cal-grid {
+  display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px;
+}
+.gm-cal-header {
+  text-align: center; font-size: 11px; font-weight: 600;
+  color: var(--text-muted); padding: 4px 0;
+}
+.gm-cal-day {
+  text-align: center; padding: 8px 0; border-radius: 10px;
+  font-size: 13px; font-weight: 500; color: var(--text);
+  background: none; border: 2px solid transparent; cursor: pointer;
+  transition: all .15s;
+}
+.gm-cal-day.empty { cursor: default; }
+.gm-cal-day:not(.empty):not(.disabled):hover {
+  background: rgba(245,130,58,.08); border-color: rgba(245,130,58,.2);
+}
+.gm-cal-day.disabled { color: var(--mid); opacity: .4; cursor: not-allowed; }
+.gm-cal-day.today { font-weight: 700; color: var(--amber); }
+.gm-cal-day.selected {
+  background: var(--amber); color: #fff; border-color: var(--amber); font-weight: 700;
+}
+
+/* ─── Time slots ─── */
+.gm-booking-timeslot-grid {
+  display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px;
+}
+.gm-booking-timeslot {
+  padding: 10px 0; border-radius: 10px; text-align: center;
+  font-size: 13px; font-weight: 500; cursor: pointer;
+  border: 1px solid var(--border); background: var(--surface); color: var(--text);
+  transition: all .15s;
+}
+.gm-booking-timeslot:hover {
+  border-color: var(--amber); background: rgba(245,130,58,.06);
+}
+.gm-booking-timeslot.selected {
+  background: var(--amber); border-color: var(--amber); color: #fff; font-weight: 600;
+}
+
+/* ─── Pet cards ─── */
+.gm-booking-pet-list { display: flex; flex-direction: column; gap: 8px; }
+.gm-booking-pet-card {
+  display: flex; align-items: center; gap: 12px;
+  padding: 12px 14px; border-radius: 14px;
+  border: 2px solid var(--border); background: var(--surface);
+  cursor: pointer; transition: all .15s; width: 100%; text-align: left;
+}
+.gm-booking-pet-card:hover { border-color: rgba(245,130,58,.3); }
+.gm-booking-pet-card.selected {
+  border-color: var(--amber); background: #FFF7ED;
+}
+.gm-booking-pet-avatar {
+  width: 44px; height: 44px; border-radius: 50%; overflow: hidden;
+  background: var(--bg); flex-shrink: 0;
+  display: flex; align-items: center; justify-content: center; font-size: 22px;
+}
+.gm-booking-pet-avatar img { width: 100%; height: 100%; object-fit: cover; }
+.gm-booking-pet-info { flex: 1; min-width: 0; }
+.gm-booking-pet-name { font-size: 14px; font-weight: 600; color: var(--text); }
+.gm-booking-pet-breed { font-size: 12px; color: var(--text-muted); }
+.gm-booking-pet-check {
+  width: 24px; height: 24px; border-radius: 50%;
+  background: var(--amber); color: #fff; font-size: 14px; font-weight: 700;
+  display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+}
+
+/* ─── Summary ─── */
+.gm-booking-summary {
+  background: var(--bg); border-radius: 12px; padding: 16px; border: 1px solid var(--border);
+}
+.gm-booking-summary-row {
+  display: flex; justify-content: space-between; align-items: center;
+  padding: 8px 0; border-bottom: 1px solid var(--border);
+  font-size: 13px;
+}
+.gm-booking-summary-row:last-child { border-bottom: none; }
+.gm-booking-summary-row span { color: var(--text-muted); }
+.gm-booking-summary-row strong { color: var(--text); }
+
+/* Navigation */
+.gm-booking-nav {
+  display: flex; justify-content: space-between; gap: 12px;
+  padding: 12px 20px 16px; border-top: 1px solid var(--border);
+}
+.gm-booking-nav .btn { flex: 1; }
+
+/* ─── Dark mode ─── */
+html[data-theme="dark"] .gm-store-filter-bar { background: var(--surface); }
+html[data-theme="dark"] .gm-store-explore-card { background: var(--surface); }
+html[data-theme="dark"] .gm-store-explore-card:hover { border-color: rgba(245,130,58,.4); }
+html[data-theme="dark"] .gm-store-card-photo-placeholder { background: linear-gradient(135deg, #2a1a0a, #3a2a0a); }
+html[data-theme="dark"] .gm-store-detail-hero { background: linear-gradient(135deg, #2a1a0a, #3a2a0a); }
+html[data-theme="dark"] .gm-booking-pet-card.selected { background: rgba(245,130,58,.12); }
+html[data-theme="dark"] .gm-booking-summary { background: rgba(255,255,255,.04); }
+html[data-theme="dark"] .gm-booking-store-banner { background: rgba(255,255,255,.04); }
+
+/* ─── Responsive ─── */
+@media (max-width: 767px) {
+  .gm-store-explore-card { flex-direction: column; }
+  .gm-store-card-photo { width: 100%; height: 140px; border-radius: 10px; }
+  .gm-store-card-action { width: 100%; }
+  .gm-store-book-btn { width: 100% !important; }
+  .gm-store-detail-modal { max-width: 100vw; }
+  .gm-store-detail-hero { height: 140px; }
+  .gm-booking-modal { max-width: 100vw; }
+  .gm-booking-timeslot-grid { grid-template-columns: repeat(3, 1fr); }
+}

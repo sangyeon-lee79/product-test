@@ -143,6 +143,12 @@ async function dispatch(request: Request, env: Env, url: URL): Promise<Response>
     return handleFeeds(request, env, url);
   }
 
+  // Dummy Stores (public, demo data)
+  if (path.startsWith('/api/v1/dummy-stores')) {
+    const { handleDummyStores } = await import('./routes/dummyStores');
+    return handleDummyStores(request, env, url);
+  }
+
   // S9: Stores + Services
   if (path.startsWith('/api/v1/stores') || path.startsWith('/api/v1/services')) {
     const { handleStores } = await import('./routes/stores');

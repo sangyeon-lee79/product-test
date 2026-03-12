@@ -21,6 +21,7 @@ import type {
   Store, StoreIndustry, StoreService, ServiceDiscount, StoreStats,
   CatalogStats,
   Appointment, GroomingRecord, GroomingPhoto,
+  DummyStore, DummyStoreService,
   FeedCardSetting, FeedDummyCard, FeedPreviewItem,
 } from '../types/api';
 export type {
@@ -43,6 +44,7 @@ export type {
   Store, StoreIndustry, StoreService, ServiceDiscount, StoreStats,
   CatalogStats,
   Appointment, GroomingRecord, GroomingPhoto,
+  DummyStore, DummyStoreService,
   FeedCardSetting, FeedDummyCard, FeedPreviewItem,
 };
 
@@ -1063,7 +1065,7 @@ export const api = {
   },
 
   stores: {
-    list: (params?: { q?: string; country_id?: string; industry_id?: string; status?: string; limit?: number; offset?: number; lang?: string }) =>
+    list: (params?: { q?: string; country_id?: string; industry_id?: string; status?: string; limit?: number; offset?: number; lang?: string; address_state_code?: string; address_city_code?: string }) =>
       request<{ items: Store[]; total: number }>(`/api/v1/stores${buildQuery(params || {})}`),
     my: (lang?: string) =>
       request<{ items: Store[] }>(`/api/v1/stores/my${buildQuery({ lang })}`),
@@ -1105,6 +1107,14 @@ export const api = {
       delete: (discountId: string) =>
         request<{ deleted: boolean }>(`/api/v1/services/discounts/${discountId}`, { method: 'DELETE' }),
     },
+  },
+
+  // ─── Dummy Stores (demo data) ──────────────────────────────────────────
+  dummyStores: {
+    list: (params?: { category?: string; state_code?: string; city_code?: string; q?: string; limit?: number; offset?: number; lang?: string }) =>
+      request<{ items: DummyStore[]; total: number }>(`/api/v1/dummy-stores${buildQuery(params || {})}`),
+    get: (id: string, lang?: string) =>
+      request<DummyStore>(`/api/v1/dummy-stores/${id}${buildQuery({ lang })}`),
   },
 
   // ─── Appointments (Grooming Booking Flow) ──────────────────────────────

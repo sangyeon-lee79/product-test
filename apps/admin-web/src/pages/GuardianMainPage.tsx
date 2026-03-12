@@ -22,8 +22,6 @@ import {
   type FeedType,
   type PetWeightLog,
   type WeightSummary,
-  type Store,
-  type StoreService,
   type Appointment,
   type GroomingRecord,
 } from '../lib/api';
@@ -44,8 +42,8 @@ import PetWizardModal from './guardian/PetWizardModal';
 import GuardianProfileEditModal from './guardian/GuardianProfileEditModal';
 import MedicationLogModal from './guardian/MedicationLogModal';
 import FriendsModal from './guardian/FriendsModal';
-import BookingModal from './guardian/BookingModal';
 import GroomingApprovalModal from './guardian/GroomingApprovalModal';
+import StoreExploreTab from './guardian/StoreExploreTab';
 import RecordCard, { type RecordCardImage } from '../components/health/RecordCard';
 import { mapWeightLog, mapMeasurementLog, mapFeedingLog, mapExerciseLog, mapMedicationLog } from '../components/health/recordCardMappers';
 import {
@@ -86,7 +84,7 @@ export default function GuardianMainPage() {
   const [bookings, setBookings] = useState<Booking[]>([]);
   const [feeds, setFeeds] = useState<FeedPost[]>([]);
   const [albumMedia, setAlbumMedia] = useState<PetAlbumMedia[]>([]);
-  const [nearbyStores, setNearbyStores] = useState<Store[]>([]);
+  // nearbyStores/loadNearbyStores/openBookingForStore removed — StoreExploreTab handles its own store loading
   const [weightLogs, setWeightLogs] = useState<PetWeightLog[]>([]);
   const [measurementLogs, setMeasurementLogs] = useState<PetHealthMeasurementLog[]>([]);
   const [, setWeightSummary] = useState<WeightSummary | null>(null);
@@ -162,12 +160,8 @@ export default function GuardianMainPage() {
   const [friendsModalOpen, setFriendsModalOpen] = useState(false);
   const [friendsModalTab, setFriendsModalTab] = useState<'friends' | 'pending'>('friends');
 
-  const [bookingModalOpen, setBookingModalOpen] = useState(false);
-  const [bookingStore, setBookingStore] = useState<Store | null>(null);
-  const [bookingStoreServices, setBookingStoreServices] = useState<StoreService[]>([]);
-  const [bookingInitialServiceId, setBookingInitialServiceId] = useState('');
-  const [nearbyStoreServices, setNearbyStoreServices] = useState<Record<string, StoreService[]>>({});
-  const [nearbyStoresLoading, setNearbyStoresLoading] = useState(false);
+  // Old BookingModal state removed — StepBookingModal in StoreExploreTab replaces it
+  // nearbyStoreServices/nearbyStoresLoading removed — StoreExploreTab handles store data
   const [groomingApprovalOpen, setGroomingApprovalOpen] = useState(false);
   const [groomingApprovalRecord, setGroomingApprovalRecord] = useState<GroomingRecord | null>(null);
   const [appointments, setAppointments] = useState<Appointment[]>([]);
@@ -267,10 +261,7 @@ export default function GuardianMainPage() {
     [feeds, selectedPet],
   );
 
-  const serviceFeeds = useMemo(
-    () => feeds.filter((f) => f.feed_type === 'booking_completed' && (!selectedPet || !f.pet_id || f.pet_id === selectedPet.id)),
-    [feeds, selectedPet],
-  );
+  // serviceFeeds removed — StoreExploreTab handles its own display
 
   const petOptions = useMemo<GuardianPetOptions>(() => ({
     optPetType, optBreed, optGender, optLifeStage, optColor, optAllergy, optDisease,
@@ -414,48 +405,6 @@ export default function GuardianMainPage() {
     }
   }
 
-  async function loadNearbyStores() {
-    setNearbyStoresLoading(true);
-    try {
-      const res = await api.stores.list({ lang, limit: 20 });
-      const stores = res.items || [];
-      setNearbyStores(stores);
-
-      const serviceEntries = await Promise.all(
-        stores.map(async (store) => {
-          try {
-            const serviceRes = await api.stores.services.list(store.id, lang);
-            return [store.id, serviceRes.items || []] as const;
-          } catch {
-            return [store.id, []] as const;
-          }
-        }),
-      );
-      setNearbyStoreServices(Object.fromEntries(serviceEntries));
-    } finally {
-      setNearbyStoresLoading(false);
-    }
-  }
-
-  async function openBookingForStore(store: Store, initialServiceId?: string) {
-    setBookingStore(store);
-    setBookingInitialServiceId(initialServiceId || '');
-    try {
-      const cached = nearbyStoreServices[store.id];
-      if (cached) {
-        setBookingStoreServices(cached);
-      } else {
-        const res = await api.stores.services.list(store.id, lang);
-        const items = res.items || [];
-        setBookingStoreServices(items);
-        setNearbyStoreServices((prev) => ({ ...prev, [store.id]: items }));
-      }
-    } catch {
-      setBookingStoreServices([]);
-    }
-    setBookingModalOpen(true);
-  }
-
   async function openGroomingApproval(apt: Appointment) {
     try {
       const res = await api.groomingRecords.list({ appointmentId: apt.id });
@@ -498,10 +447,7 @@ export default function GuardianMainPage() {
     setSelectedPetId(petIdParam);
   }, [petIdParam]);
 
-  useEffect(() => {
-    if (petTab !== 'services' || nearbyStores.length > 0 || nearbyStoresLoading) return;
-    void loadNearbyStores();
-  }, [nearbyStores.length, nearbyStoresLoading, petTab, lang]);
+  // nearbyStores auto-load removed — StoreExploreTab handles its own data loading
 
   useEffect(() => {
     if (!selectedPet?.id) {
@@ -1104,139 +1050,13 @@ export default function GuardianMainPage() {
 
               {/* ── Services ── */}
               {petTab === 'services' && (
-                <>
-                  {/* Appointments */}
-                  {appointments.length > 0 && (
-                    <div className="pf-gd-section">
-                      <div className="pf-gd-section-header"><span>{t('booking.title', 'Appointments')}</span></div>
-                      <div className="pf-gd-section-body">
-                        {appointments
-                          .filter(a => !selectedPet || !a.pet_id || a.pet_id === selectedPet.id)
-                          .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
-                          .map(apt => (
-                          <div key={apt.id} className="pf-gd-tl-card" style={{ cursor: apt.status === 'completed' ? 'pointer' : undefined }} onClick={() => { if (apt.status === 'completed') void openGroomingApproval(apt); }}>
-                            <div className="pf-gd-tl-icon">{apt.status === 'completed' ? '\u2702\uFE0F' : '\uD83D\uDCC5'}</div>
-                            <div className="pf-gd-tl-body">
-                              <span>{apt.supplier_name || apt.supplier_id.slice(0, 8)}</span>
-                              <span className="pf-gd-tl-sep">&middot;</span>
-                              <span style={{ fontWeight: 500 }}>{t(`supplier.appointment.status.${apt.status}`, apt.status)}</span>
-                              {apt.service_type && <><span className="pf-gd-tl-sep">&middot;</span><span>{apt.service_type}</span></>}
-                              <span className="pf-gd-tl-sep">&middot;</span>
-                              <span className="pf-gd-tl-time">{formatDate(apt.scheduled_at, '-', locale)}</span>
-                              {apt.status === 'completed' && (
-                                <span style={{ marginLeft: 6, fontSize: 11, color: '#E87C2B', fontWeight: 600 }}>{t('grooming.guardian.noti_title', 'Review')}</span>
-                              )}
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-
-                  {/* Legacy bookings */}
-                  <div className="pf-gd-section">
-                    <div className="pf-gd-section-header"><span>{t('guardian.tab.services', 'Services & Bookings')}</span></div>
-                    <div className="pf-gd-section-body">
-                      {bookings.filter((b) => !selectedPet || !b.pet_id || b.pet_id === selectedPet.id).map((b) => (
-                        <div key={b.id} className="pf-gd-tl-card">
-                          <div className="pf-gd-tl-icon">{'\uD83D\uDCC5'}</div>
-                          <div className="pf-gd-tl-body">
-                            <span>#{b.id.slice(0, 8)}</span>
-                            <span className="pf-gd-tl-sep">&middot;</span>
-                            <span style={{ fontWeight: 500 }}>{b.status}</span>
-                            <span className="pf-gd-tl-sep">&middot;</span>
-                            <span className="pf-gd-tl-time">{formatDate(b.updated_at, t('common.none', '-'), locale)}</span>
-                          </div>
-                        </div>
-                      ))}
-                      {bookings.filter((b) => !selectedPet || !b.pet_id || b.pet_id === selectedPet.id).length === 0 && appointments.length === 0 && (
-                        <div className="pf-gd-empty" style={{ padding: '20px 0' }}>
-                          <div className="pf-gd-empty-icon">{'\uD83D\uDCC5'}</div>
-                          <p>{t('guardian.services.no_bookings', 'No bookings yet')}</p>
-                        </div>
-                      )}
-                      {serviceFeeds.length > 0 && <p style={{ marginTop: 8, fontSize: 13, color: 'var(--text-muted)' }}>{t('guardian.services.completed_feeds', 'Completed Feeds')} {serviceFeeds.length}{t('common.count_suffix', '')}</p>}
-                    </div>
-                  </div>
-
-                  {/* Store Browse */}
-                  <div className="pf-gd-section">
-                    <div className="pf-gd-section-header">
-                      <span>{t('guardian.store.browse', 'Browse Stores')}</span>
-                      <button className="btn btn-secondary btn-sm" style={{ borderRadius: 16, fontSize: 11 }} onClick={() => {
-                        void loadNearbyStores();
-                      }}>{t('guardian.store.browse', 'Browse')}</button>
-                    </div>
-                    <div className="pf-gd-section-body">
-                      {nearbyStoresLoading ? (
-                        <p style={{ fontSize: 13, color: 'var(--text-muted)' }}>{t('common.loading', 'Loading...')}</p>
-                      ) : nearbyStores.length === 0 ? (
-                        <p style={{ fontSize: 13, color: 'var(--text-muted)' }}>{t('admin.store.list.empty', 'No stores')}</p>
-                      ) : (
-                        <div style={{ display: 'grid', gap: 6 }}>
-                          {nearbyStores.map(s => (
-                            <div key={s.id} className="pf-gd-store-card">
-                              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8 }}>
-                                <div>
-                                  <strong style={{ fontSize: 14 }}>{s.display_name || s.name}</strong>
-                                  {s.address && <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 2 }}>{s.address}</div>}
-                                </div>
-                                <div style={{ display: 'flex', gap: 6, alignItems: 'center', flexShrink: 0 }}>
-                                  <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>
-                                    {s.service_count || 0} {t('guardian.store.services', 'Services')}
-                                  </span>
-                                  <button className="btn btn-primary btn-sm" style={{ borderRadius: 16, fontSize: 11, padding: '2px 10px' }} onClick={() => void openBookingForStore(s)}>
-                                    {t('booking.confirm_btn', 'Book')}
-                                  </button>
-                                </div>
-                              </div>
-                              {(nearbyStoreServices[s.id] || []).length > 0 && (
-                                <div style={{ display: 'grid', gap: 8, marginTop: 10 }}>
-                                  {(nearbyStoreServices[s.id] || []).map((svc) => (
-                                    <div
-                                      key={svc.id}
-                                      style={{
-                                        display: 'flex',
-                                        justifyContent: 'space-between',
-                                        alignItems: 'center',
-                                        gap: 12,
-                                        padding: '10px 12px',
-                                        borderRadius: 12,
-                                        background: 'var(--surface)',
-                                        border: '1px solid var(--border)',
-                                      }}
-                                    >
-                                      <div style={{ minWidth: 0 }}>
-                                        <div style={{ fontSize: 13, fontWeight: 600 }}>{svc.display_name || svc.name}</div>
-                                        {svc.display_description && (
-                                          <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 2 }}>
-                                            {svc.display_description}
-                                          </div>
-                                        )}
-                                        {svc.price != null && (
-                                          <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 4 }}>
-                                            {svc.price.toLocaleString()}{svc.currency_code ? ` ${svc.currency_code}` : ''}
-                                          </div>
-                                        )}
-                                      </div>
-                                      <button
-                                        className="btn btn-secondary btn-sm"
-                                        style={{ borderRadius: 16, fontSize: 11, padding: '2px 10px', flexShrink: 0 }}
-                                        onClick={() => void openBookingForStore(s, svc.id)}
-                                      >
-                                        {t('booking.confirm_btn', 'Book')}
-                                      </button>
-                                    </div>
-                                  ))}
-                                </div>
-                              )}
-                            </div>
-                          ))}
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                </>
+                <StoreExploreTab
+                  pets={pets}
+                  selectedPet={selectedPet}
+                  appointments={appointments}
+                  onOpenGroomingApproval={openGroomingApproval}
+                  onRefresh={() => void loadAll(feedTab, { silent: true })}
+                />
               )}
 
               {/* ── Profile ── */}
@@ -1517,26 +1337,6 @@ export default function GuardianMainPage() {
         onClose={() => setFriendsModalOpen(false)}
         onSuccess={() => void loadAll(feedTab, { silent: true })}
       />
-
-      {bookingModalOpen && bookingStore && (
-        <BookingModal
-          open={bookingModalOpen}
-          pets={pets}
-          supplierId={bookingStore.owner_id}
-          supplierName={bookingStore.display_name || bookingStore.name}
-          storeId={bookingStore.id}
-          services={bookingStoreServices}
-          initialServiceId={bookingInitialServiceId}
-          t={t}
-          onClose={() => {
-            setBookingModalOpen(false);
-            setBookingStore(null);
-            setBookingStoreServices([]);
-            setBookingInitialServiceId('');
-          }}
-          onSuccess={() => void loadAll(feedTab, { silent: true })}
-        />
-      )}
 
       {groomingApprovalOpen && groomingApprovalRecord && (
         <GroomingApprovalModal

@@ -56,6 +56,16 @@ async function listStores(env: Env, url: URL): Promise<Response> {
     where += ` AND EXISTS (SELECT 1 FROM store_industries si WHERE si.store_id = s.id AND si.industry_id = ?)`;
     binds.push(industryId);
   }
+  const stateCode = url.searchParams.get('address_state_code') || '';
+  const cityCode = url.searchParams.get('address_city_code') || '';
+  if (stateCode) {
+    where += ` AND s.address_state_code = ?`;
+    binds.push(stateCode);
+  }
+  if (cityCode) {
+    where += ` AND s.address_city_code = ?`;
+    binds.push(cityCode);
+  }
 
   const rows = await env.DB.prepare(
     `SELECT

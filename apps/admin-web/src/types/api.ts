@@ -1058,6 +1058,30 @@ export interface GroomingRecord {
   supplier_name?: string | null;
 }
 
+// ─── Dummy Stores (demo data) ───────────────────────────────────────────────
+
+export interface DummyStoreService {
+  id: string;
+  name: Record<string, string>;
+  display_name: string;
+  price: number | null;
+  duration_min: number | null;
+}
+
+export interface DummyStore {
+  id: string;
+  category: string;
+  name: Record<string, string>;
+  description: Record<string, string>;
+  address: { state_code: string; city_code: string; detail: string } | null;
+  display_name: string;
+  display_description: string;
+  rating: number;
+  review_count: number;
+  is_active: boolean;
+  services: DummyStoreService[];
+}
+
 // Feed Card Settings
 export interface FeedCardSetting {
   id: string;
