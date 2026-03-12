@@ -245,22 +245,24 @@ async function createRequest(request: Request, env: Env, me: JwtPayload): Promis
     ) VALUES (?, ?, ?, ?, ?, 'request_sent', ?)`
   ).bind(id, me.sub, target.id, meUser.role, target.role, now()).run();
 
-  // Notify receiver — get actor display name for push body
-  const actorProfile = await env.DB.prepare(
-    'SELECT COALESCE(up.display_name, u.email) AS name FROM users u LEFT JOIN user_profiles up ON up.user_id = u.id WHERE u.id = ?'
-  ).bind(me.sub).first<{ name: string }>();
-  const actorName = actorProfile?.name || meUser.email;
+  // Notify receiver (non-blocking — push failure must not block friend request creation)
+  try {
+    const actorProfile = await env.DB.prepare(
+      'SELECT COALESCE(up.display_name, u.email) AS name FROM users u LEFT JOIN user_profiles up ON up.user_id = u.id WHERE u.id = ?'
+    ).bind(me.sub).first<{ name: string }>();
+    const actorName = actorProfile?.name || meUser.email;
 
-  await createAndPush(env, {
-    userId: target.id,
-    type: 'friend_request',
-    actorUserId: me.sub,
-    referenceId: id,
-    referenceType: 'friend_request',
-    title: actorName,
-    body: `${actorName} sent you a friend request`,
-    data: { link: '/#/guardian', type: 'friend_request', reference_id: id },
-  });
+    await createAndPush(env, {
+      userId: target.id,
+      type: 'friend_request',
+      actorUserId: me.sub,
+      referenceId: id,
+      referenceType: 'friend_request',
+      title: actorName,
+      body: `${actorName} sent you a friend request`,
+      data: { link: '/#/guardian', type: 'friend_request', reference_id: id },
+    });
+  } catch { /* notification failure must not block main flow */ }
 
   return created({ request_id: id, status: 'request_sent' });
 }
@@ -296,22 +298,24 @@ async function respondRequest(request: Request, env: Env, me: JwtPayload, reques
        ON CONFLICT DO NOTHING`
     ).bind(newId(), ordered.a, ordered.b, now()).run();
 
-    // Notify requester that their request was accepted
-    const acceptorProfile = await env.DB.prepare(
-      'SELECT COALESCE(up.display_name, u.email) AS name FROM users u LEFT JOIN user_profiles up ON up.user_id = u.id WHERE u.id = ?'
-    ).bind(me.sub).first<{ name: string }>();
-    const acceptorName = acceptorProfile?.name || '';
+    // Notify requester (non-blocking — push failure must not block friendship creation)
+    try {
+      const acceptorProfile = await env.DB.prepare(
+        'SELECT COALESCE(up.display_name, u.email) AS name FROM users u LEFT JOIN user_profiles up ON up.user_id = u.id WHERE u.id = ?'
+      ).bind(me.sub).first<{ name: string }>();
+      const acceptorName = acceptorProfile?.name || '';
 
-    await createAndPush(env, {
-      userId: a,
-      type: 'friend_accepted',
-      actorUserId: me.sub,
-      referenceId: requestId,
-      referenceType: 'friend_request',
-      title: acceptorName,
-      body: `${acceptorName} accepted your friend request`,
-      data: { link: '/#/guardian', type: 'friend_accepted', reference_id: requestId },
-    });
+      await createAndPush(env, {
+        userId: a,
+        type: 'friend_accepted',
+        actorUserId: me.sub,
+        referenceId: requestId,
+        referenceType: 'friend_request',
+        title: acceptorName,
+        body: `${acceptorName} accepted your friend request`,
+        data: { link: '/#/guardian', type: 'friend_accepted', reference_id: requestId },
+      });
+    } catch { /* notification failure must not block main flow */ }
   }
 
   return ok({ request_id: requestId, status });

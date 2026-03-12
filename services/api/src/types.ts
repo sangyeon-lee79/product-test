@@ -55,6 +55,11 @@ export function now(): string {
   return new Date().toISOString();
 }
 
+// Unicode NFC 정규화 (macOS NFD 자모 분리 방지)
+export function nfc(s: string | null | undefined): string {
+  return s ? s.normalize('NFC') : '';
+}
+
 // 랜덤 토큰 생성 (키 자동생성 용도)
 export function randomToken(length = 8): string {
   const chars = 'abcdefghijklmnopqrstuvwxyz0123456789';

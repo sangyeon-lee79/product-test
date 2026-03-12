@@ -4,6 +4,7 @@ import { api, type Booking, type FeedPost, type ProviderProfile } from '../lib/a
 import { logout } from '../lib/auth';
 import { useI18n, useT } from '../lib/i18n';
 import ProviderStoreSection from './supplier/ProviderStoreSection';
+import AppointmentSection from './supplier/AppointmentSection';
 import ComposeModal from './guardian/ComposeModal';
 
 type BookingFilter = 'all' | Booking['status'];
@@ -400,6 +401,16 @@ export default function SupplierDashboardPage() {
       </section>
 
       <ProviderStoreSection />
+
+      {/* ── Appointment Management Section ── */}
+      <section className="card" style={{ marginTop: 20 }}>
+        <div className="card-header">
+          <div className="card-title">{t('supplier.appointment.new_request', 'Appointment Management')}</div>
+        </div>
+        <div className="card-body">
+          <AppointmentSection t={t} locale={LANG_TO_LOCALE[lang] || 'en-US'} />
+        </div>
+      </section>
 
       {/* ── Supplier Feed Section ── */}
       <section className="card">

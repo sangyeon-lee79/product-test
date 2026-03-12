@@ -20,6 +20,7 @@ import type {
   ProviderProfile, DashboardStats, PetReport,
   Store, StoreIndustry, StoreService, ServiceDiscount, StoreStats,
   CatalogStats,
+  Appointment, GroomingRecord, GroomingPhoto,
 } from '../types/api';
 export type {
   I18nRow, MasterCategory, MasterItem, Country, Currency,
@@ -40,6 +41,7 @@ export type {
   ProviderProfile, DashboardStats, PetReport,
   Store, StoreIndustry, StoreService, ServiceDiscount, StoreStats,
   CatalogStats,
+  Appointment, GroomingRecord, GroomingPhoto,
 };
 
 const API_BASE = getApiBase();
@@ -1101,5 +1103,40 @@ export const api = {
       delete: (discountId: string) =>
         request<{ deleted: boolean }>(`/api/v1/services/discounts/${discountId}`, { method: 'DELETE' }),
     },
+  },
+
+  // ─── Appointments (Grooming Booking Flow) ──────────────────────────────
+  appointments: {
+    list: (params?: { supplierId?: string; guardianId?: string; status?: string }) =>
+      request<{ appointments: Appointment[] }>(`/api/v1/appointments${buildQuery(params || {})}`),
+    get: (id: string) =>
+      request<{ appointment: Appointment }>(`/api/v1/appointments/${id}`),
+    create: (data: {
+      petId?: string; supplierId: string; storeId?: string; serviceId?: string;
+      serviceType?: string; scheduledAt?: string; durationMinutes?: number;
+      price?: number; requestNote?: string;
+    }) => request<{ id: string; status: string }>('/api/v1/appointments', { method: 'POST', body: JSON.stringify(data) }),
+    confirm: (id: string) =>
+      request<{ id: string; status: string }>(`/api/v1/appointments/${id}/confirm`, { method: 'PATCH' }),
+    reject: (id: string, reason?: string) =>
+      request<{ id: string; status: string }>(`/api/v1/appointments/${id}/reject`, { method: 'PATCH', body: JSON.stringify({ reason }) }),
+  },
+
+  // ─── Grooming Records ──────────────────────────────────────────────────
+  groomingRecords: {
+    list: (params?: { petId?: string; supplierId?: string }) =>
+      request<{ grooming_records: GroomingRecord[] }>(`/api/v1/grooming-records${buildQuery(params || {})}`),
+    get: (id: string) =>
+      request<{ grooming_record: GroomingRecord }>(`/api/v1/grooming-records/${id}`),
+    create: (data: {
+      appointmentId?: string; petId?: string; supplierId?: string; guardianId: string;
+      groomingType?: string; cutStyle?: string; durationMinutes?: number;
+      productsUsed?: string; specialNotes?: string; supplierComment?: string;
+      photos?: GroomingPhoto[];
+    }) => request<{ id: string; status: string }>('/api/v1/grooming-records', { method: 'POST', body: JSON.stringify(data) }),
+    guardianChoice: (id: string, choice: 'feed_only' | 'approve_only' | 'approve_and_feed') =>
+      request<{ id: string; status: string; post_id: string | null }>(`/api/v1/grooming-records/${id}/guardian-choice`, {
+        method: 'PATCH', body: JSON.stringify({ choice }),
+      }),
   },
 };

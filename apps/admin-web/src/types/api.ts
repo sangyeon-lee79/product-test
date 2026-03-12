@@ -976,3 +976,64 @@ export interface StoreStats {
   active: number;
   new_30d: number;
 }
+
+// ─── Appointments (Grooming Booking) ────────────────────────────────────────
+
+export interface Appointment {
+  id: string;
+  pet_id: string | null;
+  guardian_id: string;
+  supplier_id: string;
+  store_id: string | null;
+  service_id: string | null;
+  service_type: string;
+  scheduled_at: string | null;
+  duration_minutes: number | null;
+  price: number | null;
+  request_note: string | null;
+  status: 'pending' | 'confirmed' | 'rejected' | 'completed';
+  rejected_reason: string | null;
+  created_at: string;
+  updated_at: string;
+  // Joined
+  pet_name?: string | null;
+  pet_avatar?: string | null;
+  guardian_name?: string | null;
+  guardian_email?: string | null;
+  supplier_name?: string | null;
+  supplier_email?: string | null;
+  species?: string | null;
+  breed_id?: string | null;
+}
+
+// ─── Grooming Records ───────────────────────────────────────────────────────
+
+export interface GroomingPhoto {
+  url: string;
+  isMain: boolean;
+}
+
+export interface GroomingRecord {
+  id: string;
+  appointment_id: string | null;
+  pet_id: string | null;
+  supplier_id: string;
+  guardian_id: string;
+  grooming_type: string | null;
+  cut_style: string | null;
+  duration_minutes: number | null;
+  products_used: string | null;
+  special_notes: string | null;
+  supplier_comment: string | null;
+  photos: GroomingPhoto[];
+  status: 'pending_guardian' | 'approved' | 'published';
+  guardian_choice: string | null;
+  post_id: string | null;
+  created_at: string;
+  completed_at: string | null;
+  // Joined
+  pet_name?: string | null;
+  pet_avatar?: string | null;
+  guardian_name?: string | null;
+  supplier_name?: string | null;
+}
