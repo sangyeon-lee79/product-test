@@ -9,10 +9,13 @@ interface Props {
   onSuccess: () => void;
 }
 
+const PLACEHOLDER = '/assets/images/placeholder_feed.svg';
+
 export default function GroomingApprovalModal({ open, record, t, onClose, onSuccess }: Props) {
   const [choice, setChoice] = useState<'feed_only' | 'approve_only' | 'approve_and_feed'>('approve_and_feed');
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
+  const [done, setDone] = useState(false);
 
   if (!open) return null;
 
@@ -27,8 +30,7 @@ export default function GroomingApprovalModal({ open, record, t, onClose, onSucc
     setError('');
     try {
       await api.groomingRecords.guardianChoice(record.id, choice);
-      onSuccess();
-      onClose();
+      setDone(true);
     } catch (e) {
       setError(e instanceof Error ? e.message : t('common.err.save', 'Failed'));
     } finally {
@@ -36,31 +38,83 @@ export default function GroomingApprovalModal({ open, record, t, onClose, onSucc
     }
   }
 
+  function handleDoneClose() {
+    onSuccess();
+    onClose();
+  }
+
   const CHOICES = [
-    { value: 'feed_only' as const, icon: '\uD83D\uDCE2', labelKey: 'grooming.guardian.choice_feed', fallback: 'Share to Feed' },
-    { value: 'approve_only' as const, icon: '\u2705', labelKey: 'grooming.guardian.choice_approve', fallback: 'Approve Only' },
-    { value: 'approve_and_feed' as const, icon: '\uD83C\uDF1F', labelKey: 'grooming.guardian.choice_both', fallback: 'Approve & Share' },
+    { value: 'feed_only' as const, icon: '\uD83D\uDCE2', labelKey: 'booking.choice_feed_only', fallback: 'Share to Feed Only', descKey: 'booking.choice_feed_desc', descFallback: 'Share grooming results on public feed' },
+    { value: 'approve_only' as const, icon: '\u2705', labelKey: 'booking.choice_approve_only', fallback: 'Save to Timeline Only', descKey: 'booking.choice_approve_desc', descFallback: 'Save privately to pet timeline' },
+    { value: 'approve_and_feed' as const, icon: '\uD83C\uDF1F', labelKey: 'booking.choice_both', fallback: 'Save & Share to Feed', descKey: 'booking.choice_both_desc', descFallback: 'Save to timeline and share on public feed' },
   ];
+
+  // ── Success screen ──
+  if (done) {
+    return (
+      <div className="modal-overlay" onClick={handleDoneClose}>
+        <div className="modal" style={{ maxWidth: 400, textAlign: 'center' }} onClick={e => e.stopPropagation()}>
+          <div className="modal-body" style={{ padding: '40px 24px' }}>
+            <div style={{ fontSize: 48, marginBottom: 12 }}>{'\u2705'}</div>
+            <h3 style={{ margin: '0 0 8px', fontSize: 20, fontWeight: 700, color: 'var(--text)' }}>
+              {t('booking.approved_title', 'Approved!')}
+            </h3>
+            <p style={{ margin: 0, fontSize: 14, color: 'var(--text-secondary, #666)' }}>
+              {t('booking.approved_sub', 'Your choice has been applied')}
+            </p>
+          </div>
+          <div className="modal-footer" style={{ justifyContent: 'center' }}>
+            <button className="btn btn-primary" onClick={handleDoneClose}>
+              {t('common.ok', 'OK')}
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="modal-overlay" onClick={onClose}>
       <div className="modal" style={{ maxWidth: 480 }} onClick={e => e.stopPropagation()}>
         <div className="modal-header">
-          <h3 className="modal-title">{t('grooming.guardian.noti_title', 'Grooming is complete')}</h3>
+          <h3 className="modal-title">{t('booking.approval_title', 'Grooming Complete!')}</h3>
           <button className="modal-close" onClick={onClose}>&times;</button>
         </div>
         <div className="modal-body">
           {error && <div className="alert alert-error">{error}</div>}
 
-          {/* Supplier banner */}
-          <div style={{ padding: '10px 14px', background: '#FFF7ED', borderRadius: 8, marginBottom: 14, fontWeight: 600, color: '#92400E' }}>
-            {record.supplier_name}
+          {/* Supplier banner + notification text */}
+          <div style={{ padding: '10px 14px', background: '#FFF7ED', borderRadius: 8, marginBottom: 14, color: '#92400E' }}>
+            <div style={{ fontWeight: 600 }}>{record.supplier_name}</div>
+            <div style={{ fontSize: 13, marginTop: 4 }}>
+              {t('booking.approval_noti', '{store} sent a completion notice').replace('{store}', record.supplier_name || '')}
+            </div>
           </div>
+
+          {/* Pet name */}
+          {record.pet_name && (
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 12 }}>
+              {record.pet_avatar && (
+                <img
+                  src={record.pet_avatar}
+                  alt=""
+                  onError={e => { (e.target as HTMLImageElement).src = PLACEHOLDER; }}
+                  style={{ width: 28, height: 28, borderRadius: '50%', objectFit: 'cover' }}
+                />
+              )}
+              <span style={{ fontWeight: 600, fontSize: 14 }}>{record.pet_name}</span>
+            </div>
+          )}
 
           {/* Main photo preview */}
           {mainPhoto && (
             <div style={{ marginBottom: 14, borderRadius: 10, overflow: 'hidden' }}>
-              <img src={mainPhoto.url} alt="" style={{ width: '100%', maxHeight: 280, objectFit: 'cover' }} />
+              <img
+                src={mainPhoto.url}
+                alt=""
+                onError={e => { (e.target as HTMLImageElement).src = PLACEHOLDER; }}
+                style={{ width: '100%', maxHeight: 280, objectFit: 'cover' }}
+              />
             </div>
           )}
 
@@ -85,23 +139,34 @@ export default function GroomingApprovalModal({ open, record, t, onClose, onSucc
             </div>
           )}
 
-          {/* Choice buttons */}
+          {/* Question */}
+          <p style={{ marginBottom: 10, fontWeight: 600, fontSize: 14, color: 'var(--text)' }}>
+            {t('booking.approval_question', 'What would you like to do?')}
+          </p>
+
+          {/* Choice buttons with descriptions */}
           <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
             {CHOICES.map(c => (
               <button
                 key={c.value}
                 onClick={() => setChoice(c.value)}
                 style={{
-                  display: 'flex', alignItems: 'center', gap: 10,
+                  display: 'flex', alignItems: 'flex-start', gap: 10,
                   padding: '12px 16px', borderRadius: 10, cursor: 'pointer',
                   border: choice === c.value ? '2px solid #E87C2B' : '1px solid var(--border)',
                   background: choice === c.value ? '#FFF7ED' : 'var(--surface)',
-                  fontWeight: choice === c.value ? 600 : 400,
-                  fontSize: 14, textAlign: 'left',
+                  textAlign: 'left',
                 }}
               >
-                <span style={{ fontSize: 18 }}>{c.icon}</span>
-                {t(c.labelKey, c.fallback)}
+                <span style={{ fontSize: 18, marginTop: 2 }}>{c.icon}</span>
+                <div>
+                  <div style={{ fontWeight: choice === c.value ? 600 : 400, fontSize: 14 }}>
+                    {t(c.labelKey, c.fallback)}
+                  </div>
+                  <div style={{ fontSize: 12, color: 'var(--text-secondary, #888)', marginTop: 2 }}>
+                    {t(c.descKey, c.descFallback)}
+                  </div>
+                </div>
               </button>
             ))}
           </div>
@@ -110,7 +175,7 @@ export default function GroomingApprovalModal({ open, record, t, onClose, onSucc
         <div className="modal-footer">
           <button className="btn btn-secondary" onClick={onClose}>{t('common.cancel', 'Cancel')}</button>
           <button className="btn btn-primary" disabled={saving} onClick={handleConfirm}>
-            {saving ? '...' : t('grooming.guardian.confirm_btn', 'Confirm Choice')}
+            {saving ? '...' : t('booking.choice_confirm', 'Confirm Choice')}
           </button>
         </div>
       </div>

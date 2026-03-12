@@ -1,6 +1,7 @@
 import type { Env, JwtPayload } from '../types';
 import { ok, created, err, newId, now } from '../types';
 import { requireAuth, requireRole } from '../middleware/auth';
+import { createAndPush } from '../helpers/pushHelper';
 
 function parsePhotos(raw: unknown): Array<{ url: string; isMain: boolean }> {
   if (!Array.isArray(raw)) return [];
@@ -72,11 +73,24 @@ async function createGroomingRecord(request: Request, env: Env, me: JwtPayload):
     ).bind('completed', timestamp, appointmentId).run();
   }
 
-  // Notify guardian
-  await env.DB.prepare(
-    `INSERT INTO notifications (id, user_id, type, actor_user_id, reference_id, reference_type, created_at)
-     VALUES (?, ?, 'grooming_complete', ?, ?, 'grooming_record', ?)`
-  ).bind(newId(), guardianId, me.sub, id, timestamp).run();
+  // Get supplier name for notification
+  const supplierRow = await env.DB.prepare(
+    `SELECT COALESCE(up.display_name, u.email) AS name
+     FROM users u LEFT JOIN user_profiles up ON up.user_id = u.id WHERE u.id = ?`
+  ).bind(me.sub).first<{ name: string }>();
+  const supplierName = supplierRow?.name || '';
+
+  // Notify guardian via in-app + FCM push
+  await createAndPush(env, {
+    userId: guardianId,
+    type: 'grooming_complete',
+    actorUserId: me.sub,
+    referenceId: id,
+    referenceType: 'grooming_record',
+    title: 'Grooming Complete',
+    body: supplierName ? `${supplierName} sent a completion notice` : 'Grooming is complete',
+    data: { link: '/#/guardian', grooming_record_id: id },
+  });
 
   return created({ id, status: 'pending_guardian' });
 }

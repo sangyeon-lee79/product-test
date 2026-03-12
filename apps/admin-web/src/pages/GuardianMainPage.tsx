@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Link, useNavigate, useParams } from 'react-router-dom';
+import { Link, useNavigate, useParams, useLocation } from 'react-router-dom';
 import {
   api,
   type Booking,
@@ -73,6 +73,7 @@ export default function GuardianMainPage() {
   const { lang } = useI18n();
   const locale = BCP47_LOCALE_MAP[lang as Lang] || 'en-US';
   const navigate = useNavigate();
+  const location = useLocation();
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
@@ -469,6 +470,24 @@ export default function GuardianMainPage() {
   useEffect(() => {
     loadAll();
   }, []);
+
+  // Auto-open grooming approval modal from notification link (?grooming_record_id=xxx)
+  useEffect(() => {
+    const params = new URLSearchParams(location.search);
+    const grId = params.get('grooming_record_id');
+    if (!grId) return;
+    (async () => {
+      try {
+        const res = await api.groomingRecords.get(grId);
+        if (res?.grooming_record && res.grooming_record.status === 'pending_guardian') {
+          setGroomingApprovalRecord(res.grooming_record);
+          setGroomingApprovalOpen(true);
+        }
+      } catch { /* silent — record may not exist or not belong to user */ }
+      // Clean up URL param
+      navigate(location.pathname, { replace: true });
+    })();
+  }, [location.search]);
 
   useEffect(() => {
     void loadAll(feedTab, { silent: true });

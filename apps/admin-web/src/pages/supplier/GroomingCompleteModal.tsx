@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import { api, type Appointment, type GroomingPhoto } from '../../lib/api';
 
 interface Props {
@@ -9,24 +9,58 @@ interface Props {
   onSuccess: () => void;
 }
 
+const MAX_PHOTOS = 5;
+const PLACEHOLDER = '/assets/images/placeholder_feed.svg';
+
 export default function GroomingCompleteModal({ open, appointment, t, onClose, onSuccess }: Props) {
   const [groomingType, setGroomingType] = useState(appointment.service_type || '');
   const [cutStyle, setCutStyle] = useState('');
   const [durationMinutes, setDurationMinutes] = useState<number | ''>(appointment.duration_minutes || '');
   const [productsUsed, setProductsUsed] = useState('');
   const [supplierComment, setSupplierComment] = useState('');
-  const [photos, setPhotos] = useState<GroomingPhoto[]>([]);
-  const [photoUrl, setPhotoUrl] = useState('');
+  const [photos, setPhotos] = useState<(GroomingPhoto & { preview?: string })[]>([]);
   const [saving, setSaving] = useState(false);
+  const [uploading, setUploading] = useState(false);
   const [error, setError] = useState('');
+  const fileRef = useRef<HTMLInputElement>(null);
 
   if (!open) return null;
 
-  function addPhoto() {
-    const url = photoUrl.trim();
-    if (!url) return;
-    setPhotos(prev => [...prev, { url, isMain: prev.length === 0 }]);
-    setPhotoUrl('');
+  async function handleFiles(files: FileList | null) {
+    if (!files || files.length === 0) return;
+    const remaining = MAX_PHOTOS - photos.length;
+    const toUpload = Array.from(files).slice(0, remaining);
+    if (toUpload.length === 0) return;
+
+    setUploading(true);
+    setError('');
+    try {
+      const uploaded: (GroomingPhoto & { preview?: string })[] = [];
+      for (const file of toUpload) {
+        const ext = file.name.split('.').pop()?.toLowerCase() || 'jpg';
+        const presigned = await api.storage.presignedUrl({ type: 'completion_photo', ext });
+        await fetch(presigned.upload_url, {
+          method: 'PUT',
+          headers: { 'Content-Type': file.type || 'application/octet-stream' },
+          body: file,
+        });
+        uploaded.push({
+          url: presigned.public_url,
+          isMain: photos.length === 0 && uploaded.length === 0,
+          preview: URL.createObjectURL(file),
+        });
+      }
+      setPhotos(prev => {
+        const next = [...prev, ...uploaded];
+        if (!next.some(p => p.isMain) && next.length > 0) next[0].isMain = true;
+        return next;
+      });
+    } catch (e) {
+      setError(e instanceof Error ? e.message : t('common.err.save', 'Upload failed'));
+    } finally {
+      setUploading(false);
+      if (fileRef.current) fileRef.current.value = '';
+    }
   }
 
   function setMainPhoto(index: number) {
@@ -54,7 +88,7 @@ export default function GroomingCompleteModal({ open, appointment, t, onClose, o
         durationMinutes: durationMinutes || undefined,
         productsUsed: productsUsed || undefined,
         supplierComment: supplierComment || undefined,
-        photos,
+        photos: photos.map(({ url, isMain }) => ({ url, isMain })),
       });
       onSuccess();
       onClose();
@@ -83,22 +117,27 @@ export default function GroomingCompleteModal({ open, appointment, t, onClose, o
     <div className="modal-overlay" onClick={onClose}>
       <div className="modal" style={{ maxWidth: 560 }} onClick={e => e.stopPropagation()}>
         <div className="modal-header">
-          <h3 className="modal-title">{t('grooming.complete.title', 'Grooming Completion Report')}</h3>
+          <h3 className="modal-title">{t('booking.completion_title', 'Grooming Completion Report')}</h3>
           <button className="modal-close" onClick={onClose}>&times;</button>
         </div>
         <div className="modal-body">
           {error && <div className="alert alert-error">{error}</div>}
 
-          {/* Photos */}
+          {/* Photos — R2 file upload */}
           <div className="form-group">
-            <label className="form-label">{t('grooming.complete.photos', 'Completion Photos')}</label>
+            <label className="form-label">{t('booking.completion_photos', 'Completion Photos')}</label>
             <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 8 }}>
               {photos.map((photo, i) => (
                 <div key={i} style={{ position: 'relative', width: 80, height: 80 }}>
-                  <img src={photo.url} alt="" style={{ width: 80, height: 80, objectFit: 'cover', borderRadius: 8, border: photo.isMain ? '3px solid #E87C2B' : '1px solid var(--border)' }} />
+                  <img
+                    src={photo.preview || photo.url}
+                    alt=""
+                    onError={e => { (e.target as HTMLImageElement).src = PLACEHOLDER; }}
+                    style={{ width: 80, height: 80, objectFit: 'cover', borderRadius: 8, border: photo.isMain ? '3px solid #E87C2B' : '1px solid var(--border)' }}
+                  />
                   {photo.isMain && (
                     <span style={{ position: 'absolute', top: 2, left: 2, background: '#E87C2B', color: '#fff', fontSize: 10, padding: '1px 5px', borderRadius: 4 }}>
-                      {t('grooming.complete.main_photo', 'Main')}
+                      Main
                     </span>
                   )}
                   <button onClick={() => setMainPhoto(i)} style={{ position: 'absolute', bottom: 2, left: 2, fontSize: 10, background: 'rgba(0,0,0,0.5)', color: '#fff', border: 'none', borderRadius: 3, padding: '1px 4px', cursor: 'pointer' }}>
@@ -110,17 +149,30 @@ export default function GroomingCompleteModal({ open, appointment, t, onClose, o
                 </div>
               ))}
             </div>
-            {photos.length < 5 && (
-              <div style={{ display: 'flex', gap: 6 }}>
-                <input className="form-input" placeholder="URL" value={photoUrl} onChange={e => setPhotoUrl(e.target.value)} style={{ flex: 1 }} />
-                <button className="btn btn-secondary btn-sm" onClick={addPhoto}>+</button>
+            {photos.length < MAX_PHOTOS && (
+              <div>
+                <input
+                  ref={fileRef}
+                  type="file"
+                  accept="image/*"
+                  multiple
+                  style={{ display: 'none' }}
+                  onChange={e => handleFiles(e.target.files)}
+                />
+                <button
+                  className="btn btn-secondary btn-sm"
+                  disabled={uploading}
+                  onClick={() => fileRef.current?.click()}
+                >
+                  {uploading ? '...' : `+ ${t('booking.completion_photos', 'Photos')} (${photos.length}/${MAX_PHOTOS})`}
+                </button>
               </div>
             )}
           </div>
 
           {/* Grooming type */}
           <div className="form-group">
-            <label className="form-label">{t('grooming.complete.type', 'Grooming Type')}</label>
+            <label className="form-label">{t('booking.completion_style', 'Grooming Type')}</label>
             <select className="form-input" value={groomingType} onChange={e => setGroomingType(e.target.value)}>
               <option value="">—</option>
               {GROOMING_TYPES.map(gt => (
@@ -131,7 +183,7 @@ export default function GroomingCompleteModal({ open, appointment, t, onClose, o
 
           {/* Cut style */}
           <div className="form-group">
-            <label className="form-label">{t('grooming.complete.cut', 'Cut Style')}</label>
+            <label className="form-label">{t('booking.completion_cut', 'Cut Style')}</label>
             <select className="form-input" value={cutStyle} onChange={e => setCutStyle(e.target.value)}>
               <option value="">—</option>
               {CUT_STYLES.map(cs => (
@@ -143,26 +195,26 @@ export default function GroomingCompleteModal({ open, appointment, t, onClose, o
           {/* Duration + Products */}
           <div className="form-row col2">
             <div className="form-group">
-              <label className="form-label">{t('grooming.complete.duration', 'Duration')}</label>
+              <label className="form-label">{t('booking.completion_duration', 'Duration')}</label>
               <input type="number" className="form-input" value={durationMinutes} onChange={e => setDurationMinutes(e.target.value ? Number(e.target.value) : '')} placeholder={t('booking.minutes', 'min')} />
             </div>
             <div className="form-group">
-              <label className="form-label">{t('grooming.complete.products', 'Products Used')}</label>
+              <label className="form-label">{t('booking.completion_product', 'Products Used')}</label>
               <input className="form-input" value={productsUsed} onChange={e => setProductsUsed(e.target.value)} />
             </div>
           </div>
 
           {/* Comment */}
           <div className="form-group">
-            <label className="form-label">{t('grooming.complete.comment', 'Comment to Guardian')}</label>
+            <label className="form-label">{t('booking.completion_comment', 'Comment to Guardian')}</label>
             <textarea className="form-input" rows={3} value={supplierComment} onChange={e => setSupplierComment(e.target.value)} />
           </div>
         </div>
 
         <div className="modal-footer">
           <button className="btn btn-secondary" onClick={onClose}>{t('common.cancel', 'Cancel')}</button>
-          <button className="btn btn-primary" disabled={saving} onClick={handleSubmit}>
-            {saving ? '...' : t('grooming.complete.send_btn', 'Send to Guardian')}
+          <button className="btn btn-primary" disabled={saving || uploading} onClick={handleSubmit}>
+            {saving ? '...' : t('booking.completion_send', 'Send to Guardian')}
           </button>
         </div>
       </div>

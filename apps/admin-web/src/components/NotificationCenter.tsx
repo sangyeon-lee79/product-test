@@ -19,6 +19,7 @@ const TYPE_ICONS: Record<string, string> = {
   appointment_remind: '📅',
   service_notice: '📢',
   marketing: '🎁',
+  grooming_complete: '✂️',
 };
 
 function timeAgo(dateStr: string, t: (k: string, d?: string) => string): string {
@@ -40,6 +41,7 @@ function getNotifMessage(n: Notification, t: (k: string, d?: string) => string):
     post_like: t('notification.msg.liked_your_post', 'liked your post'),
     post_comment: t('notification.msg.commented_on_your_post', 'commented on your post'),
     friend_new_post: t('notification.msg.shared_new_post', 'shared a new post'),
+    grooming_complete: t('notification.msg.grooming_complete', 'sent a grooming completion notice'),
   };
   const msg = msgMap[n.type] || n.type;
   return n.actor_name ? `${n.actor_name} ${msg}` : msg;
@@ -102,6 +104,12 @@ export default function NotificationCenter() {
     }
 
     // Navigate based on type
+    if (n.type === 'grooming_complete' && n.reference_id) {
+      navigate(`/guardian?grooming_record_id=${n.reference_id}`);
+      setOpen(false);
+      return;
+    }
+
     const link = n.data?.link;
     if (link) {
       // link is like "/#/guardian" — extract hash path
