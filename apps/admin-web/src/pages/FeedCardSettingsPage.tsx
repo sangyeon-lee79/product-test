@@ -9,12 +9,15 @@ const TAB_TYPES = [
   'new_registration',
   'local_health_king',
   'recommended_user',
+  'store',
+  'ad',
 ] as const;
 
 const CARD_TYPE_KEYS: Record<string, string> = {
   ranking: 'admin.feed_card.type_ranking',
   recommended: 'admin.feed_card.type_recommended',
   ad: 'admin.feed_card.type_ad',
+  store: 'admin.feed_card.type_store',
 };
 
 const TAB_TYPE_KEYS: Record<string, string> = {
@@ -23,6 +26,8 @@ const TAB_TYPE_KEYS: Record<string, string> = {
   new_registration: 'admin.feed_card.dummy_tab_new_registration',
   local_health_king: 'admin.feed_card.dummy_tab_local_health_king',
   recommended_user: 'admin.feed_card.dummy_tab_recommended_user',
+  store: 'admin.feed_card.dummy_tab_store',
+  ad: 'admin.feed_card.dummy_tab_ad',
 };
 
 const PREVIEW_COLORS: Record<string, string> = {
@@ -30,7 +35,19 @@ const PREVIEW_COLORS: Record<string, string> = {
   ranking: '#f59e0b',
   recommended: '#3b82f6',
   ad: '#10b981',
+  store: '#9b5de5',
 };
+
+const STORE_CATEGORIES = [
+  { key: '', i18nKey: 'admin.feed_card.store_cat_all', fallback: 'All' },
+  { key: 'grooming', i18nKey: 'admin.feed_card.store_cat_grooming', fallback: 'Grooming' },
+  { key: 'hospital', i18nKey: 'admin.feed_card.store_cat_hospital', fallback: 'Hospital' },
+  { key: 'hotel', i18nKey: 'admin.feed_card.store_cat_hotel', fallback: 'Hotel' },
+  { key: 'training', i18nKey: 'admin.feed_card.store_cat_training', fallback: 'Training' },
+  { key: 'shop', i18nKey: 'admin.feed_card.store_cat_shop', fallback: 'Shop' },
+  { key: 'cafe', i18nKey: 'admin.feed_card.store_cat_cafe', fallback: 'Café' },
+  { key: 'photo', i18nKey: 'admin.feed_card.store_cat_photo', fallback: 'Photo' },
+];
 
 export default function FeedCardSettingsPage() {
   const t = useT();
@@ -257,6 +274,7 @@ function DummyDataTab() {
   const [modalOpen, setModalOpen] = useState(false);
   const [editCard, setEditCard] = useState<FeedDummyCard | null>(null);
   const [msg, setMsg] = useState('');
+  const [storeCatFilter, setStoreCatFilter] = useState('');
 
   const loadCards = useCallback(async (tabType: string) => {
     setLoading(true);
@@ -293,7 +311,7 @@ function DummyDataTab() {
           <button
             key={tab}
             className={`fcs-subtab${activeSubTab === tab ? ' active' : ''}`}
-            onClick={() => { setActiveSubTab(tab); setMsg(''); }}
+            onClick={() => { setActiveSubTab(tab); setMsg(''); setStoreCatFilter(''); }}
           >
             {t(TAB_TYPE_KEYS[tab], tab)}
           </button>
@@ -312,13 +330,30 @@ function DummyDataTab() {
           {msg && <span className="fcs-msg">{msg}</span>}
         </div>
 
+        {/* Store category filter */}
+        {activeSubTab === 'store' && (
+          <div className="fcs-cat-filter">
+            {STORE_CATEGORIES.map(cat => (
+              <button
+                key={cat.key}
+                className={`fcs-cat-btn${storeCatFilter === cat.key ? ' active' : ''}`}
+                onClick={() => setStoreCatFilter(cat.key)}
+              >
+                {t(cat.i18nKey, cat.fallback)}
+              </button>
+            ))}
+          </div>
+        )}
+
         {loading ? (
           <div className="fcs-loading">Loading...</div>
         ) : cards.length === 0 ? (
           <div className="fcs-empty">{t('admin.feed_card.no_cards', 'No cards registered')}</div>
         ) : (
           <div className="fcs-dummy-list">
-            {cards.map(card => (
+            {cards.filter(card =>
+              activeSubTab !== 'store' || !storeCatFilter || card.badge_text === storeCatFilter
+            ).map(card => (
               <div key={card.id} className={`fcs-dummy-card${card.is_active ? '' : ' inactive'}`}>
                 {card.image_url && (
                   <img className="fcs-dummy-thumb" src={card.image_url} alt="" />

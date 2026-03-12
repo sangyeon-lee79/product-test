@@ -137,7 +137,7 @@ async function getPreview(env: Env): Promise<Response> {
 
   // Build preview: 20 feed slots with card insertions
   const totalSlots = 20;
-  const items: Array<{ position: number; type: 'post' | 'ranking' | 'recommended' | 'ad'; label: string }> = [];
+  const items: Array<{ position: number; type: 'post' | 'ranking' | 'recommended' | 'ad' | 'store'; label: string }> = [];
 
   // Determine card insertion positions
   const cardPositions = new Map<number, string>();
@@ -203,7 +203,7 @@ async function createDummyCard(request: Request, env: Env): Promise<Response> {
   const tabType = String(body.tab_type || '').trim();
   if (!tabType) return err('tab_type required');
 
-  const validTabs = ['weekly_health_king', 'breed_health_king', 'new_registration', 'local_health_king', 'recommended_user'];
+  const validTabs = ['weekly_health_king', 'breed_health_king', 'new_registration', 'local_health_king', 'recommended_user', 'store', 'ad'];
   if (!validTabs.includes(tabType)) return err('Invalid tab_type');
 
   const id = newId();

@@ -285,9 +285,5 @@ async function dispatchAdmin(request: Request, env: Env, url: URL, path: string)
     const { handlePlatformSettings } = await import('./routes/platformSettings');
     return handlePlatformSettings(request, env, url);
   }
-  if (path.startsWith('/api/v1/admin/dummy-stores')) {
-    const { handleDummyStores } = await import('./routes/dummyStores');
-    return handleDummyStores(request, env, url);
-  }
   return err('Not Found', 404, 'not_found');
 }
