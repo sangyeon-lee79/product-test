@@ -169,6 +169,21 @@ export default function PublicHome() {
   useEffect(() => { loadFeed(); loadFilters(); }, []);
   useEffect(() => { void loadFeed(businessCategoryId, petTypeId); loadFilters(); }, [lang]);
 
+  // Load AdSense script if any ad cards use adsense source
+  useEffect(() => {
+    const hasAdSense = feeds.some(f =>
+      f.feed_type === 'card' && f.card_type === 'ad' &&
+      (f.card_metadata as Record<string, unknown>)?.ad_source === 'adsense'
+    );
+    if (!hasAdSense) return;
+    if (document.querySelector('script[src*="adsbygoogle"]')) return;
+    const script = document.createElement('script');
+    script.src = 'https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js';
+    script.async = true;
+    script.crossOrigin = 'anonymous';
+    document.head.appendChild(script);
+  }, [feeds]);
+
   useEffect(() => {
     if (!loggedIn) { setMyProfile(null); setMyPets([]); setMyBookings([]); setFriendStatusMap(new Map()); setFriendDataLoaded(false); return; }
     setRightLoading(true);
@@ -664,6 +679,29 @@ export default function PublicHome() {
     const rating = feed.card_score ? (feed.card_score / 10).toFixed(1) : null;
     const reviewCount = typeof meta.review_count === 'number' ? meta.review_count : null;
     const cta = typeof meta.cta === 'string' ? meta.cta : null;
+
+    // AdSense rendering for ad cards with adsense configuration
+    if (ct === 'ad' && meta.ad_source === 'adsense' && meta.adsense_publisher_id && meta.adsense_slot_id) {
+      return (
+        <article key={feed.id} className="pf-card pf-injected-card pf-injected-card--ad" style={{ animationDelay: `${idx * 60}ms` }}>
+          <div className="pf-injected-header">
+            <span className="pf-injected-icon">{CARD_ICONS.ad}</span>
+            <span className="pf-injected-label">{CARD_LABELS.ad}</span>
+            <span className="pf-injected-ad-badge">AD</span>
+          </div>
+          <div className="pf-adsense-slot">
+            <ins
+              className="adsbygoogle"
+              style={{ display: 'block' }}
+              data-ad-client={String(meta.adsense_publisher_id)}
+              data-ad-slot={String(meta.adsense_slot_id)}
+              data-ad-format={String(meta.adsense_format || 'auto')}
+              data-full-width-responsive="true"
+            />
+          </div>
+        </article>
+      );
+    }
 
     return (
       <article key={feed.id} className={`pf-card pf-injected-card pf-injected-card--${ct}`} style={{ animationDelay: `${idx * 60}ms` }}>

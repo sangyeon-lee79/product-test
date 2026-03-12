@@ -84,6 +84,7 @@ function SettingsTab() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [msg, setMsg] = useState('');
+  const [adTestStatus, setAdTestStatus] = useState<'' | 'ok' | 'fail'>('');
 
   const load = useCallback(async () => {
     try {
@@ -121,6 +122,20 @@ function SettingsTab() {
     setSettings(prev => prev.map((s, i) => i === idx ? { ...s, [field]: value } : s));
   };
 
+  const updateMeta = (idx: number, key: string, value: unknown) => {
+    setSettings(prev => prev.map((s, i) => i === idx ? { ...s, metadata: { ...s.metadata, [key]: value } } : s));
+  };
+
+  const testAdSense = (s: FeedCardSetting) => {
+    const pubId = String(s.metadata?.adsense_publisher_id || '');
+    const slotId = String(s.metadata?.adsense_slot_id || '');
+    if (pubId.startsWith('ca-pub-') && pubId.length > 10 && slotId.length > 0) {
+      setAdTestStatus('ok');
+    } else {
+      setAdTestStatus('fail');
+    }
+  };
+
   const save = async () => {
     setSaving(true);
     setMsg('');
@@ -132,6 +147,7 @@ function SettingsTab() {
           interval_n: s.interval_n,
           sort_order: s.sort_order,
           rotation_order: s.rotation_order,
+          ...(s.card_type === 'ad' ? { metadata: s.metadata } : {}),
         }))
       );
       setMsg(t('admin.feed_card.save_success', 'Settings saved successfully'));
@@ -241,6 +257,80 @@ function SettingsTab() {
                   </span>
                 </div>
               )}
+
+              {s.card_type === 'ad' && (
+                <div className="fcs-ad-config">
+                  <span className="fcs-field-label">
+                    {t('feed.ad_source', 'Ad Source')}
+                  </span>
+                  <div className="fcs-ad-radios">
+                    <label className="fcs-radio-label">
+                      <input
+                        type="radio"
+                        name={`ad-source-${s.id}`}
+                        checked={s.metadata?.ad_source !== 'adsense'}
+                        onChange={() => { updateMeta(idx, 'ad_source', 'dummy'); setAdTestStatus(''); }}
+                      />
+                      {t('feed.ad_dummy', 'Dummy Ads (Test)')}
+                    </label>
+                    <label className="fcs-radio-label">
+                      <input
+                        type="radio"
+                        name={`ad-source-${s.id}`}
+                        checked={s.metadata?.ad_source === 'adsense'}
+                        onChange={() => updateMeta(idx, 'ad_source', 'adsense')}
+                      />
+                      {t('feed.ad_adsense', 'Google AdSense Integration')}
+                    </label>
+                  </div>
+
+                  {s.metadata?.ad_source === 'adsense' && (
+                    <div className="fcs-ad-inputs">
+                      <label className="fcs-ad-field">
+                        <span>{t('feed.ad_publisher_id', 'Publisher ID')}</span>
+                        <input
+                          type="text"
+                          placeholder="ca-pub-xxxxxxxxxxxxxxxx"
+                          value={String(s.metadata?.adsense_publisher_id || '')}
+                          onChange={e => updateMeta(idx, 'adsense_publisher_id', e.target.value)}
+                        />
+                      </label>
+                      <label className="fcs-ad-field">
+                        <span>{t('feed.ad_slot_id', 'Ad Slot ID')}</span>
+                        <input
+                          type="text"
+                          placeholder="1234567890"
+                          value={String(s.metadata?.adsense_slot_id || '')}
+                          onChange={e => updateMeta(idx, 'adsense_slot_id', e.target.value)}
+                        />
+                      </label>
+                      <label className="fcs-ad-field">
+                        <span>{t('feed.ad_format', 'Ad Format')}</span>
+                        <select
+                          value={String(s.metadata?.adsense_format || 'auto')}
+                          onChange={e => updateMeta(idx, 'adsense_format', e.target.value)}
+                        >
+                          <option value="auto">Auto</option>
+                          <option value="rectangle">Rectangle</option>
+                          <option value="horizontal">Horizontal</option>
+                          <option value="vertical">Vertical</option>
+                        </select>
+                      </label>
+                      <div className="fcs-ad-test-row">
+                        <button className="fcs-ad-test-btn" onClick={() => testAdSense(s)}>
+                          {t('feed.ad_test_btn', 'Test Connection')}
+                        </button>
+                        {adTestStatus === 'ok' && (
+                          <span className="fcs-ad-test-status ok">{t('feed.ad_test_ok', 'Connection verified')}</span>
+                        )}
+                        {adTestStatus === 'fail' && (
+                          <span className="fcs-ad-test-status fail">{t('feed.ad_test_fail', 'Please check the IDs')}</span>
+                        )}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
           ))}
         </div>
@@ -320,6 +410,11 @@ function DummyDataTab() {
 
   return (
     <div className="fcs-dummy-layout">
+      {/* Test banner */}
+      <div className="fcs-test-banner">
+        {t('dummy.test_banner_title', 'This is test dummy data. It will be replaced with live data in production.')}
+      </div>
+
       {/* Sub-tabs */}
       <div className="fcs-subtabs">
         {TAB_TYPES.map(tab => (

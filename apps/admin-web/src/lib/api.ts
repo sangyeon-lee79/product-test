@@ -1162,6 +1162,7 @@ export const api = {
       interval_n?: number;
       sort_order?: number;
       rotation_order?: number;
+      metadata?: Record<string, unknown>;
     }>) =>
       request<{ updated: boolean }>('/api/v1/admin/feed-card-settings', {
         method: 'PUT',

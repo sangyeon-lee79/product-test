@@ -251,13 +251,14 @@ interface CardSetting {
   card_type: string;
   interval_n: number;
   sort_order: number;
+  metadata: string | null;
 }
 
 async function injectCards(env: Env, feeds: FeedRow[]): Promise<FeedRow[]> {
   try {
     // 1. Get enabled card settings
     const settingsRows = await env.DB.prepare(
-      `SELECT card_type, interval_n, sort_order
+      `SELECT card_type, interval_n, sort_order, metadata
        FROM feed_card_settings
        WHERE is_enabled = true AND interval_n > 0
        ORDER BY sort_order`
@@ -313,6 +314,14 @@ async function injectCards(env: Env, feeds: FeedRow[]): Promise<FeedRow[]> {
 
           let meta: Record<string, unknown> = {};
           try { meta = card.metadata ? JSON.parse(card.metadata) : {}; } catch { /* */ }
+
+          // For ad cards, merge settings metadata (ad_source, adsense_* config)
+          if (s.card_type === 'ad' && s.metadata) {
+            try {
+              const settingsMeta = JSON.parse(s.metadata) as Record<string, unknown>;
+              meta = { ...meta, ...settingsMeta };
+            } catch { /* */ }
+          }
 
           result.push({
             id: `card_${card.id}`,
