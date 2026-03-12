@@ -327,7 +327,8 @@ export default function PublicHome() {
   }
 
   /* ── Card type detection ───────────────────────────────── */
-  function getCardType(feed: FeedPost): 'photo' | 'health' | 'text' {
+  function getCardType(feed: FeedPost): 'photo' | 'health' | 'text' | 'card' {
+    if (feed.feed_type === 'card') return 'card';
     if (feed.feed_type === 'health_update') return 'health';
     const media = ensureArray(feed.media_urls);
     return media.length > 0 ? 'photo' : 'text';
@@ -648,10 +649,61 @@ export default function PublicHome() {
     </div>
   );
 
+  /* ── Injected card renderer (ranking/recommended/ad/store) */
+  const CARD_ICONS: Record<string, string> = { ranking: '🏆', recommended: '💡', ad: '📢', store: '🏪' };
+  const CARD_LABELS: Record<string, string> = {
+    ranking: t('public.card.ranking', 'Ranking'),
+    recommended: t('public.card.recommended', 'Recommended'),
+    ad: t('public.card.ad', 'AD'),
+    store: t('public.card.store', 'Store'),
+  };
+
+  const renderInjectedCard = (feed: FeedPost, idx: number) => {
+    const ct = feed.card_type || 'ad';
+    const meta = feed.card_metadata || {};
+    const rating = feed.card_score ? (feed.card_score / 10).toFixed(1) : null;
+    const reviewCount = typeof meta.review_count === 'number' ? meta.review_count : null;
+    const cta = typeof meta.cta === 'string' ? meta.cta : null;
+
+    return (
+      <article key={feed.id} className={`pf-card pf-injected-card pf-injected-card--${ct}`} style={{ animationDelay: `${idx * 60}ms` }}>
+        <div className="pf-injected-header">
+          <span className="pf-injected-icon">{CARD_ICONS[ct] || '📌'}</span>
+          <span className="pf-injected-label">{CARD_LABELS[ct] || ct}</span>
+          {ct === 'ad' && <span className="pf-injected-ad-badge">AD</span>}
+        </div>
+        {feed.card_image_url && (
+          <div className="pf-injected-image">
+            <img src={feed.card_image_url} alt={feed.card_title || ''} loading="lazy" />
+          </div>
+        )}
+        <div className="pf-injected-body">
+          {feed.card_title && <div className="pf-injected-title">{feed.card_title}</div>}
+          {feed.card_subtitle && <div className="pf-injected-subtitle">{feed.card_subtitle}</div>}
+          {feed.card_description && <div className="pf-injected-desc">{feed.card_description}</div>}
+          {(rating || feed.card_region) && (
+            <div className="pf-injected-meta">
+              {rating && <span>⭐ {rating}</span>}
+              {reviewCount != null && <span>💬 {reviewCount}</span>}
+              {feed.card_region && <span>📍 {feed.card_region}</span>}
+            </div>
+          )}
+          {feed.card_display_name && (
+            <div className="pf-injected-brand">{feed.card_display_name}</div>
+          )}
+          {cta && feed.card_link_url && (
+            <a href={feed.card_link_url} className="pf-injected-cta" target="_blank" rel="noopener noreferrer">{cta}</a>
+          )}
+        </div>
+      </article>
+    );
+  };
+
   /* ── Feed card dispatcher ──────────────────────────────── */
   const renderFeedCard = (feed: FeedPost, idx: number) => {
     const type = getCardType(feed);
     switch (type) {
+      case 'card': return renderInjectedCard(feed, idx);
       case 'health': return renderHealthCard(feed, idx);
       case 'text': return renderTextCard(feed, idx);
       default: return renderPhotoCard(feed, idx);

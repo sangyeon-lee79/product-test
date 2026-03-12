@@ -227,6 +227,136 @@ async function feedFilters(request: Request, env: Env, url: URL): Promise<Respon
   });
 }
 
+// ─── Feed Card Injection ─────────────────────────────────────────────────────
+// Reads feed_card_settings + feed_dummy_cards and injects dummy cards at intervals
+
+interface DummyCard {
+  id: string;
+  tab_type: string;
+  title: string | null;
+  subtitle: string | null;
+  description: string | null;
+  image_url: string | null;
+  link_url: string | null;
+  avatar_url: string | null;
+  display_name: string | null;
+  badge_text: string | null;
+  score: number;
+  region: string | null;
+  metadata: string | null;
+  is_active: boolean;
+}
+
+interface CardSetting {
+  card_type: string;
+  interval_n: number;
+  sort_order: number;
+}
+
+async function injectCards(env: Env, feeds: FeedRow[]): Promise<FeedRow[]> {
+  try {
+    // 1. Get enabled card settings
+    const settingsRows = await env.DB.prepare(
+      `SELECT card_type, interval_n, sort_order
+       FROM feed_card_settings
+       WHERE is_enabled = true AND interval_n > 0
+       ORDER BY sort_order`
+    ).all<CardSetting>();
+
+    const settings = settingsRows.results;
+    if (!settings.length) return feeds;
+
+    // 2. Map card_type → tab_types for dummy card selection
+    const typeToTabs: Record<string, string[]> = {
+      ranking: ['weekly_health_king', 'breed_health_king', 'local_health_king'],
+      recommended: ['new_registration', 'recommended_user'],
+      ad: ['ad'],
+      store: ['store'],
+    };
+
+    // 3. Fetch random active dummy cards for each enabled type
+    const cardPool: Record<string, DummyCard[]> = {};
+    for (const s of settings) {
+      const tabs = typeToTabs[s.card_type];
+      if (!tabs?.length) continue;
+      const placeholders = tabs.map(() => '?').join(',');
+      const rows = await env.DB.prepare(
+        `SELECT id, tab_type, title, subtitle, description, image_url, link_url,
+                avatar_url, display_name, badge_text, score, region, metadata, is_active
+         FROM feed_dummy_cards
+         WHERE tab_type IN (${placeholders}) AND is_active = true
+         ORDER BY random()
+         LIMIT 20`
+      ).bind(...tabs).all<DummyCard>();
+      if (rows.results.length) {
+        cardPool[s.card_type] = rows.results;
+      }
+    }
+
+    if (!Object.keys(cardPool).length) return feeds;
+
+    // 4. Build merged feed with cards inserted at interval positions
+    const result: FeedRow[] = [];
+    const counters: Record<string, number> = {};
+    let postIdx = 0;
+
+    for (let pos = 0; result.length < feeds.length + 30 && postIdx <= feeds.length; pos++) {
+      let inserted = false;
+
+      for (const s of settings) {
+        const pool = cardPool[s.card_type];
+        if (!pool?.length) continue;
+        if ((pos + 1) > 0 && (pos + 1) % s.interval_n === 0) {
+          const idx = (counters[s.card_type] || 0) % pool.length;
+          counters[s.card_type] = idx + 1;
+          const card = pool[idx];
+
+          let meta: Record<string, unknown> = {};
+          try { meta = card.metadata ? JSON.parse(card.metadata) : {}; } catch { /* */ }
+
+          result.push({
+            id: `card_${card.id}`,
+            feed_type: 'card',
+            card_type: s.card_type,
+            tab_type: card.tab_type,
+            card_title: card.title,
+            card_subtitle: card.subtitle,
+            card_description: card.description,
+            card_image_url: card.image_url,
+            card_link_url: card.link_url,
+            card_avatar_url: card.avatar_url,
+            card_display_name: card.display_name,
+            card_badge_text: card.badge_text,
+            card_score: card.score,
+            card_region: card.region,
+            card_metadata: meta,
+            created_at: now(),
+          } as unknown as FeedRow);
+          inserted = true;
+          break; // only one card per position
+        }
+      }
+
+      if (!inserted && postIdx < feeds.length) {
+        result.push(feeds[postIdx]);
+        postIdx++;
+      }
+
+      // Stop if all posts placed
+      if (postIdx >= feeds.length && !inserted) break;
+    }
+
+    // Append remaining posts
+    while (postIdx < feeds.length) {
+      result.push(feeds[postIdx++]);
+    }
+
+    return result;
+  } catch {
+    return feeds; // fallback: return original feeds on error
+  }
+}
+
 async function listFeeds(request: Request, env: Env, url: URL): Promise<Response> {
   const me = await optionalAuth(request, env);
   const friends = me ? await friendSet(env, me.sub) : new Set<string>();
@@ -279,7 +409,8 @@ async function listFeeds(request: Request, env: Env, url: URL): Promise<Response
     ).bind(me?.sub ?? null, me?.sub ?? null, ...params, limit).all<FeedRow>();
 
     const data = rows.results.map(normalizeFeedRow).filter((r) => canViewFeed(r, me, friends));
-    return ok({ feeds: data, filters: { feed_type: feedType || null, business_category_id: businessCategoryId || null, pet_type_id: petTypeId || null, tab } });
+    const merged = await injectCards(env, data);
+    return ok({ feeds: merged, filters: { feed_type: feedType || null, business_category_id: businessCategoryId || null, pet_type_id: petTypeId || null, tab } });
   }
 
   const where: string[] = [];
@@ -332,8 +463,9 @@ async function listFeeds(request: Request, env: Env, url: URL): Promise<Response
   ).bind(me?.sub ?? null, me?.sub ?? null, ...params, limit).all<FeedRow>();
 
   const data = rows.results.map(normalizeFeedRow).filter((r) => canViewFeed(r, me, friends));
+  const merged = await injectCards(env, data);
 
-  return ok({ feeds: data, filters: { feed_type: feedType || null, business_category_id: businessCategoryId || null, pet_type_id: petTypeId || null, tab } });
+  return ok({ feeds: merged, filters: { feed_type: feedType || null, business_category_id: businessCategoryId || null, pet_type_id: petTypeId || null, tab } });
 }
 
 async function createGuardianPost(request: Request, env: Env): Promise<Response> {

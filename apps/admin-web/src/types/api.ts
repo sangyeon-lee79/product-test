@@ -341,6 +341,20 @@ export interface FeedPost {
   supplier_id?: string | null;
   grooming_record_id?: string | null;
   grooming_tags?: Array<{ icon: string; label: string }> | string | null;
+  // Injected card fields (feed_type === 'card')
+  card_type?: string | null;
+  tab_type?: string | null;
+  card_title?: string | null;
+  card_subtitle?: string | null;
+  card_description?: string | null;
+  card_image_url?: string | null;
+  card_link_url?: string | null;
+  card_avatar_url?: string | null;
+  card_display_name?: string | null;
+  card_badge_text?: string | null;
+  card_score?: number | null;
+  card_region?: string | null;
+  card_metadata?: Record<string, unknown> | null;
 }
 
 export interface FeedComment {
