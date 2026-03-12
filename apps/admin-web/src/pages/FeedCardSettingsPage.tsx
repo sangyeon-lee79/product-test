@@ -212,19 +212,34 @@ function SettingsTab() {
               </label>
 
               {s.card_type === 'ranking' && (
-                <label className="fcs-rotation-wrap">
+                <div className="fcs-rotation-wrap">
                   <span className="fcs-field-label">
-                    {t('admin.feed_card.rotation_order', 'Rotation Order')}
+                    {t('admin.feed_card.rotation_mode', 'Display Order')}
                   </span>
-                  <input
-                    type="number"
-                    className="fcs-input-num"
-                    min={0}
-                    max={99}
-                    value={s.rotation_order}
-                    onChange={e => updateField(idx, 'rotation_order', parseInt(e.target.value) || 0)}
-                  />
-                </label>
+                  <div className="fcs-rotation-radios">
+                    <label className="fcs-radio-label">
+                      <input
+                        type="radio"
+                        name={`rotation-${s.id}`}
+                        checked={s.rotation_order > 0}
+                        onChange={() => updateField(idx, 'rotation_order', 1)}
+                      />
+                      {t('admin.feed_card.rotation_sequential', 'Sequential from 1st')}
+                    </label>
+                    <label className="fcs-radio-label">
+                      <input
+                        type="radio"
+                        name={`rotation-${s.id}`}
+                        checked={s.rotation_order === 0}
+                        onChange={() => updateField(idx, 'rotation_order', 0)}
+                      />
+                      {t('admin.feed_card.rotation_random', 'Random')}
+                    </label>
+                  </div>
+                  <span className="fcs-rotation-hint">
+                    {t('admin.feed_card.rotation_hint', 'How ranking cards cycle through positions')}
+                  </span>
+                </div>
               )}
             </div>
           ))}
