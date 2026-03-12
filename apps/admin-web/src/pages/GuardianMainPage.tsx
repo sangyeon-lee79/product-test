@@ -844,17 +844,8 @@ export default function GuardianMainPage() {
               )}
 
               {/* ── Health ── */}
-              {petTab === 'health' && (
+              {petTab === 'health' && selectedPet && (
                 <>
-                  {!selectedPet ? (
-                    <div className="pf-gd-onboard">
-                      <div className="pf-gd-onboard-icon">🐾</div>
-                      <div className="pf-gd-onboard-title">{t('guardian.empty.no_pets_title', 'Register your first pet')}</div>
-                      <p className="pf-gd-onboard-desc">{t('guardian.empty.no_pets_desc', 'Without a pet profile, feed/health/booking links are limited.')}</p>
-                      <button className="pf-gd-onboard-cta" onClick={openCreatePet}>{t('guardian.empty.no_pets_cta', 'Register your first pet')}</button>
-                    </div>
-                  ) : (
-                    <>
                       {/* ── Health Toolkit ── */}
                       <div className="pf-gd-toolkit">
                         <div className="pf-gd-toolkit-group">
@@ -1059,9 +1050,7 @@ export default function GuardianMainPage() {
                           {renderPagination(timelinePage, unifiedTimeline.length, setTimelinePage)}
                         </div>
                       </div>
-                    </>
-                  )}
-                  {selectedPet && healthFeeds.length > 0 && (
+                  {healthFeeds.length > 0 && (
                     <div className="pf-gd-section">
                       <div className="pf-gd-section-header"><span>{t('guardian.health.updates', 'Health Updates')}</span></div>
                       <div className="pf-gd-section-body">
