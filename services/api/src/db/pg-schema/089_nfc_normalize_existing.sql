@@ -36,9 +36,3 @@ SET name = normalize(name, NFC),
 WHERE name IS NOT NULL
   AND name IS DISTINCT FROM normalize(name, NFC);
 
--- pets.bio
-UPDATE pets
-SET bio = normalize(bio, NFC),
-    updated_at = CURRENT_TIMESTAMP
-WHERE bio IS NOT NULL
-  AND bio IS DISTINCT FROM normalize(bio, NFC);
