@@ -1,9 +1,0 @@
--- Migration 0027: Guardian gallery upload additional error i18n keys
-
-INSERT OR IGNORE INTO i18n_translations (
-  id, key, page, ko, en, ja, zh_cn, zh_tw, es, fr, de, pt, vi, th, id_lang, ar, is_active, created_at, updated_at
-) VALUES
-  ('i27-gallery-001', 'guardian.pet.gallery.add_photo.error.thumbnail_fallback', 'guardian', '썸네일 생성에 실패해 원본 이미지로 저장했습니다.', 'Thumbnail generation failed, saved with original image.', 'サムネイル生成に失敗したため、元画像で保存しました。', '缩略图生成失败，已使用原图保存。', '縮圖產生失敗，已改用原圖儲存。', 'Falló la miniatura; se guardó con la imagen original.', 'Échec de la miniature, enregistré avec l''image originale.', 'Thumbnail-Erstellung fehlgeschlagen, mit Originalbild gespeichert.', 'Falha ao gerar miniatura; salvo com a imagem original.', 'Tạo thumbnail thất bại, đã lưu bằng ảnh gốc.', 'สร้างภาพย่อไม่สำเร็จ บันทึกด้วยภาพต้นฉบับ', 'Gagal membuat thumbnail, disimpan dengan gambar asli.', 'فشل إنشاء الصورة المصغرة، وتم الحفظ بالصورة الأصلية.', 1, datetime('now'), datetime('now')),
-  ('i27-gallery-002', 'guardian.pet.gallery.add_photo.error.refresh_failed', 'guardian', '업로드는 완료되었지만 목록 갱신에 실패했습니다. 새로고침해주세요.', 'Upload completed, but failed to refresh list. Please refresh.', 'アップロードは完了しましたが一覧更新に失敗しました。再読み込みしてください。', '上传已完成，但列表刷新失败。请刷新页面。', '上傳已完成，但清單更新失敗。請重新整理。', 'La carga se completó, pero falló la actualización de la lista. Recarga.', 'Téléversement terminé, mais échec du rafraîchissement de la liste. Actualisez.', 'Upload abgeschlossen, aber Aktualisierung fehlgeschlagen. Bitte neu laden.', 'Upload concluído, mas falha ao atualizar a lista. Atualize.', 'Tải lên hoàn tất nhưng làm mới danh sách thất bại. Vui lòng làm mới.', 'อัปโหลดสำเร็จแต่รีเฟรชรายการล้มเหลว กรุณารีเฟรช', 'Unggah selesai, tetapi gagal memuat ulang daftar. Silakan muat ulang.', 'اكتمل الرفع لكن فشل تحديث القائمة. يرجى إعادة التحميل.', 1, datetime('now'), datetime('now'));
-
-INSERT OR IGNORE INTO schema_migrations (version) VALUES ('0027_guardian_gallery_upload_error_i18n');

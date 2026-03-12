@@ -1,14 +1,9 @@
 -- =============================================================================
--- Petfolio — Consolidated PostgreSQL Schema
+-- Petfolio — Consolidated PostgreSQL Schema (v2)
 -- =============================================================================
--- Source: 82 SQLite (D1) migrations consolidated into a single idempotent DDL.
--- Conversion rules applied:
---   INTEGER boolean columns → BOOLEAN
---   TEXT date/timestamp columns → TIMESTAMPTZ
---   REAL → DOUBLE PRECISION
---   datetime('now') → CURRENT_TIMESTAMP
---   AUTOINCREMENT → GENERATED ALWAYS AS IDENTITY
---   INSERT OR IGNORE → INSERT ... ON CONFLICT DO NOTHING
+-- Merged from 001_init.sql + 74 incremental migrations (048-101).
+-- All tables include columns from later ALTERs integrated directly.
+-- All statements are idempotent (IF NOT EXISTS / IF EXISTS).
 -- =============================================================================
 
 -- ---------------------------------------------------------------------------
@@ -212,15 +207,17 @@ CREATE TABLE IF NOT EXISTS ad_slots (
 -- 15. users — authentication accounts
 -- ---------------------------------------------------------------------------
 CREATE TABLE IF NOT EXISTS users (
-  id              TEXT PRIMARY KEY,
-  email           TEXT UNIQUE,
-  password_hash   TEXT,
-  role            TEXT NOT NULL DEFAULT 'guardian',
-  oauth_provider  TEXT,
-  oauth_id        TEXT,
-  status          TEXT NOT NULL DEFAULT 'active',
-  created_at      TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  updated_at      TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
+  id                  TEXT PRIMARY KEY,
+  email               TEXT UNIQUE,
+  password_hash       TEXT,
+  role                TEXT NOT NULL DEFAULT 'guardian',
+  oauth_provider      TEXT,
+  oauth_id            TEXT,
+  status              TEXT NOT NULL DEFAULT 'active',
+  last_login_provider TEXT,
+  last_login_at       TIMESTAMPTZ,
+  created_at          TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at          TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 
 CREATE INDEX IF NOT EXISTS idx_users_email ON users(email);
@@ -369,6 +366,11 @@ CREATE TABLE IF NOT EXISTS feed_posts (
   feed_type           TEXT NOT NULL,
   visibility_scope    TEXT NOT NULL DEFAULT 'public',
   caption             TEXT,
+  post_type           TEXT NOT NULL DEFAULT 'GENERAL',
+  author_type         TEXT NOT NULL DEFAULT 'guardian',
+  supplier_id         TEXT REFERENCES users(id),
+  grooming_record_id  TEXT,
+  grooming_tags       JSONB NOT NULL DEFAULT '[]',
   status              TEXT NOT NULL DEFAULT 'published',
   created_at          TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
   updated_at          TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
@@ -719,6 +721,7 @@ CREATE TABLE IF NOT EXISTS device_models (
   model_code          TEXT,
   name_key            TEXT,
   description         TEXT,
+  image_url           TEXT,
   status              TEXT NOT NULL DEFAULT 'active',
   created_at          TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
   updated_at          TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
@@ -871,6 +874,7 @@ CREATE TABLE IF NOT EXISTS feed_manufacturers (
   name_ko        TEXT NOT NULL,
   name_en        TEXT NOT NULL,
   country        TEXT,
+  category_type  TEXT DEFAULT 'feed',
   status         TEXT NOT NULL DEFAULT 'active',
   sort_order     INTEGER NOT NULL DEFAULT 0,
   created_at     TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -886,6 +890,7 @@ CREATE TABLE IF NOT EXISTS feed_brands (
   name_key        TEXT UNIQUE,
   name_ko         TEXT NOT NULL,
   name_en         TEXT NOT NULL,
+  category_type   TEXT DEFAULT 'feed',
   status          TEXT NOT NULL DEFAULT 'active',
   created_at      TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
   updated_at      TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
@@ -903,6 +908,8 @@ CREATE TABLE IF NOT EXISTS feed_models (
   model_name         TEXT NOT NULL,
   model_code         TEXT,
   description        TEXT,
+  image_url          TEXT,
+  category_type      TEXT DEFAULT 'feed',
   status             TEXT NOT NULL DEFAULT 'active',
   created_at         TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
   updated_at         TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
@@ -994,6 +1001,7 @@ CREATE TABLE IF NOT EXISTS pet_feeds (
   end_date         TEXT,
   notes            TEXT,
   is_primary       BOOLEAN NOT NULL DEFAULT false,
+  category_type    TEXT DEFAULT 'feed',
   status           TEXT NOT NULL DEFAULT 'active',
   created_at       TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
   updated_at       TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
@@ -1112,6 +1120,7 @@ CREATE TABLE IF NOT EXISTS feed_registration_requests (
   approved_manufacturer_id TEXT,
   approved_brand_id       TEXT,
   approved_model_id       TEXT,
+  category_type           TEXT DEFAULT 'feed',
   created_at              TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
   updated_at              TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
@@ -1301,8 +1310,271 @@ CREATE TABLE IF NOT EXISTS platform_settings (
 );
 
 -- ---------------------------------------------------------------------------
+-- 72. pet_exercise_logs — exercise time-series
+-- ---------------------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS pet_exercise_logs (
+  id                  TEXT PRIMARY KEY,
+  pet_id              TEXT NOT NULL REFERENCES pets(id) ON DELETE CASCADE,
+  exercise_type       TEXT NOT NULL,
+  exercise_subtype    TEXT NOT NULL,
+  exercise_date       TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  duration_min        INTEGER NOT NULL,
+  distance_km         REAL,
+  intensity           TEXT NOT NULL DEFAULT 'medium',
+  leash               BOOLEAN,
+  location_type       TEXT DEFAULT 'outdoor',
+  with_other_pets     BOOLEAN DEFAULT false,
+  companion_pet_ids   JSONB DEFAULT '[]'::jsonb,
+  note                TEXT,
+  recorded_by_user_id TEXT REFERENCES users(id),
+  created_at          TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at          TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX IF NOT EXISTS idx_exercise_logs_pet_date ON pet_exercise_logs(pet_id, exercise_date DESC);
+
+-- ---------------------------------------------------------------------------
+-- 73. stores — Provider stores (S9)
+-- ---------------------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS stores (
+  id                       TEXT PRIMARY KEY,
+  owner_id                 TEXT NOT NULL REFERENCES users(id),
+  name                     TEXT NOT NULL,
+  name_translations        JSONB NOT NULL DEFAULT '{}',
+  description              TEXT,
+  description_translations JSONB NOT NULL DEFAULT '{}',
+  address                  TEXT,
+  phone                    TEXT,
+  country_id               TEXT REFERENCES countries(id),
+  currency_id              TEXT REFERENCES currencies(id),
+  latitude                 DECIMAL(10,7),
+  longitude                DECIMAL(10,7),
+  avatar_url               TEXT,
+  business_type            TEXT,
+  business_subtype         TEXT,
+  address_state_code       TEXT,
+  address_city_code        TEXT,
+  address_detail           TEXT,
+  status                   TEXT NOT NULL DEFAULT 'active',
+  created_at               TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at               TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX IF NOT EXISTS idx_stores_owner         ON stores(owner_id);
+CREATE INDEX IF NOT EXISTS idx_stores_country        ON stores(country_id);
+CREATE INDEX IF NOT EXISTS idx_stores_status          ON stores(status);
+CREATE INDEX IF NOT EXISTS idx_stores_business_type  ON stores(business_type);
+CREATE INDEX IF NOT EXISTS idx_stores_state_code     ON stores(address_state_code);
+
+-- ---------------------------------------------------------------------------
+-- 74. store_industries — store ↔ industry mapping (N:M via master_items)
+-- ---------------------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS store_industries (
+  id          TEXT PRIMARY KEY,
+  store_id    TEXT NOT NULL REFERENCES stores(id) ON DELETE CASCADE,
+  industry_id TEXT NOT NULL REFERENCES master_items(id),
+  created_at  TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  UNIQUE(store_id, industry_id)
+);
+
+CREATE INDEX IF NOT EXISTS idx_store_industries_store ON store_industries(store_id);
+
+-- ---------------------------------------------------------------------------
+-- 75. services — store services
+-- ---------------------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS services (
+  id                       TEXT PRIMARY KEY,
+  store_id                 TEXT NOT NULL REFERENCES stores(id) ON DELETE CASCADE,
+  name                     TEXT NOT NULL,
+  name_translations        JSONB NOT NULL DEFAULT '{}',
+  description              TEXT,
+  description_translations JSONB NOT NULL DEFAULT '{}',
+  price                    DECIMAL(12,2),
+  currency_id              TEXT REFERENCES currencies(id),
+  photo_urls               JSONB NOT NULL DEFAULT '[]',
+  sort_order               INTEGER NOT NULL DEFAULT 0,
+  is_active                BOOLEAN NOT NULL DEFAULT true,
+  created_at               TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at               TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX IF NOT EXISTS idx_services_store  ON services(store_id);
+CREATE INDEX IF NOT EXISTS idx_services_active ON services(is_active);
+
+-- ---------------------------------------------------------------------------
+-- 76. service_discounts — service discount rules
+-- ---------------------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS service_discounts (
+  id            TEXT PRIMARY KEY,
+  service_id    TEXT NOT NULL REFERENCES services(id) ON DELETE CASCADE,
+  discount_rate DECIMAL(5,2) NOT NULL,
+  start_date    DATE,
+  end_date      DATE,
+  is_active     BOOLEAN NOT NULL DEFAULT true,
+  created_at    TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX IF NOT EXISTS idx_service_discounts_service ON service_discounts(service_id);
+
+-- ---------------------------------------------------------------------------
+-- 77. notifications — in-app + push notifications
+-- ---------------------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS notifications (
+  id              TEXT PRIMARY KEY,
+  user_id         TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  type            TEXT NOT NULL,
+  actor_user_id   TEXT REFERENCES users(id),
+  reference_id    TEXT,
+  reference_type  TEXT,
+  title           TEXT,
+  body            TEXT,
+  data            JSONB DEFAULT '{}',
+  is_read         BOOLEAN NOT NULL DEFAULT false,
+  push_sent       BOOLEAN NOT NULL DEFAULT false,
+  created_at      TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX IF NOT EXISTS idx_notifications_user ON notifications(user_id, is_read, created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_notifications_ref  ON notifications(reference_id, reference_type);
+
+-- ---------------------------------------------------------------------------
+-- 78. user_push_tokens — FCM token storage per user/device
+-- ---------------------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS user_push_tokens (
+  id          TEXT PRIMARY KEY,
+  user_id     TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  token       TEXT NOT NULL,
+  device_type TEXT NOT NULL DEFAULT 'web',
+  is_active   BOOLEAN NOT NULL DEFAULT true,
+  created_at  TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at  TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE UNIQUE INDEX IF NOT EXISTS idx_push_tokens_token ON user_push_tokens(token);
+CREATE INDEX IF NOT EXISTS idx_push_tokens_user ON user_push_tokens(user_id, is_active);
+
+-- ---------------------------------------------------------------------------
+-- 79. notification_settings — per-user notification preferences
+-- ---------------------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS notification_settings (
+  id                 TEXT PRIMARY KEY,
+  user_id            TEXT NOT NULL UNIQUE REFERENCES users(id) ON DELETE CASCADE,
+  friend_request     BOOLEAN NOT NULL DEFAULT true,
+  friend_accepted    BOOLEAN NOT NULL DEFAULT true,
+  post_like          BOOLEAN NOT NULL DEFAULT true,
+  post_comment       BOOLEAN NOT NULL DEFAULT true,
+  friend_new_post    BOOLEAN NOT NULL DEFAULT true,
+  pet_health_remind  BOOLEAN NOT NULL DEFAULT true,
+  appointment_remind BOOLEAN NOT NULL DEFAULT true,
+  service_notice     BOOLEAN NOT NULL DEFAULT true,
+  marketing          BOOLEAN NOT NULL DEFAULT false,
+  created_at         TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at         TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+-- ---------------------------------------------------------------------------
+-- 80. feed_card_settings — per-card-type insertion rules
+-- ---------------------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS feed_card_settings (
+  id              TEXT PRIMARY KEY,
+  card_type       TEXT NOT NULL UNIQUE,
+  is_enabled      BOOLEAN NOT NULL DEFAULT true,
+  interval_n      INTEGER NOT NULL DEFAULT 5,
+  sort_order      INTEGER NOT NULL DEFAULT 0,
+  rotation_order  INTEGER NOT NULL DEFAULT 0,
+  metadata        JSONB DEFAULT '{}',
+  created_at      TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at      TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+-- ---------------------------------------------------------------------------
+-- 81. feed_dummy_cards — dummy card data for ranking/recommended tabs
+-- ---------------------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS feed_dummy_cards (
+  id              TEXT PRIMARY KEY,
+  tab_type        TEXT NOT NULL,
+  title           TEXT,
+  subtitle        TEXT,
+  description     TEXT,
+  image_url       TEXT,
+  link_url        TEXT,
+  avatar_url      TEXT,
+  display_name    TEXT,
+  badge_text      TEXT,
+  score           INTEGER DEFAULT 0,
+  region          TEXT,
+  breed_info      TEXT,
+  pet_type        TEXT,
+  is_active       BOOLEAN NOT NULL DEFAULT true,
+  sort_order      INTEGER NOT NULL DEFAULT 0,
+  metadata        JSONB DEFAULT '{}',
+  start_date      TIMESTAMPTZ,
+  end_date        TIMESTAMPTZ,
+  created_at      TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at      TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX IF NOT EXISTS idx_feed_dummy_cards_tab_active
+  ON feed_dummy_cards(tab_type, is_active);
+
+-- ---------------------------------------------------------------------------
+-- 82. appointments — service booking entries
+-- ---------------------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS appointments (
+  id                TEXT PRIMARY KEY,
+  pet_id            TEXT REFERENCES pets(id),
+  guardian_id       TEXT NOT NULL REFERENCES users(id),
+  supplier_id       TEXT NOT NULL REFERENCES users(id),
+  store_id          TEXT REFERENCES stores(id),
+  service_id        TEXT,
+  service_type      TEXT NOT NULL DEFAULT '',
+  scheduled_at      TIMESTAMPTZ,
+  duration_minutes  INTEGER,
+  price             INTEGER,
+  request_note      TEXT,
+  status            TEXT NOT NULL DEFAULT 'pending',
+  rejected_reason   TEXT,
+  created_at        TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at        TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX IF NOT EXISTS idx_appointments_guardian ON appointments(guardian_id);
+CREATE INDEX IF NOT EXISTS idx_appointments_supplier ON appointments(supplier_id);
+CREATE INDEX IF NOT EXISTS idx_appointments_status   ON appointments(status);
+CREATE INDEX IF NOT EXISTS idx_appointments_pet      ON appointments(pet_id);
+
+-- ---------------------------------------------------------------------------
+-- 83. grooming_records — grooming service completion records
+-- ---------------------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS grooming_records (
+  id                TEXT PRIMARY KEY,
+  appointment_id    TEXT REFERENCES appointments(id),
+  pet_id            TEXT REFERENCES pets(id),
+  supplier_id       TEXT NOT NULL REFERENCES users(id),
+  guardian_id       TEXT NOT NULL REFERENCES users(id),
+  grooming_type     TEXT,
+  cut_style         TEXT,
+  duration_minutes  INTEGER,
+  products_used     TEXT,
+  special_notes     TEXT,
+  supplier_comment  TEXT,
+  photos            JSONB NOT NULL DEFAULT '[]',
+  status            TEXT NOT NULL DEFAULT 'pending_guardian',
+  guardian_choice   TEXT,
+  post_id           TEXT REFERENCES feed_posts(id),
+  created_at        TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  completed_at      TIMESTAMPTZ
+);
+
+CREATE INDEX IF NOT EXISTS idx_grooming_records_appointment ON grooming_records(appointment_id);
+CREATE INDEX IF NOT EXISTS idx_grooming_records_pet         ON grooming_records(pet_id);
+CREATE INDEX IF NOT EXISTS idx_grooming_records_supplier    ON grooming_records(supplier_id);
+CREATE INDEX IF NOT EXISTS idx_grooming_records_guardian    ON grooming_records(guardian_id);
+CREATE INDEX IF NOT EXISTS idx_grooming_records_status      ON grooming_records(status);
+
+-- ---------------------------------------------------------------------------
 -- Record consolidated migration
 -- ---------------------------------------------------------------------------
 INSERT INTO schema_migrations (version)
-VALUES ('pg_001_init')
+VALUES ('pg_001_init_v2')
 ON CONFLICT DO NOTHING;
