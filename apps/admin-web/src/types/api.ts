@@ -56,6 +56,7 @@ export interface GuardianProfile {
   bio?: string | null;
   bio_translations?: Record<string, string>;
   country_id?: string | null;
+  region_text?: string | null;
   language?: string | null;
   timezone?: string | null;
   interests?: string[];
@@ -368,6 +369,21 @@ export interface PetAlbumMedia {
   updated_at: string;
 }
 
+export interface RequesterPet {
+  id: string;
+  name: string;
+  avatar_url?: string | null;
+  pet_type_code?: string | null;
+  breed_code?: string | null;
+  birth_date?: string | null;
+}
+
+export interface RequesterFeedImage {
+  post_id: string;
+  media_url: string;
+  thumbnail_url?: string | null;
+}
+
 export interface FriendRequest {
   id: string;
   requester_user_id: string;
@@ -377,6 +393,13 @@ export interface FriendRequest {
   status: string;
   created_at: string;
   responded_at?: string | null;
+  requester_display_name?: string | null;
+  requester_avatar_url?: string | null;
+  requester_country_name?: string | null;
+  requester_joined_at?: string | null;
+  requester_pets?: RequesterPet[];
+  requester_pets_total?: number;
+  requester_feed_images?: RequesterFeedImage[];
 }
 
 export interface FriendConnection {
@@ -387,6 +410,8 @@ export interface FriendConnection {
   friend_user_id: string;
   friend_email: string;
   friend_role: string;
+  friend_display_name?: string | null;
+  friend_avatar_url?: string | null;
 }
 
 export interface DeviceType {

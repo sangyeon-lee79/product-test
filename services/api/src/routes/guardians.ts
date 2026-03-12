@@ -29,7 +29,7 @@ async function getMe(env: Env, payload: JwtPayload): Promise<Response> {
   const profile = await env.DB.prepare(`
     SELECT up.*,
            u.email, u.oauth_provider, u.created_at AS user_created_at,
-           uad.phone, uad.full_name
+           uad.phone, uad.full_name, uad.region_text
     FROM user_profiles up
     JOIN users u ON u.id = up.user_id
     LEFT JOIN user_account_details uad ON uad.user_id = up.user_id
@@ -40,7 +40,7 @@ async function getMe(env: Env, payload: JwtPayload): Promise<Response> {
     // user_profiles가 없어도 users 기본 정보는 반환
     const user = await env.DB.prepare(`
       SELECT u.id AS user_id, u.email, u.oauth_provider, u.created_at AS user_created_at,
-             uad.phone, uad.full_name
+             uad.phone, uad.full_name, uad.region_text
       FROM users u
       LEFT JOIN user_account_details uad ON uad.user_id = u.id
       WHERE u.id = ?
@@ -117,20 +117,22 @@ async function updateMe(request: Request, env: Env, payload: JwtPayload): Promis
     ).run();
   }
 
-  // phone → user_account_details (upsert)
-  if (body.phone !== undefined) {
+  // phone + region_text → user_account_details (upsert)
+  if (body.phone !== undefined || body.region_text !== undefined) {
     const uad = await env.DB.prepare(
-      'SELECT id FROM user_account_details WHERE user_id = ?'
-    ).bind(payload.sub).first<{ id: string }>();
+      'SELECT id, phone, region_text FROM user_account_details WHERE user_id = ?'
+    ).bind(payload.sub).first<{ id: string; phone: string | null; region_text: string | null }>();
+    const newPhone = body.phone !== undefined ? (body.phone ?? null) as string | null : (uad?.phone ?? null);
+    const newRegion = body.region_text !== undefined ? (body.region_text ?? null) as string | null : (uad?.region_text ?? null);
     if (uad) {
       await env.DB.prepare(
-        'UPDATE user_account_details SET phone = ?, updated_at = ? WHERE user_id = ?'
-      ).bind(body.phone ?? null, now(), payload.sub).run();
+        'UPDATE user_account_details SET phone = ?, region_text = ?, updated_at = ? WHERE user_id = ?'
+      ).bind(newPhone, newRegion, now(), payload.sub).run();
     } else {
       await env.DB.prepare(`
-        INSERT INTO user_account_details (id, user_id, phone, created_at, updated_at)
-        VALUES (?, ?, ?, ?, ?)
-      `).bind(newId(), payload.sub, body.phone ?? null, now(), now()).run();
+        INSERT INTO user_account_details (id, user_id, phone, region_text, created_at, updated_at)
+        VALUES (?, ?, ?, ?, ?, ?)
+      `).bind(newId(), payload.sub, newPhone, newRegion, now(), now()).run();
     }
   }
 

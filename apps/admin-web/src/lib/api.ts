@@ -10,7 +10,7 @@ import type {
   PetHealthMeasurementLog, HealthMeasurementSummary,
   PetExerciseLog, ExerciseSummary, FriendPet, Notification,
   Booking, FeedPost, FeedComment, PetAlbumMedia,
-  FriendRequest, FriendConnection,
+  FriendRequest, FriendConnection, RequesterPet, RequesterFeedImage,
   DeviceType, DeviceManufacturer, DeviceBrand, DeviceModel, MeasurementUnit, GuardianDevice,
   FeedType, FeedManufacturer, FeedBrand, FeedModel,
   PetFeed, FeedNutrition, FeedingLog, FeedingMixFavorite,
@@ -30,7 +30,7 @@ export type {
   PetHealthMeasurementLog, HealthMeasurementSummary,
   PetExerciseLog, ExerciseSummary, FriendPet, Notification,
   Booking, FeedPost, FeedComment, PetAlbumMedia,
-  FriendRequest, FriendConnection,
+  FriendRequest, FriendConnection, RequesterPet, RequesterFeedImage,
   DeviceType, DeviceManufacturer, DeviceBrand, DeviceModel, MeasurementUnit, GuardianDevice,
   FeedType, FeedManufacturer, FeedBrand, FeedModel,
   PetFeed, FeedNutrition, FeedingLog, FeedingMixFavorite,
@@ -358,8 +358,8 @@ export const api = {
   guardians: {
     me: () => request<{ profile: GuardianProfile | null }>('/api/v1/guardians/me'),
     updateMe: (data: {
-      display_name?: string; phone?: string; country_id?: string; language?: string;
-      handle?: string; bio?: string; bio_translations?: Record<string, string>;
+      display_name?: string; phone?: string; country_id?: string; region_text?: string | null;
+      language?: string; handle?: string; bio?: string; bio_translations?: Record<string, string>;
       timezone?: string; interests?: string[]; avatar_url?: string;
     }) => request<{ profile: GuardianProfile }>('/api/v1/guardians/me', {
       method: 'PUT', body: JSON.stringify(data),
