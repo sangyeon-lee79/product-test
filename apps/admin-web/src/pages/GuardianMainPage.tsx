@@ -164,6 +164,9 @@ export default function GuardianMainPage() {
   const [bookingModalOpen, setBookingModalOpen] = useState(false);
   const [bookingStore, setBookingStore] = useState<Store | null>(null);
   const [bookingStoreServices, setBookingStoreServices] = useState<StoreService[]>([]);
+  const [bookingInitialServiceId, setBookingInitialServiceId] = useState('');
+  const [nearbyStoreServices, setNearbyStoreServices] = useState<Record<string, StoreService[]>>({});
+  const [nearbyStoresLoading, setNearbyStoresLoading] = useState(false);
   const [groomingApprovalOpen, setGroomingApprovalOpen] = useState(false);
   const [groomingApprovalRecord, setGroomingApprovalRecord] = useState<GroomingRecord | null>(null);
   const [appointments, setAppointments] = useState<Appointment[]>([]);
@@ -410,11 +413,42 @@ export default function GuardianMainPage() {
     }
   }
 
-  async function openBookingForStore(store: Store) {
-    setBookingStore(store);
+  async function loadNearbyStores() {
+    setNearbyStoresLoading(true);
     try {
-      const res = await api.stores.services.list(store.id, lang);
-      setBookingStoreServices(res.items || []);
+      const res = await api.stores.list({ lang, limit: 20 });
+      const stores = res.items || [];
+      setNearbyStores(stores);
+
+      const serviceEntries = await Promise.all(
+        stores.map(async (store) => {
+          try {
+            const serviceRes = await api.stores.services.list(store.id, lang);
+            return [store.id, serviceRes.items || []] as const;
+          } catch {
+            return [store.id, []] as const;
+          }
+        }),
+      );
+      setNearbyStoreServices(Object.fromEntries(serviceEntries));
+    } finally {
+      setNearbyStoresLoading(false);
+    }
+  }
+
+  async function openBookingForStore(store: Store, initialServiceId?: string) {
+    setBookingStore(store);
+    setBookingInitialServiceId(initialServiceId || '');
+    try {
+      const cached = nearbyStoreServices[store.id];
+      if (cached) {
+        setBookingStoreServices(cached);
+      } else {
+        const res = await api.stores.services.list(store.id, lang);
+        const items = res.items || [];
+        setBookingStoreServices(items);
+        setNearbyStoreServices((prev) => ({ ...prev, [store.id]: items }));
+      }
     } catch {
       setBookingStoreServices([]);
     }
@@ -444,6 +478,11 @@ export default function GuardianMainPage() {
     if (!petIdParam) return;
     setSelectedPetId(petIdParam);
   }, [petIdParam]);
+
+  useEffect(() => {
+    if (petTab !== 'services' || nearbyStores.length > 0 || nearbyStoresLoading) return;
+    void loadNearbyStores();
+  }, [nearbyStores.length, nearbyStoresLoading, petTab, lang]);
 
   useEffect(() => {
     if (!selectedPet?.id) {
@@ -1106,19 +1145,24 @@ export default function GuardianMainPage() {
                     <div className="pf-gd-section-header">
                       <span>{t('guardian.store.browse', 'Browse Stores')}</span>
                       <button className="btn btn-secondary btn-sm" style={{ borderRadius: 16, fontSize: 11 }} onClick={() => {
-                        api.stores.list({ lang, limit: 20 }).then(res => setNearbyStores(res.items || [])).catch(() => {});
+                        void loadNearbyStores();
                       }}>{t('guardian.store.browse', 'Browse')}</button>
                     </div>
                     <div className="pf-gd-section-body">
-                      {nearbyStores.length === 0 ? (
+                      {nearbyStoresLoading ? (
+                        <p style={{ fontSize: 13, color: 'var(--text-muted)' }}>{t('common.loading', 'Loading...')}</p>
+                      ) : nearbyStores.length === 0 ? (
                         <p style={{ fontSize: 13, color: 'var(--text-muted)' }}>{t('admin.store.list.empty', 'No stores')}</p>
                       ) : (
                         <div style={{ display: 'grid', gap: 6 }}>
                           {nearbyStores.map(s => (
                             <div key={s.id} className="pf-gd-store-card">
-                              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                                <strong style={{ fontSize: 14 }}>{s.display_name || s.name}</strong>
-                                <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+                              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8 }}>
+                                <div>
+                                  <strong style={{ fontSize: 14 }}>{s.display_name || s.name}</strong>
+                                  {s.address && <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 2 }}>{s.address}</div>}
+                                </div>
+                                <div style={{ display: 'flex', gap: 6, alignItems: 'center', flexShrink: 0 }}>
                                   <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>
                                     {s.service_count || 0} {t('guardian.store.services', 'Services')}
                                   </span>
@@ -1127,7 +1171,46 @@ export default function GuardianMainPage() {
                                   </button>
                                 </div>
                               </div>
-                              {s.address && <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 2 }}>{s.address}</div>}
+                              {(nearbyStoreServices[s.id] || []).length > 0 && (
+                                <div style={{ display: 'grid', gap: 8, marginTop: 10 }}>
+                                  {(nearbyStoreServices[s.id] || []).map((svc) => (
+                                    <div
+                                      key={svc.id}
+                                      style={{
+                                        display: 'flex',
+                                        justifyContent: 'space-between',
+                                        alignItems: 'center',
+                                        gap: 12,
+                                        padding: '10px 12px',
+                                        borderRadius: 12,
+                                        background: 'var(--surface)',
+                                        border: '1px solid var(--border)',
+                                      }}
+                                    >
+                                      <div style={{ minWidth: 0 }}>
+                                        <div style={{ fontSize: 13, fontWeight: 600 }}>{svc.display_name || svc.name}</div>
+                                        {svc.display_description && (
+                                          <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 2 }}>
+                                            {svc.display_description}
+                                          </div>
+                                        )}
+                                        {svc.price != null && (
+                                          <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 4 }}>
+                                            {svc.price.toLocaleString()}{svc.currency_code ? ` ${svc.currency_code}` : ''}
+                                          </div>
+                                        )}
+                                      </div>
+                                      <button
+                                        className="btn btn-secondary btn-sm"
+                                        style={{ borderRadius: 16, fontSize: 11, padding: '2px 10px', flexShrink: 0 }}
+                                        onClick={() => void openBookingForStore(s, svc.id)}
+                                      >
+                                        {t('booking.confirm_btn', 'Book')}
+                                      </button>
+                                    </div>
+                                  ))}
+                                </div>
+                              )}
                             </div>
                           ))}
                         </div>
@@ -1424,8 +1507,14 @@ export default function GuardianMainPage() {
           supplierName={bookingStore.display_name || bookingStore.name}
           storeId={bookingStore.id}
           services={bookingStoreServices}
+          initialServiceId={bookingInitialServiceId}
           t={t}
-          onClose={() => { setBookingModalOpen(false); setBookingStore(null); setBookingStoreServices([]); }}
+          onClose={() => {
+            setBookingModalOpen(false);
+            setBookingStore(null);
+            setBookingStoreServices([]);
+            setBookingInitialServiceId('');
+          }}
           onSuccess={() => void loadAll(feedTab, { silent: true })}
         />
       )}

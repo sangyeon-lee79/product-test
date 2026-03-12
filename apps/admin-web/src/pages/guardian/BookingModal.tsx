@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { api, type Pet, type StoreService } from '../../lib/api';
 
 interface Props {
@@ -8,12 +8,24 @@ interface Props {
   supplierName: string;
   storeId?: string;
   services: StoreService[];
+  initialServiceId?: string;
   t: (key: string, fallback?: string) => string;
   onClose: () => void;
   onSuccess: () => void;
 }
 
-export default function BookingModal({ open, pets, supplierId, supplierName, storeId, services, t, onClose, onSuccess }: Props) {
+export default function BookingModal({
+  open,
+  pets,
+  supplierId,
+  supplierName,
+  storeId,
+  services,
+  initialServiceId,
+  t,
+  onClose,
+  onSuccess,
+}: Props) {
   const [selectedPetId, setSelectedPetId] = useState(pets[0]?.id || '');
   const [selectedServiceId, setSelectedServiceId] = useState('');
   const [serviceType, setServiceType] = useState('');
@@ -23,6 +35,20 @@ export default function BookingModal({ open, pets, supplierId, supplierName, sto
   const [requestNote, setRequestNote] = useState('');
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
+
+  useEffect(() => {
+    setSelectedPetId(pets[0]?.id || '');
+  }, [pets]);
+
+  useEffect(() => {
+    const nextServiceId = initialServiceId && services.some((svc) => svc.id === initialServiceId)
+      ? initialServiceId
+      : '';
+    setSelectedServiceId(nextServiceId);
+    const svc = services.find((item) => item.id === nextServiceId);
+    setServiceType(svc?.display_name || svc?.name || '');
+    setPrice(svc?.price ?? '');
+  }, [initialServiceId, services]);
 
   if (!open) return null;
 
