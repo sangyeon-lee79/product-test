@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { api, setTokens } from '../lib/api';
-import { getRoleHomePath, storeRole } from '../lib/auth';
+import { getRoleHomePath, storeRole, saveLastLoginMethod, getLastLoginMethod, type LoginMethod } from '../lib/auth';
 import { loginWithGoogle, getGoogleConfig } from '../lib/google';
 import { getKakaoConfig, loginWithKakao } from '../lib/kakao';
 import { getAppleConfig, loginWithApple } from '../lib/apple';
@@ -22,6 +22,7 @@ export default function Login() {
   const [googleAvailable, setGoogleAvailable] = useState(false);
   const [kakaoAvailable, setKakaoAvailable] = useState(false);
   const [appleAvailable, setAppleAvailable] = useState(false);
+  const lastLogin = useMemo(() => getLastLoginMethod(), []);
   const title = useMemo(() => (forcedAdmin ? t('admin.login.console', 'Admin Console') : t('public.login.title', '로그인')), [forcedAdmin, t]);
 
   function uiErrorMessage(err: unknown): string {
@@ -35,9 +36,10 @@ export default function Login() {
     return t('admin.login.error', '로그인에 실패했습니다.');
   }
 
-  async function completeLogin(data: { access_token: string; refresh_token: string; role: string }) {
+  async function completeLogin(data: { access_token: string; refresh_token: string; role: string }, method?: LoginMethod) {
     setTokens(data.access_token, data.refresh_token);
     storeRole(data.role);
+    if (method) saveLastLoginMethod(method);
     navigate(getRoleHomePath(data.role), { replace: true });
   }
 
@@ -56,7 +58,7 @@ export default function Login() {
     setLoadingMode('password');
     setError('');
     api.oauthLogin(result.provider, result.code)
-      .then(data => completeLogin(data))
+      .then(data => completeLogin(data, result.provider as LoginMethod))
       .catch(err => setError(uiErrorMessage(err)))
       .finally(() => setLoadingMode(''));
   }, []);
@@ -77,7 +79,7 @@ export default function Login() {
     setError('');
     try {
       const data = await api.login(email, password);
-      await completeLogin(data);
+      await completeLogin(data, 'email');
     } catch (err) {
       setError(uiErrorMessage(err));
     } finally {
@@ -95,44 +97,77 @@ export default function Login() {
             <p>{title}</p>
           </div>
           {error && <div className="alert alert-error">{error}</div>}
+
+          {/* Last-used login method — prominent top button */}
+          {lastLogin && !forcedAdmin && (
+            <div className="last-login-section">
+              <div className="last-login-hint">💡 {t('login.last_used', 'Last used login')}</div>
+              {lastLogin === 'google' && googleAvailable && (
+                <button className="oauth-btn oauth-btn-google last-login-primary" onClick={() => handleOAuthRedirect('google')} disabled={loadingMode !== ''} type="button">
+                  {t('login.continue_with_google', 'Continue with Google')}
+                  <span className="last-login-badge">{t('login.last_used_badge', 'Last used')}</span>
+                </button>
+              )}
+              {lastLogin === 'kakao' && kakaoAvailable && (
+                <button className="oauth-btn oauth-btn-kakao last-login-primary" onClick={() => handleOAuthRedirect('kakao')} disabled={loadingMode !== ''} type="button">
+                  {t('login.continue_with_kakao', 'Continue with Kakao')}
+                  <span className="last-login-badge">{t('login.last_used_badge', 'Last used')}</span>
+                </button>
+              )}
+              {lastLogin === 'apple' && appleAvailable && (
+                <button className="oauth-btn oauth-btn-apple last-login-primary" onClick={() => handleOAuthRedirect('apple')} disabled={loadingMode !== ''} type="button">
+                  {t('login.continue_with_apple', 'Continue with Apple')}
+                  <span className="last-login-badge">{t('login.last_used_badge', 'Last used')}</span>
+                </button>
+              )}
+              {lastLogin === 'email' && (
+                <div className="last-login-email-hint">{t('login.continue_with_email', 'Continue with Email')}</div>
+              )}
+              <div className="last-login-divider"><span>{t('login.other_methods', 'Other login methods')}</span></div>
+            </div>
+          )}
+
           <form onSubmit={handlePasswordLogin}>
-            <div className="form-group">
-              <label className="form-label">{t('public.login.email', 'Email')}</label>
-              <input
-                className="form-input"
-                type="email"
-                value={email}
-                onChange={e => setEmail(e.target.value)}
-                required
-                placeholder={forcedAdmin ? 'admin@petlife.com' : 'name@example.com'}
-              />
-            </div>
-            <div className="form-group">
-              <label className="form-label">{t('public.login.password', '비밀번호')}</label>
-              <input
-                className="form-input"
-                type="password"
-                value={password}
-                onChange={e => setPassword(e.target.value)}
-                placeholder="********"
-              />
-            </div>
+            {(lastLogin !== 'email' || forcedAdmin) && (
+              <>
+                <div className="form-group">
+                  <label className="form-label">{t('public.login.email', 'Email')}</label>
+                  <input className="form-input" type="email" value={email} onChange={e => setEmail(e.target.value)} required placeholder={forcedAdmin ? 'admin@petlife.com' : 'name@example.com'} />
+                </div>
+                <div className="form-group">
+                  <label className="form-label">{t('public.login.password', '비밀번호')}</label>
+                  <input className="form-input" type="password" value={password} onChange={e => setPassword(e.target.value)} placeholder="********" />
+                </div>
+              </>
+            )}
+            {lastLogin === 'email' && !forcedAdmin && (
+              <>
+                <div className="form-group">
+                  <label className="form-label">{t('public.login.email', 'Email')}</label>
+                  <input className="form-input" type="email" value={email} onChange={e => setEmail(e.target.value)} required placeholder="name@example.com" autoFocus />
+                </div>
+                <div className="form-group">
+                  <label className="form-label">{t('public.login.password', '비밀번호')}</label>
+                  <input className="form-input" type="password" value={password} onChange={e => setPassword(e.target.value)} placeholder="********" />
+                </div>
+              </>
+            )}
             <div style={{ display: 'grid', gap: 10 }}>
               <button className="btn btn-primary" type="submit" disabled={loadingMode !== ''} style={{ width: '100%', justifyContent: 'center' }}>
                 {loadingMode === 'password' ? t('admin.login.loading', '로그인 중...') : t('public.login.submit_password', '이메일 로그인')}
               </button>
-              <div className="oauth-buttons">
-                {googleAvailable && (
+              <div className="oauth-buttons" style={lastLogin ? { opacity: lastLogin === 'email' ? 1 : 0.7 } : undefined}>
+                {googleAvailable && lastLogin !== 'google' && (
                   <button className="oauth-btn oauth-btn-google" onClick={() => handleOAuthRedirect('google')} disabled={loadingMode !== ''} type="button">
                     {t('public.login.google', 'Google 로그인')}
                   </button>
                 )}
-                {kakaoAvailable && (
+                {kakaoAvailable && lastLogin !== 'kakao' && (
                   <button className="oauth-btn oauth-btn-kakao" onClick={() => handleOAuthRedirect('kakao')} disabled={loadingMode !== ''} type="button">
                     {t('public.login.kakao', '카카오 로그인')}
                   </button>
                 )}
-                {appleAvailable && (
+                {appleAvailable && lastLogin !== 'apple' && (
                   <button className="oauth-btn oauth-btn-apple" onClick={() => handleOAuthRedirect('apple')} disabled={loadingMode !== ''} type="button">
                     {t('public.login.apple', 'Apple로 로그인')}
                   </button>
@@ -140,9 +175,6 @@ export default function Login() {
               </div>
             </div>
           </form>
-          <p className="text-muted text-sm mt-3" style={{ textAlign: 'center' }}>
-            {t('public.login.dev_note', 'Google 로그인과 이메일 로그인을 모두 사용할 수 있습니다.')}
-          </p>
           {!forcedAdmin && (
             <p className="text-sm mt-3" style={{ textAlign: 'center' }}>
               {t('public.login.no_account', "Don't have an account?")} <Link to="/signup">{t('public.signup.title', 'Sign up')}</Link>

@@ -261,7 +261,7 @@ export default function PublicHome() {
     setFriendMessage('');
     setFriendRequestSent(false);
     try {
-      const res = await api.friends.search(email);
+      const res = await api.friends.search(email, lang);
       if (!res.user) {
         setFriendMessage(t('friends.search.not_found', 'No user found with this email'));
       } else {

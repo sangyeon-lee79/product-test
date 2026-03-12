@@ -499,8 +499,8 @@ export const api = {
     },
   },
   friends: {
-    search: (email: string) =>
-      request<{ user: FriendSearchResult | null }>(`/api/v1/friends/search${buildQuery({ email })}`),
+    search: (email: string, lang?: string) =>
+      request<{ user: FriendSearchResult | null }>(`/api/v1/friends/search${buildQuery({ email, lang })}`),
     list: () =>
       request<{ friends: FriendConnection[] }>('/api/v1/friends'),
     pets: () =>

@@ -42,3 +42,15 @@ export function getRoleHomePath(role: string): '/admin' | '/guardian' | '/suppli
   if (normalized === 'provider') return '/supplier';
   return '/guardian';
 }
+
+/* ── Last login method tracking ──────────────────────────── */
+export type LoginMethod = 'google' | 'kakao' | 'apple' | 'email';
+const LAST_LOGIN_KEY = 'petfolio_last_login';
+
+export function saveLastLoginMethod(method: LoginMethod) {
+  localStorage.setItem(LAST_LOGIN_KEY, method);
+}
+
+export function getLastLoginMethod(): LoginMethod | null {
+  return localStorage.getItem(LAST_LOGIN_KEY) as LoginMethod | null;
+}

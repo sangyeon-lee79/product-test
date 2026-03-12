@@ -57,11 +57,16 @@ async function searchUser(env: Env, me: JwtPayload, url: URL): Promise<Response>
     }
   }
 
-  // Profile + account details
+  // Profile + account details (with localized country name)
+  const langParam = (url.searchParams.get('lang') || 'ko').toLowerCase();
+  const langCol = ['ko','en','ja','zh_cn','zh_tw','es','fr','de','pt','vi','th','id_lang','ar'].includes(langParam) ? langParam : 'ko';
   const profile = await env.DB.prepare(
     `SELECT COALESCE(up.display_name, u.email) AS display_name,
             up.avatar_url,
-            c.name_key AS country_name,
+            COALESCE(
+              (SELECT it.${langCol} FROM i18n_translations it WHERE it.key = c.name_key LIMIT 1),
+              c.name_key
+            ) AS country_name,
             uad.region_text
      FROM users u
      LEFT JOIN user_profiles up ON up.user_id = u.id

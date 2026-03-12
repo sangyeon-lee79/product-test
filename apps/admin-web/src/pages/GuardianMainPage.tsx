@@ -1407,6 +1407,7 @@ export default function GuardianMainPage() {
         open={friendsModalOpen}
         initialTab={friendsModalTab}
         pendingRequests={pendingRequests}
+        lang={lang}
         t={t}
         setError={setError}
         onClose={() => setFriendsModalOpen(false)}

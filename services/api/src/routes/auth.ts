@@ -478,18 +478,18 @@ async function upsertOAuthUser(
   if (existing?.id) {
     await env.DB.prepare(
       `UPDATE users
-       SET email = ?, oauth_provider = ?, oauth_id = ?, status = 'active', updated_at = ?
+       SET email = ?, oauth_provider = ?, oauth_id = ?, status = 'active', last_login_provider = ?, last_login_at = ?, updated_at = ?
        WHERE id = ?`
-    ).bind(email || null, provider, oauthId, ts, existing.id).run();
+    ).bind(email || null, provider, oauthId, provider, ts, ts, existing.id).run();
     await ensureOAuthProfile(env, existing.id, email, displayName, pictureUrl);
     return { id: existing.id, role, email };
   }
 
   const userId = newId();
   await env.DB.prepare(
-    `INSERT INTO users (id, email, password_hash, role, oauth_provider, oauth_id, status, created_at, updated_at)
-     VALUES (?, ?, NULL, 'guardian', ?, ?, 'active', ?, ?)`
-  ).bind(userId, email || null, provider, oauthId, ts, ts).run();
+    `INSERT INTO users (id, email, password_hash, role, oauth_provider, oauth_id, status, last_login_provider, last_login_at, created_at, updated_at)
+     VALUES (?, ?, NULL, 'guardian', ?, ?, 'active', ?, ?, ?, ?)`
+  ).bind(userId, email || null, provider, oauthId, provider, ts, ts, ts).run();
 
   await ensureOAuthProfile(env, userId, email, displayName, pictureUrl);
   return { id: userId, role: 'guardian', email };
@@ -833,6 +833,9 @@ async function passwordLogin(request: Request, env: Env): Promise<Response> {
   if (!user?.id || !user.password_hash) return err('invalid email or password', 401);
   if ((user.status || 'active') !== 'active') return err('account is not active', 403);
   if (!await verifyPassword(password, user.password_hash)) return err('invalid email or password', 401);
+
+  // Track last login provider
+  try { await env.DB.prepare('UPDATE users SET last_login_provider = ?, last_login_at = ? WHERE id = ?').bind('email', now(), user.id).run(); } catch { /* ignore if column missing */ }
 
   const tokens = await issueTokens(user.id, user.role as JwtPayload['role'], env.JWT_SECRET);
   return created({ user_id: user.id, role: user.role, ...tokens });

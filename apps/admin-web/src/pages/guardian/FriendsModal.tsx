@@ -8,6 +8,7 @@ interface Props {
   open: boolean;
   initialTab?: FriendsTab;
   pendingRequests: FriendRequest[];
+  lang?: string;
   t: (key: string, fallback?: string) => string;
   setError: (msg: string) => void;
   onClose: () => void;
@@ -39,7 +40,7 @@ function petEmoji(typeCode: string | null | undefined): string {
   return '🐾';
 }
 
-export default function FriendsModal({ open, initialTab = 'friends', pendingRequests, t, setError, onClose, onSuccess }: Props) {
+export default function FriendsModal({ open, initialTab = 'friends', pendingRequests, lang, t, setError, onClose, onSuccess }: Props) {
   const [tab, setTab] = useState<FriendsTab>(initialTab);
   const [friends, setFriends] = useState<FriendConnection[]>([]);
   const [loadingFriends, setLoadingFriends] = useState(false);
@@ -107,7 +108,7 @@ export default function FriendsModal({ open, initialTab = 'friends', pendingRequ
     setSearchError(null);
     setRequestSent(false);
     try {
-      const res = await api.friends.search(trimmed);
+      const res = await api.friends.search(trimmed, lang);
       if (!res.user) {
         setSearchError(t('friends.search.not_found', 'No user found with this email'));
       } else {

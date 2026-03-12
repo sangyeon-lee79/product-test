@@ -41,7 +41,7 @@ export function getInitialLang(storageKey: string): Lang {
 /**
  * 번역 키가 유효한지 검증하는 패턴 (API 및 Admin에서 사용)
  */
-export const KEY_LITERAL_PATTERN = /^(master|admin|platform|guardian|common|public)\.[a-z0-9_.-]+$/i;
+export const KEY_LITERAL_PATTERN = /^(master|admin|platform|guardian|common|public|friend|friends|notification|profile)\.[a-z0-9_.-]+$/i;
 
 /**
  * 번역 누락 시 기본값 처리

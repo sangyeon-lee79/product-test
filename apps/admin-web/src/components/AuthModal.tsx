@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { api, setTokens, type MasterItem } from '../lib/api';
 import { getApiBase } from '../lib/apiBase';
-import { getRoleHomePath, storeRole } from '../lib/auth';
+import { getRoleHomePath, storeRole, saveLastLoginMethod, getLastLoginMethod, type LoginMethod } from '../lib/auth';
 import { loginWithGoogle, getGoogleConfig } from '../lib/google';
 import { getKakaoConfig, loginWithKakao } from '../lib/kakao';
 import { getAppleConfig, loginWithApple } from '../lib/apple';
@@ -160,7 +160,7 @@ export default function AuthModal({ open, initialMode, onClose, onSuccess }: Aut
       setLoginLoading(true);
       setLoginError('');
       api.oauthLogin(provider, code)
-        .then(data => completeAuth(data))
+        .then(data => completeAuth(data, provider as LoginMethod))
         .catch(e => setLoginError(e instanceof Error ? e.message : t('public.signup.sns_fail', 'SNS 로그인에 실패했습니다.')))
         .finally(() => setLoginLoading(false));
     }
@@ -188,9 +188,10 @@ export default function AuthModal({ open, initialMode, onClose, onSuccess }: Aut
     return t('admin.login.error', '로그인에 실패했습니다.');
   }
 
-  function completeAuth(data: { access_token: string; refresh_token: string; role: string }) {
+  function completeAuth(data: { access_token: string; refresh_token: string; role: string }, method?: LoginMethod) {
     setTokens(data.access_token, data.refresh_token);
     storeRole(data.role);
+    if (method) saveLastLoginMethod(method);
     onSuccess();
     navigate(getRoleHomePath(data.role), { replace: true });
   }
@@ -201,7 +202,7 @@ export default function AuthModal({ open, initialMode, onClose, onSuccess }: Aut
     setLoginError('');
     try {
       const data = await api.login(loginEmail, loginPassword);
-      completeAuth(data);
+      completeAuth(data, 'email');
     } catch (err) {
       setLoginError(uiErrorMessage(err));
     } finally {
@@ -384,6 +385,7 @@ export default function AuthModal({ open, initialMode, onClose, onSuccess }: Aut
   // RENDER: Login mode
   // ═══════════════════════════════════
   function renderLogin() {
+    const lastLogin = getLastLoginMethod();
     return (
       <>
         <div className="login-logo" style={{ marginBottom: 20 }}>
@@ -392,6 +394,35 @@ export default function AuthModal({ open, initialMode, onClose, onSuccess }: Aut
         </div>
 
         {loginError && <div className="alert alert-error">{loginError}</div>}
+
+        {/* Last-used login method — prominent top section */}
+        {lastLogin && (
+          <div className="last-login-section">
+            <div className="last-login-hint">💡 {t('login.last_used', 'Last used login')}</div>
+            {lastLogin === 'google' && googleAvailable && (
+              <button className="oauth-btn oauth-btn-google last-login-primary" onClick={() => handleOAuthRedirect('google', 'login')} disabled={loginLoading} type="button">
+                {t('login.continue_with_google', 'Continue with Google')}
+                <span className="last-login-badge">{t('login.last_used_badge', 'Last used')}</span>
+              </button>
+            )}
+            {lastLogin === 'kakao' && kakaoAvailable && (
+              <button className="oauth-btn oauth-btn-kakao last-login-primary" onClick={() => handleOAuthRedirect('kakao', 'login')} disabled={loginLoading} type="button">
+                {t('login.continue_with_kakao', 'Continue with Kakao')}
+                <span className="last-login-badge">{t('login.last_used_badge', 'Last used')}</span>
+              </button>
+            )}
+            {lastLogin === 'apple' && appleAvailable && (
+              <button className="oauth-btn oauth-btn-apple last-login-primary" onClick={() => handleOAuthRedirect('apple', 'login')} disabled={loginLoading} type="button">
+                {t('login.continue_with_apple', 'Continue with Apple')}
+                <span className="last-login-badge">{t('login.last_used_badge', 'Last used')}</span>
+              </button>
+            )}
+            {lastLogin === 'email' && (
+              <div className="last-login-email-hint">{t('login.continue_with_email', 'Continue with Email')}</div>
+            )}
+            <div className="last-login-divider"><span>{t('login.other_methods', 'Other login methods')}</span></div>
+          </div>
+        )}
 
         <form onSubmit={handlePasswordLogin}>
           <div className="form-group">
@@ -406,18 +437,18 @@ export default function AuthModal({ open, initialMode, onClose, onSuccess }: Aut
             <button className="btn btn-primary" type="submit" disabled={loginLoading} style={{ width: '100%', justifyContent: 'center' }}>
               {loginLoading ? t('admin.login.loading', '로그인 중...') : t('public.login.submit_password', '이메일 로그인')}
             </button>
-            <div className="oauth-buttons">
-              {googleAvailable && (
+            <div className="oauth-buttons" style={lastLogin && lastLogin !== 'email' ? { opacity: 0.7 } : undefined}>
+              {googleAvailable && lastLogin !== 'google' && (
                 <button className="oauth-btn oauth-btn-google" onClick={() => handleOAuthRedirect('google', 'login')} disabled={loginLoading} type="button">
                   {t('public.login.google', 'Google 로그인')}
                 </button>
               )}
-              {kakaoAvailable && (
+              {kakaoAvailable && lastLogin !== 'kakao' && (
                 <button className="oauth-btn oauth-btn-kakao" onClick={() => handleOAuthRedirect('kakao', 'login')} disabled={loginLoading} type="button">
                   {t('public.login.kakao', '카카오 로그인')}
                 </button>
               )}
-              {appleAvailable && (
+              {appleAvailable && lastLogin !== 'apple' && (
                 <button className="oauth-btn oauth-btn-apple" onClick={() => handleOAuthRedirect('apple', 'login')} disabled={loginLoading} type="button">
                   {t('public.login.apple', 'Apple로 로그인')}
                 </button>

@@ -1,80 +1,142 @@
-import { NavLink, useNavigate } from 'react-router-dom';
+import { useState } from 'react';
+import { NavLink, useNavigate, useLocation } from 'react-router-dom';
 import { logout, getStoredRole } from '../lib/auth';
 import { useT, useI18n, SUPPORTED_LANGS, LANG_LABELS } from '../lib/i18n';
+import { BCP47_LOCALE_MAP, type Lang } from '@petfolio/shared';
+
+const PAGE_TITLES: Record<string, string> = {
+  '/admin': 'admin.nav.dashboard',
+  '/admin/i18n': 'admin.nav.i18n',
+  '/admin/master': 'admin.nav.master',
+  '/admin/countries': 'admin.nav.countries',
+  '/admin/devices': 'admin.nav.devices',
+  '/admin/feeds': 'admin.nav.feeds',
+  '/admin/supplements': 'admin.nav.supplements',
+  '/admin/medicines': 'admin.nav.medicines',
+  '/admin/members': 'admin.nav.members',
+  '/admin/api-connections': 'admin.nav.api_connections',
+  '/admin/ads': 'admin.nav.ads',
+};
 
 export default function Layout({ children }: { children: React.ReactNode }) {
   const navigate = useNavigate();
+  const location = useLocation();
   const t = useT();
   const { lang, setLang } = useI18n();
+  const locale = BCP47_LOCALE_MAP[lang as Lang] || 'en-US';
+  const [sidebarOpen, setSidebarOpen] = useState(false);
+
+  const role = getStoredRole() || 'admin';
+  const today = new Date().toLocaleDateString(locale, { year: 'numeric', month: 'short', day: 'numeric' });
+
+  // Resolve hash path
+  const hashPath = location.pathname;
+  const titleKey = PAGE_TITLES[hashPath] || 'admin.nav.dashboard';
+  const pageTitle = t(titleKey, 'Dashboard');
 
   const NAV = [
-    { section: t('admin.section.dashboard', '대시보드'), items: [
-      { to: '/admin', icon: '📊', label: t('admin.nav.dashboard', '분석 대시보드') },
+    { section: t('admin.section.overview', 'Overview'), items: [
+      { to: '/admin', icon: '📊', label: t('admin.nav.dashboard', 'Dashboard') },
     ]},
-    { section: t('admin.section.data', '데이터 관리'), items: [
-      { to: '/admin/i18n',      icon: '🌐', label: t('admin.nav.i18n',          '언어 관리') },
-      { to: '/admin/master',    icon: '🗂', label: t('admin.nav.master',        '마스터 데이터') },
-      { to: '/admin/countries', icon: '🌍', label: t('admin.nav.countries',     '국가 / 통화') },
-      { to: '/admin/devices',   icon: '🔬', label: t('admin.nav.devices',       '장치 관리') },
-      { to: '/admin/feeds',     icon: '🥣', label: t('admin.nav.feeds',         '사료 관리') },
-      { to: '/admin/supplements', icon: '💊', label: t('admin.nav.supplements', '영양제 관리') },
-      { to: '/admin/medicines',   icon: '💉', label: t('admin.nav.medicines',    '약품 관리') },
-      { to: '/admin/members',   icon: '👥', label: t('admin.nav.members',       '회원 관리') },
-      { to: '/admin/api-connections', icon: '🔗', label: t('admin.nav.api_connections', 'API 연결') },
+    { section: t('admin.section.users', 'Users'), items: [
+      { to: '/admin/members', icon: '👥', label: t('admin.nav.members', 'User Management'), badge: null as number | null },
+      { to: '/admin/ads', icon: '🏪', label: t('admin.nav.provider_mgmt', 'Provider Management') },
     ]},
-    { section: t('admin.section.ads', '광고 / 운영'), items: [
-      { to: '/admin/ads', icon: '📢', label: t('admin.nav.ads', '광고 설정') },
+    { section: t('admin.section.content', 'Content'), items: [
+      { to: '/admin/feeds', icon: '📝', label: t('admin.nav.feed_mgmt', 'Feed Management') },
+      { to: '/admin/ads', icon: '📢', label: t('admin.nav.ads', 'Ad Management') },
+    ]},
+    { section: t('admin.section.master_data', 'Master Data'), items: [
+      { to: '/admin/feeds', icon: '🥣', label: t('admin.nav.feeds', 'Feed Catalog') },
+      { to: '/admin/supplements', icon: '💊', label: t('admin.nav.supplements', 'Supplements / Medicine') },
+      { to: '/admin/medicines', icon: '💉', label: t('admin.nav.medicines', 'Medicine') },
+      { to: '/admin/master', icon: '🗂', label: t('admin.nav.master', 'Breed Data') },
+      { to: '/admin/devices', icon: '🔬', label: t('admin.nav.devices', 'Device Management') },
+      { to: '/admin/countries', icon: '🌍', label: t('admin.nav.countries', 'Countries / Currency') },
+      { to: '/admin/i18n', icon: '🌐', label: t('admin.nav.i18n', 'i18n Translations') },
+    ]},
+    { section: t('admin.section.system', 'System'), items: [
+      { to: '/admin/api-connections', icon: '⚙️', label: t('admin.nav.api_connections', 'Settings') },
     ]},
   ];
 
   return (
     <div className="layout">
-      <aside className="sidebar">
+      {/* Sidebar backdrop (mobile) */}
+      <div
+        className={`sidebar-backdrop${sidebarOpen ? ' open' : ''}`}
+        onClick={() => setSidebarOpen(false)}
+      />
+
+      {/* Sidebar */}
+      <aside className={`sidebar${sidebarOpen ? ' open' : ''}`}>
         <div className="sidebar-logo">
-          🐾 {t('platform.name', 'Petfolio')}
-          <span>{t('admin.login.console', 'Admin Console')}</span>
-          <span className="sidebar-tagline">{t('platform.tagline', "Your pet's life portfolio")}</span>
+          <div className="sidebar-logo-name">Petfolio<span className="sidebar-logo-dot">.</span></div>
+          <div className="sidebar-logo-sub">{t('admin.login.console', 'Admin Console')}</div>
         </div>
+
         <nav className="sidebar-nav">
           {NAV.map(group => (
             <div key={group.section}>
               <div className="nav-section">{group.section}</div>
               {group.items.map(item => (
                 <NavLink
-                  key={item.to}
+                  key={item.to + item.label}
                   to={item.to}
                   end={item.to === '/admin'}
                   className={({ isActive }) => `nav-item${isActive ? ' active' : ''}`}
+                  onClick={() => setSidebarOpen(false)}
                 >
                   <span className="nav-icon">{item.icon}</span>
                   {item.label}
+                  {'badge' in item && item.badge != null && item.badge > 0 && (
+                    <span className="nav-badge">{item.badge}</span>
+                  )}
                 </NavLink>
               ))}
             </div>
           ))}
         </nav>
+
+        {/* Profile */}
+        <div className="sidebar-profile">
+          <div className="sidebar-profile-avatar">{role[0].toUpperCase()}</div>
+          <div className="sidebar-profile-info">
+            <div className="sidebar-profile-name">{role}</div>
+            <div className="sidebar-profile-role">{t('admin.common.account', 'Account')}</div>
+          </div>
+        </div>
+
+        {/* Footer */}
         <div className="sidebar-footer">
           <select
             value={lang}
             onChange={e => setLang(e.target.value as typeof lang)}
-            style={{ width: '100%', marginBottom: 8, background: '#1e1e2e', border: '1px solid #333', color: '#ccc', padding: '4px 6px', borderRadius: 4, fontSize: 12 }}
           >
             {SUPPORTED_LANGS.map(l => (
               <option key={l} value={l}>{LANG_LABELS[l]}</option>
             ))}
           </select>
-          <div>{getStoredRole()} {t('admin.common.account', '계정')}</div>
-          <button className="nav-item" style={{ padding: '6px 0', marginTop: 4 }}
-            onClick={() => { logout(); navigate('/', { replace: true }); }}>
-            {t('admin.common.logout', '로그아웃')}
+          <button className="nav-item" onClick={() => { logout(); navigate('/', { replace: true }); }}>
+            {t('admin.common.logout', 'Logout')}
           </button>
         </div>
       </aside>
+
+      {/* Main */}
       <main className="main">
-        <div className="brand-strip">
-          <strong>{t('platform.name', 'Petfolio')}</strong>
-          <span>{t('platform.tagline', "Your pet's life portfolio")}</span>
-        </div>
+        <header className="topbar">
+          <button className="topbar-hamburger" onClick={() => setSidebarOpen(v => !v)}>☰</button>
+          <h1 className="topbar-title">{pageTitle}</h1>
+          <div className="topbar-search">
+            <input placeholder={t('admin.topbar.search', 'Search...')} readOnly />
+          </div>
+          <button className="topbar-notif">
+            🔔
+            <span className="topbar-notif-dot" />
+          </button>
+          <span className="topbar-date">{today}</span>
+        </header>
         {children}
       </main>
     </div>

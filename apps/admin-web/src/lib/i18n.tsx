@@ -16,6 +16,8 @@ import {
 
 const API_BASE = getApiBase();
 const STORAGE_KEY = 'admin_lang';
+const IS_DEV = import.meta.env.DEV;
+const _warnedKeys = new Set<string>();
 
 interface I18nCtx {
   t: (key: string, fallback?: string) => string;
@@ -50,7 +52,7 @@ export function I18nProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     setIsLoaded(false);
     // 병합이 필요한 프리픽스 정의
-    const prefixes = ['admin', 'master', 'platform', 'guardian', 'common', 'public'];
+    const prefixes = ['admin', 'master', 'platform', 'guardian', 'common', 'public', 'friend', 'notification'];
     
     Promise.all(
       prefixes.map(prefix => 
@@ -79,6 +81,10 @@ export function I18nProvider({ children }: { children: ReactNode }) {
   };
 
   const t = (key: string, fallback?: string) => {
+    if (IS_DEV && isLoaded && !(key in trans) && !_warnedKeys.has(key)) {
+      _warnedKeys.add(key);
+      console.warn(`[i18n] missing key: "${key}"${fallback ? ` (fallback: "${fallback}")` : ''}`);
+    }
     return getTranslation(trans, key, lang, MISSING_TRANSLATION_MAP, fallback);
   };
 

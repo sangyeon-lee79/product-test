@@ -1,15 +1,14 @@
 import { useEffect, useState, type ReactNode } from 'react';
+import { Link } from 'react-router-dom';
 import { api } from '../lib/api';
 import type { DashboardStats, StoreStats } from '../types/api';
 import { useT, useI18n } from '../lib/i18n';
 import {
   BarChart, Bar, PieChart, Pie, Cell, LineChart, Line,
-  XAxis, YAxis, Tooltip, ResponsiveContainer, Legend,
+  XAxis, YAxis, Tooltip, ResponsiveContainer,
 } from 'recharts';
-// Pie label render props — use explicit type to avoid recharts type mismatch
 
-
-const COLORS = ['#D97706', '#F59E0B', '#92400E', '#78716C', '#38A169', '#3B82F6', '#8B5CF6', '#EC4899', '#14B8A6', '#F97316'];
+const COLORS = ['#F5823A', '#4A7CF7', '#4CAF7D', '#9B5DE5', '#FF4D4D', '#F59E0B', '#14B8A6', '#EC4899', '#6366F1', '#78716C'];
 const PERIODS = ['today', '7d', '30d', '3m'] as const;
 const PET_TYPES = ['all', 'dog', 'cat', 'other'] as const;
 
@@ -23,6 +22,7 @@ export default function Dashboard() {
   const [error, setError] = useState('');
   const [health, setHealth] = useState<{ status: string; environment: string; services: Record<string, string> } | null>(null);
   const [storeStats, setStoreStats] = useState<StoreStats | null>(null);
+  const [bannerDismissed, setBannerDismissed] = useState(false);
 
   useEffect(() => {
     api.health().then(setHealth).catch(() => {});
@@ -38,288 +38,322 @@ export default function Dashboard() {
       .finally(() => setLoading(false));
   }, [period, petType, lang]);
 
-  const healthCards = [
-    { label: t('admin.dashboard.api_status', 'API'), value: health?.status === 'ok' ? 'OK' : health ? 'ERR' : '...', color: health?.status === 'ok' ? '#38a169' : '#e53e3e' },
-    { label: t('admin.dashboard.env', 'ENV'), value: health?.environment || '-', color: '#1a73e8' },
-    { label: t('admin.dashboard.db', 'DB'), value: health?.services?.db === 'connected' ? 'OK' : '...', color: health?.services?.db === 'connected' ? '#38a169' : '#d69e2e' },
-  ];
+  const totalUsers = stats?.members?.total_users ?? 0;
+  const activeGuardians = stats?.members?.active_guardians_30d ?? 0;
+  const totalStores = storeStats?.total ?? 0;
+  const newStores = storeStats?.new_30d ?? 0;
+  const apiOk = health?.status === 'ok';
+  const dbOk = health?.services?.db === 'connected';
 
   return (
-    <>
-      <div className="topbar">
-        <div className="topbar-title">Petfolio · {t('admin.dashboard.title', '분석 대시보드')}</div>
-      </div>
-      <div className="content">
-        {/* Filter bar */}
-        <div className="form-row col2 mb-4">
-          <label className="form-label">
-            {t('admin.dashboard.filter.period', '기간')}
-            <select className="form-select" value={period} onChange={e => setPeriod(e.target.value)}>
-              {PERIODS.map(p => (
-                <option key={p} value={p}>{t(`admin.dashboard.filter.${p}`, p)}</option>
-              ))}
-            </select>
-          </label>
-          <label className="form-label">
-            {t('admin.dashboard.filter.pet_type', '펫 종류')}
-            <select className="form-select" value={petType} onChange={e => setPetType(e.target.value)}>
-              {PET_TYPES.map(pt => (
-                <option key={pt} value={pt}>{t(`admin.dashboard.filter.${pt}`, pt)}</option>
-              ))}
-            </select>
-          </label>
+    <div className="content">
+      {/* Warning banner */}
+      {!bannerDismissed && (
+        <div className="ad-banner">
+          <span className="ad-banner-icon">⚠️</span>
+          <span className="ad-banner-text">
+            {t('admin.dashboard.system_notice', 'System running normally. Check the dashboard for latest metrics.')}
+          </span>
+          <button className="ad-banner-close" onClick={() => setBannerDismissed(true)}>&times;</button>
         </div>
+      )}
 
-        {/* System status */}
-        <div className="form-row col3 mb-4">
-          {healthCards.map(s => (
-            <div className="card" key={s.label}>
-              <div className="card-body" style={{ textAlign: 'center', padding: '16px' }}>
-                <div style={{ fontSize: 11, color: '#718096', textTransform: 'uppercase', letterSpacing: '.5px' }}>{s.label}</div>
-                <div style={{ fontSize: 20, fontWeight: 700, color: s.color, marginTop: 4 }}>{s.value}</div>
+      {/* Filter bar */}
+      <div style={{ display: 'flex', gap: 10, marginBottom: 20, flexWrap: 'wrap' }}>
+        <select className="form-select" style={{ width: 'auto', minWidth: 100 }} value={period} onChange={e => setPeriod(e.target.value)}>
+          {PERIODS.map(p => <option key={p} value={p}>{t(`admin.dashboard.filter.${p}`, p)}</option>)}
+        </select>
+        <select className="form-select" style={{ width: 'auto', minWidth: 100 }} value={petType} onChange={e => setPetType(e.target.value)}>
+          {PET_TYPES.map(pt => <option key={pt} value={pt}>{t(`admin.dashboard.filter.${pt}`, pt)}</option>)}
+        </select>
+      </div>
+
+      {error && <div className="alert alert-error">{error}</div>}
+
+      {/* ── 4 Stat Cards ── */}
+      <div className="ad-stats-row">
+        <StatCard
+          icon="👥" iconColor="amber"
+          label={t('admin.dashboard.member.total_users', 'Total Users')}
+          value={totalUsers}
+          change={activeGuardians > 0 ? `${activeGuardians} ${t('admin.dashboard.member.active_guardians', 'active')}` : undefined}
+          changeType="up"
+          color="amber"
+        />
+        <StatCard
+          icon="🐾" iconColor="green"
+          label={t('admin.dashboard.registered_pets', 'Registered Pets')}
+          value={stats?.members?.pet_type_dist?.reduce((s, d) => s + (d.count as number), 0) ?? 0}
+          color="green"
+        />
+        <StatCard
+          icon="🏪" iconColor="blue"
+          label={t('admin.dashboard.stores.total', 'Provider Stores')}
+          value={totalStores}
+          change={newStores > 0 ? `+${newStores} ${t('admin.dashboard.stores.new_short', 'new')}` : undefined}
+          changeType="up"
+          color="blue"
+        />
+        <StatCard
+          icon="📊" iconColor="purple"
+          label={t('admin.dashboard.system_status', 'System Status')}
+          value={apiOk && dbOk ? 'OK' : '...'}
+          color="purple"
+        />
+      </div>
+
+      {loading && <div style={{ textAlign: 'center', padding: 40, color: 'var(--mid)' }}>{t('common.loading', 'Loading...')}</div>}
+
+      {stats && !loading && (
+        <>
+          {/* ── Row 1: Charts 2-col ── */}
+          <div className="ad-grid-2">
+            {/* Signup trend */}
+            <div className="card">
+              <div className="card-header"><div className="card-title">{t('admin.dashboard.member.signup_trend', 'New Signups')}</div></div>
+              <div className="card-body">
+                {stats.members.signup_trend.length > 0
+                  ? <RBar data={stats.members.signup_trend} xKey="month" yKey="count" color="#F5823A" />
+                  : <NoData t={t} />}
               </div>
             </div>
-          ))}
-        </div>
 
-        {error && <div className="alert alert-error mb-4">{error}</div>}
-        {loading && <div style={{ textAlign: 'center', padding: 32, color: '#718096' }}>Loading...</div>}
+            {/* User composition */}
+            <div className="card">
+              <div className="card-header"><div className="card-title">{t('admin.dashboard.member.oauth_dist', 'User Composition')}</div></div>
+              <div className="card-body">
+                {stats.members.by_oauth.length > 0
+                  ? <RPie data={stats.members.by_oauth} nameKey="provider" valueKey="count" />
+                  : <NoData t={t} />}
+                {/* Conversion progress bars */}
+                <div style={{ marginTop: 16 }}>
+                  <ProgressBar
+                    label={t('admin.dashboard.member.active_ratio', 'Active Users')}
+                    value={activeGuardians} max={totalUsers} color="green"
+                  />
+                  <ProgressBar
+                    label={t('admin.dashboard.stores.active', 'Active Stores')}
+                    value={storeStats?.active ?? 0} max={totalStores || 1} color="blue"
+                  />
+                </div>
+              </div>
+            </div>
+          </div>
 
-        {stats && !loading && (
-          <>
-            {/* Section 1: Feeding */}
-            <SectionCard title={t('admin.dashboard.feeding.title', '급여 통계')}>
-              <div className="form-row col2 mb-4">
-                <ChartCard title={t('admin.dashboard.feeding.top5_feed', '사료 TOP 5')}>
+          {/* ── Row 2: Feeding + Exercise ── */}
+          <div className="ad-grid-2">
+            <div className="card">
+              <div className="card-header"><div className="card-title">{t('admin.dashboard.feeding.title', 'Feeding Statistics')}</div></div>
+              <div className="card-body">
+                <div className="ad-chart-card" style={{ marginBottom: 12 }}>
+                  <div className="ad-chart-title">{t('admin.dashboard.feeding.top5_feed', 'Top 5 Feeds')}</div>
                   {stats.feeding.top5_feeds.length > 0
                     ? <RBar data={stats.feeding.top5_feeds} xKey="name" yKey="count" />
                     : <NoData t={t} />}
-                </ChartCard>
-                <ChartCard title={t('admin.dashboard.feeding.manufacturer_ratio', '제조사별 사용 비율')}>
-                  {stats.feeding.manufacturer_ratio.length > 0
-                    ? <RPie data={stats.feeding.manufacturer_ratio} nameKey="name" valueKey="value" />
-                    : <NoData t={t} />}
-                </ChartCard>
-              </div>
-              <div className="form-row col3">
-                <ChartCard title={t('admin.dashboard.feeding.type_distribution', '사료유형별 분포')}>
+                </div>
+                <div className="ad-chart-card">
+                  <div className="ad-chart-title">{t('admin.dashboard.feeding.type_distribution', 'Type Distribution')}</div>
                   {stats.feeding.type_distribution.length > 0
                     ? <RPie data={stats.feeding.type_distribution} nameKey="type" valueKey="count" />
                     : <NoData t={t} />}
-                </ChartCard>
-                <ChartCard title={t('admin.dashboard.feeding.supplement_category', '영양제 카테고리별 빈도')}>
-                  {stats.feeding.supplement_category.length > 0
-                    ? <RBar data={stats.feeding.supplement_category} xKey="category" yKey="count" />
-                    : <NoData t={t} />}
-                </ChartCard>
-                <ChartCard title={t('admin.dashboard.feeding.daily_calories', '일평균 칼로리')}>
-                  <div style={{ textAlign: 'center', padding: '20px 0' }}>
-                    <div style={{ fontSize: 28, fontWeight: 700, color: '#D97706' }}>
-                      {stats.feeding.avg_daily_calories ?? '-'}
-                    </div>
-                    <div style={{ fontSize: 12, color: '#718096', marginTop: 4 }}>{t('admin.dashboard.kcal', 'kcal')}</div>
-                    <div style={{ fontSize: 12, color: '#718096', marginTop: 8 }}>
-                      {t('admin.dashboard.feeding.prescribed_ratio', '처방 영양제 비율')}: {stats.feeding.prescribed_ratio.total > 0
-                        ? `${Math.round(stats.feeding.prescribed_ratio.prescribed / stats.feeding.prescribed_ratio.total * 100)}%`
-                        : '-'}
-                    </div>
-                  </div>
-                </ChartCard>
-              </div>
-            </SectionCard>
-
-            {/* Section 2: Exercise */}
-            <SectionCard title={t('admin.dashboard.exercise.title', '운동 통계')}>
-              <div className="form-row col2 mb-4">
-                <ChartCard title={t('admin.dashboard.exercise.type_count', '운동 종류별 기록 건수')}>
-                  {stats.exercise.type_count.length > 0
-                    ? <RBar data={stats.exercise.type_count} xKey="type" yKey="count" />
-                    : <NoData t={t} />}
-                </ChartCard>
-                <ChartCard title={t('admin.dashboard.exercise.avg_duration', '평균 운동 시간')}>
-                  {stats.exercise.avg_duration.length > 0
-                    ? <RBar data={stats.exercise.avg_duration} xKey="type" yKey="avg_min" color="#38A169" />
-                    : <NoData t={t} />}
-                </ChartCard>
-              </div>
-              <div className="form-row col2 mb-4">
-                <ChartCard title={t('admin.dashboard.exercise.intensity_dist', '강도 분포')}>
-                  {stats.exercise.intensity_dist.length > 0
-                    ? <RPie data={stats.exercise.intensity_dist} nameKey="intensity" valueKey="count" />
-                    : <NoData t={t} />}
-                </ChartCard>
-                <ChartCard title={t('admin.dashboard.exercise.location_dist', '장소 분포')}>
-                  {stats.exercise.location_dist.length > 0
-                    ? <RPie data={stats.exercise.location_dist} nameKey="location" valueKey="count" />
-                    : <NoData t={t} />}
-                </ChartCard>
-              </div>
-              <ChartCard title={t('admin.dashboard.exercise.monthly_trend', '월별 운동 기록 추이')}>
-                {stats.exercise.monthly_trend.length > 0
-                  ? <RLine data={stats.exercise.monthly_trend} xKey="month" yKey="count" />
-                  : <NoData t={t} />}
-              </ChartCard>
-              <div style={{ marginTop: 12 }}>
-                <ChartCard title={t('admin.dashboard.exercise.pet_type_compare', '펫 종별 운동 패턴 비교')}>
-                  {stats.exercise.pet_type_compare.length > 0
-                    ? <RBar data={stats.exercise.pet_type_compare.map(d => ({
-                        name: `${d.pet_type} - ${d.exercise_type}`,
-                        count: d.count,
-                      }))} xKey="name" yKey="count" color="#8B5CF6" />
-                    : <NoData t={t} />}
-                </ChartCard>
-              </div>
-            </SectionCard>
-
-            {/* Section 3: Health */}
-            <SectionCard title={t('admin.dashboard.health.title', '건강 수치')}>
-              <ChartCard title={t('admin.dashboard.health.weight_trend', '전체 평균 체중 추이')}>
-                {stats.health.weight_trend.length > 0
-                  ? <RLine data={stats.health.weight_trend} xKey="date" yKey="avg_weight" color="#D97706" />
-                  : <NoData t={t} />}
-              </ChartCard>
-              <div className="form-row col2" style={{ marginTop: 12 }}>
-                <ChartCard title={t('admin.dashboard.health.weight_by_size', '펫 종/사이즈별 평균 체중')}>
-                  {stats.health.weight_by_size.length > 0
-                    ? <RBar data={stats.health.weight_by_size} xKey="size" yKey="avg_weight" color="#92400E" />
-                    : <NoData t={t} />}
-                </ChartCard>
-                <ChartCard title={t('admin.dashboard.health.top5_measurements', '건강 수치 기록 빈도 TOP 5')}>
-                  {stats.health.top5_measurements.length > 0
-                    ? <RBar data={stats.health.top5_measurements} xKey="name" yKey="count" color="#38A169" />
-                    : <NoData t={t} />}
-                </ChartCard>
-              </div>
-              <div style={{ marginTop: 12 }}>
-                <ChartCard title={t('admin.dashboard.health.weight_change_dist', '체중 변화 분포')}>
-                  {stats.health.weight_change_dist.length > 0
-                    ? <RPie data={stats.health.weight_change_dist.map(d => ({
-                        name: d.direction === 'increase' ? t('admin.dashboard.weight_increase', '증가')
-                            : d.direction === 'decrease' ? t('admin.dashboard.weight_decrease', '감소')
-                            : t('admin.dashboard.weight_maintain', '유지'),
-                        value: d.count,
-                      }))} nameKey="name" valueKey="value" />
-                    : <NoData t={t} />}
-                </ChartCard>
-              </div>
-            </SectionCard>
-
-            {/* Section 4: Members */}
-            <SectionCard title={t('admin.dashboard.member.title', '회원 활동')}>
-              <div className="form-row col3 mb-4">
-                <ChartCard title={t('admin.dashboard.member.total_users', '전체 회원수')}>
-                  <KpiValue value={stats.members.total_users} unit={t('admin.dashboard.people', '명')} />
-                </ChartCard>
-                <ChartCard title={t('admin.dashboard.member.active_guardians', '활성 가디언 수')}>
-                  <KpiValue value={stats.members.active_guardians_30d} unit={t('admin.dashboard.people', '명')} color="#38A169" />
-                </ChartCard>
-                <ChartCard title={t('admin.dashboard.member.oauth_dist', '가입방식별 비율')}>
-                  {stats.members.by_oauth.length > 0
-                    ? <RPie data={stats.members.by_oauth} nameKey="provider" valueKey="count" />
-                    : <NoData t={t} />}
-                </ChartCard>
-              </div>
-              <ChartCard title={t('admin.dashboard.member.signup_trend', '신규 가입 추이')}>
-                {stats.members.signup_trend.length > 0
-                  ? <RLine data={stats.members.signup_trend} xKey="month" yKey="count" color="#3B82F6" />
-                  : <NoData t={t} />}
-              </ChartCard>
-              <div className="form-row col2" style={{ marginTop: 12 }}>
-                <ChartCard title={t('admin.dashboard.member.feature_usage', '기능별 사용률')}>
-                  {stats.members.feature_usage.length > 0
-                    ? <RBar data={stats.members.feature_usage.map(d => ({
-                        name: d.feature === 'feeding' ? t('admin.dashboard.feeding_feature', '급여')
-                            : d.feature === 'exercise' ? t('admin.dashboard.exercise_feature', '운동')
-                            : t('admin.dashboard.health_feature', '건강'),
-                        count: d.count,
-                      }))} xKey="name" yKey="count" color="#F59E0B" />
-                    : <NoData t={t} />}
-                </ChartCard>
-                <ChartCard title={t('admin.dashboard.member.pet_type_dist', '반려동물 종별 분포')}>
-                  {stats.members.pet_type_dist.length > 0
-                    ? <RPie data={stats.members.pet_type_dist} nameKey="type" valueKey="count" />
-                    : <NoData t={t} />}
-                </ChartCard>
-              </div>
-              <div style={{ marginTop: 12 }}>
-                <ChartCard title={t('admin.dashboard.member.top10_breeds', '품종 TOP 10')}>
-                  {stats.members.top10_breeds.length > 0
-                    ? <RBar data={stats.members.top10_breeds} xKey="name" yKey="count" color="#D97706" />
-                    : <NoData t={t} />}
-                </ChartCard>
-              </div>
-            </SectionCard>
-
-            {/* Section 5: Store Stats */}
-            {storeStats && (
-              <SectionCard title={t('admin.dashboard.stores.title', '매장 통계')}>
-                <div className="form-row col3">
-                  <ChartCard title={t('admin.dashboard.stores.total', '전체 매장')}>
-                    <KpiValue value={storeStats.total} unit={t('admin.dashboard.stores_unit', '개')} />
-                  </ChartCard>
-                  <ChartCard title={t('admin.dashboard.stores.active', '활성 매장')}>
-                    <KpiValue value={storeStats.active} unit={t('admin.dashboard.stores_unit', '개')} color="#38A169" />
-                  </ChartCard>
-                  <ChartCard title={t('admin.dashboard.stores.new', '신규 매장 (30일)')}>
-                    <KpiValue value={storeStats.new_30d} unit={t('admin.dashboard.stores_unit', '개')} color="#3B82F6" />
-                  </ChartCard>
                 </div>
-              </SectionCard>
-            )}
-          </>
+              </div>
+            </div>
+
+            <div className="card">
+              <div className="card-header"><div className="card-title">{t('admin.dashboard.exercise.title', 'Exercise Statistics')}</div></div>
+              <div className="card-body">
+                <div className="ad-chart-card" style={{ marginBottom: 12 }}>
+                  <div className="ad-chart-title">{t('admin.dashboard.exercise.type_count', 'Exercise Types')}</div>
+                  {stats.exercise.type_count.length > 0
+                    ? <RBar data={stats.exercise.type_count} xKey="type" yKey="count" color="#4CAF7D" />
+                    : <NoData t={t} />}
+                </div>
+                <div className="ad-chart-card">
+                  <div className="ad-chart-title">{t('admin.dashboard.exercise.monthly_trend', 'Monthly Trend')}</div>
+                  {stats.exercise.monthly_trend.length > 0
+                    ? <RLine data={stats.exercise.monthly_trend} xKey="month" yKey="count" color="#4A7CF7" />
+                    : <NoData t={t} />}
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* ── Row 3: Health + Quick Actions ── */}
+          <div className="ad-grid-2">
+            <div className="card">
+              <div className="card-header"><div className="card-title">{t('admin.dashboard.health.title', 'Health Metrics')}</div></div>
+              <div className="card-body">
+                <div className="ad-chart-card" style={{ marginBottom: 12 }}>
+                  <div className="ad-chart-title">{t('admin.dashboard.health.weight_trend', 'Average Weight Trend')}</div>
+                  {stats.health.weight_trend.length > 0
+                    ? <RLine data={stats.health.weight_trend} xKey="date" yKey="avg_weight" color="#F5823A" />
+                    : <NoData t={t} />}
+                </div>
+                <div className="ad-chart-card">
+                  <div className="ad-chart-title">{t('admin.dashboard.health.top5_measurements', 'Top Health Measurements')}</div>
+                  {stats.health.top5_measurements.length > 0
+                    ? <RBar data={stats.health.top5_measurements} xKey="name" yKey="count" color="#4CAF7D" />
+                    : <NoData t={t} />}
+                </div>
+              </div>
+            </div>
+
+            {/* Quick Actions + Activity */}
+            <div className="card">
+              <div className="card-header"><div className="card-title">{t('admin.dashboard.quick_actions', 'Quick Actions')}</div></div>
+              <div className="card-body">
+                <div className="ad-quick-grid" style={{ marginBottom: 20 }}>
+                  <QuickAction to="/admin/members" icon="👥" label={t('admin.nav.members', 'Members')} />
+                  <QuickAction to="/admin/feeds" icon="🥣" label={t('admin.nav.feeds', 'Feeds')} />
+                  <QuickAction to="/admin/i18n" icon="🌐" label={t('admin.nav.i18n', 'i18n')} />
+                  <QuickAction to="/admin/devices" icon="🔬" label={t('admin.nav.devices', 'Devices')} />
+                  <QuickAction to="/admin/master" icon="🗂" label={t('admin.nav.master', 'Master')} />
+                  <QuickAction to="/admin/api-connections" icon="⚙️" label={t('admin.nav.api_connections', 'Settings')} />
+                </div>
+
+                {/* Recent activity */}
+                <div className="ad-chart-title">{t('admin.dashboard.recent_activity', 'Recent Activity')}</div>
+                <div className="ad-activity-list">
+                  {stats.members.signup_trend.slice(0, 4).map((s, i) => (
+                    <div key={i} className="ad-activity-item">
+                      <span className={`ad-activity-dot ${['amber', 'green', 'blue', 'purple'][i % 4]}`} />
+                      <span className="ad-activity-text">
+                        {(s.count as number).toLocaleString()} {t('admin.dashboard.signups_in', 'signups in')} {String(s.month)}
+                      </span>
+                      <span className="ad-activity-time">{String(s.month)}</span>
+                    </div>
+                  ))}
+                  {stats.members.signup_trend.length === 0 && (
+                    <div style={{ padding: '12px 0', color: 'var(--mid)', fontSize: 13 }}>
+                      {t('admin.dashboard.no_data', 'No data')}
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* ── Row 4: System Status + Language + Breed ── */}
+          <div className="ad-grid-3">
+            {/* System Status */}
+            <div className="card">
+              <div className="card-header"><div className="card-title">{t('admin.dashboard.system_health', 'System Health')}</div></div>
+              <div className="card-body">
+                <ProgressBar label="API" value={apiOk ? 100 : 0} max={100} color="green" />
+                <ProgressBar label="Database" value={dbOk ? 100 : 0} max={100} color="blue" />
+                <ProgressBar label={t('admin.dashboard.env', 'Environment')} value={health ? 100 : 0} max={100} color="purple" />
+              </div>
+            </div>
+
+            {/* Pet Type Distribution */}
+            <div className="card">
+              <div className="card-header"><div className="card-title">{t('admin.dashboard.member.pet_type_dist', 'Pet Distribution')}</div></div>
+              <div className="card-body">
+                {stats.members.pet_type_dist.length > 0
+                  ? stats.members.pet_type_dist.map((d, i) => (
+                      <ProgressBar
+                        key={i}
+                        label={String(d.type)}
+                        value={d.count as number}
+                        max={stats.members.pet_type_dist.reduce((s, x) => s + (x.count as number), 0) || 1}
+                        color={['amber', 'green', 'blue', 'purple', 'red'][i % 5] as 'amber'}
+                      />
+                    ))
+                  : <div style={{ padding: '12px 0', color: 'var(--mid)', fontSize: 13 }}>{t('admin.dashboard.no_data', 'No data')}</div>}
+              </div>
+            </div>
+
+            {/* Top Breeds */}
+            <div className="card">
+              <div className="card-header"><div className="card-title">{t('admin.dashboard.member.top10_breeds', 'Top Breeds')}</div></div>
+              <div className="card-body">
+                {stats.members.top10_breeds.length > 0
+                  ? stats.members.top10_breeds.slice(0, 6).map((d, i) => (
+                      <ProgressBar
+                        key={i}
+                        label={String(d.name)}
+                        value={d.count as number}
+                        max={stats.members.top10_breeds[0].count as number || 1}
+                        color={['amber', 'blue', 'green', 'purple', 'red'][i % 5] as 'amber'}
+                      />
+                    ))
+                  : <div style={{ padding: '12px 0', color: 'var(--mid)', fontSize: 13 }}>{t('admin.dashboard.no_data', 'No data')}</div>}
+              </div>
+            </div>
+          </div>
+        </>
+      )}
+    </div>
+  );
+}
+
+// ─── Components ──────────────────────────────────────────────
+
+function StatCard({ icon, iconColor, label, value, change, changeType, color }: {
+  icon: string; iconColor: string; label: string; value: number | string;
+  change?: string; changeType?: 'up' | 'down'; color: string;
+}) {
+  return (
+    <div className="ad-stat-card" data-color={color}>
+      <div className="ad-stat-header">
+        <div className={`ad-stat-icon ${iconColor}`}>{icon}</div>
+        {change && (
+          <span className={`ad-stat-change ${changeType || 'up'}`}>
+            {changeType === 'down' ? '↓' : '↑'} {change}
+          </span>
         )}
       </div>
-    </>
-  );
-}
-
-// ─── Reusable Chart Wrappers ──────────────────────────────────────────
-
-function SectionCard({ title, children }: { title: string; children: ReactNode }) {
-  return (
-    <div className="card mb-4">
-      <div className="card-header"><div className="card-title">{title}</div></div>
-      <div className="card-body">{children}</div>
+      <div className="ad-stat-value">{typeof value === 'number' ? value.toLocaleString() : value}</div>
+      <div className="ad-stat-label">{label}</div>
     </div>
   );
 }
 
-function ChartCard({ title, children }: { title: string; children: ReactNode }) {
+function ProgressBar({ label, value, max, color }: {
+  label: string; value: number; max: number; color: 'amber' | 'green' | 'blue' | 'purple' | 'red';
+}) {
+  const pct = max > 0 ? Math.min(100, Math.round((value / max) * 100)) : 0;
   return (
-    <div style={{ background: 'var(--bg)', borderRadius: 8, border: '1px solid var(--border)', padding: 16 }}>
-      <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--text-muted)', marginBottom: 12 }}>{title}</div>
-      {children}
+    <div className="ad-progress-wrap">
+      <div className="ad-progress-header">
+        <span className="ad-progress-header-label">{label}</span>
+        <span className="ad-progress-header-value">{value.toLocaleString()} ({pct}%)</span>
+      </div>
+      <div className="ad-progress">
+        <div className={`ad-progress-fill ${color}`} style={{ width: `${pct}%` }} />
+      </div>
     </div>
+  );
+}
+
+function QuickAction({ to, icon, label }: { to: string; icon: string; label: string }) {
+  return (
+    <Link to={to} className="ad-quick-btn">
+      <span className="ad-quick-btn-icon">{icon}</span>
+      <span className="ad-quick-btn-label">{label}</span>
+    </Link>
   );
 }
 
 function NoData({ t }: { t: (k: string, fb?: string) => string }) {
   return (
-    <div style={{ textAlign: 'center', padding: '24px 0', color: '#a0aec0', fontSize: 13 }}>
-      {t('admin.dashboard.no_data', '데이터 없음')}
+    <div style={{ textAlign: 'center', padding: '24px 0', color: 'var(--mid)', fontSize: 13 }}>
+      {t('admin.dashboard.no_data', 'No data')}
     </div>
   );
 }
 
-function KpiValue({ value, unit, color = '#D97706' }: { value: number; unit: string; color?: string }) {
-  return (
-    <div style={{ textAlign: 'center', padding: '20px 0' }}>
-      <div style={{ fontSize: 28, fontWeight: 700, color }}>{value.toLocaleString()}</div>
-      <div style={{ fontSize: 12, color: '#718096', marginTop: 4 }}>{unit}</div>
-    </div>
-  );
-}
+// ─── Recharts Wrappers ──────────────────────────────────────
 
-// ─── Recharts Wrappers ────────────────────────────────────────────────
-
-function RBar({ data, xKey, yKey, color = '#D97706' }: { data: Record<string, unknown>[]; xKey: string; yKey: string; color?: string }) {
+function RBar({ data, xKey, yKey, color = '#F5823A' }: { data: Record<string, unknown>[]; xKey: string; yKey: string; color?: string }) {
   return (
     <ResponsiveContainer width="100%" height={200}>
       <BarChart data={data} margin={{ top: 4, right: 4, bottom: 4, left: 4 }}>
         <XAxis dataKey={xKey} tick={{ fontSize: 11 }} interval={0} angle={-20} textAnchor="end" height={50} />
         <YAxis tick={{ fontSize: 11 }} width={40} />
-        <Tooltip contentStyle={{ fontSize: 12 }} />
-        <Bar dataKey={yKey} fill={color} radius={[4, 4, 0, 0]} />
+        <Tooltip contentStyle={{ fontSize: 12, borderRadius: 8, border: 'none', boxShadow: '0 2px 8px rgba(0,0,0,.1)' }} />
+        <Bar dataKey={yKey} fill={color} radius={[6, 6, 0, 0]} />
       </BarChart>
     </ResponsiveContainer>
   );
@@ -330,25 +364,24 @@ function RPie({ data, nameKey, valueKey }: { data: Record<string, unknown>[]; na
     <ResponsiveContainer width="100%" height={200}>
       <PieChart>
         <Pie data={data} dataKey={valueKey} nameKey={nameKey} cx="50%" cy="50%"
-          outerRadius={70} innerRadius={35} paddingAngle={2}
+          outerRadius={70} innerRadius={38} paddingAngle={3}
           label={((props: { name?: string; percent?: number }) => `${props.name ?? ''} ${((props.percent ?? 0) * 100).toFixed(0)}%`) as unknown as boolean}
           labelLine={false} style={{ fontSize: 10 }}>
           {data.map((_, i) => <Cell key={i} fill={COLORS[i % COLORS.length]} />)}
         </Pie>
-        <Tooltip contentStyle={{ fontSize: 12 }} />
+        <Tooltip contentStyle={{ fontSize: 12, borderRadius: 8, border: 'none', boxShadow: '0 2px 8px rgba(0,0,0,.1)' }} />
       </PieChart>
     </ResponsiveContainer>
   );
 }
 
-function RLine({ data, xKey, yKey, color = '#D97706' }: { data: Record<string, unknown>[]; xKey: string; yKey: string; color?: string }) {
+function RLine({ data, xKey, yKey, color = '#F5823A' }: { data: Record<string, unknown>[]; xKey: string; yKey: string; color?: string }) {
   return (
     <ResponsiveContainer width="100%" height={200}>
       <LineChart data={data} margin={{ top: 4, right: 4, bottom: 4, left: 4 }}>
         <XAxis dataKey={xKey} tick={{ fontSize: 11 }} />
         <YAxis tick={{ fontSize: 11 }} width={40} />
-        <Tooltip contentStyle={{ fontSize: 12 }} />
-        <Legend />
+        <Tooltip contentStyle={{ fontSize: 12, borderRadius: 8, border: 'none', boxShadow: '0 2px 8px rgba(0,0,0,.1)' }} />
         <Line type="monotone" dataKey={yKey} stroke={color} strokeWidth={2} dot={{ r: 3 }} />
       </LineChart>
     </ResponsiveContainer>
