@@ -673,16 +673,23 @@ export default function PublicHome() {
   const renderInterleavedFeed = () => {
     const items: React.ReactNode[] = [];
     let recoIdx = 0;
+    // Adapt interval to feed count: small feeds → show sooner
+    const interval = feeds.length <= 4 ? 2 : feeds.length <= 10 ? 4 : 8;
 
     for (let i = 0; i < feeds.length; i++) {
       items.push(renderFeedCard(feeds[i], i));
 
-      // Insert recommendation card every 8th position
-      if ((i + 1) % 8 === 0 && recoIdx < recommendations.length) {
+      if ((i + 1) % interval === 0 && recoIdx < recommendations.length) {
         items.push(renderRecoCard(recommendations[recoIdx], i));
         recoIdx++;
       }
     }
+
+    // If no reco card was inserted yet (very few feeds), append one at the end
+    if (recoIdx === 0 && recommendations.length > 0) {
+      items.push(renderRecoCard(recommendations[0], feeds.length));
+    }
+
     return items;
   };
 
