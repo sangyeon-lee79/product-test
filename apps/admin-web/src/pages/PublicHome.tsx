@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState, useCallback } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { api, type FeedComment, type FeedPost, type GuardianProfile, type Pet, type Booking } from '../lib/api';
+import { api, type FeedComment, type FeedPost, type GuardianProfile, type Pet, type Booking, type FriendSearchResult } from '../lib/api';
 import { getStoredRole, isLoggedIn } from '../lib/auth';
 import { useI18n, useT } from '../lib/i18n';
 import AuthModal from '../components/AuthModal';
@@ -73,6 +73,10 @@ export default function PublicHome() {
   const [editingContent, setEditingContent] = useState('');
   const [friendEmail, setFriendEmail] = useState('');
   const [friendMessage, setFriendMessage] = useState('');
+  const [friendSearching, setFriendSearching] = useState(false);
+  const [friendSearchResult, setFriendSearchResult] = useState<FriendSearchResult | null>(null);
+  const [friendSending, setFriendSending] = useState(false);
+  const [friendRequestSent, setFriendRequestSent] = useState(false);
   const [isDark, setIsDark] = useState(() => localStorage.getItem('petfolio-theme') === 'dark');
   const [authModalOpen, setAuthModalOpen] = useState(false);
   const [authModalMode, setAuthModalMode] = useState<'login' | 'signup'>('login');
@@ -248,18 +252,41 @@ export default function PublicHome() {
     } catch (e) { setError(uiErrorMessage(e, t('public.error.comment_delete', '댓글 삭제에 실패했습니다.'))); }
   }
 
-  async function sendFriendRequest() {
+  async function handleFriendSearch() {
     if (!loggedIn) return;
     const email = friendEmail.trim().toLowerCase();
     if (!email) return;
+    setFriendSearching(true);
+    setFriendSearchResult(null);
     setFriendMessage('');
+    setFriendRequestSent(false);
     try {
-      const res = await api.friends.requests.create({ receiver_email: email });
-      if (res.status === 'already_friends') setFriendMessage(t('public.friend.already', '이미 연결된 사용자입니다.'));
-      else if (res.status === 'request_sent') setFriendMessage(t('public.friend.sent', '연결 요청을 보냈습니다.'));
-      else setFriendMessage(t('public.friend.done', '요청 처리 완료'));
-      setFriendEmail('');
-    } catch (e) { setFriendMessage(uiErrorMessage(e, t('public.friend.error', '요청 처리에 실패했습니다.'))); }
+      const res = await api.friends.search(email);
+      if (!res.user) {
+        setFriendMessage(t('friends.search.not_found', 'No user found with this email'));
+      } else {
+        setFriendSearchResult(res.user);
+      }
+    } catch {
+      setFriendMessage(t('friends.search.error', 'Search failed'));
+    } finally {
+      setFriendSearching(false);
+    }
+  }
+
+  async function handleFriendSend() {
+    if (!friendSearchResult) return;
+    setFriendSending(true);
+    try {
+      await api.friends.requests.create({ receiver_user_id: friendSearchResult.id });
+      setFriendRequestSent(true);
+      setFriendSearchResult(prev => prev ? { ...prev, friend_status: 'pending' } : null);
+      setFriendStatusMap(prev => { const n = new Map(prev); n.set(friendSearchResult.id, 'pending'); return n; });
+    } catch (e) {
+      setFriendMessage(uiErrorMessage(e, t('friends.search.error', 'Failed')));
+    } finally {
+      setFriendSending(false);
+    }
   }
 
   function toggleSave(feedId: string) {
@@ -720,13 +747,6 @@ export default function PublicHome() {
             ))}
           </div>
 
-          {/* Feed header */}
-          <div className="pf-feed-tabs">
-            <button className="pf-feed-tab active">
-              {t('public.feed.all', 'All Feeds')}
-            </button>
-          </div>
-
           {/* Filter pills */}
           {(businessOptions.length > 0 || petTypeOptions.length > 0) && (
             <div className="pf-filter-row">
@@ -885,12 +905,103 @@ export default function PublicHome() {
           {loggedIn && (
             <div className="pf-right-section">
               <div className="pf-right-section-title">{t('friend.section.title', '친구')}</div>
-              <div style={{ display: 'flex', gap: 6 }}>
-                <input className="form-input" style={{ fontSize: 12, padding: '8px 10px' }} placeholder={t('public.friend.email', '상대 이메일')}
-                  value={friendEmail} onChange={(e) => setFriendEmail(e.target.value)} onKeyDown={(e) => e.key === 'Enter' && sendFriendRequest()} />
-                <button className="pf-btn-outline" onClick={sendFriendRequest}>{t('friend.btn.add_guardian', '친구 신청')}</button>
+              <div className="pf-friends-search-input-row">
+                <input
+                  className="pf-friends-search-input"
+                  type="email"
+                  style={{ fontSize: 12, padding: '8px 10px' }}
+                  placeholder={t('friends.search.placeholder', 'Search by email')}
+                  value={friendEmail}
+                  onChange={(e) => setFriendEmail(e.target.value)}
+                  onKeyDown={(e) => { if (e.key === 'Enter') void handleFriendSearch(); }}
+                  disabled={friendSearching}
+                />
+                <button
+                  className="pf-friends-search-btn"
+                  style={{ fontSize: 12, padding: '8px 12px', minWidth: 48 }}
+                  onClick={() => void handleFriendSearch()}
+                  disabled={friendSearching || !friendEmail.trim()}
+                >
+                  {friendSearching
+                    ? <span className="spinner" style={{ width: 14, height: 14, borderWidth: 2 }} />
+                    : t('friends.search.button', 'Search')}
+                </button>
               </div>
-              {friendMessage && <p style={{ fontSize: 12, color: 'var(--amber)', marginTop: 6 }}>{friendMessage}</p>}
+
+              {friendMessage && (
+                <p style={{ fontSize: 12, color: '#EF4444', marginTop: 6 }}>{friendMessage}</p>
+              )}
+
+              {friendSearchResult && (
+                <div className="pf-friends-search-card" style={{ marginTop: 8, padding: 12 }}>
+                  <div style={{ display: 'flex', gap: 10, alignItems: 'flex-start' }}>
+                    <div className="pf-avatar" style={{ width: 36, height: 36, fontSize: 14 }}>
+                      {friendSearchResult.avatar_url
+                        ? <img src={friendSearchResult.avatar_url} alt="" style={{ width: '100%', height: '100%', borderRadius: '50%', objectFit: 'cover' }} onError={(e) => { (e.target as HTMLElement).style.display = 'none'; }} />
+                        : (friendSearchResult.display_name || '?')[0].toUpperCase()}
+                    </div>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ fontWeight: 600, fontSize: 13 }}>{friendSearchResult.display_name}</div>
+                      <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>{friendSearchResult.email}</div>
+                      {friendSearchResult.pets.length > 0 ? (
+                        <div style={{ fontSize: 11, marginTop: 3 }}>
+                          {friendSearchResult.pets.map((pet, i) => (
+                            <span key={i}>
+                              {i > 0 && ' · '}
+                              {pet.pet_type_code?.toLowerCase().includes('dog') ? '🐶' : pet.pet_type_code?.toLowerCase().includes('cat') ? '🐱' : '🐾'} {pet.name}
+                              {pet.breed_code && <span style={{ color: 'var(--text-muted)' }}> · {pet.breed_code}</span>}
+                            </span>
+                          ))}
+                        </div>
+                      ) : (
+                        <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 3 }}>
+                          {t('friends.search.no_pets', 'No pets registered')}
+                        </div>
+                      )}
+                      {(friendSearchResult.country_name || friendSearchResult.region_text) && (
+                        <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 2 }}>
+                          📍 {[friendSearchResult.country_name, friendSearchResult.region_text?.split('|')[0]].filter(Boolean).join(' · ')}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+                  <div style={{ marginTop: 10 }}>
+                    {friendSearchResult.friend_status === 'self' && (
+                      <div className="pf-friends-search-status pf-friends-search-status--muted" style={{ fontSize: 12, padding: 8 }}>
+                        {t('friends.search.self_search', 'You cannot add yourself')}
+                      </div>
+                    )}
+                    {friendSearchResult.friend_status === 'friend' && (
+                      <div className="pf-friends-search-status pf-friends-search-status--success" style={{ fontSize: 12, padding: 8 }}>
+                        ✓ {t('friends.search.already_friend', 'Already friends')}
+                      </div>
+                    )}
+                    {friendSearchResult.friend_status === 'pending' && (
+                      <div className="pf-friends-search-status pf-friends-search-status--pending" style={{ fontSize: 12, padding: 8 }}>
+                        ⏳ {t('friends.search.pending', 'Request pending')}
+                      </div>
+                    )}
+                    {friendSearchResult.friend_status === 'none' && !friendRequestSent && (
+                      <button
+                        className="pf-friends-card-btn pf-friends-card-btn--accept"
+                        style={{ width: '100%', fontSize: 12, padding: '8px 0' }}
+                        onClick={() => void handleFriendSend()}
+                        disabled={friendSending}
+                      >
+                        {friendSending
+                          ? <span className="spinner" style={{ width: 14, height: 14, borderWidth: 2 }} />
+                          : t('friends.search.send_request', 'Send Friend Request')}
+                      </button>
+                    )}
+                    {friendRequestSent && (
+                      <div className="pf-friends-search-status pf-friends-search-status--success" style={{ fontSize: 12, padding: 8 }}>
+                        ✓ {t('friends.search.sent_success', 'Request sent')}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
             </div>
           )}
 
