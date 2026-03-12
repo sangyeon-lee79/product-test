@@ -52,7 +52,7 @@ async function listRequests(env: Env, me: JwtPayload, url: URL): Promise<Respons
                       ru.created_at AS requester_joined_at,
                       COALESCE(rup.display_name, ru.email) AS requester_display_name,
                       rup.avatar_url AS requester_avatar_url,
-                      c.name_en AS requester_country_name
+                      c.name_key AS requester_country_name
                FROM friend_requests fr
                JOIN users ru ON ru.id = fr.requester_user_id
                JOIN users rv ON rv.id = fr.receiver_user_id
