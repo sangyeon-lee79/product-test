@@ -26,9 +26,22 @@ CREATE TABLE IF NOT EXISTS dummy_store_services (
   is_active       BOOLEAN DEFAULT true
 );
 
+-- Deduplicate existing rows before creating unique indexes
+DELETE FROM dummy_store_services WHERE id NOT IN (
+  SELECT DISTINCT ON (dummy_store_id, name->>'ko') id
+  FROM dummy_store_services ORDER BY dummy_store_id, name->>'ko', id
+);
+
+DELETE FROM dummy_stores WHERE id NOT IN (
+  SELECT DISTINCT ON (name->>'ko') id
+  FROM dummy_stores ORDER BY name->>'ko', id
+);
+
+CREATE UNIQUE INDEX IF NOT EXISTS idx_dummy_stores_name_uniq ON dummy_stores((name->>'ko'));
 CREATE INDEX IF NOT EXISTS idx_dummy_stores_category ON dummy_stores(category);
 CREATE INDEX IF NOT EXISTS idx_dummy_stores_active ON dummy_stores(is_active);
 CREATE INDEX IF NOT EXISTS idx_dummy_store_services_store ON dummy_store_services(dummy_store_id);
+CREATE UNIQUE INDEX IF NOT EXISTS idx_dummy_store_services_uniq ON dummy_store_services(dummy_store_id, (name->>'ko'));
 
 -- ═══════════════════════════════════════════════════════════════════════
 -- 2. SEED DATA — 70 dummy stores (7 categories × 10)
@@ -45,7 +58,8 @@ INSERT INTO dummy_stores (category, name, description, address, rating, review_c
 ('grooming', '{"ko":"해피테일 미용","en":"Happy Tail Grooming"}', '{"ko":"꼬리 흔드는 미용실","en":"The tail-wagging salon"}', '{"state_code":"인천","city_code":"연수구","detail":"송도동 12-3"}', 4.6, 78),
 ('grooming', '{"ko":"펫 글래머","en":"Pet Glamour"}', '{"ko":"트렌디한 펫 스타일링","en":"Trendy pet styling"}', '{"state_code":"대구","city_code":"수성구","detail":"범어동 44-5"}', 4.3, 34),
 ('grooming', '{"ko":"바우와우 살롱","en":"Bow Wow Salon"}', '{"ko":"10년 경력 전문 미용사","en":"10 years experienced groomer"}', '{"state_code":"서울","city_code":"강동구","detail":"천호동 90-1"}', 4.8, 189),
-('grooming', '{"ko":"퍼피러브 그루밍","en":"Puppy Love Grooming"}', '{"ko":"강아지 전문 케어","en":"Puppy specialized care"}', '{"state_code":"서울","city_code":"용산구","detail":"이태원동 22-3"}', 4.5, 56);
+('grooming', '{"ko":"퍼피러브 그루밍","en":"Puppy Love Grooming"}', '{"ko":"강아지 전문 케어","en":"Puppy specialized care"}', '{"state_code":"서울","city_code":"용산구","detail":"이태원동 22-3"}', 4.5, 56)
+ON CONFLICT ((name->>'ko')) DO NOTHING;
 
 -- ─── hospital (10) ──────────────────────────────────────────────────
 INSERT INTO dummy_stores (category, name, description, address, rating, review_count) VALUES
@@ -58,7 +72,8 @@ INSERT INTO dummy_stores (category, name, description, address, rating, review_c
 ('hospital', '{"ko":"펫메디컬센터","en":"Pet Medical Center"}', '{"ko":"CT, MRI 정밀검사","en":"CT and MRI diagnostics"}', '{"state_code":"서울","city_code":"강서구","detail":"등촌동 45-6"}', 4.7, 134),
 ('hospital', '{"ko":"굿프렌드 동물병원","en":"Good Friend Vet"}', '{"ko":"예방접종, 건강관리","en":"Vaccination & health management"}', '{"state_code":"대전","city_code":"유성구","detail":"봉명동 12-3"}', 4.3, 45),
 ('hospital', '{"ko":"센트럴 동물의료원","en":"Central Vet Hospital"}', '{"ko":"대학병원급 시설","en":"University hospital-level facilities"}', '{"state_code":"서울","city_code":"중구","detail":"을지로 67-8"}', 4.9, 356),
-('hospital', '{"ko":"미래 동물병원","en":"Future Animal Hospital"}', '{"ko":"최신 의료장비 보유","en":"Latest medical equipment"}', '{"state_code":"경기","city_code":"수원시","detail":"영통구 매탄동 33"}', 4.6, 112);
+('hospital', '{"ko":"미래 동물병원","en":"Future Animal Hospital"}', '{"ko":"최신 의료장비 보유","en":"Latest medical equipment"}', '{"state_code":"경기","city_code":"수원시","detail":"영통구 매탄동 33"}', 4.6, 112)
+ON CONFLICT ((name->>'ko')) DO NOTHING;
 
 -- ─── hotel (10) ─────────────────────────────────────────────────────
 INSERT INTO dummy_stores (category, name, description, address, rating, review_count) VALUES
@@ -71,7 +86,8 @@ INSERT INTO dummy_stores (category, name, description, address, rating, review_c
 ('hotel', '{"ko":"퍼피하우스 유치원","en":"Puppy House Daycare"}', '{"ko":"사회화 교육 포함","en":"Socialization training included"}', '{"state_code":"서울","city_code":"영등포구","detail":"여의도동 67-8"}', 4.7, 123),
 ('hotel', '{"ko":"라온펫 호텔","en":"Raon Pet Hotel"}', '{"ko":"CCTV 실시간 모니터링","en":"Real-time CCTV monitoring"}', '{"state_code":"인천","city_code":"남동구","detail":"논현동 90-1"}', 4.6, 98),
 ('hotel', '{"ko":"숲속 펫리조트","en":"Forest Pet Resort"}', '{"ko":"자연 속 힐링 돌봄","en":"Nature healing care"}', '{"state_code":"경기","city_code":"양평군","detail":"서종면 북한강로 22"}', 4.8, 201),
-('hotel', '{"ko":"스마트독 유치원","en":"Smart Dog Daycare"}', '{"ko":"훈련 + 돌봄 통합","en":"Training + care integrated"}', '{"state_code":"서울","city_code":"성북구","detail":"성북동 44-5"}', 4.5, 76);
+('hotel', '{"ko":"스마트독 유치원","en":"Smart Dog Daycare"}', '{"ko":"훈련 + 돌봄 통합","en":"Training + care integrated"}', '{"state_code":"서울","city_code":"성북구","detail":"성북동 44-5"}', 4.5, 76)
+ON CONFLICT ((name->>'ko')) DO NOTHING;
 
 -- ─── training (10) ──────────────────────────────────────────────────
 INSERT INTO dummy_stores (category, name, description, address, rating, review_count) VALUES
@@ -84,7 +100,8 @@ INSERT INTO dummy_stores (category, name, description, address, rating, review_c
 ('training', '{"ko":"도그어질리티 센터","en":"Dog Agility Center"}', '{"ko":"어질리티 전문","en":"Agility training specialist"}', '{"state_code":"경기","city_code":"남양주시","detail":"별내면 청학로 11"}', 4.8, 167),
 ('training', '{"ko":"반려견 행동연구소","en":"Dog Behavior Lab"}', '{"ko":"문제행동 전문 상담","en":"Problem behavior consultation"}', '{"state_code":"서울","city_code":"강동구","detail":"길동 34-5"}', 4.3, 34),
 ('training', '{"ko":"펫 리더십 스쿨","en":"Pet Leadership School"}', '{"ko":"보호자 교육 병행","en":"Guardian education included"}', '{"state_code":"대구","city_code":"달서구","detail":"월성동 56-7"}', 4.5, 67),
-('training', '{"ko":"해피퍼피 트레이닝","en":"Happy Puppy Training"}', '{"ko":"놀이 기반 교육","en":"Play-based education"}', '{"state_code":"서울","city_code":"송파구","detail":"가락동 89-0"}', 4.7, 134);
+('training', '{"ko":"해피퍼피 트레이닝","en":"Happy Puppy Training"}', '{"ko":"놀이 기반 교육","en":"Play-based education"}', '{"state_code":"서울","city_code":"송파구","detail":"가락동 89-0"}', 4.7, 134)
+ON CONFLICT ((name->>'ko')) DO NOTHING;
 
 -- ─── shop (10) ──────────────────────────────────────────────────────
 INSERT INTO dummy_stores (category, name, description, address, rating, review_count) VALUES
@@ -97,7 +114,8 @@ INSERT INTO dummy_stores (category, name, description, address, rating, review_c
 ('shop', '{"ko":"럭키펫 용품점","en":"Lucky Pet Supplies"}', '{"ko":"정기배송 서비스","en":"Regular delivery service"}', '{"state_code":"서울","city_code":"영등포구","detail":"당산동 23-4"}', 4.5, 90),
 ('shop', '{"ko":"내추럴펫 스토어","en":"Natural Pet Store"}', '{"ko":"유기농 펫 푸드 전문","en":"Organic pet food specialist"}', '{"state_code":"서울","city_code":"성동구","detail":"성수동 67-8"}', 4.7, 156),
 ('shop', '{"ko":"캣타워 전문점","en":"Cat Tower Shop"}', '{"ko":"고양이 가구 전문","en":"Cat furniture specialist"}', '{"state_code":"인천","city_code":"부평구","detail":"부평동 44-5"}', 4.4, 34),
-('shop', '{"ko":"토이펫 샵","en":"Toy Pet Shop"}', '{"ko":"장난감, 의류 전문","en":"Toys & clothing specialist"}', '{"state_code":"서울","city_code":"광진구","detail":"자양동 11-2"}', 4.6, 112);
+('shop', '{"ko":"토이펫 샵","en":"Toy Pet Shop"}', '{"ko":"장난감, 의류 전문","en":"Toys & clothing specialist"}', '{"state_code":"서울","city_code":"광진구","detail":"자양동 11-2"}', 4.6, 112)
+ON CONFLICT ((name->>'ko')) DO NOTHING;
 
 -- ─── cafe (10) ──────────────────────────────────────────────────────
 INSERT INTO dummy_stores (category, name, description, address, rating, review_count) VALUES
@@ -110,7 +128,8 @@ INSERT INTO dummy_stores (category, name, description, address, rating, review_c
 ('cafe', '{"ko":"퍼피라떼 카페","en":"Puppy Latte Cafe"}', '{"ko":"스페셜티 커피 + 펫","en":"Specialty coffee + pets"}', '{"state_code":"서울","city_code":"성동구","detail":"성수동 89-0"}', 4.5, 78),
 ('cafe', '{"ko":"캣치미 카페","en":"Catch Me Cafe"}', '{"ko":"이색 고양이 체험","en":"Unique cat experience"}', '{"state_code":"서울","city_code":"중구","detail":"명동 11-2"}', 4.3, 34),
 ('cafe', '{"ko":"펫앤커피","en":"Pet & Coffee"}', '{"ko":"프리미엄 원두 + 펫 케어","en":"Premium beans + pet care"}', '{"state_code":"서울","city_code":"용산구","detail":"경리단길 33-4"}', 4.8, 212),
-('cafe', '{"ko":"도그브런치 카페","en":"Dog Brunch Cafe"}', '{"ko":"브런치 전문 펫카페","en":"Brunch specialty pet cafe"}', '{"state_code":"제주","city_code":"제주시","detail":"애월읍 한림로 55"}', 4.6, 98);
+('cafe', '{"ko":"도그브런치 카페","en":"Dog Brunch Cafe"}', '{"ko":"브런치 전문 펫카페","en":"Brunch specialty pet cafe"}', '{"state_code":"제주","city_code":"제주시","detail":"애월읍 한림로 55"}', 4.6, 98)
+ON CONFLICT ((name->>'ko')) DO NOTHING;
 
 -- ─── photo (10) ─────────────────────────────────────────────────────
 INSERT INTO dummy_stores (category, name, description, address, rating, review_count) VALUES
@@ -123,7 +142,8 @@ INSERT INTO dummy_stores (category, name, description, address, rating, review_c
 ('photo', '{"ko":"해피모먼트 사진관","en":"Happy Moment Studio"}', '{"ko":"기념일 촬영 패키지","en":"Anniversary photo package"}', '{"state_code":"서울","city_code":"강동구","detail":"길동 78-9"}', 4.7, 112),
 ('photo', '{"ko":"퍼피포트레이트","en":"Puppy Portrait"}', '{"ko":"강아지 초상화 촬영","en":"Puppy portrait photography"}', '{"state_code":"서울","city_code":"용산구","detail":"한남동 89-0"}', 4.3, 34),
 ('photo', '{"ko":"원더펫 스튜디오","en":"Wonder Pet Studio"}', '{"ko":"SNS용 프로필 촬영","en":"SNS profile photography"}', '{"state_code":"서울","city_code":"중구","detail":"을지로 55-6"}', 4.6, 78),
-('photo', '{"ko":"펫메모리 촬영소","en":"Pet Memory Studio"}', '{"ko":"무지개다리 기념 촬영","en":"Memorial photography"}', '{"state_code":"인천","city_code":"연수구","detail":"송도동 11-2"}', 4.9, 201);
+('photo', '{"ko":"펫메모리 촬영소","en":"Pet Memory Studio"}', '{"ko":"무지개다리 기념 촬영","en":"Memorial photography"}', '{"state_code":"인천","city_code":"연수구","detail":"송도동 11-2"}', 4.9, 201)
+ON CONFLICT ((name->>'ko')) DO NOTHING;
 
 -- ═══════════════════════════════════════════════════════════════════════
 -- 3. SEED SERVICES (3~5 per store, representative samples)
@@ -171,7 +191,8 @@ INSERT INTO dummy_store_services (dummy_store_id, name, price, duration_min) VAL
 -- photo services
 ((SELECT id FROM dummy_stores WHERE name->>'ko' = '펫포토 스튜디오'), '{"ko":"기본 촬영 패키지","en":"Basic Photo Package"}', 150000, 60),
 ((SELECT id FROM dummy_stores WHERE name->>'ko' = '펫포토 스튜디오'), '{"ko":"프리미엄 촬영","en":"Premium Photo Shoot"}', 300000, 120),
-((SELECT id FROM dummy_stores WHERE name->>'ko' = '펫포토 스튜디오'), '{"ko":"액자 포함 패키지","en":"Frame Included Package"}', 400000, 120);
+((SELECT id FROM dummy_stores WHERE name->>'ko' = '펫포토 스튜디오'), '{"ko":"액자 포함 패키지","en":"Frame Included Package"}', 400000, 120)
+ON CONFLICT (dummy_store_id, (name->>'ko')) DO NOTHING;
 
 -- ═══════════════════════════════════════════════════════════════════════
 -- 4. I18N KEYS (15 keys × 13 languages)
