@@ -407,19 +407,19 @@ export async function handleMaster(request: Request, env: Env, url: URL): Promis
         if (!isValidMasterKey(inputKey)) return err('invalid key format');
         const translations = normalizeTranslations(body.translations);
         const koName = translations.ko;
-        if (!koName) return err('한국어 표시명을 입력해야 카테고리를 생성할 수 있습니다.');
+        if (!koName) return err('Korean display name is required to create a category');
         const missing = missingTranslationLangs(translations);
-        if (missing.length > 0) return err(`번역값 누락: ${missing.join(', ')}`, 400, 'missing_translations');
+        if (missing.length > 0) return err(`Missing translations: ${missing.join(', ')}`, 400, 'missing_translations');
 
         const exists = await env.DB.prepare('SELECT id FROM master_categories WHERE code = ? LIMIT 1').bind(inputKey).first<{ id: string }>();
-        if (exists) return err('이미 존재하는 key 입니다.', 409, 'duplicate_key');
+        if (exists) return err('Key already exists', 409, 'duplicate_key');
 
         const i18nKey = categoryI18nKey(inputKey);
         const invalidReason = hasInvalidTranslationValue(translations, i18nKey);
         if (invalidReason) return err(invalidReason, 400, 'invalid_translation_value');
         await upsertI18n(env, i18nKey, translations);
         const i18nReady = await hasCompleteI18n(env, i18nKey);
-        if (!i18nReady) return err('i18n 생성이 완료되지 않아 저장할 수 없습니다.', 400, 'i18n_not_ready');
+        if (!i18nReady) return err('Cannot save: i18n row creation incomplete', 400, 'i18n_not_ready');
 
         const row = { id: newId(), key: inputKey, sort_order: body.sort_order ?? 0, is_active: 1, created_at: now(), updated_at: now() };
         await env.DB.prepare(
@@ -444,7 +444,7 @@ export async function handleMaster(request: Request, env: Env, url: URL): Promis
         if (body.translations && Object.values(body.translations).some(v => (v || '').trim())) {
           const translations = normalizeTranslations(body.translations);
           const missing = missingTranslationLangs(translations);
-          if (missing.length > 0) return err(`번역값 누락: ${missing.join(', ')}`, 400, 'missing_translations');
+          if (missing.length > 0) return err(`Missing translations: ${missing.join(', ')}`, 400, 'missing_translations');
           const cat = await env.DB.prepare('SELECT code AS key FROM master_categories WHERE id = ?').bind(id).first<{ key: string }>();
           if (cat?.key) {
             const i18nKey = categoryI18nKey(cat.key);
@@ -556,7 +556,7 @@ export async function handleMaster(request: Request, env: Env, url: URL): Promis
         const translations = normalizeTranslations(body.translations);
         if (!translations.ko) return err('ko translation required');
         const missing = missingTranslationLangs(translations);
-        if (missing.length > 0) return err(`번역값 누락: ${missing.join(', ')}`, 400, 'missing_translations');
+        if (missing.length > 0) return err(`Missing translations: ${missing.join(', ')}`, 400, 'missing_translations');
 
         const category = await env.DB.prepare('SELECT code AS key FROM master_categories WHERE id = ?').bind(body.category_id).first<{ key: string }>();
         if (!category?.key) return err('category not found', 404);
@@ -570,7 +570,7 @@ export async function handleMaster(request: Request, env: Env, url: URL): Promis
         if (invalidReason) return err(invalidReason, 400, 'invalid_translation_value');
         await upsertI18n(env, i18nKey, translations);
         const i18nReady = await hasCompleteI18n(env, i18nKey);
-        if (!i18nReady) return err('i18n 생성이 완료되지 않아 저장할 수 없습니다.', 400, 'i18n_not_ready');
+        if (!i18nReady) return err('Cannot save: i18n row creation incomplete', 400, 'i18n_not_ready');
 
         const rowId = newId();
         const hasDeviceTypeCol = await hasColumn(env, 'master_items', 'device_type_id');
@@ -628,7 +628,7 @@ export async function handleMaster(request: Request, env: Env, url: URL): Promis
         if (body.translations && Object.values(body.translations).some(v => v)) {
           const translations = normalizeTranslations(body.translations);
           const missing = missingTranslationLangs(translations);
-          if (missing.length > 0) return err(`번역값 누락: ${missing.join(', ')}`, 400, 'missing_translations');
+          if (missing.length > 0) return err(`Missing translations: ${missing.join(', ')}`, 400, 'missing_translations');
           const item = await env.DB.prepare(
             `SELECT mi.code as item_key, mc.code as category_key
              FROM master_items mi

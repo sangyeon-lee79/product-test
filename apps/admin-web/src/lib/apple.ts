@@ -15,10 +15,10 @@ export function getAppleConfig(): Promise<PublicAppleConfig> {
 export async function loginWithApple(mode: OAuthMode = 'login'): Promise<void> {
   const config = await getAppleConfig();
   if (!config.apple_service_id) {
-    throw new Error('Apple Service ID가 설정되지 않았습니다.');
+    throw new Error('APPLE_SERVICE_ID_MISSING');
   }
   if (!config.apple_redirect_uri) {
-    throw new Error('Apple Redirect URI가 설정되지 않았습니다.');
+    throw new Error('APPLE_REDIRECT_URI_MISSING');
   }
 
   const params = new URLSearchParams({

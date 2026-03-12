@@ -32,7 +32,7 @@ export default function I18nPage() {
     try {
       const r = await api.i18n.list({ page, prefix: prefix || undefined, limit: LIMIT, active_only: activeOnly || undefined });
       setRows(r.items); setTotal(r.total);
-    } catch (e) { setError(e instanceof Error ? e.message : 'Error'); }
+    } catch (e) { setError(e instanceof Error ? e.message : t('common.err.unknown', 'Error')); }
     finally { setLoading(false); }
   }, [page, prefix, activeOnly]);
 
@@ -60,7 +60,7 @@ export default function I18nPage() {
         }
         return next as Partial<I18nRow>;
       });
-    } catch (e) { setError(e instanceof Error ? e.message : 'Translation Error'); }
+    } catch (e) { setError(e instanceof Error ? e.message : t('admin.i18n.err_translation', 'Translation Error')); }
     finally { setTranslating(false); }
   }
 
@@ -76,7 +76,7 @@ export default function I18nPage() {
       }
       closeModal(); void load();
       setTimeout(() => setSuccess(''), 3000);
-    } catch (e) { setError(e instanceof Error ? e.message : 'Error'); }
+    } catch (e) { setError(e instanceof Error ? e.message : t('common.err.unknown', 'Error')); }
     finally { setSaving(false); }
   }
 
@@ -86,7 +86,7 @@ export default function I18nPage() {
       await api.i18n.deactivate(id);
       setSuccess(t('admin.i18n.success_deactivate', '비활성화되었습니다.')); void load();
       setTimeout(() => setSuccess(''), 3000);
-    } catch (e) { setError(e instanceof Error ? e.message : 'Error'); }
+    } catch (e) { setError(e instanceof Error ? e.message : t('common.err.unknown', 'Error')); }
   }
 
   const totalPages = Math.ceil(total / LIMIT);
@@ -110,7 +110,7 @@ export default function I18nPage() {
                 <input type="checkbox" checked={activeOnly} onChange={e => { setActiveOnly(e.target.checked); setPage(1); }} />
                 {t('admin.i18n.active_only', '활성만 보기')}
               </label>
-              <span className="text-muted text-sm">총 {total}개</span>
+              <span className="text-muted text-sm">{t('admin.i18n.total_count', '총')} {total}{t('common.count_suffix', '개')}</span>
             </div>
           </div>
           <div className="table-wrap">
@@ -193,7 +193,7 @@ export default function I18nPage() {
                     <span>{LANG_LABELS[lang]} <span className="font-mono" style={{ opacity: .5 }}>({lang})</span></span>
                     {lang === 'ko' && (
                       <button className="btn btn-secondary btn-xs" onClick={handleAutoTranslate} disabled={translating || !form.ko}>
-                        {translating ? <><span className="spinner" /> 번역중...</> : '✨ 12개국어 자동번역'}
+                        {translating ? <><span className="spinner" /> {t('admin.i18n.translating', '번역중...')}</> : t('admin.i18n.auto_translate_btn', '✨ 12개국어 자동번역')}
                       </button>
                     )}
                   </label>

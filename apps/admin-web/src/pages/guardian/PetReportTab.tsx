@@ -30,7 +30,7 @@ export default function PetReportTab({ selectedPet, lang, locale, t, setError }:
     setLoading(true);
     api.pets.report.get(selectedPet.id, { period, lang })
       .then((data) => { if (!cancelled) setReport(data); })
-      .catch((e: unknown) => { if (!cancelled) setError(e instanceof Error ? e.message : 'Failed to load report'); })
+      .catch((e: unknown) => { if (!cancelled) setError(e instanceof Error ? e.message : t('guardian.report.err_load', 'Failed to load report')); })
       .finally(() => { if (!cancelled) setLoading(false); });
     return () => { cancelled = true; };
   }, [selectedPet?.id, period, lang]);

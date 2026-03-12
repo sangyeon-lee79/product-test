@@ -67,12 +67,12 @@ export async function ensureGooglePlacesScript(): Promise<PublicGoogleConfig> {
 
 export async function testGoogleIdentityClient(clientId: string): Promise<void> {
   if (!clientId.trim()) {
-    throw new Error('Google OAuth Client ID가 설정되지 않았습니다.');
+    throw new Error('GOOGLE_OAUTH_CLIENT_ID_MISSING');
   }
   await loadScript('https://accounts.google.com/gsi/client');
   const googleId = window.google?.accounts?.id;
   if (!googleId) {
-    throw new Error('Google 로그인 스크립트를 불러오지 못했습니다.');
+    throw new Error('GOOGLE_IDENTITY_SCRIPT_LOAD_FAILED');
   }
   googleId.initialize({
     client_id: clientId,
@@ -83,12 +83,12 @@ export async function testGoogleIdentityClient(clientId: string): Promise<void> 
 
 export async function testGooglePlacesKey(apiKey: string): Promise<void> {
   if (!apiKey.trim()) {
-    throw new Error('Google Places API Key가 설정되지 않았습니다.');
+    throw new Error('GOOGLE_PLACES_API_KEY_MISSING');
   }
   const src = `https://maps.googleapis.com/maps/api/js?key=${encodeURIComponent(apiKey)}&libraries=places`;
   await loadScript(src);
   if (!window.google?.maps?.places?.Autocomplete) {
-    throw new Error('Google Places 스크립트 로드에 실패했습니다.');
+    throw new Error('GOOGLE_PLACES_SCRIPT_LOAD_FAILED');
   }
 }
 
@@ -97,10 +97,10 @@ export async function testGooglePlacesKey(apiKey: string): Promise<void> {
 export async function loginWithGoogle(mode: OAuthMode = 'login'): Promise<void> {
   const config = await getGoogleConfig();
   if (!config.google_oauth_client_id) {
-    throw new Error('Google OAuth Client ID가 설정되지 않았습니다.');
+    throw new Error('GOOGLE_OAUTH_CLIENT_ID_MISSING');
   }
   if (!config.google_oauth_redirect_uri) {
-    throw new Error('Google OAuth Redirect URI가 설정되지 않았습니다.');
+    throw new Error('GOOGLE_OAUTH_REDIRECT_URI_MISSING');
   }
 
   const params = new URLSearchParams({

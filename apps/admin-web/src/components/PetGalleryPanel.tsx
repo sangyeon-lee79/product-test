@@ -424,7 +424,7 @@ export default function PetGalleryPanel({
         {allItems.length > 0 && (
           <>
             <header className="gallery-summary">
-              <div className="gallery-profile-pic" aria-label="pet profile summary">{selectedPet.name.slice(0, 1).toUpperCase()}</div>
+              <div className="gallery-profile-pic" aria-label={t('guardian.pet_summary', 'pet profile summary')}>{selectedPet.name.slice(0, 1).toUpperCase()}</div>
               <div className="gallery-summary-text">
                 <h3>{selectedPet.name}</h3>
                 <p className="text-muted">{breedLabel} / {genderLabel} / {lifeStageLabel}</p>

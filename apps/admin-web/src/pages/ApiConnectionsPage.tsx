@@ -100,7 +100,7 @@ function GoogleTab({ t }: { t: (key: string, fb?: string) => string }) {
         data.settings.google_places_api_key?.updated_at || '',
       );
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Failed to load settings');
+      setError(e instanceof Error ? e.message : t('admin.api_connections.err_load', 'Failed to load settings'));
     } finally {
       setLoading(false);
     }
@@ -132,7 +132,7 @@ function GoogleTab({ t }: { t: (key: string, fb?: string) => string }) {
       setSuccess(t('admin.api_connections.saved', '설정이 저장되었습니다.'));
       await load();
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Failed to save');
+      setError(e instanceof Error ? e.message : t('admin.api_connections.err_save', 'Failed to save'));
     } finally {
       setSaving(false);
     }
@@ -144,10 +144,10 @@ function GoogleTab({ t }: { t: (key: string, fb?: string) => string }) {
       await testGooglePlacesKey(placesKey);
       await api.platformSettings.google.update({ google_places_verified_at: new Date().toISOString() });
       setPlacesConnected(true);
-      setPlacesTestMessage('정상입니다. Google Places 스크립트 로드가 확인되었습니다.');
+      setPlacesTestMessage(t('admin.api_connections.test.places_ok', '정상입니다. Google Places 스크립트 로드가 확인되었습니다.'));
     } catch (e) {
       setPlacesConnected(false);
-      setPlacesTestMessage(e instanceof Error ? e.message : 'Google Places 연결 확인에 실패했습니다.');
+      setPlacesTestMessage(e instanceof Error ? e.message : t('admin.api_connections.test.places_fail', 'Google Places 연결 확인에 실패했습니다.'));
     } finally { setTestingTarget(''); }
   }
 
@@ -157,10 +157,10 @@ function GoogleTab({ t }: { t: (key: string, fb?: string) => string }) {
       await testGoogleIdentityClient(oauthClientId);
       await api.platformSettings.google.update({ google_oauth_verified_at: new Date().toISOString() });
       setOauthConnected(true);
-      setOauthTestMessage('정상입니다. Google 로그인 스크립트와 Client ID 초기화가 확인되었습니다.');
+      setOauthTestMessage(t('admin.api_connections.test.oauth_ok', '정상입니다. Google 로그인 스크립트와 Client ID 초기화가 확인되었습니다.'));
     } catch (e) {
       setOauthConnected(false);
-      setOauthTestMessage(e instanceof Error ? e.message : 'Google 로그인 연결 확인에 실패했습니다.');
+      setOauthTestMessage(e instanceof Error ? e.message : t('admin.api_connections.test.oauth_fail', 'Google 로그인 연결 확인에 실패했습니다.'));
     } finally { setTestingTarget(''); }
   }
 
@@ -172,14 +172,14 @@ function GoogleTab({ t }: { t: (key: string, fb?: string) => string }) {
         google_translate_service_account_json: translateServiceJson,
         google_translate_service_account_email: parsed?.email || translateServiceEmail,
         google_translate_service_account_private_key: parsed?.privateKey || translatePrivateKey,
-        text: '테스트 번역',
+        text: t('admin.api_connections.test.sample_text', '테스트 번역'),
       });
       await api.platformSettings.google.update({ google_translate_verified_at: new Date().toISOString() });
       setTranslateConnected(true);
-      setTranslateTestMessage(`정상입니다. 테스트 번역 결과: ${result.translated_text || '(빈 응답)'}`);
+      setTranslateTestMessage(`${t('admin.api_connections.test.translate_ok', '정상입니다. 테스트 번역 결과')}: ${result.translated_text || t('admin.api_connections.test.empty_response', '(빈 응답)')}`);
     } catch (e) {
       setTranslateConnected(false);
-      setTranslateTestMessage(e instanceof Error ? e.message : 'Google 번역 연결 확인에 실패했습니다.');
+      setTranslateTestMessage(e instanceof Error ? e.message : t('admin.api_connections.test.translate_fail', 'Google 번역 연결 확인에 실패했습니다.'));
     } finally { setTestingTarget(''); }
   }
 
@@ -193,8 +193,8 @@ function GoogleTab({ t }: { t: (key: string, fb?: string) => string }) {
       setTranslateServiceEmail(parsed?.email || '');
       setTranslatePrivateKey(parsed?.privateKey || '');
       setTranslateConnected(false);
-      setTranslateTestMessage(parsed ? 'JSON 파일을 불러왔습니다. 저장 후 연결 확인을 눌러주세요.' : 'JSON을 불러왔지만 client_email/private_key를 찾지 못했습니다.');
-    } catch { setTranslateTestMessage('JSON 파일을 읽지 못했습니다.'); }
+      setTranslateTestMessage(parsed ? t('admin.api_connections.json_loaded', 'JSON 파일을 불러왔습니다. 저장 후 연결 확인을 눌러주세요.') : t('admin.api_connections.json_key_missing', 'JSON을 불러왔지만 client_email/private_key를 찾지 못했습니다.'));
+    } catch { setTranslateTestMessage(t('admin.api_connections.json_read_fail', 'JSON 파일을 읽지 못했습니다.')); }
     finally { e.target.value = ''; }
   }
 
@@ -213,7 +213,7 @@ function GoogleTab({ t }: { t: (key: string, fb?: string) => string }) {
               <span>1. Google Places</span>
               <StatusBadge connected={placesConnected} t={t} />
             </div>
-            <FieldHint>Google Maps Platform &gt; Credentials에서 만든 API key를 입력합니다.</FieldHint>
+            <FieldHint>{t('admin.api_connections.hint.places_key', 'Google Maps Platform > Credentials에서 만든 API key를 입력합니다.')}</FieldHint>
           </div>
           <div className="form-group">
             <label className="form-label">{t('admin.google.field.places_key', 'Google Places API Key')}</label>
@@ -267,10 +267,10 @@ function GoogleTab({ t }: { t: (key: string, fb?: string) => string }) {
               <span>3. Google Translate</span>
               <StatusBadge connected={translateConnected} t={t} />
             </div>
-            <FieldHint>Cloud Translation API용 서비스계정 JSON 파일을 붙여넣거나 업로드합니다.</FieldHint>
+            <FieldHint>{t('admin.api_connections.hint.translate_json', 'Cloud Translation API용 서비스계정 JSON 파일을 붙여넣거나 업로드합니다.')}</FieldHint>
           </div>
           <div className="form-group">
-            <label className="form-label">Service Account JSON</label>
+            <label className="form-label">{t('admin.api_connections.field.service_account_json', 'Service Account JSON')}</label>
             <textarea
               className="form-input" value={translateServiceJson} rows={10}
               onChange={e => {
@@ -286,7 +286,7 @@ function GoogleTab({ t }: { t: (key: string, fb?: string) => string }) {
             />
             <div style={{ marginTop: 10, display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
               <label className="btn btn-secondary" style={{ cursor: 'pointer' }}>
-                JSON 파일 불러오기
+                {t('admin.api_connections.btn.load_json', 'JSON 파일 불러오기')}
                 <input type="file" accept="application/json,.json" onChange={e => void handleJsonFileUpload(e)} style={{ display: 'none' }} />
               </label>
             </div>
@@ -351,7 +351,7 @@ function KakaoTab({ t }: { t: (key: string, fb?: string) => string }) {
         redirectUri: s.kakao_redirect_uri?.value || '',
       });
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Failed to load');
+      setError(e instanceof Error ? e.message : t('admin.api_connections.err_load', 'Failed to load'));
     } finally { setLoading(false); }
   }
 
@@ -372,7 +372,7 @@ function KakaoTab({ t }: { t: (key: string, fb?: string) => string }) {
       if (changed) setConnected(false);
       setSuccess(t('admin.api_connections.saved', '설정이 저장되었습니다.'));
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Failed to save');
+      setError(e instanceof Error ? e.message : t('admin.api_connections.err_save', 'Failed to save'));
     } finally { setSaving(false); }
   }
 
@@ -381,10 +381,10 @@ function KakaoTab({ t }: { t: (key: string, fb?: string) => string }) {
     try {
       await api.platformSettings.kakao.test();
       setConnected(true);
-      setTestMessage('정상입니다. Kakao REST API Key가 유효합니다.');
+      setTestMessage(t('admin.api_connections.test.kakao_ok', '정상입니다. Kakao REST API Key가 유효합니다.'));
     } catch (e) {
       setConnected(false);
-      setTestMessage(e instanceof Error ? e.message : 'Kakao 연결 확인에 실패했습니다.');
+      setTestMessage(e instanceof Error ? e.message : t('admin.api_connections.test.kakao_fail', 'Kakao 연결 확인에 실패했습니다.'));
     } finally { setTesting(false); }
   }
 
@@ -472,7 +472,7 @@ function AppleTab({ t }: { t: (key: string, fb?: string) => string }) {
         redirectUri: s.apple_redirect_uri?.value || '',
       });
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Failed to load');
+      setError(e instanceof Error ? e.message : t('admin.api_connections.err_load', 'Failed to load'));
     } finally { setLoading(false); }
   }
 
@@ -498,7 +498,7 @@ function AppleTab({ t }: { t: (key: string, fb?: string) => string }) {
       if (changed) setConnected(false);
       setSuccess(t('admin.api_connections.saved', '설정이 저장되었습니다.'));
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Failed to save');
+      setError(e instanceof Error ? e.message : t('admin.api_connections.err_save', 'Failed to save'));
     } finally { setSaving(false); }
   }
 
@@ -507,10 +507,10 @@ function AppleTab({ t }: { t: (key: string, fb?: string) => string }) {
     try {
       await api.platformSettings.apple.test();
       setConnected(true);
-      setTestMessage('정상입니다. Apple .p8 키로 JWT 생성이 확인되었습니다.');
+      setTestMessage(t('admin.api_connections.test.apple_ok', '정상입니다. Apple .p8 키로 JWT 생성이 확인되었습니다.'));
     } catch (e) {
       setConnected(false);
-      setTestMessage(e instanceof Error ? e.message : 'Apple 연결 확인에 실패했습니다.');
+      setTestMessage(e instanceof Error ? e.message : t('admin.api_connections.test.apple_fail', 'Apple 연결 확인에 실패했습니다.'));
     } finally { setTesting(false); }
   }
 
@@ -521,8 +521,8 @@ function AppleTab({ t }: { t: (key: string, fb?: string) => string }) {
       const text = await file.text();
       setPrivateKey(text.trim());
       setConnected(false);
-      setTestMessage('.p8 파일을 불러왔습니다. 저장 후 연결 확인을 눌러주세요.');
-    } catch { setTestMessage('.p8 파일을 읽지 못했습니다.'); }
+      setTestMessage(t('admin.api_connections.p8_loaded', '.p8 파일을 불러왔습니다. 저장 후 연결 확인을 눌러주세요.'));
+    } catch { setTestMessage(t('admin.api_connections.p8_read_fail', '.p8 파일을 읽지 못했습니다.')); }
     finally { e.target.value = ''; }
   }
 
@@ -547,12 +547,12 @@ function AppleTab({ t }: { t: (key: string, fb?: string) => string }) {
           <div className="form-group">
             <label className="form-label">{t('admin.apple.field.team_id', 'Team ID')}</label>
             <input className="form-input" value={teamId} onChange={e => setTeamId(e.target.value)} placeholder="ABCDE12345" />
-            <FieldHint>Apple Developer 계정의 Team ID (10자리)</FieldHint>
+            <FieldHint>{t('admin.apple.hint.team_id', 'Apple Developer 계정의 Team ID (10자리)')}</FieldHint>
           </div>
           <div className="form-group">
             <label className="form-label">{t('admin.apple.field.key_id', 'Key ID')}</label>
             <input className="form-input" value={keyId} onChange={e => setKeyId(e.target.value)} placeholder="ABC123DEFG" />
-            <FieldHint>Sign in with Apple용 Key의 Key ID (10자리)</FieldHint>
+            <FieldHint>{t('admin.apple.hint.key_id', 'Sign in with Apple용 Key의 Key ID (10자리)')}</FieldHint>
           </div>
           <div className="form-group">
             <label className="form-label">{t('admin.apple.field.private_key', 'Private Key (.p8)')}</label>
@@ -564,7 +564,7 @@ function AppleTab({ t }: { t: (key: string, fb?: string) => string }) {
             />
             <div style={{ marginTop: 10, display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
               <label className="btn btn-secondary" style={{ cursor: 'pointer' }}>
-                .p8 파일 불러오기
+                {t('admin.api_connections.btn.load_p8', '.p8 파일 불러오기')}
                 <input type="file" accept=".p8,.pem" onChange={e => void handleP8FileUpload(e)} style={{ display: 'none' }} />
               </label>
             </div>

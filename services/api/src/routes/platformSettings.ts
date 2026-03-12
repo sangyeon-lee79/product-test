@@ -154,7 +154,7 @@ async function testGoogleTranslateCredentials(request: Request, me: JwtPayload):
   const serviceAccountJson = String(body.google_translate_service_account_json || '').trim();
   let serviceAccountEmail = String(body.google_translate_service_account_email || '').trim();
   let privateKey = String(body.google_translate_service_account_private_key || '').trim();
-  const text = String(body.text || '테스트 번역').trim();
+  const text = String(body.text || 'Test translation').trim();
 
   if (serviceAccountJson) {
     try {

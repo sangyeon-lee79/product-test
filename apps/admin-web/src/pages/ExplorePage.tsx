@@ -150,7 +150,7 @@ export default function ExplorePage() {
         <div className="explore-search-bar">
           <span className="explore-search-icon">🔍</span>
           <input
-            placeholder="캡션, 펫 이름, 태그로 검색…"
+            placeholder={t('explore.search_placeholder', '캡션, 펫 이름, 태그로 검색…')}
             value={search}
             onChange={(e) => setSearch(e.target.value)}
           />
@@ -158,7 +158,7 @@ export default function ExplorePage() {
 
         {/* Stats row */}
         <div style={{ fontSize: 13, color: 'var(--text-muted)', marginBottom: 16 }}>
-          {filteredFeeds.length}개의 게시물
+          {filteredFeeds.length} {t('explore.post_count', '개의 게시물')}
         </div>
 
         {/* Explore grid */}
@@ -192,7 +192,7 @@ export default function ExplorePage() {
         {!loading && filteredFeeds.length === 0 && (
           <div style={{ textAlign: 'center', padding: 60, color: 'var(--text-muted)' }}>
             <div style={{ fontSize: 36, marginBottom: 12 }}>🔍</div>
-            <p style={{ fontWeight: 600 }}>검색 결과가 없습니다</p>
+            <p style={{ fontWeight: 600 }}>{t('explore.no_results', '검색 결과가 없습니다')}</p>
           </div>
         )}
       </div>

@@ -90,7 +90,7 @@ export default function MembersPage() {
       setMembers(data.members || []);
       setSummary(data.summary);
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Failed to load members');
+      setError(e instanceof Error ? e.message : t('admin.members.err_load', 'Failed to load members'));
     } finally {
       setLoading(false);
     }
@@ -239,7 +239,7 @@ export default function MembersPage() {
       // Full re-fetch in background for label consistency
       void load();
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Failed to update member');
+      setError(e instanceof Error ? e.message : t('admin.members.err_update', 'Failed to update member'));
     } finally {
       setSaving(false);
     }
@@ -259,7 +259,7 @@ export default function MembersPage() {
       setDeleteTarget(null);
       await load();
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Failed to delete member');
+      setError(e instanceof Error ? e.message : t('admin.members.err_delete', 'Failed to delete member'));
     } finally {
       setDeleting(false);
     }
@@ -271,7 +271,7 @@ export default function MembersPage() {
       setSuccess(t(action === 'approve' ? 'admin.members.success.approved' : 'admin.members.success.rejected'));
       await load();
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Failed to update application');
+      setError(e instanceof Error ? e.message : t('admin.members.err_update_app', 'Failed to update application'));
     }
   }
 

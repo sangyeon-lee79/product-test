@@ -598,7 +598,7 @@ export default function FeedManageModal({
                     {/* Feed: nutrition summary */}
                     {isFeed && f.calories_per_100g != null && (
                       <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 2 }}>
-                        {f.calories_per_100g} kcal/100g
+                        {f.calories_per_100g} {t('unit.kcal_per_100g', 'kcal/100g')}
                         {f.protein_pct != null && ` · P${f.protein_pct}%`}
                         {f.fat_pct != null && ` · F${f.fat_pct}%`}
                       </div>
@@ -717,7 +717,7 @@ export default function FeedManageModal({
                 <div style={{ margin: '8px 0', padding: '10px 12px', background: 'var(--bg)', borderRadius: 6, border: '1px solid var(--border)' }}>
                   <div style={{ fontSize: 13, fontWeight: 600, marginBottom: 6 }}>{t('nutrition.title', '영양 정보')}</div>
                   <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '4px 12px', fontSize: 12, color: 'var(--text-secondary)' }}>
-                    {nutrition.calories_per_100g != null && <span>{t('nutrition.calories', '칼로리')}: {nutrition.calories_per_100g} kcal</span>}
+                    {nutrition.calories_per_100g != null && <span>{t('nutrition.calories', '칼로리')}: {nutrition.calories_per_100g} {t('unit.kcal', 'kcal')}</span>}
                     {nutrition.protein_pct != null && <span>{t('nutrition.protein', '단백질')}: {nutrition.protein_pct}%</span>}
                     {nutrition.fat_pct != null && <span>{t('nutrition.fat', '지방')}: {nutrition.fat_pct}%</span>}
                     {nutrition.fiber_pct != null && <span>{t('nutrition.fiber', '식이섬유')}: {nutrition.fiber_pct}%</span>}
@@ -872,7 +872,7 @@ export default function FeedManageModal({
                         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 6 }}>
                           {(['calories_per_100g', 'protein_pct', 'fat_pct', 'carbohydrate_pct'] as const).map((key) => {
                             const labels: Record<string, string> = {
-                              calories_per_100g: t('nutrition.calories', 'kcal/100g'),
+                              calories_per_100g: t('nutrition.calories', '칼로리') + ' (' + t('unit.kcal_per_100g', 'kcal/100g') + ')',
                               protein_pct: t('nutrition.protein', 'Protein') + ' %',
                               fat_pct: t('nutrition.fat', 'Fat') + ' %',
                               carbohydrate_pct: t('nutrition.carbohydrate', 'Carbohydrate') + ' %',

@@ -200,7 +200,7 @@ async function checkMicrochip(env: Env, payload: JwtPayload, url: URL): Promise<
   const mine = owner.guardian_id === payload.sub;
   return ok({
     available: false,
-    reason: mine ? '이미 등록된 마이크로칩 번호입니다.' : '다른 반려동물에 연결된 번호입니다.',
+    reason: mine ? 'Microchip number already registered' : 'Microchip linked to another pet',
     pet_id: owner.id,
   });
 }
@@ -237,7 +237,7 @@ async function createPet(request: Request, env: Env, payload: JwtPayload): Promi
   const microchipNo = normalizeMicrochipWithCountry(body.microchip_no, normalizeCountryCode(body.country_code));
   if (microchipNo) {
     const dup = await findMicrochipOwner(env, microchipNo);
-    if (dup) return err('이미 등록된 마이크로칩 번호입니다.', 409, 'microchip_duplicate');
+    if (dup) return err('Microchip number already registered', 409, 'microchip_duplicate');
   }
 
   const id = newId();
@@ -367,7 +367,7 @@ async function updatePet(request: Request, env: Env, payload: JwtPayload, petId:
   const microchipNo = normalizeMicrochipWithCountry(body.microchip_no, normalizeCountryCode(body.country_code));
   if (microchipNo) {
     const dup = await findMicrochipOwner(env, microchipNo, petId);
-    if (dup) return err('이미 등록된 마이크로칩 번호입니다.', 409, 'microchip_duplicate');
+    if (dup) return err('Microchip number already registered', 409, 'microchip_duplicate');
   }
 
   const sets: string[] = ['updated_at = ?'];

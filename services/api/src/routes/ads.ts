@@ -5,5 +5,5 @@ import type { Env } from '../types';
 import { err } from '../types';
 
 export function handleAds(_request: Request, _env: Env, _url: URL): Response {
-  return err('Not implemented yet — S11에서 구현 예정', 501);
+  return err('Not implemented yet', 501);
 }

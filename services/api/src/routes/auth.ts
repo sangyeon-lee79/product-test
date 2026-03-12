@@ -1281,13 +1281,13 @@ async function ensureBangulGuardianSample(env: Env): Promise<{ id: string; role:
       country_id, language, timezone, interests, created_at, updated_at
     ) VALUES (?, ?, ?, ?, ?, ?, '{}', NULL, 'ko', 'Asia/Seoul', '[]', ?, ?)
     ON CONFLICT DO NOTHING`
-  ).bind(newId(), userId, null, '방울맘', 'https://placehold.co/320x320?text=Bangul', '방울이와 함께하는 일상 기록', ts, ts).run();
+  ).bind(newId(), userId, null, 'PetMom', 'https://placehold.co/320x320?text=Bangul', 'Daily life with my pet', ts, ts).run();
 
   await env.DB.prepare(
     `UPDATE user_profiles
-     SET display_name = COALESCE(display_name, '방울맘'),
+     SET display_name = COALESCE(display_name, 'PetMom'),
          avatar_url = COALESCE(avatar_url, 'https://placehold.co/320x320?text=Bangul'),
-         bio = COALESCE(bio, '방울이와 함께하는 일상 기록'),
+         bio = COALESCE(bio, 'Daily life with my pet'),
          updated_at = ?
      WHERE user_id = ?`
   ).bind(ts, userId).run();
@@ -1296,7 +1296,7 @@ async function ensureBangulGuardianSample(env: Env): Promise<{ id: string; role:
   if (normalizedPets) {
     const pet = await env.DB.prepare(
       `SELECT id FROM pets
-       WHERE guardian_user_id = ? AND name = '방울' AND status != 'deleted'
+       WHERE guardian_user_id = ? AND name = 'Bangul' AND status != 'deleted'
        LIMIT 1`
     ).bind(userId).first<{ id: string }>();
 
@@ -1309,7 +1309,7 @@ async function ensureBangulGuardianSample(env: Env): Promise<{ id: string; role:
           diet_type_id, coat_length_id, coat_type_id, activity_level_id, health_level_id,
           gender_legacy, species_legacy, birth_date, weight_kg, is_neutered, avatar_url, status, created_at, updated_at
         ) VALUES (
-          ?, ?, '방울', 'BANGUL-0001',
+          ?, ?, 'Bangul', 'BANGUL-0001',
           ?, ?, ?, NULL, NULL, NULL,
           NULL, NULL, NULL, NULL, NULL,
           'female', 'dog', '2021-03-15', 4.2, false, 'https://placehold.co/600x600?text=Bangul', 'active', ?, ?
@@ -1327,7 +1327,7 @@ async function ensureBangulGuardianSample(env: Env): Promise<{ id: string; role:
   } else {
     const pet = await env.DB.prepare(
       `SELECT id FROM pets
-       WHERE guardian_id = ? AND name = '방울' AND status != 'deleted'
+       WHERE guardian_id = ? AND name = 'Bangul' AND status != 'deleted'
        LIMIT 1`
     ).bind(userId).first<{ id: string }>();
 
@@ -1343,12 +1343,12 @@ async function ensureBangulGuardianSample(env: Env): Promise<{ id: string; role:
           temperament_ids, notes, intro_text, birthday, birth_date, current_weight, weight_kg, microchip_no,
           avatar_url, is_neutered, status, created_at, updated_at
         ) VALUES (
-          ?, ?, '방울', 'dog', ?, ?, ?, NULL,
+          ?, ?, 'Bangul', 'dog', ?, ?, ?, NULL,
           NULL, NULL, NULL, NULL, ?,
           NULL, NULL, NULL, NULL,
           NULL, NULL, NULL, NULL,
           '[]', '[]', '[]', '[]', '[]',
-          '[]', '샘플 반려동물 데이터', '포메라니안 방울이', '2021-03-15', '2021-03-15', 4.2, 4.2, 'BANGUL-0001',
+          '[]', 'Sample pet data', 'Pomeranian Bangul', '2021-03-15', '2021-03-15', 4.2, 4.2, 'BANGUL-0001',
           'https://placehold.co/600x600?text=Bangul', false, 'active', ?, ?
         )
       `).bind(

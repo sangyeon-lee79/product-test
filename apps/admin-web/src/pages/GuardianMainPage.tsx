@@ -722,7 +722,7 @@ export default function GuardianMainPage() {
       <div className="pf-gd-tabs-wrap">
         <div className="pf-gd-tabs-inner" ref={tabsRef}>
           {(tabScrollState === 'left' || tabScrollState === 'both') && (
-            <button className="pf-gd-tab-arrow left" onClick={() => tabsRef.current?.scrollBy({ left: -120, behavior: 'smooth' })} aria-label="scroll left">‹</button>
+            <button className="pf-gd-tab-arrow left" onClick={() => tabsRef.current?.scrollBy({ left: -120, behavior: 'smooth' })} aria-label={t('common.scroll_left', 'scroll left')}>‹</button>
           )}
           <button className={`pf-feed-tab${petTab === 'timeline' ? ' active' : ''}`} onClick={() => setPetTab('timeline')}>
             📋 {t('guardian.tab.timeline', 'Timeline')}
@@ -743,7 +743,7 @@ export default function GuardianMainPage() {
             📊 {t('guardian.tab.report', 'Report')}
           </button>
           {(tabScrollState === 'right' || tabScrollState === 'both') && (
-            <button className="pf-gd-tab-arrow right" onClick={() => tabsRef.current?.scrollBy({ left: 120, behavior: 'smooth' })} aria-label="scroll right">›</button>
+            <button className="pf-gd-tab-arrow right" onClick={() => tabsRef.current?.scrollBy({ left: 120, behavior: 'smooth' })} aria-label={t('common.scroll_right', 'scroll right')}>›</button>
           )}
         </div>
       </div>
@@ -919,7 +919,7 @@ export default function GuardianMainPage() {
                                           <div className="pf-gd-tl-body">
                                             <span className="pf-gd-tl-time">{hhmm}</span>
                                             <span className="pf-gd-tl-sep">·</span>
-                                            <span>{log.weight_value}kg</span>
+                                            <span>{log.weight_value}{t('unit.kg', 'kg')}</span>
                                             {log.notes && <><span className="pf-gd-tl-sep">·</span><span className="pf-gd-tl-note">{log.notes}</span></>}
                                           </div>
                                           <div className="pf-gd-tl-actions">
@@ -971,10 +971,10 @@ export default function GuardianMainPage() {
                                           <div className="pf-gd-tl-body">
                                             <span className="pf-gd-tl-time">{hhmm}</span>
                                             <span className="pf-gd-tl-sep">·</span>
-                                            <span>{typeLabel} {log.duration_min}min</span>
+                                            <span>{typeLabel} {log.duration_min}{t('unit.min', 'min')}</span>
                                             <span className="pf-gd-tl-sep">·</span>
                                             <span>{intensityLabel}</span>
-                                            {log.distance_km != null && <><span className="pf-gd-tl-sep">·</span><span>{log.distance_km}km</span></>}
+                                            {log.distance_km != null && <><span className="pf-gd-tl-sep">·</span><span>{log.distance_km}{t('unit.km', 'km')}</span></>}
                                           </div>
                                           <div className="pf-gd-tl-actions">
                                             <button title={t('common.edit', 'Edit')} aria-label={t('common.edit', 'Edit')} onClick={() => { setEditingExerciseLog(log); setExerciseLogModalOpen(true); }}>✏️</button>
@@ -1031,7 +1031,7 @@ export default function GuardianMainPage() {
                                         <div className="pf-gd-tl-body">
                                           <span className="pf-gd-tl-time">{hhmm}</span>
                                           <span className="pf-gd-tl-sep">·</span>
-                                          <span>{totalG != null ? `${totalG}g` : '-'}{totalKcal ? ` / ${totalKcal}kcal` : ''}</span>
+                                          <span>{totalG != null ? `${totalG}${t('unit.g', 'g')}` : '-'}{totalKcal ? ` / ${totalKcal}${t('unit.kcal', 'kcal')}` : ''}</span>
                                           <span className="pf-gd-tl-sep">·</span>
                                           <span>{feedLabel}</span>
                                         </div>
@@ -1145,7 +1145,7 @@ export default function GuardianMainPage() {
                           <div><div className="pf-gd-info-label">{t('guardian.profile.country', 'Country')}</div><div className="pf-gd-info-value">{(() => { const c = guardianCountries.find((x) => x.id === guardianProfile.country_id); if (!c) return t('common.none', '-'); const lbl = c[lang as keyof Country]; return (typeof lbl === 'string' && lbl.trim()) ? lbl.trim() : c.ko_name || c.code; })()}</div></div>
                           <div><div className="pf-gd-info-label">{t('guardian.profile.language', 'Language')}</div><div className="pf-gd-info-value">{LANG_LABELS[guardianProfile.language as Lang] || guardianProfile.language || t('common.none', '-')}</div></div>
                           <div><div className="pf-gd-info-label">{t('guardian.profile.phone', 'Phone')}</div><div className="pf-gd-info-value">{guardianProfile.phone || t('common.none', '-')}</div></div>
-                          <div><div className="pf-gd-info-label">{t('guardian.profile.auth_method', 'Sign-up Method')}</div><div className="pf-gd-info-value">{guardianProfile.oauth_provider ? guardianProfile.oauth_provider.charAt(0).toUpperCase() + guardianProfile.oauth_provider.slice(1) : 'Email'}</div></div>
+                          <div><div className="pf-gd-info-label">{t('guardian.profile.auth_method', 'Sign-up Method')}</div><div className="pf-gd-info-value">{guardianProfile.oauth_provider ? guardianProfile.oauth_provider.charAt(0).toUpperCase() + guardianProfile.oauth_provider.slice(1) : t('guardian.profile.auth_email', 'Email')}</div></div>
                           <div style={{ gridColumn: '1 / -1' }}><div className="pf-gd-info-label">{t('guardian.profile.joined_date', 'Joined')}</div><div className="pf-gd-info-value">{guardianProfile.user_created_at ? fmtDate(guardianProfile.user_created_at, '-', locale) : t('common.none', '-')}</div></div>
                         </div>
                       </div>
@@ -1207,7 +1207,7 @@ export default function GuardianMainPage() {
                         const weight = p.current_weight ?? p.weight_kg;
                         const breedLabel = labelOf(optBreed, p.breed_id, '');
                         const genderLabel = labelOf(optGender, p.gender_id, '');
-                        const infoLine = [weight != null ? `${weight}kg` : null, breedLabel || null, genderLabel || null].filter(Boolean).join(' · ');
+                        const infoLine = [weight != null ? `${weight}${t('unit.kg', 'kg')}` : null, breedLabel || null, genderLabel || null].filter(Boolean).join(' · ');
                         return (
                           <div key={p.id} className={`pf-gd-pet-card${isSelected ? ' selected' : ''}`} onClick={() => setSelectedPetId(p.id)}>
                             <div className="pf-gd-pet-card-avatar">{p.name[0].toUpperCase()}</div>

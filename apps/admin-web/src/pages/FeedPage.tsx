@@ -262,7 +262,7 @@ export default function FeedPage() {
                       <div style={{ padding: '8px 10px', background: 'var(--bg)', borderRadius: 6, border: '1px solid var(--border)' }}>
                         <div style={{ fontWeight: 600, marginBottom: 6 }}>{t('nutrition.title', 'Nutrition Info')}</div>
                         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '4px 12px', fontSize: 12, color: 'var(--text-secondary)' }}>
-                          {selectedRequest.calories_per_100g != null && <span>{t('nutrition.calories', 'Calories')}: {selectedRequest.calories_per_100g} kcal</span>}
+                          {selectedRequest.calories_per_100g != null && <span>{t('nutrition.calories', 'Calories')}: {selectedRequest.calories_per_100g} {t('unit.kcal', 'kcal')}</span>}
                           {selectedRequest.protein_pct != null && <span>{t('nutrition.protein', 'Protein')}: {selectedRequest.protein_pct}%</span>}
                           {selectedRequest.fat_pct != null && <span>{t('nutrition.fat', 'Fat')}: {selectedRequest.fat_pct}%</span>}
                           {selectedRequest.fiber_pct != null && <span>{t('nutrition.fiber', 'Fiber')}: {selectedRequest.fiber_pct}%</span>}
@@ -314,7 +314,7 @@ export default function FeedPage() {
                       {selectedRequest.manufacturer_name && <div><strong>{t('guardian.feed.request_manufacturer', 'Manufacturer')}:</strong> {selectedRequest.manufacturer_name}</div>}
                       {selectedRequest.brand_name && <div><strong>{t('guardian.feed.request_brand', 'Brand')}:</strong> {selectedRequest.brand_name}</div>}
                       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '4px 12px', fontSize: 12, color: 'var(--text-secondary)', marginTop: 4 }}>
-                        {selectedRequest.calories_per_100g != null && <span>{t('nutrition.calories', 'Calories')}: {selectedRequest.calories_per_100g} kcal</span>}
+                        {selectedRequest.calories_per_100g != null && <span>{t('nutrition.calories', 'Calories')}: {selectedRequest.calories_per_100g} {t('unit.kcal', 'kcal')}</span>}
                         {selectedRequest.protein_pct != null && <span>{t('nutrition.protein', 'Protein')}: {selectedRequest.protein_pct}%</span>}
                         {selectedRequest.fat_pct != null && <span>{t('nutrition.fat', 'Fat')}: {selectedRequest.fat_pct}%</span>}
                         {selectedRequest.fiber_pct != null && <span>{t('nutrition.fiber', 'Fiber')}: {selectedRequest.fiber_pct}%</span>}

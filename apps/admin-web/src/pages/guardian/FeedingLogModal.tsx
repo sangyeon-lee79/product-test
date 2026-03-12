@@ -449,7 +449,7 @@ export default function FeedingLogModal({
                     />
                     {singleCalories > 0 && supplementCalorieDetails.total === 0 && (
                       <span style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 2, display: 'block' }}>
-                        ≈ {singleCalories.toFixed(0)} kcal
+                        ≈ {singleCalories.toFixed(0)} {t('unit.kcal', 'kcal')}
                       </span>
                     )}
                   </div>
@@ -480,7 +480,7 @@ export default function FeedingLogModal({
                               onClick={() => loadFavorite(fav)}
                             >
                               {fav.name}
-                              {suppCount > 0 && <span style={{ marginLeft: 4 }} title="Supplements included">{'\uD83D\uDC8A'}{suppCount}</span>}
+                              {suppCount > 0 && <span style={{ marginLeft: 4 }} title={t('guardian.feeding.supplements_included', 'Supplements included')}>{'\uD83D\uDC8A'}{suppCount}</span>}
                             </button>
                             <button
                               style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-muted)', fontSize: 12, padding: 0 }}
@@ -531,7 +531,7 @@ export default function FeedingLogModal({
                           />
                         </div>
                         <div style={{ width: 60, textAlign: 'right', fontSize: 11, color: 'var(--text-muted)', paddingBottom: 6 }}>
-                          {rowCal > 0 ? `${rowCal.toFixed(0)} kcal` : ''}
+                          {rowCal > 0 ? `${rowCal.toFixed(0)} ${t('unit.kcal', 'kcal')}` : ''}
                         </div>
                         <button
                           className="btn btn-danger btn-sm"
@@ -678,7 +678,7 @@ export default function FeedingLogModal({
                             </div>
                           </div>
                           <div style={{ width: 60, textAlign: 'right', fontSize: 11, color: 'var(--text-muted)', paddingBottom: 6 }}>
-                            {rowCal > 0 ? `${rowCal.toFixed(0)} kcal` : ''}
+                            {rowCal > 0 ? `${rowCal.toFixed(0)} ${t('unit.kcal', 'kcal')}` : ''}
                           </div>
                           <button
                             className="btn btn-danger btn-sm"
@@ -701,13 +701,13 @@ export default function FeedingLogModal({
                   <div style={{ fontWeight: 600, marginBottom: 4 }}>{t('nutrition.total', 'Nutrition Summary')}</div>
                   <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', color: 'var(--text-secondary)' }}>
                     {isMixed && mixedSummary && mixedSummary.totalG > 0 && (
-                      <span>{t('guardian.feeding.total_amount', 'Total Amount')}: {mixedSummary.totalG.toFixed(0)}g</span>
+                      <span>{t('guardian.feeding.total_amount', 'Total Amount')}: {mixedSummary.totalG.toFixed(0)}{t('unit.g', 'g')}</span>
                     )}
                     {!isMixed && form.amount_g && Number(form.amount_g) > 0 && (
-                      <span>{t('guardian.feeding.total_amount', 'Total Amount')}: {Number(form.amount_g).toFixed(0)}g</span>
+                      <span>{t('guardian.feeding.total_amount', 'Total Amount')}: {Number(form.amount_g).toFixed(0)}{t('unit.g', 'g')}</span>
                     )}
                     <span>
-                      {t('guardian.feeding.total_calories', 'Total Calories')}: {totalCaloriesAll.toFixed(0)} kcal
+                      {t('guardian.feeding.total_calories', 'Total Calories')}: {totalCaloriesAll.toFixed(0)} {t('unit.kcal', 'kcal')}
                       {supplementCalorieDetails.total > 0 && (
                         <> ({t('guardian.feeding.feed_calories', 'Feed')}: {feedCalories.toFixed(0)} + {t('guardian.feeding.supplement_calories', 'Supplements')}: {supplementCalorieDetails.total.toFixed(0)})</>
                       )}
@@ -715,15 +715,15 @@ export default function FeedingLogModal({
                   </div>
                   {isMixed && mixedSummary && (
                     <div style={{ display: 'flex', gap: 12, flexWrap: 'wrap', color: 'var(--text-secondary)', marginTop: 2 }}>
-                      {mixedSummary.totalProtein > 0 && <span>{t('nutrition.protein', 'Protein')}: {mixedSummary.totalProtein.toFixed(1)}g</span>}
-                      {mixedSummary.totalFat > 0 && <span>{t('nutrition.fat', 'Fat')}: {mixedSummary.totalFat.toFixed(1)}g</span>}
-                      {mixedSummary.totalCarbs > 0 && <span>{t('nutrition.carbohydrate', 'Carbs')}: {mixedSummary.totalCarbs.toFixed(1)}g</span>}
-                      {mixedSummary.totalFiber > 0 && <span>{t('nutrition.fiber', 'Fiber')}: {mixedSummary.totalFiber.toFixed(1)}g</span>}
+                      {mixedSummary.totalProtein > 0 && <span>{t('nutrition.protein', 'Protein')}: {mixedSummary.totalProtein.toFixed(1)}{t('unit.g', 'g')}</span>}
+                      {mixedSummary.totalFat > 0 && <span>{t('nutrition.fat', 'Fat')}: {mixedSummary.totalFat.toFixed(1)}{t('unit.g', 'g')}</span>}
+                      {mixedSummary.totalCarbs > 0 && <span>{t('nutrition.carbohydrate', 'Carbs')}: {mixedSummary.totalCarbs.toFixed(1)}{t('unit.g', 'g')}</span>}
+                      {mixedSummary.totalFiber > 0 && <span>{t('nutrition.fiber', 'Fiber')}: {mixedSummary.totalFiber.toFixed(1)}{t('unit.g', 'g')}</span>}
                     </div>
                   )}
                   {supplementCalorieDetails.details.length > 0 && (
                     <div style={{ marginTop: 4, color: 'var(--text-muted)' }}>
-                      {t('guardian.feeding.supplement_calories', 'Supplement Calories')}: {supplementCalorieDetails.total.toFixed(0)} kcal ({supplementCalorieDetails.details.map((d) => `${d.name} ${d.kcal.toFixed(0)}kcal`).join(' + ')})
+                      {t('guardian.feeding.supplement_calories', 'Supplement Calories')}: {supplementCalorieDetails.total.toFixed(0)} {t('unit.kcal', 'kcal')} ({supplementCalorieDetails.details.map((d) => `${d.name} ${d.kcal.toFixed(0)}${t('unit.kcal', 'kcal')}`).join(' + ')})
                     </div>
                   )}
                 </div>

@@ -124,7 +124,7 @@ export default function MasterPage() {
       const data = await api.master.categories.list();
       setCategories(data);
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Error');
+      setError(e instanceof Error ? e.message : t('common.err.unknown', 'Error'));
     } finally {
       setLoading(false);
     }
@@ -142,7 +142,7 @@ export default function MasterPage() {
       );
       setItemsByCategory(Object.fromEntries(entries));
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Error');
+      setError(e instanceof Error ? e.message : t('common.err.unknown', 'Error'));
     }
   }, [categoryChain]);
 
@@ -375,7 +375,7 @@ export default function MasterPage() {
       setCatModal(null);
       await loadCategories();
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Error');
+      setError(e instanceof Error ? e.message : t('common.err.unknown', 'Error'));
     } finally {
       setCatSaving(false);
     }
@@ -389,7 +389,7 @@ export default function MasterPage() {
       if (selectedCat?.id === cat.id) setSelectedCat(null);
       await loadCategories();
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Error');
+      setError(e instanceof Error ? e.message : t('common.err.unknown', 'Error'));
     }
   }
 
@@ -399,7 +399,7 @@ export default function MasterPage() {
       await loadCategories();
       flash(t('admin.master.msg_success'));
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Error');
+      setError(e instanceof Error ? e.message : t('common.err.unknown', 'Error'));
     }
   }
 
@@ -488,7 +488,7 @@ export default function MasterPage() {
       setItemModal(null);
       await loadChainItems();
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Error');
+      setError(e instanceof Error ? e.message : t('common.err.unknown', 'Error'));
     } finally {
       setItemSaving(false);
     }
@@ -503,7 +503,7 @@ export default function MasterPage() {
       await loadChainItems();
       setSelectedIds(Array(MAX_LEVEL).fill(''));
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Error');
+      setError(e instanceof Error ? e.message : t('common.err.unknown', 'Error'));
     }
   }
 
@@ -514,7 +514,7 @@ export default function MasterPage() {
       await loadChainItems();
       flash(t('admin.master.msg_success'));
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Error');
+      setError(e instanceof Error ? e.message : t('common.err.unknown', 'Error'));
     }
   }
 

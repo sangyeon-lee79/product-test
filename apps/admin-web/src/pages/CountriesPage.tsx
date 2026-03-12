@@ -101,9 +101,9 @@ export default function CountriesPage() {
     setError('');
     try {
       const ko = (countryTrans.ko || '').trim();
-      if (!countryForm.code) throw new Error('국가 코드를 선택해주세요.');
-      if (!ko) throw new Error('한국어 국가명은 필수입니다.');
-      if (!countryForm.default_currency_code) throw new Error('기본 통화를 선택해주세요.');
+      if (!countryForm.code) throw new Error(t('admin.countries.err_select_code', '국가 코드를 선택해주세요.'));
+      if (!ko) throw new Error(t('admin.countries.err_ko_required', '한국어 국가명은 필수입니다.'));
+      if (!countryForm.default_currency_code) throw new Error(t('admin.countries.err_select_currency', '기본 통화를 선택해주세요.'));
 
       let translations: Record<string, string> = { ...countryTrans, ko };
       const hasMissing = SUPPORTED_LANGS.some((lang) => lang !== 'ko' && !(translations[lang] || '').trim());
@@ -134,7 +134,7 @@ export default function CountriesPage() {
       setCountryModal(null);
       await load();
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Error');
+      setError(e instanceof Error ? e.message : t('common.err.unknown', 'Error'));
     } finally {
       setSaving(false);
     }
@@ -165,7 +165,7 @@ export default function CountriesPage() {
                   <th>{t('admin.countries.col_country_name', '국가명')}</th>
                   <th>{t('admin.countries.col_default_currency', '기본 통화')}</th>
                   <th>{t('admin.countries.col_i18n_key', 'i18n 키')}</th>
-                  <th>Sort</th>
+                  <th>{t('admin.common.sort_order', '정렬 순서')}</th>
                   <th>{t('admin.common.status', '상태')}</th>
                   <th>{t('admin.common.action', '작업')}</th>
                 </tr></thead>
@@ -218,7 +218,7 @@ export default function CountriesPage() {
                   disabled={countryModal === 'edit'}
                   onChange={e => setCountryForm(f => ({ ...f, code: e.target.value.toUpperCase() }))}
                 >
-                  <option value="">-- ISO 3166-1 alpha-2 선택 --</option>
+                  <option value="">{t('admin.countries.select_iso_code', '-- ISO 3166-1 alpha-2 선택 --')}</option>
                   {ISO_ALPHA2_CODES.map(code => <option key={code} value={code}>{code}</option>)}
                 </select>
               </div>
@@ -230,7 +230,7 @@ export default function CountriesPage() {
                   value={countryForm.default_currency_code}
                   onChange={e => setCountryForm(f => ({ ...f, default_currency_code: e.target.value.toUpperCase() }))}
                 >
-                  <option value="">-- 통화 선택 --</option>
+                  <option value="">{t('admin.countries.select_currency', '-- 통화 선택 --')}</option>
                   {DEFAULT_CURRENCIES.map(code => <option key={code} value={code}>{code}</option>)}
                 </select>
               </div>
@@ -249,7 +249,7 @@ export default function CountriesPage() {
                   readOnly={countryModal === 'create'}
                   onChange={e => setCountryForm(f => ({ ...f, sort_order: e.target.value }))}
                 />
-                {countryModal === 'create' && <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 4 }}>생성 시 자동으로 다음 순서가 부여됩니다.</div>}
+                {countryModal === 'create' && <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 4 }}>{t('admin.countries.auto_sort_hint', '생성 시 자동으로 다음 순서가 부여됩니다.')}</div>}
               </div>
 
               <div style={{ borderTop: '1px solid var(--border)', paddingTop: 12, marginTop: 4 }}>

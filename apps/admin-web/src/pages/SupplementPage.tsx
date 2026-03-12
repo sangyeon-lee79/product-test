@@ -136,7 +136,7 @@ export default function SupplementPage() {
                 ...(meta.dosage_unit ? [{ label: t('admin.supplement.dosage_unit', 'Dosage Unit'), value: meta.dosage_unit } satisfies ModelDetailField] : []),
                 ...(meta.calories_per_serving != null ? [{ label: t('admin.supplement.calories_serving', 'kcal/serving'), value: String(meta.calories_per_serving) } satisfies ModelDetailField] : []),
                 ...(meta.species_key ? [{ label: t('admin.supplement.species', 'Species'), value: meta.species_key } satisfies ModelDetailField] : []),
-                ...(meta.prescribed ? [{ label: t('admin.supplement.prescribed', 'Prescribed'), value: 'Yes' } satisfies ModelDetailField] : []),
+                ...(meta.prescribed ? [{ label: t('admin.supplement.prescribed', 'Prescribed'), value: t('common.yes', 'Yes') } satisfies ModelDetailField] : []),
               ]}
             />
           );

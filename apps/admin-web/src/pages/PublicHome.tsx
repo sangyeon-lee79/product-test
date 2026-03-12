@@ -509,12 +509,12 @@ export default function PublicHome() {
             <div className="pf-health-stat">
               <span className="pf-health-stat-icon">🔥</span>
               <span className="pf-health-stat-value">{meta.calories ? `${meta.calories}` : '--'}</span>
-              <span className="pf-health-stat-label">{t('public.health.calories', '칼로리')} kcal</span>
+              <span className="pf-health-stat-label">{t('public.health.calories', '칼로리')} {t('unit.kcal', 'kcal')}</span>
             </div>
             <div className="pf-health-stat">
               <span className="pf-health-stat-icon">🏃</span>
               <span className="pf-health-stat-value">{meta.exercise ? `${meta.exercise}` : '--'}</span>
-              <span className="pf-health-stat-label">{t('public.health.exercise', '운동')} min</span>
+              <span className="pf-health-stat-label">{t('public.health.exercise', '운동')} {t('unit.min', 'min')}</span>
             </div>
             <div className="pf-health-stat">
               <span className="pf-health-stat-icon">👣</span>

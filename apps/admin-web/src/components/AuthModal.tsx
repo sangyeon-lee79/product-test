@@ -547,7 +547,7 @@ export default function AuthModal({ open, initialMode, onClose, onSuccess }: Aut
           <div className="form-row col2">
             <div className="form-group">
               <label className="form-label">{t('public.signup.password', '비밀번호')} *</label>
-              <input className="form-input" type="password" minLength={8} value={password} onChange={e => setPassword(e.target.value)} placeholder="8자 이상" />
+              <input className="form-input" type="password" minLength={8} value={password} onChange={e => setPassword(e.target.value)} placeholder={t('auth.password_hint', '8자 이상')} />
             </div>
             <div className="form-group">
               <label className="form-label">{t('public.signup.password_confirm', '비밀번호 확인')} *</label>
