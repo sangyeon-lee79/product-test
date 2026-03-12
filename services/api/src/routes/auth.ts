@@ -1115,13 +1115,56 @@ async function ensureDefaultSampleAccount(
     'SELECT id, role, password_hash, status FROM users WHERE email = ?'
   ).bind(sample.email).first<UserRow>();
 
+  // For provider sample: create as guardian (approval flow will promote to provider)
+  const initialRole = sample.role === 'provider' ? 'guardian' as JwtPayload['role'] : sample.role;
+
   const ensuredBase = existing?.id
     ? { id: existing.id, role: existing.role }
-    : await ensureMinimalSampleUser(env, sample.email, sample.role);
+    : await ensureMinimalSampleUser(env, sample.email, initialRole);
   if (!ensuredBase) return null;
 
   const passwordHash = await forceSamplePassword(env, ensuredBase.id, sample.password);
   const ts = now();
+
+  if (sample.role === 'provider') {
+    // Provider sample: don't force role — let approval flow manage it
+    // But if user exists as 'provider' with no role_applications, reset to 'guardian'
+    const anyApp = await env.DB.prepare(
+      'SELECT id FROM role_applications WHERE user_id = ? LIMIT 1'
+    ).bind(ensuredBase.id).first<{ id: string }>();
+
+    let effectiveRole = ensuredBase.role;
+    if (!anyApp) {
+      // No applications exist: reset to guardian, create pending application + profile
+      effectiveRole = 'guardian';
+      await env.DB.prepare(
+        'UPDATE users SET role = ?, status = ?, updated_at = ? WHERE id = ?'
+      ).bind('guardian', 'active', ts, ensuredBase.id).run();
+      await env.DB.prepare(
+        `INSERT INTO role_applications (id, user_id, requested_role, status, requested_at, created_at, updated_at)
+         VALUES (?, ?, 'provider', 'pending', ?, ?, ?)`
+      ).bind(newId(), ensuredBase.id, ts, ts, ts).run();
+      await env.DB.prepare(
+        `INSERT INTO provider_profiles (id, user_id, approval_status, created_at, updated_at)
+         VALUES (?, ?, 'pending', ?, ?)
+         ON CONFLICT (user_id) DO UPDATE SET approval_status = 'pending', updated_at = ?`
+      ).bind(newId(), ensuredBase.id, ts, ts, ts).run();
+    } else {
+      // Applications exist: keep current role (approved→provider, pending→guardian)
+      await env.DB.prepare(
+        'UPDATE users SET status = ?, updated_at = ? WHERE id = ?'
+      ).bind('active', ts, ensuredBase.id).run();
+    }
+
+    return {
+      id: ensuredBase.id,
+      role: effectiveRole,
+      password_hash: passwordHash,
+      status: 'active',
+    };
+  }
+
+  // Guardian/Admin: always force the role
   await env.DB.prepare(
     'UPDATE users SET role = ?, status = ?, updated_at = ? WHERE id = ?'
   ).bind(sample.role, 'active', ts, ensuredBase.id).run();

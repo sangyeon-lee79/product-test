@@ -2940,12 +2940,44 @@ html[data-theme="dark"] .pf-feed-tab:hover { color: #ccc; }
 }
 .pf-badge--pet { background: #FFF0E8; color: #C4541A; }
 .pf-badge--biz { background: rgba(100,150,255,.1); color: #3B5BDB; }
-.pf-badge--supplier { background: #F0F0F0; color: #555; }
+.pf-badge--supplier { background: #E8F4FD; color: #2980B9; font-weight: 600; }
 .pf-badge--post-type { font-weight: 700; text-transform: uppercase; letter-spacing: .3px; }
-.pf-badge--news { background: #EFF6FF; color: #1D4ED8; }
-.pf-badge--product { background: #F0FDF4; color: #15803D; }
-.pf-badge--event { background: #FFF7ED; color: #C2410C; }
-.pf-badge--hiring { background: #FAF5FF; color: #7C3AED; }
+.pf-badge--news { background: #E3F2FD; color: #1565C0; }
+.pf-badge--product { background: #F3E5F5; color: #6A1B9A; }
+.pf-badge--event { background: #FFF8E1; color: #E65100; }
+.pf-badge--hiring { background: #E8F5E9; color: #2E7D32; }
+
+/* ── Supplier Card Variant ───────────────────────────────── */
+.pf-card--supplier { border-left: 3px solid #2980B9; background: #FFFBF7; }
+.pf-card--supplier:hover { border-left-color: #2471A3; }
+
+/* Supplier avatar badge */
+.pf-avatar-wrap { position: relative; flex-shrink: 0; }
+.pf-avatar-badge {
+  position: absolute; bottom: -2px; right: -2px;
+  width: 14px; height: 14px; border-radius: 50%;
+  background: #2980B9; color: #fff;
+  display: grid; place-items: center;
+  font-size: 8px; line-height: 1;
+  border: 1.5px solid #fff; box-shadow: 0 1px 3px rgba(0,0,0,.15);
+}
+
+/* "View Store" button in action bar */
+.pf-action--store {
+  font-size: 11px; font-weight: 600; color: #2980B9;
+  border: 1.5px solid #2980B9; border-radius: 14px;
+  padding: 3px 10px; background: transparent;
+  cursor: pointer; white-space: nowrap; transition: all .15s var(--ease);
+  font-family: inherit; margin-left: auto;
+}
+.pf-action--store:hover { background: #2980B9; color: #fff; }
+
+/* Card footer category line */
+.pf-card-footer-line {
+  display: flex; align-items: center; gap: 4px;
+  padding: 6px 14px; border-top: 1px solid #F0E8DF;
+  font-size: 11px; color: #AAAAAA;
+}
 
 .pf-card-caption {
   font-size: 13px; color: var(--text); line-height: 1.55; margin-bottom: 8px;
@@ -3151,11 +3183,16 @@ html[data-theme="dark"] .pf-card:hover { box-shadow: 0 8px 32px rgba(0,0,0,.35);
 html[data-theme="dark"] .pf-card--health { background: #1C1C1E; }
 html[data-theme="dark"] .pf-badge--pet { background: rgba(245,130,58,.15); color: #F5823A; }
 html[data-theme="dark"] .pf-badge--biz { background: rgba(100,150,255,.15); }
-html[data-theme="dark"] .pf-badge--supplier { background: rgba(255,255,255,.1); color: #aaa; }
-html[data-theme="dark"] .pf-badge--news { background: rgba(29,78,216,.15); }
-html[data-theme="dark"] .pf-badge--product { background: rgba(21,128,61,.15); }
-html[data-theme="dark"] .pf-badge--event { background: rgba(194,65,12,.15); }
-html[data-theme="dark"] .pf-badge--hiring { background: rgba(124,58,237,.15); }
+html[data-theme="dark"] .pf-badge--supplier { background: rgba(41,128,185,.18); color: #5DADE2; }
+html[data-theme="dark"] .pf-badge--news { background: rgba(21,101,192,.18); color: #64B5F6; }
+html[data-theme="dark"] .pf-badge--product { background: rgba(106,27,154,.18); color: #CE93D8; }
+html[data-theme="dark"] .pf-badge--event { background: rgba(230,81,0,.18); color: #FFB74D; }
+html[data-theme="dark"] .pf-badge--hiring { background: rgba(46,125,50,.18); color: #81C784; }
+html[data-theme="dark"] .pf-card--supplier { background: #1E2A30; border-left-color: #2980B9; }
+html[data-theme="dark"] .pf-avatar-badge { border-color: #1C1C1E; }
+html[data-theme="dark"] .pf-action--store { color: #5DADE2; border-color: #5DADE2; }
+html[data-theme="dark"] .pf-action--store:hover { background: #5DADE2; color: #1C1C1E; }
+html[data-theme="dark"] .pf-card-footer-line { border-top-color: #333; color: #666; }
 html[data-theme="dark"] .pf-hero-mini { background: linear-gradient(135deg, rgba(245,130,58,.12), rgba(217,119,6,.08)); }
 html[data-theme="dark"] .pf-hero-mini h3 { color: #fafafa; }
 html[data-theme="dark"] .pf-hero-mini p { color: #888; }
