@@ -9,6 +9,7 @@ import type { Env } from '../types';
 import { ok, created, err, newId, now } from '../types';
 import { requireAuth, requireRole } from '../middleware/auth';
 import type { JwtPayload } from '../types';
+import { getGcpAccessToken } from '../helpers/gcpAuth';
 import { 
   SUPPORTED_LANGS as LANGS, 
   GOOGLE_LANG_MAP, 
@@ -22,7 +23,6 @@ const TARGET_LANGS = LANGS.filter((l): l is TargetLang => l !== 'ko');
 
 const DEFAULT_RPM_LIMIT = 60;
 const DEFAULT_DAILY_CHAR_LIMIT = 200000;
-const GOOGLE_TOKEN_AUDIENCE = 'https://oauth2.googleapis.com/token';
 const GOOGLE_TRANSLATE_SCOPE = 'https://www.googleapis.com/auth/cloud-translation';
 
 type TranslationMap = Record<TargetLang, string>;
@@ -43,7 +43,6 @@ interface TranslationMemoryRow {
   ar: string | null;
 }
 
-let googleTokenCache: { email: string; token: string; expiresAt: number } | null = null;
 
 async function loadGoogleTranslateServiceAccount(env: Env): Promise<{ email: string; privateKey: string }> {
   const envEmail = env.GOOGLE_TRANSLATE_SERVICE_ACCOUNT_EMAIL?.trim();
@@ -91,31 +90,6 @@ function charLength(input: string): number {
   return Array.from(input).length;
 }
 
-function base64UrlEncodeBytes(bytes: Uint8Array): string {
-  let binary = '';
-  for (const byte of bytes) binary += String.fromCharCode(byte);
-  return btoa(binary).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
-}
-
-function base64UrlEncodeJson(value: unknown): string {
-  const json = JSON.stringify(value);
-  return base64UrlEncodeBytes(new TextEncoder().encode(json));
-}
-
-function pemToArrayBuffer(pem: string): ArrayBuffer {
-  const body = pem
-    .replace('-----BEGIN PRIVATE KEY-----', '')
-    .replace('-----END PRIVATE KEY-----', '')
-    .replace(/\s+/g, '');
-  const binary = atob(body);
-  const bytes = new Uint8Array(binary.length);
-  for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
-  return bytes.buffer;
-}
-
-function normalizePrivateKey(raw: string): string {
-  return raw.replace(/\\n/g, '\n').trim();
-}
 
 function getMinuteBucket(iso: string): string {
   return `minute:${iso.slice(0, 16)}`;
@@ -234,73 +208,7 @@ async function upsertTranslationMemory(env: Env, sourceKo: string, translations:
 
 async function getGoogleAccessToken(env: Env): Promise<string> {
   const serviceAccount = await loadGoogleTranslateServiceAccount(env);
-  const serviceAccountEmail = serviceAccount.email;
-  const rawPrivateKey = serviceAccount.privateKey;
-  if (!serviceAccountEmail || !rawPrivateKey) {
-    throw new Error('Google service account credentials are not configured');
-  }
-
-  const nowSec = Math.floor(Date.now() / 1000);
-  if (
-    googleTokenCache &&
-    googleTokenCache.email === serviceAccountEmail &&
-    googleTokenCache.expiresAt > nowSec + 30
-  ) {
-    return googleTokenCache.token;
-  }
-
-  const privateKeyPem = normalizePrivateKey(rawPrivateKey);
-  const signingKey = await crypto.subtle.importKey(
-    'pkcs8',
-    pemToArrayBuffer(privateKeyPem),
-    { name: 'RSASSA-PKCS1-v1_5', hash: 'SHA-256' },
-    false,
-    ['sign'],
-  );
-
-  const payload = {
-    iss: serviceAccountEmail,
-    scope: GOOGLE_TRANSLATE_SCOPE,
-    aud: GOOGLE_TOKEN_AUDIENCE,
-    iat: nowSec,
-    exp: nowSec + 3600,
-  };
-  const header = { alg: 'RS256', typ: 'JWT' };
-  const unsigned = `${base64UrlEncodeJson(header)}.${base64UrlEncodeJson(payload)}`;
-  const signature = await crypto.subtle.sign(
-    'RSASSA-PKCS1-v1_5',
-    signingKey,
-    new TextEncoder().encode(unsigned),
-  );
-  const assertion = `${unsigned}.${base64UrlEncodeBytes(new Uint8Array(signature))}`;
-
-  const tokenResponse = await fetch(GOOGLE_TOKEN_AUDIENCE, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-    body: new URLSearchParams({
-      grant_type: 'urn:ietf:params:oauth:grant-type:jwt-bearer',
-      assertion,
-    }),
-  });
-
-  const tokenJson = await tokenResponse.json() as {
-    access_token?: string;
-    expires_in?: number;
-    error?: string;
-    error_description?: string;
-  };
-
-  if (!tokenResponse.ok || !tokenJson.access_token) {
-    throw new Error(tokenJson.error_description || tokenJson.error || `Google OAuth HTTP ${tokenResponse.status}`);
-  }
-
-  const expiresIn = tokenJson.expires_in ?? 3600;
-  googleTokenCache = {
-    email: serviceAccountEmail,
-    token: tokenJson.access_token,
-    expiresAt: nowSec + expiresIn,
-  };
-  return tokenJson.access_token;
+  return getGcpAccessToken(serviceAccount.email, serviceAccount.privateKey, GOOGLE_TRANSLATE_SCOPE);
 }
 
 async function translateWithGoogle(env: Env, sourceKo: string, target: TargetLang): Promise<string> {

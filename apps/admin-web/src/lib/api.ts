@@ -8,7 +8,7 @@ import type {
   PetDiseaseHistory, PetDiseaseDevice,
   PetGlucoseLog, GlucoseSummary,
   PetHealthMeasurementLog, HealthMeasurementSummary,
-  PetExerciseLog, ExerciseSummary, FriendPet, Notification,
+  PetExerciseLog, ExerciseSummary, FriendPet, Notification, NotificationSettings,
   Booking, FeedPost, FeedComment, PetAlbumMedia,
   FriendRequest, FriendConnection, FriendSearchResult, RequesterPet, RequesterFeedImage,
   DeviceType, DeviceManufacturer, DeviceBrand, DeviceModel, MeasurementUnit, GuardianDevice,
@@ -28,7 +28,7 @@ export type {
   PetDiseaseHistory, PetDiseaseDevice,
   PetGlucoseLog, GlucoseSummary,
   PetHealthMeasurementLog, HealthMeasurementSummary,
-  PetExerciseLog, ExerciseSummary, FriendPet, Notification,
+  PetExerciseLog, ExerciseSummary, FriendPet, Notification, NotificationSettings,
   Booking, FeedPost, FeedComment, PetAlbumMedia,
   FriendRequest, FriendConnection, FriendSearchResult, RequesterPet, RequesterFeedImage,
   DeviceType, DeviceManufacturer, DeviceBrand, DeviceModel, MeasurementUnit, GuardianDevice,
@@ -529,6 +529,14 @@ export const api = {
       request<{ success: boolean }>(`/api/v1/notifications/${id}/read`, { method: 'POST' }),
     readAll: () =>
       request<{ success: boolean }>('/api/v1/notifications/read-all', { method: 'POST' }),
+    registerPushToken: (token: string, deviceType = 'web') =>
+      request<{ id: string }>('/api/v1/notifications/push-token', { method: 'POST', body: JSON.stringify({ token, device_type: deviceType }) }),
+    unregisterPushToken: (token: string) =>
+      request<{ success: boolean }>('/api/v1/notifications/push-token', { method: 'DELETE', body: JSON.stringify({ token }) }),
+    getSettings: () =>
+      request<{ settings: NotificationSettings }>('/api/v1/notifications/settings'),
+    updateSettings: (settings: Partial<NotificationSettings>) =>
+      request<{ success: boolean }>('/api/v1/notifications/settings', { method: 'PATCH', body: JSON.stringify(settings) }),
   },
   pets: {
     list: () => request<{ pets: Pet[] }>('/api/v1/pets'),

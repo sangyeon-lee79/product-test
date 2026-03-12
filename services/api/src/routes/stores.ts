@@ -61,7 +61,9 @@ async function listStores(env: Env, url: URL): Promise<Response> {
     `SELECT
        s.id, s.owner_id, s.name, s.name_translations, s.description, s.description_translations,
        s.address, s.phone, s.country_id, s.currency_id, s.latitude, s.longitude,
-       s.avatar_url, s.status, s.created_at, s.updated_at,
+       s.avatar_url, s.status, s.business_type, s.business_subtype,
+       s.address_state_code, s.address_city_code, s.address_detail,
+       s.created_at, s.updated_at,
        c.name_key AS country_name, cur.code AS currency_code,
        (SELECT COUNT(*) FROM services sv WHERE sv.store_id = s.id AND sv.is_active = true) AS service_count
      FROM stores s
@@ -98,6 +100,8 @@ async function getMyStores(env: Env, me: JwtPayload, url: URL): Promise<Response
     `SELECT
        s.id, s.name, s.name_translations, s.description, s.description_translations,
        s.address, s.phone, s.country_id, s.currency_id, s.avatar_url, s.status,
+       s.business_type, s.business_subtype,
+       s.address_state_code, s.address_city_code, s.address_detail,
        s.created_at, s.updated_at,
        c.name_key AS country_name, cur.code AS currency_code,
        (SELECT COUNT(*) FROM services sv WHERE sv.store_id = s.id AND sv.is_active = true) AS service_count
@@ -204,8 +208,10 @@ async function createStore(request: Request, env: Env, me: JwtPayload): Promise<
 
   await env.DB.prepare(
     `INSERT INTO stores (id, owner_id, name, name_translations, description, description_translations,
-       address, phone, country_id, currency_id, latitude, longitude, avatar_url, status, created_at, updated_at)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'active', ?, ?)`
+       address, phone, country_id, currency_id, latitude, longitude, avatar_url,
+       business_type, business_subtype, address_state_code, address_city_code, address_detail,
+       status, created_at, updated_at)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'active', ?, ?)`
   ).bind(
     id,
     me.sub,
@@ -220,6 +226,11 @@ async function createStore(request: Request, env: Env, me: JwtPayload): Promise<
     typeof body.latitude === 'number' ? body.latitude : null,
     typeof body.longitude === 'number' ? body.longitude : null,
     typeof body.avatar_url === 'string' ? body.avatar_url : null,
+    typeof body.business_type === 'string' ? body.business_type : null,
+    typeof body.business_subtype === 'string' ? body.business_subtype : null,
+    typeof body.address_state_code === 'string' ? body.address_state_code : null,
+    typeof body.address_city_code === 'string' ? body.address_city_code : null,
+    typeof body.address_detail === 'string' ? body.address_detail : null,
     timestamp,
     timestamp,
   ).run();
@@ -263,6 +274,11 @@ async function updateStore(request: Request, env: Env, me: JwtPayload, storeId: 
        latitude = COALESCE(?, latitude),
        longitude = COALESCE(?, longitude),
        avatar_url = COALESCE(?, avatar_url),
+       business_type = COALESCE(?, business_type),
+       business_subtype = COALESCE(?, business_subtype),
+       address_state_code = COALESCE(?, address_state_code),
+       address_city_code = COALESCE(?, address_city_code),
+       address_detail = COALESCE(?, address_detail),
        updated_at = ?
      WHERE id = ?`
   ).bind(
@@ -277,6 +293,11 @@ async function updateStore(request: Request, env: Env, me: JwtPayload, storeId: 
     typeof body.latitude === 'number' ? body.latitude : null,
     typeof body.longitude === 'number' ? body.longitude : null,
     typeof body.avatar_url === 'string' ? body.avatar_url : null,
+    typeof body.business_type === 'string' ? body.business_type : null,
+    typeof body.business_subtype === 'string' ? body.business_subtype : null,
+    typeof body.address_state_code === 'string' ? body.address_state_code : null,
+    typeof body.address_city_code === 'string' ? body.address_city_code : null,
+    typeof body.address_detail === 'string' ? body.address_detail : null,
     timestamp,
     storeId,
   ).run();
@@ -553,7 +574,12 @@ async function adminListStores(env: Env, url: URL): Promise<Response> {
 
   const rows = await env.DB.prepare(
     `SELECT
-       s.*, u.email AS owner_email, COALESCE(uad.nickname, uad.full_name, u.email) AS owner_name,
+       s.id, s.owner_id, s.name, s.name_translations, s.description, s.description_translations,
+       s.address, s.phone, s.country_id, s.currency_id, s.latitude, s.longitude,
+       s.avatar_url, s.status, s.business_type, s.business_subtype,
+       s.address_state_code, s.address_city_code, s.address_detail,
+       s.created_at, s.updated_at,
+       u.email AS owner_email, COALESCE(uad.nickname, uad.full_name, u.email) AS owner_name,
        c.name_key AS country_name, cur.code AS currency_code,
        (SELECT COUNT(*) FROM services sv WHERE sv.store_id = s.id) AS service_count
      FROM stores s

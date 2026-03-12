@@ -1,8 +1,10 @@
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback, useMemo } from 'react';
 import { api } from '../../lib/api';
-import type { Store, StoreService, ServiceDiscount, StoreIndustry, Country, MasterItem } from '../../types/api';
+import type { Store, StoreService, ServiceDiscount, StoreIndustry, Country } from '../../types/api';
 import { useI18n, useT } from '../../lib/i18n';
 import { SUPPORTED_LANGS, LANG_LABELS } from '@petfolio/shared';
+import { BUSINESS_CATEGORIES, BUSINESS_MAP } from '../../data/businessCategories';
+import { COUNTRY_REGIONS } from '../../data/countryRegions';
 
 type Modal = 'store' | 'service' | 'discount' | null;
 type ModalMode = 'create' | 'edit';
@@ -28,6 +30,8 @@ export default function ProviderStoreSection() {
   const [storeForm, setStoreForm] = useState({
     name: '', description: '', address: '', phone: '',
     country_id: '', currency_id: '', latitude: '', longitude: '', avatar_url: '',
+    business_type: '', business_subtype: '',
+    address_state_code: '', address_city_code: '', address_detail: '',
   });
   const [storeNameTrans, setStoreNameTrans] = useState<Record<string, string>>(emptyTrans());
   const [storeDescTrans, setStoreDescTrans] = useState<Record<string, string>>(emptyTrans());
@@ -46,11 +50,33 @@ export default function ProviderStoreSection() {
 
   // Reference data
   const [countries, setCountries] = useState<Country[]>([]);
-  const [industries, setIndustries] = useState<MasterItem[]>([]);
+
+  // Business type L2 options (derived from L1 selection)
+  const businessSubOptions = useMemo(() => {
+    const cat = BUSINESS_MAP[storeForm.business_type];
+    return cat ? cat.subs : [];
+  }, [storeForm.business_type]);
+
+  // Address: resolve region/city options from selected country
+  const selectedCountryCode = useMemo(() => {
+    if (!storeForm.country_id) return '';
+    const c = countries.find(x => x.id === storeForm.country_id);
+    return c?.code || '';
+  }, [storeForm.country_id, countries]);
+
+  const regionOptions = useMemo(() => {
+    if (!selectedCountryCode) return [];
+    return COUNTRY_REGIONS[selectedCountryCode] || [];
+  }, [selectedCountryCode]);
+
+  const cityOptions = useMemo(() => {
+    if (!storeForm.address_state_code || regionOptions.length === 0) return [];
+    const region = regionOptions.find(r => r.name === storeForm.address_state_code);
+    return region?.cities || [];
+  }, [storeForm.address_state_code, regionOptions]);
 
   useEffect(() => {
     api.countries.publicList().then(setCountries).catch(() => {});
-    api.master.public.items('business_category', undefined, lang).then(setIndustries).catch(() => {});
   }, [lang]);
 
   const loadStores = useCallback(async () => {
@@ -79,6 +105,25 @@ export default function ProviderStoreSection() {
 
   const flash = (msg: string) => { setSuccess(msg); setTimeout(() => setSuccess(''), 3000); };
 
+  // ─── Helpers: resolve display labels ────────────────────────────────
+  const getBusinessLabel = (type?: string | null, subtype?: string | null) => {
+    if (!type) return '';
+    const cat = BUSINESS_MAP[type];
+    if (!cat) return type;
+    const l1 = t(cat.i18nKey, type);
+    if (!subtype) return l1;
+    const sub = cat.subs.find(s => s.code === subtype);
+    return sub ? `${l1} > ${t(sub.i18nKey, subtype)}` : l1;
+  };
+
+  const getAddressLabel = (store: Store) => {
+    const parts: string[] = [];
+    if (store.address_state_code) parts.push(store.address_state_code);
+    if (store.address_city_code) parts.push(store.address_city_code);
+    if (store.address_detail) parts.push(store.address_detail);
+    return parts.length > 0 ? parts.join(' ') : (store.address || '-');
+  };
+
   // ─── Store CRUD ───────────────────────────────────────────────────────
   const openStoreModal = (mode: ModalMode, store?: Store & { industries?: StoreIndustry[] }) => {
     setModalMode(mode);
@@ -92,13 +137,23 @@ export default function ProviderStoreSection() {
         latitude: store.latitude != null ? String(store.latitude) : '',
         longitude: store.longitude != null ? String(store.longitude) : '',
         avatar_url: store.avatar_url || '',
+        business_type: store.business_type || '',
+        business_subtype: store.business_subtype || '',
+        address_state_code: store.address_state_code || '',
+        address_city_code: store.address_city_code || '',
+        address_detail: store.address_detail || '',
       });
       setStoreNameTrans({ ...emptyTrans(), ...(store.name_translations || {}) });
       setStoreDescTrans({ ...emptyTrans(), ...(store.description_translations || {}) });
       setSelectedIndustryIds((store.industries || []).map(i => i.industry_id));
     } else {
       setEditStoreId('');
-      setStoreForm({ name: '', description: '', address: '', phone: '', country_id: '', currency_id: '', latitude: '', longitude: '', avatar_url: '' });
+      setStoreForm({
+        name: '', description: '', address: '', phone: '',
+        country_id: '', currency_id: '', latitude: '', longitude: '', avatar_url: '',
+        business_type: '', business_subtype: '',
+        address_state_code: '', address_city_code: '', address_detail: '',
+      });
       setStoreNameTrans(emptyTrans());
       setStoreDescTrans(emptyTrans());
       setSelectedIndustryIds([]);
@@ -122,6 +177,11 @@ export default function ProviderStoreSection() {
         longitude: storeForm.longitude ? parseFloat(storeForm.longitude) : undefined,
         avatar_url: storeForm.avatar_url || undefined,
         industry_ids: selectedIndustryIds,
+        business_type: storeForm.business_type || undefined,
+        business_subtype: storeForm.business_subtype || undefined,
+        address_state_code: storeForm.address_state_code || undefined,
+        address_city_code: storeForm.address_city_code || undefined,
+        address_detail: storeForm.address_detail || undefined,
       };
       if (modalMode === 'edit') {
         await api.stores.update(editStoreId, payload);
@@ -232,12 +292,6 @@ export default function ProviderStoreSection() {
     } catch (e) { setError(String(e)); }
   };
 
-  const toggleIndustry = (id: string) => {
-    setSelectedIndustryIds(prev =>
-      prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]
-    );
-  };
-
   return (
     <section className="card">
       <div className="card-header">
@@ -270,12 +324,17 @@ export default function ProviderStoreSection() {
                   >
                     <strong>{s.display_name || s.name}</strong>
                     <div className="text-muted" style={{ fontSize: 12, marginTop: 4 }}>
-                      {s.address || '-'}
+                      {getAddressLabel(s)}
                     </div>
-                    <div style={{ display: 'flex', gap: 8, alignItems: 'center', marginTop: 4 }}>
+                    <div style={{ display: 'flex', gap: 6, alignItems: 'center', marginTop: 4, flexWrap: 'wrap' }}>
                       <span className={`badge ${s.status === 'active' ? 'badge-green' : 'badge-gray'}`} style={{ fontSize: 10 }}>
                         {s.status}
                       </span>
+                      {s.business_type && (
+                        <span className="badge badge-amber" style={{ fontSize: 10 }}>
+                          {getBusinessLabel(s.business_type, s.business_subtype)}
+                        </span>
+                      )}
                       <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>
                         {t('provider.store.services_count', '{count} services').replace('{count}', String(s.service_count || 0))}
                       </span>
@@ -299,17 +358,20 @@ export default function ProviderStoreSection() {
                   <div>
                     <h3 style={{ margin: 0 }}>{selectedStore.display_name || selectedStore.name}</h3>
                     <div className="text-muted" style={{ fontSize: 13, marginTop: 4 }}>
-                      {selectedStore.address || '-'} &middot; {selectedStore.phone || '-'}
+                      {getAddressLabel(selectedStore)} &middot; {selectedStore.phone || '-'}
                     </div>
-                    {selectedStore.industries?.length > 0 && (
-                      <div style={{ marginTop: 6, display: 'flex', gap: 4, flexWrap: 'wrap' }}>
-                        {selectedStore.industries.map(ind => (
-                          <span key={ind.industry_id} className="badge badge-amber" style={{ fontSize: 10 }}>
-                            {ind.display_label || ind.industry_key}
-                          </span>
-                        ))}
-                      </div>
-                    )}
+                    <div style={{ marginTop: 6, display: 'flex', gap: 4, flexWrap: 'wrap' }}>
+                      {selectedStore.business_type && (
+                        <span className="badge badge-amber" style={{ fontSize: 10 }}>
+                          {getBusinessLabel(selectedStore.business_type, selectedStore.business_subtype)}
+                        </span>
+                      )}
+                      {selectedStore.industries?.length > 0 && selectedStore.industries.map(ind => (
+                        <span key={ind.industry_id} className="badge badge-amber" style={{ fontSize: 10 }}>
+                          {ind.display_label || ind.industry_key}
+                        </span>
+                      ))}
+                    </div>
                   </div>
                   <div style={{ display: 'flex', gap: 6 }}>
                     <button className="btn btn-secondary btn-sm" onClick={() => openStoreModal('edit', selectedStore)}>
@@ -418,42 +480,99 @@ export default function ProviderStoreSection() {
                     <label className="form-label">{t('admin.store.form.description', 'Description')}</label>
                     <textarea className="form-textarea" value={storeForm.description} onChange={e => setStoreForm({ ...storeForm, description: e.target.value })} />
                   </div>
+
+                  {/* ─── Business Type L1/L2 ─── */}
                   <div className="form-row col2">
                     <div className="form-group">
-                      <label className="form-label">{t('admin.store.form.address', 'Address')}</label>
-                      <input className="form-input" value={storeForm.address} onChange={e => setStoreForm({ ...storeForm, address: e.target.value })} />
+                      <label className="form-label">{t('store.business.type', 'Business Type')}</label>
+                      <select className="form-select" value={storeForm.business_type}
+                        onChange={e => setStoreForm({ ...storeForm, business_type: e.target.value, business_subtype: '' })}>
+                        <option value="">{t('store.business.select_type', 'Select Type')}</option>
+                        {BUSINESS_CATEGORIES.map(c => (
+                          <option key={c.code} value={c.code}>{t(c.i18nKey, c.code)}</option>
+                        ))}
+                      </select>
+                    </div>
+                    <div className="form-group">
+                      <label className="form-label">{t('store.business.subtype', 'Sub Category')}</label>
+                      <select className="form-select" value={storeForm.business_subtype}
+                        onChange={e => setStoreForm({ ...storeForm, business_subtype: e.target.value })}
+                        disabled={!storeForm.business_type}>
+                        <option value="">{t('store.business.select_subtype', 'Select Sub Type')}</option>
+                        {businessSubOptions.map(s => (
+                          <option key={s.code} value={s.code}>{t(s.i18nKey, s.code)}</option>
+                        ))}
+                      </select>
+                    </div>
+                  </div>
+
+                  {/* ─── Country + Phone ─── */}
+                  <div className="form-row col2">
+                    <div className="form-group">
+                      <label className="form-label">{t('admin.store.form.country', 'Country')}</label>
+                      <select className="form-select" value={storeForm.country_id}
+                        onChange={e => setStoreForm({ ...storeForm, country_id: e.target.value, address_state_code: '', address_city_code: '' })}>
+                        <option value="">-</option>
+                        {countries.map(c => <option key={c.id} value={c.id}>{c.ko_name || c.name_key}</option>)}
+                      </select>
                     </div>
                     <div className="form-group">
                       <label className="form-label">{t('admin.store.form.phone', 'Phone')}</label>
                       <input className="form-input" value={storeForm.phone} onChange={e => setStoreForm({ ...storeForm, phone: e.target.value })} />
                     </div>
                   </div>
-                  <div className="form-row col2">
-                    <div className="form-group">
-                      <label className="form-label">{t('admin.store.form.country', 'Country')}</label>
-                      <select className="form-select" value={storeForm.country_id} onChange={e => setStoreForm({ ...storeForm, country_id: e.target.value })}>
-                        <option value="">-</option>
-                        {countries.map(c => <option key={c.id} value={c.id}>{c.ko_name || c.name_key}</option>)}
-                      </select>
-                    </div>
-                    <div className="form-group">
-                      <label className="form-label">{t('admin.store.form.avatar_url', 'Avatar URL')}</label>
-                      <input className="form-input" value={storeForm.avatar_url} onChange={e => setStoreForm({ ...storeForm, avatar_url: e.target.value })} />
-                    </div>
-                  </div>
-                  {industries.length > 0 && (
-                    <div className="form-group">
-                      <label className="form-label">{t('admin.store.form.industries', 'Industries')}</label>
-                      <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
-                        {industries.map(ind => (
-                          <label key={ind.id} style={{ display: 'flex', gap: 4, alignItems: 'center', fontSize: 13, cursor: 'pointer' }}>
-                            <input type="checkbox" checked={selectedIndustryIds.includes(ind.id)} onChange={() => toggleIndustry(ind.id)} />
-                            {ind.display_label || ind.key}
-                          </label>
-                        ))}
+
+                  {/* ─── Address: State/City/Detail ─── */}
+                  {regionOptions.length > 0 ? (
+                    <>
+                      <div className="form-row col2">
+                        <div className="form-group">
+                          <label className="form-label">{t('store.address.state', 'State/Province')}</label>
+                          <select className="form-select" value={storeForm.address_state_code}
+                            onChange={e => setStoreForm({ ...storeForm, address_state_code: e.target.value, address_city_code: '' })}>
+                            <option value="">{t('store.address.select_state', 'Select State')}</option>
+                            {regionOptions.map(r => (
+                              <option key={r.name} value={r.name}>{r.name}</option>
+                            ))}
+                          </select>
+                        </div>
+                        <div className="form-group">
+                          <label className="form-label">{t('store.address.city', 'City/District')}</label>
+                          {cityOptions.length > 0 ? (
+                            <select className="form-select" value={storeForm.address_city_code}
+                              onChange={e => setStoreForm({ ...storeForm, address_city_code: e.target.value })}
+                              disabled={!storeForm.address_state_code}>
+                              <option value="">{t('store.address.select_city', 'Select City')}</option>
+                              {cityOptions.map(c => (
+                                <option key={c} value={c}>{c}</option>
+                              ))}
+                            </select>
+                          ) : (
+                            <input className="form-input" value={storeForm.address_city_code}
+                              onChange={e => setStoreForm({ ...storeForm, address_city_code: e.target.value })}
+                              placeholder={t('store.address.select_city', 'City/District')}
+                              disabled={!storeForm.address_state_code} />
+                          )}
+                        </div>
                       </div>
+                      <div className="form-group">
+                        <label className="form-label">{t('store.address.detail', 'Detail Address')}</label>
+                        <input className="form-input" value={storeForm.address_detail}
+                          onChange={e => setStoreForm({ ...storeForm, address_detail: e.target.value })}
+                          placeholder={t('store.address.detail_placeholder', 'Enter detail address')} />
+                      </div>
+                    </>
+                  ) : (
+                    <div className="form-group">
+                      <label className="form-label">{t('admin.store.form.address', 'Address')}</label>
+                      <input className="form-input" value={storeForm.address} onChange={e => setStoreForm({ ...storeForm, address: e.target.value })} />
                     </div>
                   )}
+
+                  <div className="form-group">
+                    <label className="form-label">{t('admin.store.form.avatar_url', 'Avatar URL')}</label>
+                    <input className="form-input" value={storeForm.avatar_url} onChange={e => setStoreForm({ ...storeForm, avatar_url: e.target.value })} />
+                  </div>
                   <button className="btn btn-primary" onClick={() => void saveStore()} disabled={saving}>
                     {saving ? '...' : t('admin.common.save', 'Save')}
                   </button>

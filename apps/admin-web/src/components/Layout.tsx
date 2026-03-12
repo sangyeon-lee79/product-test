@@ -3,6 +3,7 @@ import { NavLink, useNavigate, useLocation } from 'react-router-dom';
 import { logout, getStoredRole } from '../lib/auth';
 import { useT, useI18n, SUPPORTED_LANGS, LANG_LABELS } from '../lib/i18n';
 import { BCP47_LOCALE_MAP, type Lang } from '@petfolio/shared';
+import NotificationCenter from './NotificationCenter';
 
 const PAGE_TITLES: Record<string, string> = {
   '/admin': 'admin.nav.dashboard',
@@ -131,10 +132,7 @@ export default function Layout({ children }: { children: React.ReactNode }) {
           <div className="topbar-search">
             <input placeholder={t('admin.topbar.search', 'Search...')} readOnly />
           </div>
-          <button className="topbar-notif">
-            🔔
-            <span className="topbar-notif-dot" />
-          </button>
+          <NotificationCenter />
           <span className="topbar-date">{today}</span>
         </header>
         {children}

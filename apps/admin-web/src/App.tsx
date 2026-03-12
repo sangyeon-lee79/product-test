@@ -1,3 +1,4 @@
+import { useEffect } from 'react';
 import { HashRouter, Routes, Route, Navigate, Outlet } from 'react-router-dom';
 import { getRoleHomePath, getStoredRole, isLoggedIn, normalizeRole } from './lib/auth';
 import { I18nProvider } from './lib/i18n';
@@ -19,7 +20,34 @@ import ExplorePage from './pages/ExplorePage';
 import MembersPage from './pages/MembersPage';
 import ApiConnectionsPage from './pages/ApiConnectionsPage';
 import OAuthRedirectHandler from './components/OAuthRedirectHandler';
+import NotificationToast, { showNotificationToast } from './components/NotificationToast';
+import { requestNotificationPermission, onForegroundMessage } from './lib/firebase';
+import { api } from './lib/api';
 import './index.css';
+
+function useFcmSetup() {
+  useEffect(() => {
+    if (!isLoggedIn()) return;
+    let unsubscribe: (() => void) | null = null;
+
+    (async () => {
+      try {
+        const token = await requestNotificationPermission();
+        if (token) {
+          await api.notifications.registerPushToken(token, 'web');
+        }
+      } catch { /* Firebase not configured — skip */ }
+
+      try {
+        unsubscribe = onForegroundMessage((payload) => {
+          showNotificationToast({ title: payload.title, body: payload.body });
+        });
+      } catch { /* skip */ }
+    })();
+
+    return () => { unsubscribe?.(); };
+  }, []);
+}
 
 function AuthRoute() {
   return isLoggedIn() ? <Outlet /> : <Navigate to="/login" replace />;
@@ -44,9 +72,12 @@ function AdminShell() {
 }
 
 export default function App() {
+  useFcmSetup();
+
   return (
     <I18nProvider>
       <HashRouter>
+        <NotificationToast />
         <OAuthRedirectHandler>
         <Routes>
           <Route path="/" element={<PublicHome />} />

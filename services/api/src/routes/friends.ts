@@ -1,6 +1,7 @@
 import type { Env, JwtPayload } from '../types';
 import { ok, created, err, newId, now } from '../types';
 import { requireAuth } from '../middleware/auth';
+import { createAndPush } from '../helpers/pushHelper';
 
 type UserRole = 'guardian' | 'provider' | 'admin';
 
@@ -244,11 +245,22 @@ async function createRequest(request: Request, env: Env, me: JwtPayload): Promis
     ) VALUES (?, ?, ?, ?, ?, 'request_sent', ?)`
   ).bind(id, me.sub, target.id, meUser.role, target.role, now()).run();
 
-  // Notify receiver
-  await env.DB.prepare(
-    `INSERT INTO notifications (id, user_id, type, actor_user_id, reference_id, reference_type, created_at)
-     VALUES (?, ?, 'friend_request', ?, ?, 'friend_request', ?)`
-  ).bind(newId(), target.id, me.sub, id, now()).run();
+  // Notify receiver — get actor display name for push body
+  const actorProfile = await env.DB.prepare(
+    'SELECT COALESCE(up.display_name, u.email) AS name FROM users u LEFT JOIN user_profiles up ON up.user_id = u.id WHERE u.id = ?'
+  ).bind(me.sub).first<{ name: string }>();
+  const actorName = actorProfile?.name || meUser.email;
+
+  await createAndPush(env, {
+    userId: target.id,
+    type: 'friend_request',
+    actorUserId: me.sub,
+    referenceId: id,
+    referenceType: 'friend_request',
+    title: actorName,
+    body: `${actorName} sent you a friend request`,
+    data: { link: '/#/guardian', type: 'friend_request', reference_id: id },
+  });
 
   return created({ request_id: id, status: 'request_sent' });
 }
@@ -285,10 +297,21 @@ async function respondRequest(request: Request, env: Env, me: JwtPayload, reques
     ).bind(newId(), ordered.a, ordered.b, now()).run();
 
     // Notify requester that their request was accepted
-    await env.DB.prepare(
-      `INSERT INTO notifications (id, user_id, type, actor_user_id, reference_id, reference_type, created_at)
-       VALUES (?, ?, 'friend_accepted', ?, ?, 'friend_request', ?)`
-    ).bind(newId(), a, me.sub, requestId, now()).run();
+    const acceptorProfile = await env.DB.prepare(
+      'SELECT COALESCE(up.display_name, u.email) AS name FROM users u LEFT JOIN user_profiles up ON up.user_id = u.id WHERE u.id = ?'
+    ).bind(me.sub).first<{ name: string }>();
+    const acceptorName = acceptorProfile?.name || '';
+
+    await createAndPush(env, {
+      userId: a,
+      type: 'friend_accepted',
+      actorUserId: me.sub,
+      referenceId: requestId,
+      referenceType: 'friend_request',
+      title: acceptorName,
+      body: `${acceptorName} accepted your friend request`,
+      data: { link: '/#/guardian', type: 'friend_accepted', reference_id: requestId },
+    });
   }
 
   return ok({ request_id: requestId, status });

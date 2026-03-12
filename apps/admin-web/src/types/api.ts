@@ -750,10 +750,27 @@ export interface Notification {
   actor_user_id: string;
   actor_email?: string | null;
   actor_name?: string | null;
+  actor_avatar_url?: string | null;
   reference_id: string;
   reference_type: string;
   is_read: boolean;
+  title?: string | null;
+  body?: string | null;
+  data?: Record<string, string> | null;
+  push_sent?: boolean;
   created_at: string;
+}
+
+export interface NotificationSettings {
+  friend_request: boolean;
+  friend_accepted: boolean;
+  post_like: boolean;
+  post_comment: boolean;
+  friend_new_post: boolean;
+  pet_health_remind: boolean;
+  appointment_remind: boolean;
+  service_notice: boolean;
+  marketing: boolean;
 }
 
 export interface ExerciseSummary {
@@ -901,6 +918,11 @@ export interface Store {
   latitude: number | null;
   longitude: number | null;
   avatar_url: string | null;
+  business_type: string | null;
+  business_subtype: string | null;
+  address_state_code: string | null;
+  address_city_code: string | null;
+  address_detail: string | null;
   status: string;
   created_at: string;
   updated_at: string;

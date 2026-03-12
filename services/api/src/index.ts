@@ -155,6 +155,18 @@ async function dispatch(request: Request, env: Env, url: URL): Promise<Response>
     return handleProviders(request, env, url);
   }
 
+  // Appointments (grooming booking flow)
+  if (path.startsWith('/api/v1/appointments')) {
+    const { handleAppointments } = await import('./routes/appointments');
+    return handleAppointments(request, env, url);
+  }
+
+  // Grooming Records
+  if (path.startsWith('/api/v1/grooming-records')) {
+    const { handleGroomingRecords } = await import('./routes/groomingRecords');
+    return handleGroomingRecords(request, env, url);
+  }
+
   // S10: 예약
   if (path.startsWith('/api/v1/bookings')) {
     const { handleBookings } = await import('./routes/bookings');
