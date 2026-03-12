@@ -150,8 +150,11 @@ body { background: var(--bg); color: var(--text); font-size: 14px; line-height: 
 
 .main { margin-left: 220px; flex: 1; display: flex; flex-direction: column; min-height: 100vh; background: var(--bg); }
 .topbar {
-  height: 60px; background: var(--surface); border-bottom: 1px solid var(--soft);
-  display: flex; align-items: center; padding: 0 28px; gap: 16px; position: sticky; top: 0; z-index: 10;
+  height: 52px; background: var(--surface); border-bottom: 1px solid var(--soft);
+  display: flex; align-items: center; padding: 0 28px; gap: 16px;
+}
+header.topbar {
+  height: 60px; position: sticky; top: 0; z-index: 10;
 }
 .topbar-hamburger {
   display: none; background: none; border: none; font-size: 20px; cursor: pointer;
@@ -3181,6 +3184,39 @@ html[data-theme="dark"] .pf-reco-btn--friend { border-color: #F5823A; color: #F5
 html[data-theme="dark"] .pf-reco-btn--friend:hover { background: #F5823A; color: #1C1C1E; }
 html[data-theme="dark"] .pf-reco-btn--profile { border-color: #444; color: #888; }
 html[data-theme="dark"] .pf-reco-btn--profile:hover { border-color: #ccc; color: #ccc; }
+
+/* ── Last login method ───────────────────────────── */
+.last-login-section { margin-bottom: 16px; }
+.last-login-hint {
+  display: flex; align-items: center; gap: 6px;
+  font-size: 12px; font-weight: 600; color: var(--text-muted);
+  margin-bottom: 8px;
+}
+.last-login-primary {
+  position: relative; font-size: 14px; font-weight: 700;
+  border-width: 2px !important; box-shadow: 0 2px 8px rgba(0,0,0,.08);
+}
+.last-login-badge {
+  position: absolute; right: 12px; top: 50%; transform: translateY(-50%);
+  font-size: 10px; font-weight: 700; color: #F5823A;
+  background: #FFF0E8; padding: 2px 8px; border-radius: 999px;
+}
+.last-login-email-hint {
+  font-size: 13px; font-weight: 600; color: var(--primary);
+  text-align: center; padding: 10px 0;
+}
+.last-login-divider {
+  display: flex; align-items: center; gap: 12px;
+  margin: 14px 0 10px; color: var(--text-muted); font-size: 11px;
+}
+.last-login-divider::before,
+.last-login-divider::after {
+  content: ''; flex: 1; height: 1px; background: var(--border);
+}
+
+/* Dark mode — last login */
+html[data-theme="dark"] .last-login-badge { background: rgba(245,130,58,.15); color: #FBBF24; }
+html[data-theme="dark"] .last-login-primary { box-shadow: 0 2px 8px rgba(0,0,0,.3); }
 
 .pf-card-caption {
   font-size: 13px; color: var(--text); line-height: 1.55; margin-bottom: 8px;
