@@ -2979,6 +2979,83 @@ html[data-theme="dark"] .pf-feed-tab:hover { color: #ccc; }
   font-size: 11px; color: #AAAAAA;
 }
 
+/* ── Recommendation Inline Card ──────────────────────────── */
+.pf-reco-card {
+  background: var(--surface); border-radius: 16px;
+  box-shadow: 0 2px 20px rgba(0,0,0,.06);
+  overflow: hidden; break-inside: avoid; margin-bottom: 16px;
+  animation: pfFadeUp .4s var(--ease) both;
+  border: 1.5px dashed var(--border);
+  transition: transform .25s var(--ease), box-shadow .25s var(--ease);
+}
+.pf-reco-card:hover { transform: translateY(-2px); box-shadow: 0 8px 32px rgba(0,0,0,.1); border-color: #F5823A; }
+.pf-reco-header {
+  display: flex; align-items: center; gap: 8px;
+  padding: 12px 14px 8px; font-size: 11px; font-weight: 700;
+  color: #F5823A; text-transform: uppercase; letter-spacing: .06em;
+}
+.pf-reco-header-icon { font-size: 14px; }
+.pf-reco-body { padding: 0 14px 14px; }
+.pf-reco-user { display: flex; align-items: center; gap: 12px; margin-bottom: 10px; }
+.pf-reco-avatar {
+  width: 44px; height: 44px; border-radius: 50%; flex-shrink: 0;
+  background: linear-gradient(135deg, #F5823A, #E8722A);
+  display: grid; place-items: center; font-size: 16px; font-weight: 700; color: #fff;
+}
+.pf-reco-avatar img {
+  width: 100%; height: 100%; border-radius: 50%; object-fit: cover;
+}
+.pf-reco-info { flex: 1; min-width: 0; }
+.pf-reco-name {
+  display: block; font-size: 14px; font-weight: 700; color: var(--text);
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.pf-reco-sub {
+  display: block; font-size: 12px; color: var(--text-muted); margin-top: 1px;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.pf-reco-score {
+  flex-shrink: 0; display: flex; flex-direction: column; align-items: center;
+  gap: 2px; font-size: 10px; color: var(--text-muted);
+}
+.pf-reco-score-value {
+  font-size: 18px; font-weight: 800; color: #F5823A;
+  font-family: var(--font-serif);
+}
+.pf-reco-reasons {
+  display: flex; flex-wrap: wrap; gap: 4px; margin-bottom: 12px;
+}
+.pf-reco-reason {
+  display: inline-flex; align-items: center;
+  padding: 3px 8px; border-radius: 999px;
+  font-size: 11px; font-weight: 500;
+  background: #FFF0E8; color: #C4541A;
+}
+.pf-reco-actions { display: flex; gap: 8px; }
+.pf-reco-btn {
+  flex: 1; padding: 8px 0; border-radius: 10px;
+  font-size: 12px; font-weight: 700; font-family: inherit;
+  cursor: pointer; transition: all .18s var(--ease); text-align: center;
+}
+.pf-reco-btn--friend {
+  border: 1.5px solid #F5823A; color: #F5823A; background: transparent;
+}
+.pf-reco-btn--friend:hover { background: #F5823A; color: #fff; }
+.pf-reco-btn--friend:disabled { opacity: .4; cursor: not-allowed; }
+.pf-reco-btn--profile {
+  border: 1.5px solid var(--border); color: var(--text-muted); background: transparent;
+}
+.pf-reco-btn--profile:hover { border-color: var(--text); color: var(--text); }
+
+/* Dark mode — recommendation card */
+html[data-theme="dark"] .pf-reco-card { border-color: #3a3a3a; }
+html[data-theme="dark"] .pf-reco-card:hover { border-color: #F5823A; }
+html[data-theme="dark"] .pf-reco-reason { background: rgba(245,130,58,.12); color: #FBBF24; }
+html[data-theme="dark"] .pf-reco-btn--friend { border-color: #F5823A; color: #F5823A; }
+html[data-theme="dark"] .pf-reco-btn--friend:hover { background: #F5823A; color: #1C1C1E; }
+html[data-theme="dark"] .pf-reco-btn--profile { border-color: #444; color: #888; }
+html[data-theme="dark"] .pf-reco-btn--profile:hover { border-color: #ccc; color: #ccc; }
+
 .pf-card-caption {
   font-size: 13px; color: var(--text); line-height: 1.55; margin-bottom: 8px;
   display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden;

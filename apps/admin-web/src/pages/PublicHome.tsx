@@ -4,6 +4,7 @@ import { api, type FeedComment, type FeedPost, type GuardianProfile, type Pet, t
 import { getStoredRole, isLoggedIn } from '../lib/auth';
 import { useI18n, useT } from '../lib/i18n';
 import AuthModal from '../components/AuthModal';
+import { useRecommendations, type Recommendation } from '../hooks/useRecommendations';
 
 type FilterOption = { id: string; code: string; i18n_key: string; label: string };
 
@@ -92,6 +93,16 @@ export default function PublicHome() {
   const role = getStoredRole();
   const myUserId = useMemo(() => parseJwtSub(), []);
   const navigate = useNavigate();
+
+  /* ── Friend IDs set (for recommendations) ───────────── */
+  const friendIdSet = useMemo(() => {
+    const s = new Set<string>();
+    friendStatusMap.forEach((status, id) => { if (status === 'accepted') s.add(id); });
+    return s;
+  }, [friendStatusMap]);
+
+  /* ── Recommendations hook ────────────────────────────── */
+  const recommendations = useRecommendations({ myProfile, myPets, friendIds: friendIdSet, myUserId, t });
 
   const NAV_ITEMS = useMemo(() => ([
     { icon: '🏠', label: t('public.nav.home', '홈'), to: '/' },
@@ -604,6 +615,77 @@ export default function PublicHome() {
     }
   };
 
+  /* ── Recommendation card ─────────────────────────────── */
+  const renderRecoCard = (reco: Recommendation, idx: number) => {
+    const { user, score, reasons } = reco;
+    const petLine = user.pets.map(p => p.breed).join(', ');
+    const sub = [petLine, user.region].filter(Boolean).join(' · ');
+    const status = friendStatusMap.get(user.id) || 'none';
+    const requesting = requestingIds.has(user.id);
+
+    return (
+      <article key={`reco-${user.id}`} className="pf-reco-card" style={{ animationDelay: `${idx * 60}ms` }}>
+        <div className="pf-reco-header">
+          <span className="pf-reco-header-icon">👥</span>
+          <span>{t('public.recommend.card_title', 'Recommended Guardian')}</span>
+        </div>
+        <div className="pf-reco-body">
+          <div className="pf-reco-user">
+            <div className="pf-reco-avatar">
+              {user.avatar_url
+                ? <img src={user.avatar_url} alt={user.nickname} onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }} />
+                : user.nickname[0].toUpperCase()}
+            </div>
+            <div className="pf-reco-info">
+              <span className="pf-reco-name">{user.nickname}</span>
+              <span className="pf-reco-sub">{sub}</span>
+            </div>
+            <div className="pf-reco-score">
+              <span className="pf-reco-score-value">{score}</span>
+              <span>{t('public.recommend.score_label', 'Match')}</span>
+            </div>
+          </div>
+          <div className="pf-reco-reasons">
+            {reasons.map((r, i) => <span key={i} className="pf-reco-reason">{r}</span>)}
+          </div>
+          <div className="pf-reco-actions">
+            {status === 'accepted' ? (
+              <button className="pf-reco-btn pf-reco-btn--friend" disabled>{t('friend.btn.accepted', 'Friend')}</button>
+            ) : status === 'pending' ? (
+              <button className="pf-reco-btn pf-reco-btn--friend" disabled>{t('friend.btn.pending', 'Pending')}</button>
+            ) : (
+              <button className="pf-reco-btn pf-reco-btn--friend" disabled={!loggedIn || requesting}
+                onClick={() => loggedIn ? sendFriendRequestFromCard(user.id) : openAuthModal('login')}>
+                {requesting ? '...' : `🐾 ${t('friend.btn.add_guardian', 'Add Friend')}`}
+              </button>
+            )}
+            <button className="pf-reco-btn pf-reco-btn--profile"
+              onClick={() => navigate(`/guardian/${user.id}`)}>
+              {t('public.recommend.view_profile', 'View Profile')}
+            </button>
+          </div>
+        </div>
+      </article>
+    );
+  };
+
+  /* ── Interleaved feed (feed cards + recommendation cards) ─ */
+  const renderInterleavedFeed = () => {
+    const items: React.ReactNode[] = [];
+    let recoIdx = 0;
+
+    for (let i = 0; i < feeds.length; i++) {
+      items.push(renderFeedCard(feeds[i], i));
+
+      // Insert recommendation card every 8th position
+      if ((i + 1) % 8 === 0 && recoIdx < recommendations.length) {
+        items.push(renderRecoCard(recommendations[recoIdx], i));
+        recoIdx++;
+      }
+    }
+    return items;
+  };
+
   /* ── Render ────────────────────────────────────────────── */
   return (
     <div className="pf-layout">
@@ -680,7 +762,7 @@ export default function PublicHome() {
               <p style={{ fontSize: 13 }}>{t('public.feed.empty_desc', '첫 번째 이야기를 올려보세요.')}</p>
             </div>
           ) : (
-            <div className="pf-masonry">{feeds.map((f, i) => renderFeedCard(f, i))}</div>
+            <div className="pf-masonry">{recommendations.length > 0 ? renderInterleavedFeed() : feeds.map((f, i) => renderFeedCard(f, i))}</div>
           )}
         </div>
 
@@ -760,9 +842,26 @@ export default function PublicHome() {
             )}
           </div>
 
-          {suggestedUsers.length > 0 && (
+          {recommendations.length > 0 ? (
             <div className="pf-right-section">
-              <div className="pf-right-section-title">{t('public.recommend.guardian', '추천 Guardian')}</div>
+              <div className="pf-right-section-title">{t('public.recommend.card_title', 'Recommended Guardian')}</div>
+              {recommendations.slice(0, 5).map((reco) => (
+                <div key={reco.user.id} className="pf-suggest-user">
+                  <div className="pf-suggest-avatar">{reco.user.nickname[0].toUpperCase()}</div>
+                  <div className="pf-suggest-info">
+                    <span className="pf-suggest-name">{reco.user.nickname}</span>
+                    <span className="pf-suggest-sub">{reco.reasons[0] || reco.user.pets[0]?.breed || ''}</span>
+                  </div>
+                  <button className="pf-follow-btn" disabled={!loggedIn}
+                    onClick={() => loggedIn ? sendFriendRequestFromCard(reco.user.id) : openAuthModal('login')}>
+                    {t('friend.btn.add_guardian', 'Add')}
+                  </button>
+                </div>
+              ))}
+            </div>
+          ) : suggestedUsers.length > 0 ? (
+            <div className="pf-right-section">
+              <div className="pf-right-section-title">{t('public.recommend.guardian', 'Recommended Guardian')}</div>
               {suggestedUsers.map(({ email }) => (
                 <div key={email} className="pf-suggest-user">
                   <div className="pf-suggest-avatar">{email[0].toUpperCase()}</div>
@@ -774,7 +873,7 @@ export default function PublicHome() {
                 </div>
               ))}
             </div>
-          )}
+          ) : null}
 
           {loggedIn && (
             <div className="pf-right-section">
