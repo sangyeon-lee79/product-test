@@ -3792,7 +3792,7 @@ VALUES
    '심장사상충 예방', 'Heartworm Prevention', 'フィラリア予防',
    '心丝虫预防', '心絲蟲預防', 'Prevención de Dirofilaria', 'Prévention du Ver du Cœur', 'Herzwurmprophylaxe', 'Prevenção de Dirofilária',
    'Phòng giun tim', 'ป้องกันพยาธิหนอนหัวใจ', 'Pencegahan Cacing Jantung', 'الوقاية من الديدان القلبية',
-   true, NOW(), NOW())
+   true, NOW(), NOW());
 
 -- ===========================================================================
 -- SECTION 8: Kakao/Apple settings (from 053)
@@ -4116,7 +4116,7 @@ VALUES
    '자율 재활', 'Non-Prescribed Rehab', '自主リハビリ', '自主康复', '自主復健',
    'Rehabilitación libre', 'Rééducation libre', 'Freie Reha', 'Reabilitação livre',
    'Phục hồi tự do', 'การฟื้นฟูอิสระ', 'Rehabilitasi mandiri', 'إعادة تأهيل مستقلة',
-   NOW(), NOW())
+   NOW(), NOW());
 
 -- ===========================================================================
 -- SECTION 11: Supplement catalog seed (from 059 - catalog data only)
