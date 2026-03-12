@@ -327,6 +327,7 @@ export interface FeedPost {
   booking_guardian_id?: string | null;
   booking_supplier_id?: string | null;
   visibility_scope: string;
+  post_type?: string | null;
   caption?: string | null;
   media_urls: string[] | string;
   tags: string[] | string;

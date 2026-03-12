@@ -1,4 +1,4 @@
-// 피드 작성 모달 — GuardianMainPage에서 분리
+// 피드 작성 모달 — Guardian + Supplier 공용
 import { useRef, useState, useEffect } from 'react';
 import { api, type Pet } from '../../lib/api';
 import {
@@ -11,14 +11,24 @@ interface Props {
   open: boolean;
   pets: Pet[];
   selectedPetId: string;
+  mode?: 'guardian' | 'supplier';
   t: (key: string, fallback?: string) => string;
   setError: (msg: string) => void;
   onClose: () => void;
   onSuccess: () => void;
 }
 
-export default function ComposeModal({ open, pets, selectedPetId, t, setError, onClose, onSuccess }: Props) {
-  const [feedCompose, setFeedCompose] = useState<FeedCompose>({ ...DEFAULT_FEED_COMPOSE, pet_id: selectedPetId });
+const SUPPLIER_DEFAULT: FeedCompose = {
+  ...DEFAULT_FEED_COMPOSE,
+  feed_type: 'supplier_post',
+  post_type: 'GENERAL',
+  pet_id: '',
+};
+
+export default function ComposeModal({ open, pets, selectedPetId, mode = 'guardian', t, setError, onClose, onSuccess }: Props) {
+  const isSupplier = mode === 'supplier';
+  const defaults = isSupplier ? SUPPLIER_DEFAULT : { ...DEFAULT_FEED_COMPOSE, pet_id: selectedPetId };
+  const [feedCompose, setFeedCompose] = useState<FeedCompose>(defaults);
   const [feedImageFile, setFeedImageFile] = useState<File | null>(null);
   const [feedImagePreviewUrl, setFeedImagePreviewUrl] = useState('');
   const [feedUploadProgress, setFeedUploadProgress] = useState(0);
@@ -27,8 +37,14 @@ export default function ComposeModal({ open, pets, selectedPetId, t, setError, o
   const fileInputRef = useRef<HTMLInputElement | null>(null);
 
   useEffect(() => {
-    if (open) setFeedCompose((p) => ({ ...p, pet_id: selectedPetId }));
-  }, [open, selectedPetId]);
+    if (open) {
+      if (isSupplier) {
+        setFeedCompose({ ...SUPPLIER_DEFAULT });
+      } else {
+        setFeedCompose((p) => ({ ...p, pet_id: selectedPetId }));
+      }
+    }
+  }, [open, selectedPetId, isSupplier]);
 
   useEffect(() => {
     return () => {
@@ -92,8 +108,8 @@ export default function ComposeModal({ open, pets, selectedPetId, t, setError, o
       if (feedImageFile) {
         try {
           const compressed = await compressImageFile(feedImageFile, { maxEdge: FEED_MAX_EDGE, maxSizeMB: FEED_MAX_MB, preferredType: 'image/jpeg' });
-          const petSeg = sanitizePathSegment(feedCompose.pet_id || selectedPetId || 'pet');
-          const presigned = await api.storage.presignedUrl({ type: 'log_media', ext: 'jpg', subdir: `feed/${petSeg}` });
+          const subdir = isSupplier ? 'feed/supplier' : `feed/${sanitizePathSegment(feedCompose.pet_id || selectedPetId || 'pet')}`;
+          const presigned = await api.storage.presignedUrl({ type: 'log_media', ext: 'jpg', subdir });
           await uploadBinary(presigned.upload_url, compressed, (ratio) => setFeedUploadProgress(Math.round(ratio * 100)));
           mediaUrls.push(presigned.public_url);
         } catch (uploadError) {
@@ -110,16 +126,17 @@ export default function ComposeModal({ open, pets, selectedPetId, t, setError, o
         visibility_scope: feedCompose.visibility_scope,
         caption: feedCompose.caption.trim(),
         tags: feedCompose.tagsText.split(',').map((v) => v.trim()).filter(Boolean),
-        pet_id: feedCompose.pet_id || null,
+        pet_id: isSupplier ? null : (feedCompose.pet_id || null),
         media_urls: mediaUrls,
+        ...(isSupplier && feedCompose.post_type ? { post_type: feedCompose.post_type } : {}),
       });
-      setFeedCompose(DEFAULT_FEED_COMPOSE);
+      setFeedCompose(defaults);
       resetFeedImage();
       onSuccess();
       onClose();
     } catch (e) {
       const raw = e instanceof Error ? e.message : '';
-      let message = uiErrorMessage(e, t('guardian.alert.feed_create_failed', '피드 등록에 실패했습니다.'));
+      let message = uiErrorMessage(e, t('guardian.alert.feed_create_failed', 'Failed to create post.'));
       if (/10MB|file size|max/i.test(raw)) message = t('guardian.feed.upload_size_error', 'File size is too large.');
       else if (/JPG|JPEG|PNG|WEBP|type/i.test(raw)) message = t('guardian.feed.upload_type_error', 'Unsupported file type.');
       else if (/Storage not configured|no_r2|storage/i.test(raw)) message = t('guardian.feed.upload_storage_error', 'Storage connection failed.');
@@ -131,47 +148,65 @@ export default function ComposeModal({ open, pets, selectedPetId, t, setError, o
     }
   }
 
+  const modalTitle = isSupplier
+    ? t('supplier.post.create_title', 'Create Post')
+    : t('guardian.feed.create_title', 'Create Feed Post');
+
   return (
     <div className="modal-overlay" onClick={() => onClose()}>
       <div className="modal" style={{ maxWidth: 560 }} onClick={(e) => e.stopPropagation()}>
         <div className="modal-header">
-          <h3 className="modal-title">{t('guardian.feed.create_title', 'Create Feed Post')}</h3>
+          <h3 className="modal-title">{modalTitle}</h3>
           <button className="modal-close" onClick={() => onClose()}>&times;</button>
         </div>
         <div className="modal-body">
           <div className="feed-compose-layout">
             <div className="feed-compose-media">
-              <label className="form-label">{t('guardian.feed.photo_upload', '사진 업로드')}</label>
+              <label className="form-label">{t('guardian.feed.photo_upload', 'Photo Upload')}</label>
               <div className="gallery-upload-dropzone" onDragOver={(e) => e.preventDefault()} onDrop={(e) => { e.preventDefault(); handleFeedImageSelected(e.dataTransfer.files?.[0] || null); }}>
                 <input ref={fileInputRef} name="compose-photo" type="file" className="gallery-upload-file-input" accept="image/jpeg,image/jpg,image/png,image/webp" capture="environment" onChange={(e) => handleFeedImageSelected(e.target.files?.[0] || null)} />
-                <p>{t('guardian.feed.photo_hint', '드래그 앤 드롭 또는 파일 선택')}</p>
-                <button type="button" className="btn btn-secondary btn-sm" onClick={() => fileInputRef.current?.click()}>{t('guardian.feed.photo_select', '사진 선택')}</button>
+                <p>{t('guardian.feed.photo_hint', 'Drag & drop or select file')}</p>
+                <button type="button" className="btn btn-secondary btn-sm" onClick={() => fileInputRef.current?.click()}>{t('guardian.feed.photo_select', 'Select Photo')}</button>
               </div>
               {feedImagePreviewUrl && (
                 <div className="feed-compose-preview">
-                  <img src={feedImagePreviewUrl} alt={t('guardian.feed.photo_preview', '업로드 미리보기')} />
-                  <button type="button" className="btn btn-secondary btn-sm" onClick={resetFeedImage}>{t('guardian.feed.photo_reselect', '다시 선택')}</button>
+                  <img src={feedImagePreviewUrl} alt={t('guardian.feed.photo_preview', 'Upload preview')} />
+                  <button type="button" className="btn btn-secondary btn-sm" onClick={resetFeedImage}>{t('guardian.feed.photo_reselect', 'Reselect')}</button>
                 </div>
               )}
               {feedUploadError && <div className="alert alert-error mt-2">{feedUploadError}</div>}
               {isPostingFeed && feedUploadProgress > 0 && (
                 <div className="gallery-upload-progress mt-2">
                   <div className="gallery-upload-progress-bar" style={{ width: `${feedUploadProgress}%` }} />
-                  <span>{t('guardian.feed.uploading', '업로드 중')} {feedUploadProgress}%</span>
+                  <span>{t('guardian.feed.uploading', 'Uploading')} {feedUploadProgress}%</span>
                 </div>
               )}
             </div>
             <div className="feed-compose-fields">
               <div className="form-row col2">
-                <div className="form-group">
-                  <label className="form-label" htmlFor="compose-feed-type">{t('guardian.feed.feed_type', 'Feed Type')}</label>
-                  <select id="compose-feed-type" name="compose-feed-type" className="form-select" value={feedCompose.feed_type} onChange={(e) => setFeedCompose((p) => ({ ...p, feed_type: e.target.value as FeedCompose['feed_type'] }))}>
-                    <option value="guardian_post">{t('guardian.feed.type.guardian_post', 'Guardian Post')}</option>
-                    <option value="health_update">{t('guardian.feed.type.health_update', 'Health Update')}</option>
-                    <option value="pet_milestone">{t('guardian.feed.type.pet_milestone', 'Pet Milestone')}</option>
-                    <option value="supplier_story">{t('guardian.feed.type.supplier_story', 'Supplier Story')}</option>
-                  </select>
-                </div>
+                {/* Guardian: Feed Type / Supplier: Post Type */}
+                {isSupplier ? (
+                  <div className="form-group">
+                    <label className="form-label" htmlFor="compose-post-type">{t('supplier.post.post_type', 'Post Type')}</label>
+                    <select id="compose-post-type" name="compose-post-type" className="form-select" value={feedCompose.post_type || 'GENERAL'} onChange={(e) => setFeedCompose((p) => ({ ...p, post_type: e.target.value }))}>
+                      <option value="GENERAL">{t('supplier.post.type.general', 'General')}</option>
+                      <option value="NEWS">{t('supplier.post.type.news', 'News')}</option>
+                      <option value="PRODUCT">{t('supplier.post.type.product', 'Product')}</option>
+                      <option value="EVENT">{t('supplier.post.type.event', 'Event')}</option>
+                      <option value="HIRING">{t('supplier.post.type.hiring', 'Hiring')}</option>
+                    </select>
+                  </div>
+                ) : (
+                  <div className="form-group">
+                    <label className="form-label" htmlFor="compose-feed-type">{t('guardian.feed.feed_type', 'Feed Type')}</label>
+                    <select id="compose-feed-type" name="compose-feed-type" className="form-select" value={feedCompose.feed_type} onChange={(e) => setFeedCompose((p) => ({ ...p, feed_type: e.target.value as FeedCompose['feed_type'] }))}>
+                      <option value="guardian_post">{t('guardian.feed.type.guardian_post', 'Guardian Post')}</option>
+                      <option value="health_update">{t('guardian.feed.type.health_update', 'Health Update')}</option>
+                      <option value="pet_milestone">{t('guardian.feed.type.pet_milestone', 'Pet Milestone')}</option>
+                      <option value="supplier_story">{t('guardian.feed.type.supplier_story', 'Supplier Story')}</option>
+                    </select>
+                  </div>
+                )}
                 <div className="form-group">
                   <label className="form-label" htmlFor="compose-visibility">{t('guardian.feed.visibility', 'Visibility')}</label>
                   <select id="compose-visibility" name="compose-visibility" className="form-select" value={feedCompose.visibility_scope} onChange={(e) => setFeedCompose((p) => ({ ...p, visibility_scope: e.target.value as FeedCompose['visibility_scope'] }))}>
@@ -183,13 +218,16 @@ export default function ComposeModal({ open, pets, selectedPetId, t, setError, o
                   </select>
                 </div>
               </div>
-              <div className="form-group">
-                <label className="form-label" htmlFor="compose-linked-pet">{t('guardian.feed.linked_pet', 'Linked Pet')}</label>
-                <select id="compose-linked-pet" name="compose-linked-pet" className="form-select" value={feedCompose.pet_id} onChange={(e) => setFeedCompose((p) => ({ ...p, pet_id: e.target.value }))}>
-                  <option value="">{t('common.none', 'None')}</option>
-                  {pets.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
-                </select>
-              </div>
+              {/* Pet selector: guardian only */}
+              {!isSupplier && (
+                <div className="form-group">
+                  <label className="form-label" htmlFor="compose-linked-pet">{t('guardian.feed.linked_pet', 'Linked Pet')}</label>
+                  <select id="compose-linked-pet" name="compose-linked-pet" className="form-select" value={feedCompose.pet_id} onChange={(e) => setFeedCompose((p) => ({ ...p, pet_id: e.target.value }))}>
+                    <option value="">{t('common.none', 'None')}</option>
+                    {pets.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
+                  </select>
+                </div>
+              )}
               <div className="form-group">
                 <label className="form-label" htmlFor="compose-caption">{t('guardian.feed.caption', 'Caption')}</label>
                 <textarea id="compose-caption" name="compose-caption" className="form-textarea" value={feedCompose.caption} onChange={(e) => setFeedCompose((p) => ({ ...p, caption: e.target.value }))} />
@@ -203,7 +241,7 @@ export default function ComposeModal({ open, pets, selectedPetId, t, setError, o
         </div>
         <div className="modal-footer">
           <button className="btn btn-secondary" onClick={() => onClose()}>{t('common.cancel', 'Cancel')}</button>
-          <button className="btn btn-primary" disabled={isPostingFeed} onClick={() => void createFeedPost()}>{isPostingFeed ? t('guardian.feed.posting', '게시 중...') : t('guardian.feed.post', 'Post')}</button>
+          <button className="btn btn-primary" disabled={isPostingFeed} onClick={() => void createFeedPost()}>{isPostingFeed ? t('guardian.feed.posting', 'Posting...') : t('guardian.feed.post', 'Post')}</button>
         </div>
       </div>
     </div>

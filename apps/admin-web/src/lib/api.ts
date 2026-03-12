@@ -465,11 +465,12 @@ export const api = {
     unlike: (feedId: string) =>
       request<{ liked: boolean }>(`/api/v1/feeds/${feedId}/like`, { method: 'DELETE' }),
     create: (data: {
-      feed_type: 'guardian_post' | 'health_update' | 'pet_milestone' | 'supplier_story';
+      feed_type: 'guardian_post' | 'health_update' | 'pet_milestone' | 'supplier_story' | 'supplier_post';
       visibility_scope: 'public' | 'friends_only' | 'private' | 'connected_only' | 'booking_related_only';
       caption: string;
       tags?: string[];
       media_urls?: string[];
+      post_type?: string;
       pet_id?: string | null;
       booking_id?: string | null;
       supplier_id?: string | null;

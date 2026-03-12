@@ -32,9 +32,12 @@ async function listFriends(env: Env, me: JwtPayload): Promise<Response> {
     `SELECT f.id, f.relation_type, f.status, f.created_at,
             CASE WHEN f.user_a_id = ? THEN f.user_b_id ELSE f.user_a_id END AS friend_user_id,
             u.email AS friend_email,
-            u.role AS friend_role
+            u.role AS friend_role,
+            COALESCE(up.display_name, u.email) AS friend_display_name,
+            up.avatar_url AS friend_avatar_url
      FROM friendships f
      JOIN users u ON u.id = CASE WHEN f.user_a_id = ? THEN f.user_b_id ELSE f.user_a_id END
+     LEFT JOIN user_profiles up ON up.user_id = u.id
      WHERE f.status = 'active' AND (f.user_a_id = ? OR f.user_b_id = ?)
      ORDER BY f.created_at DESC`
   ).bind(me.sub, me.sub, me.sub, me.sub).all<Record<string, unknown>>();
@@ -45,10 +48,16 @@ async function listFriends(env: Env, me: JwtPayload): Promise<Response> {
 async function listRequests(env: Env, me: JwtPayload, url: URL): Promise<Response> {
   const scope = (url.searchParams.get('scope') || 'inbox').trim();
 
-  let query = `SELECT fr.*, ru.email AS requester_email, rv.email AS receiver_email
+  let query = `SELECT fr.*, ru.email AS requester_email, rv.email AS receiver_email,
+                      ru.created_at AS requester_joined_at,
+                      COALESCE(rup.display_name, ru.email) AS requester_display_name,
+                      rup.avatar_url AS requester_avatar_url,
+                      c.name_en AS requester_country_name
                FROM friend_requests fr
                JOIN users ru ON ru.id = fr.requester_user_id
-               JOIN users rv ON rv.id = fr.receiver_user_id`;
+               JOIN users rv ON rv.id = fr.receiver_user_id
+               LEFT JOIN user_profiles rup ON rup.user_id = fr.requester_user_id
+               LEFT JOIN countries c ON c.id = rup.country_id`;
   const params: string[] = [];
 
   if (scope === 'outbox') {
@@ -65,7 +74,62 @@ async function listRequests(env: Env, me: JwtPayload, url: URL): Promise<Respons
   query += ' ORDER BY fr.created_at DESC';
 
   const rows = await env.DB.prepare(query).bind(...params).all<Record<string, unknown>>();
-  return ok({ requests: rows.results, scope });
+  const requests = rows.results || [];
+
+  // Enrich inbox requests with requester pets & public feed images
+  if (scope === 'inbox' || scope === '' || !scope) {
+    const requesterIds = [...new Set(requests.map(r => String(r.requester_user_id || '')).filter(Boolean))];
+    if (requesterIds.length > 0) {
+      // Batch-fetch pets for all requesters
+      const petPlaceholders = requesterIds.map(() => '?').join(',');
+      const petRows = await env.DB.prepare(
+        `SELECT p.id, p.guardian_user_id, p.name, p.avatar_url, p.birth_date,
+                pt.code AS pet_type_code, br.code AS breed_code
+         FROM pets p
+         LEFT JOIN master_items pt ON pt.id = p.pet_type_id
+         LEFT JOIN master_items br ON br.id = p.breed_id
+         WHERE p.guardian_user_id IN (${petPlaceholders}) AND p.status = 'active'
+         ORDER BY p.guardian_user_id, p.created_at`
+      ).bind(...requesterIds).all<Record<string, unknown>>();
+
+      const petsByUser = new Map<string, Record<string, unknown>[]>();
+      for (const p of (petRows.results || [])) {
+        const uid = String(p.guardian_user_id || '');
+        if (!petsByUser.has(uid)) petsByUser.set(uid, []);
+        petsByUser.get(uid)!.push(p);
+      }
+
+      // Batch-fetch recent public feed images
+      const feedRows = await env.DB.prepare(
+        `SELECT fp.id AS post_id, fp.author_user_id,
+                fm.media_url, fm.thumbnail_url
+         FROM feed_posts fp
+         JOIN feed_media fm ON fm.post_id = fp.id AND fm.media_type = 'image'
+         WHERE fp.author_user_id IN (${petPlaceholders})
+           AND fp.visibility_scope = 'public' AND fp.status = 'published'
+         ORDER BY fp.author_user_id, fp.created_at DESC`
+      ).bind(...requesterIds).all<Record<string, unknown>>();
+
+      const feedByUser = new Map<string, Record<string, unknown>[]>();
+      for (const f of (feedRows.results || [])) {
+        const uid = String(f.author_user_id || '');
+        if (!feedByUser.has(uid)) feedByUser.set(uid, []);
+        const arr = feedByUser.get(uid)!;
+        if (arr.length < 5) arr.push(f);
+      }
+
+      // Attach to each request
+      for (const r of requests) {
+        const uid = String(r.requester_user_id || '');
+        const allPets = petsByUser.get(uid) || [];
+        (r as Record<string, unknown>).requester_pets = allPets.slice(0, 4);
+        (r as Record<string, unknown>).requester_pets_total = allPets.length;
+        (r as Record<string, unknown>).requester_feed_images = feedByUser.get(uid) || [];
+      }
+    }
+  }
+
+  return ok({ requests, scope });
 }
 
 async function createRequest(request: Request, env: Env, me: JwtPayload): Promise<Response> {

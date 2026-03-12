@@ -388,8 +388,14 @@ export default function PublicHome() {
               </button>
             )}
           </div>
-          {(feed.pet_name || feed.business_category_key) && (
+          {(feed.pet_name || feed.business_category_key || feed.author_role === 'provider') && (
             <div className="pf-card-badges">
+              {feed.author_role === 'provider' && <span className="pf-badge pf-badge--supplier">🏪 {t('supplier.badge.supplier', 'Business')}</span>}
+              {feed.post_type && feed.post_type !== 'GENERAL' && (
+                <span className={`pf-badge pf-badge--post-type pf-badge--${(feed.post_type || '').toLowerCase()}`}>
+                  {t(`supplier.post.type.${(feed.post_type || '').toLowerCase()}`, feed.post_type || '')}
+                </span>
+              )}
               {feed.pet_name && <span className="pf-badge pf-badge--pet">{feed.pet_name}</span>}
               {feed.business_category_key && <span className="pf-badge pf-badge--biz">{translateMasterLabel(feed.business_category_key, feed.business_category_ko, feed.business_category_id)}</span>}
             </div>

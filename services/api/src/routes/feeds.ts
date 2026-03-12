@@ -350,28 +350,37 @@ async function createGuardianPost(request: Request, env: Env): Promise<Response>
   const mediaUrls = toJsonArray(body.media_urls);
   const tags = toJsonArray(body.tags);
 
-  if (!['guardian_post', 'health_update', 'supplier_story', 'pet_milestone'].includes(feedType)) {
+  if (!['guardian_post', 'health_update', 'supplier_story', 'pet_milestone', 'supplier_post'].includes(feedType)) {
     return err('invalid feed_type');
+  }
+
+  const postType = (String(body.post_type || 'GENERAL')).trim().toUpperCase();
+  if (!['GENERAL', 'NEWS', 'PRODUCT', 'EVENT', 'HIRING'].includes(postType)) {
+    return err('invalid post_type');
   }
 
   const id = newId();
   const publicVisible = visibility === 'public';
   const timestamp = now();
   if (await hasTable(env, 'feed_posts')) {
-    await env.DB.prepare(
-      `INSERT INTO feed_posts (
-        id, author_user_id, author_role, feed_type, visibility_scope, caption, status, created_at, updated_at
-      ) VALUES (?, ?, ?, ?, ?, ?, 'published', ?, ?)`
-    ).bind(
-      id,
-      me.sub,
-      me.role,
-      feedType,
-      visibility,
-      caption,
-      timestamp,
-      timestamp,
-    ).run();
+    const hasPostType = await hasColumn(env, 'feed_posts', 'post_type');
+    if (hasPostType) {
+      await env.DB.prepare(
+        `INSERT INTO feed_posts (
+          id, author_user_id, author_role, feed_type, visibility_scope, caption, post_type, status, created_at, updated_at
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, 'published', ?, ?)`
+      ).bind(
+        id, me.sub, me.role, feedType, visibility, caption, postType, timestamp, timestamp,
+      ).run();
+    } else {
+      await env.DB.prepare(
+        `INSERT INTO feed_posts (
+          id, author_user_id, author_role, feed_type, visibility_scope, caption, status, created_at, updated_at
+        ) VALUES (?, ?, ?, ?, ?, ?, 'published', ?, ?)`
+      ).bind(
+        id, me.sub, me.role, feedType, visibility, caption, timestamp, timestamp,
+      ).run();
+    }
     const petId = (body.pet_id as string | null) ?? null;
     if (petId) {
       await env.DB.prepare(

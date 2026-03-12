@@ -1,9 +1,10 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { api, type Booking, type ProviderProfile } from '../lib/api';
+import { api, type Booking, type FeedPost, type ProviderProfile } from '../lib/api';
 import { logout } from '../lib/auth';
 import { useI18n, useT } from '../lib/i18n';
 import ProviderStoreSection from './supplier/ProviderStoreSection';
+import ComposeModal from './guardian/ComposeModal';
 
 type BookingFilter = 'all' | Booking['status'];
 type BookingStatusAction = 'created' | 'in_progress' | 'service_completed' | 'publish_requested' | 'publish_approved' | 'publish_rejected' | 'cancelled';
@@ -167,6 +168,11 @@ export default function SupplierDashboardPage() {
   const [completionMemo, setCompletionMemo] = useState('');
   const [completionMedia, setCompletionMedia] = useState('');
   const me = useMemo(() => decodeToken(), []);
+
+  // Feed state
+  const [supplierFeeds, setSupplierFeeds] = useState<FeedPost[]>([]);
+  const [composeOpen, setComposeOpen] = useState(false);
+  const [feedLoading, setFeedLoading] = useState(false);
   const locale = LANG_TO_LOCALE[lang] || 'en-US';
   const statusOptions = useMemo(
     () => Object.entries(STATUS_META).map(([value, meta]) => ({ value, label: t(meta.labelKey) })),
@@ -182,6 +188,22 @@ export default function SupplierDashboardPage() {
     } catch {
       setApprovalStatus('pending');
     }
+  }
+
+  async function loadSupplierFeeds() {
+    setFeedLoading(true);
+    try {
+      const res = await api.feeds.list({ limit: 30 });
+      setSupplierFeeds((res.feeds || []).filter((f) => f.author_user_id === me.sub));
+    } catch { /* ignore */ }
+    finally { setFeedLoading(false); }
+  }
+
+  async function removeSupplierFeed(feedId: string) {
+    try {
+      await api.feeds.remove(feedId);
+      setSupplierFeeds((prev) => prev.filter((f) => f.id !== feedId));
+    } catch { /* ignore */ }
   }
 
   async function loadBookings(opts?: { silent?: boolean }) {
@@ -204,10 +226,11 @@ export default function SupplierDashboardPage() {
     void loadApprovalStatus();
   }, []);
 
-  // Load bookings + stores only when approved
+  // Load bookings + feeds only when approved
   useEffect(() => {
     if (approvalStatus === 'approved') {
       void loadBookings();
+      void loadSupplierFeeds();
     }
   }, [approvalStatus, lang]);
 
@@ -377,6 +400,73 @@ export default function SupplierDashboardPage() {
       </section>
 
       <ProviderStoreSection />
+
+      {/* ── Supplier Feed Section ── */}
+      <section className="card">
+        <div className="card-header">
+          <div className="card-title">{t('supplier.feed.title', 'My Posts')}</div>
+          <button className="btn btn-primary btn-sm" onClick={() => setComposeOpen(true)}>+ {t('guardian.feed.post', 'Post')}</button>
+        </div>
+        <div className="card-body">
+          <div className="pf-gd-compose" onClick={() => setComposeOpen(true)} style={{ marginBottom: 16 }}>
+            <div className="pf-gd-compose-avatar">{(me.email || '?')[0].toUpperCase()}</div>
+            <div className="pf-gd-compose-text">{t('supplier.post.placeholder', 'Share your business news')}</div>
+            <span style={{ fontSize: 18, color: 'var(--text-muted)' }}>📷</span>
+          </div>
+          {feedLoading && <div className="loading-center"><span className="spinner" /></div>}
+          {!feedLoading && supplierFeeds.length === 0 && (
+            <div style={{ textAlign: 'center', padding: '24px 0', color: 'var(--text-muted)' }}>
+              {t('supplier.feed.empty', 'No posts yet.')}
+            </div>
+          )}
+          {supplierFeeds.map((f) => {
+            const media = Array.isArray(f.media_urls) ? f.media_urls : [];
+            const postType = (f.post_type || 'GENERAL').toUpperCase();
+            return (
+              <div key={f.id} className="pf-gd-feed-card">
+                <div className="pf-gd-feed-header">
+                  <div className="pf-gd-feed-avatar">{(f.author_email || '?')[0].toUpperCase()}</div>
+                  <div className="pf-gd-feed-info">
+                    <div className="pf-gd-feed-author">{f.author_email || '-'}</div>
+                    <div className="pf-gd-feed-time">{fmtRelativeDate(f.created_at, lang)}</div>
+                  </div>
+                  <div className="pf-gd-feed-right">
+                    {postType !== 'GENERAL' && (
+                      <span className={`pf-badge pf-badge--post-type pf-badge--${postType.toLowerCase()}`}>
+                        {t(`supplier.post.type.${postType.toLowerCase()}`, postType)}
+                      </span>
+                    )}
+                    <button className="btn btn-danger btn-sm" style={{ fontSize: 12 }} onClick={() => removeSupplierFeed(f.id)}>🗑️</button>
+                  </div>
+                </div>
+                <div className="pf-gd-feed-body">
+                  {f.caption && <p className="pf-gd-feed-caption">{f.caption}</p>}
+                  {media[0] && (
+                    <div className="pf-gd-feed-image-wrap">
+                      <img className="pf-gd-feed-image" src={media[0]} alt={f.caption || 'feed'} loading="lazy" />
+                    </div>
+                  )}
+                </div>
+                <div className="pf-gd-feed-actions">
+                  <span className="pf-gd-feed-action">♥ {f.like_count || 0}</span>
+                  <span className="pf-gd-feed-action">💬 {f.comment_count || 0}</span>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </section>
+
+      <ComposeModal
+        open={composeOpen}
+        pets={[]}
+        selectedPetId=""
+        mode="supplier"
+        t={t}
+        setError={setError}
+        onClose={() => setComposeOpen(false)}
+        onSuccess={() => void loadSupplierFeeds()}
+      />
 
       <section className="provider-booking-layout" style={{ display: 'grid', gridTemplateColumns: 'minmax(360px, 1.1fr) minmax(320px, 0.9fr)', gap: 20, alignItems: 'start' }}>
         <div className="card">

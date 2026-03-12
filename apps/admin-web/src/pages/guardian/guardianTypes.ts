@@ -51,11 +51,12 @@ export type PetForm = {
 };
 
 export type FeedCompose = {
-  feed_type: 'guardian_post' | 'health_update' | 'pet_milestone' | 'supplier_story';
+  feed_type: 'guardian_post' | 'health_update' | 'pet_milestone' | 'supplier_story' | 'supplier_post';
   visibility_scope: 'public' | 'friends_only' | 'private' | 'connected_only' | 'booking_related_only';
   caption: string;
   tagsText: string;
   pet_id: string;
+  post_type?: string;
 };
 
 export type MeasurementForm = {
