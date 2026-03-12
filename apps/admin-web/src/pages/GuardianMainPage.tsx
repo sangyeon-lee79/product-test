@@ -103,6 +103,7 @@ export default function GuardianMainPage() {
   const [medicationLogModalOpen, setMedicationLogModalOpen] = useState(false);
   const [editingMedicationLog, setEditingMedicationLog] = useState<PetLog | null>(null);
   const [medicineTypes, setMedicineTypes] = useState<FeedType[]>([]);
+  const [medicationLogs, setMedicationLogs] = useState<PetLog[]>([]);
   const [exerciseTypeItems, setExerciseTypeItems] = useState<MasterItem[]>([]);
   const [exerciseIntensityItems, setExerciseIntensityItems] = useState<MasterItem[]>([]);
   const [exerciseLocationItems, setExerciseLocationItems] = useState<MasterItem[]>([]);
@@ -407,11 +408,13 @@ export default function GuardianMainPage() {
       setMeasurementLogs([]);
       setMeasurementSummary(null);
       setExerciseLogs([]);
+      setMedicationLogs([]);
       return;
     }
     loadWeightLogs(selectedPet.id, weightRange);
     loadMeasurementLogs(selectedPet.id, weightRange);
     void loadExerciseLogs(selectedPet.id);
+    void loadMedicationLogs(selectedPet.id);
   }, [selectedPet?.id, weightRange]);
 
   // Guardian devices + pet feeds — pet 변경 시에만 로드 (weightRange 무관)
@@ -464,6 +467,29 @@ export default function GuardianMainPage() {
       setExerciseLogs(res.logs || []);
     } catch {
       setExerciseLogs([]);
+    }
+  }
+
+  async function loadMedicationLogs(petId: string) {
+    try {
+      const res = await api.pets.logs.list(petId, { limit: 100 });
+      setMedicationLogs((res.logs || []).filter(l => {
+        const meta = l.metadata as Record<string, unknown> | undefined;
+        return meta?.medicine_model_id;
+      }));
+    } catch {
+      setMedicationLogs([]);
+    }
+  }
+
+  async function removeMedicationLog(logId: string) {
+    if (!selectedPet?.id) return;
+    if (!confirm(t('guardian.medication.delete_confirm', 'Delete this medication log?'))) return;
+    try {
+      await api.pets.logs.remove(selectedPet.id, logId);
+      await loadMedicationLogs(selectedPet.id);
+    } catch (e) {
+      setError(uiErrorMessage(e, t('common.err.save', 'Failed to delete.')));
     }
   }
 
@@ -598,15 +624,16 @@ export default function GuardianMainPage() {
   }
 
   // ── Unified Timeline ──────────────────────────────────────────────────────
-  type TimelineItem = { id: string; type: 'weight' | 'measurement' | 'feeding' | 'exercise'; date: string; source: PetWeightLog | PetHealthMeasurementLog | FeedingLog | PetExerciseLog };
+  type TimelineItem = { id: string; type: 'weight' | 'measurement' | 'feeding' | 'exercise' | 'medication'; date: string; source: PetWeightLog | PetHealthMeasurementLog | FeedingLog | PetExerciseLog | PetLog };
   const unifiedTimeline = useMemo<TimelineItem[]>(() => {
     const items: TimelineItem[] = [];
     for (const log of weightLogs) items.push({ id: `w-${log.id}`, type: 'weight', date: log.measured_at, source: log });
     for (const log of measurementLogs) items.push({ id: `m-${log.id}`, type: 'measurement', date: log.measured_at, source: log });
     for (const log of feedingLogs) items.push({ id: `f-${log.id}`, type: 'feeding', date: log.feeding_time || log.created_at, source: log });
     for (const log of exerciseLogs) items.push({ id: `e-${log.id}`, type: 'exercise', date: log.exercise_date, source: log });
+    for (const log of medicationLogs) items.push({ id: `med-${log.id}`, type: 'medication', date: log.event_date || log.created_at, source: log });
     return items.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
-  }, [weightLogs, measurementLogs, feedingLogs, exerciseLogs]);
+  }, [weightLogs, measurementLogs, feedingLogs, exerciseLogs, medicationLogs]);
 
   const formatTimelineDate = (value: string): string => fmtDate(value, '-', locale);
 
@@ -888,7 +915,7 @@ export default function GuardianMainPage() {
                                   lastDateKey = dateKey;
                                   const d = new Date(item.date);
                                   const hhmm = `${d.getHours().toString().padStart(2, '0')}:${d.getMinutes().toString().padStart(2, '0')}`;
-                                  const emoji = item.type === 'weight' ? '⚖️' : item.type === 'feeding' ? '🍽️' : item.type === 'exercise' ? '🏃' : '📊';
+                                  const emoji = item.type === 'weight' ? '⚖️' : item.type === 'feeding' ? '🍽️' : item.type === 'exercise' ? '🏃' : item.type === 'medication' ? '💉' : '📊';
                                   const els = [];
                                   if (showDateHeader) els.push(<div key={`date-${dateKey}`} className="pf-gd-tl-date">{dateKey}</div>);
 
@@ -961,6 +988,33 @@ export default function GuardianMainPage() {
                                           <div className="pf-gd-tl-actions">
                                             <button title={t('common.edit', 'Edit')} aria-label={t('common.edit', 'Edit')} onClick={() => { setEditingExerciseLog(log); setExerciseLogModalOpen(true); }}>✏️</button>
                                             <button title={t('common.delete', 'Delete')} aria-label={t('common.delete', 'Delete')} onClick={() => removeExerciseLog(log.id)}>🗑️</button>
+                                          </div>
+                                        </div>
+                                      </div>,
+                                    );
+                                    return els;
+                                  }
+
+                                  if (item.type === 'medication') {
+                                    const log = item.source as PetLog;
+                                    const meta = (log.metadata || {}) as Record<string, unknown>;
+                                    const medicineName = String(meta.medicine_name || log.title || t('guardian.health.medication_log', '약품 기록'));
+                                    const doseAmount = meta.dose_amount ? String(meta.dose_amount) : '';
+                                    const doseUnit = meta.dose_unit ? String(meta.dose_unit) : '';
+                                    const prescribed = meta.prescribed === true;
+                                    els.push(
+                                      <div key={item.id} className="pf-gd-tl-card" data-type={item.type}>
+                                        <div className="pf-gd-tl-icon">{emoji}</div>
+                                        <div className="pf-gd-tl-body">
+                                          <div className="pf-gd-tl-body">
+                                            <span className="pf-gd-tl-time">{hhmm}</span>
+                                            <span className="pf-gd-tl-sep">·</span>
+                                            <span>{medicineName}{doseAmount ? ` ${doseAmount}${doseUnit}` : ''}</span>
+                                            {prescribed && <><span className="pf-gd-tl-sep">·</span><span className="pf-gd-tl-badge">{t('guardian.medication.prescribed', 'Rx')}</span></>}
+                                          </div>
+                                          <div className="pf-gd-tl-actions">
+                                            <button title={t('common.edit', 'Edit')} aria-label={t('common.edit', 'Edit')} onClick={() => { setEditingMedicationLog(log); setMedicationLogModalOpen(true); }}>✏️</button>
+                                            <button title={t('common.delete', 'Delete')} aria-label={t('common.delete', 'Delete')} onClick={() => removeMedicationLog(log.id)}>🗑️</button>
                                           </div>
                                         </div>
                                       </div>,
@@ -1314,7 +1368,7 @@ export default function GuardianMainPage() {
         t={t}
         setError={setError}
         onClose={() => { setMedicationLogModalOpen(false); setEditingMedicationLog(null); }}
-        onSuccess={() => { void loadAll(undefined, { silent: true }); }}
+        onSuccess={() => { if (selectedPet?.id) void loadMedicationLogs(selectedPet.id); void loadAll(undefined, { silent: true }); }}
       />
       <PetWizardModal
         open={petModalOpen}
