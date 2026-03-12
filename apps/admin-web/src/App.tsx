@@ -20,6 +20,7 @@ import ExplorePage from './pages/ExplorePage';
 import MembersPage from './pages/MembersPage';
 import FeedCardSettingsPage from './pages/FeedCardSettingsPage';
 import ApiConnectionsPage from './pages/ApiConnectionsPage';
+import DummyStorePage from './pages/DummyStorePage';
 import OAuthRedirectHandler from './components/OAuthRedirectHandler';
 import NotificationToast, { showNotificationToast } from './components/NotificationToast';
 import { requestNotificationPermission, onForegroundMessage } from './lib/firebase';
@@ -109,6 +110,7 @@ export default function App() {
                 <Route path="members" element={<MembersPage />} />
                 <Route path="feed-card-settings" element={<FeedCardSettingsPage />} />
                 <Route path="api-connections" element={<ApiConnectionsPage />} />
+                <Route path="dummy-stores" element={<DummyStorePage />} />
                 <Route path="*" element={<Navigate to="/admin" replace />} />
               </Route>
             </Route>

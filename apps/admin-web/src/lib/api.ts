@@ -22,6 +22,7 @@ import type {
   CatalogStats,
   Appointment, GroomingRecord, GroomingPhoto,
   FeedCardSetting, FeedDummyCard, FeedPreviewItem,
+  DummyStore,
 } from '../types/api';
 export type {
   I18nRow, MasterCategory, MasterItem, Country, Currency,
@@ -44,6 +45,7 @@ export type {
   CatalogStats,
   Appointment, GroomingRecord, GroomingPhoto,
   FeedCardSetting, FeedDummyCard, FeedPreviewItem,
+  DummyStore,
 };
 
 const API_BASE = getApiBase();
@@ -1177,5 +1179,30 @@ export const api = {
           method: 'DELETE',
         }),
     },
+  },
+
+  dummyStores: {
+    list: (params?: Record<string, string>) =>
+      request<{ items: DummyStore[]; total: number; active_count: number }>(
+        `/api/v1/admin/dummy-stores${buildQuery(params || {})}`,
+      ),
+    create: (data: Partial<DummyStore>) =>
+      request<DummyStore>('/api/v1/admin/dummy-stores', {
+        method: 'POST',
+        body: JSON.stringify(data),
+      }),
+    update: (id: string, data: Partial<DummyStore>) =>
+      request<DummyStore>(`/api/v1/admin/dummy-stores/${id}`, {
+        method: 'PUT',
+        body: JSON.stringify(data),
+      }),
+    toggle: (id: string) =>
+      request<DummyStore>(`/api/v1/admin/dummy-stores/${id}/toggle`, {
+        method: 'PUT',
+      }),
+    remove: (id: string) =>
+      request<{ deleted: boolean }>(`/api/v1/admin/dummy-stores/${id}`, {
+        method: 'DELETE',
+      }),
   },
 };

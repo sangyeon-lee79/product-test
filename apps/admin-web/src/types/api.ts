@@ -1086,3 +1086,24 @@ export interface FeedPreviewItem {
   type: 'post' | 'ranking' | 'recommended' | 'ad';
   label: string;
 }
+
+export interface DummyStoreService {
+  id: string;
+  name: Record<string, string>;
+  price?: number | null;
+  duration_min?: number | null;
+  is_active: boolean;
+}
+
+export interface DummyStore {
+  id: string;
+  category: string;
+  name: Record<string, string>;
+  description?: Record<string, string> | null;
+  address?: { state_code?: string; city_code?: string; detail?: string } | null;
+  rating?: number | null;
+  review_count: number;
+  is_active: boolean;
+  created_at: string;
+  services?: DummyStoreService[];
+}
