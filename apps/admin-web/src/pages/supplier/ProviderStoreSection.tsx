@@ -4,8 +4,8 @@ import type { Store, StoreService, ServiceDiscount, StoreIndustry, Country } fro
 import { useI18n, useT } from '../../lib/i18n';
 import { BUSINESS_CATEGORIES, BUSINESS_MAP } from '../../data/businessCategories';
 import { COUNTRY_REGIONS } from '../../data/countryRegions';
-import { TranslationFields } from '../../components/TranslationFields';
-import { autoTranslate, emptyTrans } from '../../lib/catalogUtils';
+import { TranslationPopup } from '../../components/TranslationPopup';
+import { emptyTrans } from '../../lib/catalogUtils';
 
 type Modal = 'store' | 'service' | 'discount' | null;
 type ModalMode = 'create' | 'edit';
@@ -58,9 +58,6 @@ export default function ProviderStoreSection() {
   const [serviceNameTrans, setServiceNameTrans] = useState<Record<string, string>>(emptyTrans());
   const [serviceDescTrans, setServiceDescTrans] = useState<Record<string, string>>(emptyTrans());
   const [editServiceId, setEditServiceId] = useState('');
-
-  // Auto-translate
-  const [translating, setTranslating] = useState(false);
 
   // Discount form
   const [discountForm, setDiscountForm] = useState({ discount_rate: '', start_date: '', end_date: '' });
@@ -491,27 +488,19 @@ export default function ProviderStoreSection() {
                 </div>
                 <div className="modal-body" style={{ display: 'grid', gap: 12 }}>
                   <div className="form-group">
-                    <label className="form-label">{t('admin.store.form.name', 'Name')} *</label>
+                    <label className="form-label">
+                      {t('admin.store.form.name', 'Name')} *
+                      <TranslationPopup label={t('admin.store.form.name', 'Name')} sourceText={storeForm.name} translations={storeNameTrans} onChange={setStoreNameTrans} t={t} />
+                    </label>
                     <input className="form-input" value={storeForm.name} onChange={e => setStoreForm({ ...storeForm, name: e.target.value })} />
                   </div>
-                  <TranslationFields
-                    translations={storeNameTrans}
-                    onChange={setStoreNameTrans}
-                    translating={translating}
-                    onAutoTranslate={() => void autoTranslate(storeNameTrans.ko || storeForm.name, storeNameTrans, setStoreNameTrans, setTranslating, setError)}
-                    t={t}
-                  />
                   <div className="form-group">
-                    <label className="form-label">{t('admin.store.form.description', 'Description')}</label>
+                    <label className="form-label">
+                      {t('admin.store.form.description', 'Description')}
+                      <TranslationPopup label={t('admin.store.form.description', 'Description')} sourceText={storeForm.description} translations={storeDescTrans} onChange={setStoreDescTrans} t={t} />
+                    </label>
                     <textarea className="form-textarea" value={storeForm.description} onChange={e => setStoreForm({ ...storeForm, description: e.target.value })} />
                   </div>
-                  <TranslationFields
-                    translations={storeDescTrans}
-                    onChange={setStoreDescTrans}
-                    translating={translating}
-                    onAutoTranslate={() => void autoTranslate(storeDescTrans.ko || storeForm.description, storeDescTrans, setStoreDescTrans, setTranslating, setError)}
-                    t={t}
-                  />
 
                   {/* ─── Business Type L1/L2 ─── */}
                   <div className="form-row col2">
@@ -637,7 +626,7 @@ export default function ProviderStoreSection() {
                   </div>
 
                   <div className="form-group">
-                    <label className="form-label">{t('admin.store.form.avatar_url', 'Avatar URL')}</label>
+                    <label className="form-label">{t('admin.store.form.avatar', 'Avatar URL')}</label>
                     <input className="form-input" value={storeForm.avatar_url} onChange={e => setStoreForm({ ...storeForm, avatar_url: e.target.value })} />
                   </div>
                   <button className="btn btn-primary" onClick={() => void saveStore()} disabled={saving}>
@@ -658,30 +647,22 @@ export default function ProviderStoreSection() {
                 </div>
                 <div className="modal-body" style={{ display: 'grid', gap: 12 }}>
                   <div className="form-group">
-                    <label className="form-label">{t('admin.store.form.name', 'Name')} *</label>
+                    <label className="form-label">
+                      {t('admin.service.form.name', 'Name')} *
+                      <TranslationPopup label={t('admin.service.form.name', 'Name')} sourceText={serviceForm.name} translations={serviceNameTrans} onChange={setServiceNameTrans} t={t} />
+                    </label>
                     <input className="form-input" value={serviceForm.name} onChange={e => setServiceForm({ ...serviceForm, name: e.target.value })} />
                   </div>
-                  <TranslationFields
-                    translations={serviceNameTrans}
-                    onChange={setServiceNameTrans}
-                    translating={translating}
-                    onAutoTranslate={() => void autoTranslate(serviceNameTrans.ko || serviceForm.name, serviceNameTrans, setServiceNameTrans, setTranslating, setError)}
-                    t={t}
-                  />
                   <div className="form-group">
-                    <label className="form-label">{t('admin.store.form.description', 'Description')}</label>
+                    <label className="form-label">
+                      {t('admin.service.form.description', 'Description')}
+                      <TranslationPopup label={t('admin.service.form.description', 'Description')} sourceText={serviceForm.description} translations={serviceDescTrans} onChange={setServiceDescTrans} t={t} />
+                    </label>
                     <textarea className="form-textarea" value={serviceForm.description} onChange={e => setServiceForm({ ...serviceForm, description: e.target.value })} />
                   </div>
-                  <TranslationFields
-                    translations={serviceDescTrans}
-                    onChange={setServiceDescTrans}
-                    translating={translating}
-                    onAutoTranslate={() => void autoTranslate(serviceDescTrans.ko || serviceForm.description, serviceDescTrans, setServiceDescTrans, setTranslating, setError)}
-                    t={t}
-                  />
                   <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 12 }}>
                     <div className="form-group">
-                      <label className="form-label">{t('admin.store.form.price', 'Price')}</label>
+                      <label className="form-label">{t('admin.service.form.price', 'Price')}</label>
                       <input className="form-input" type="number" value={serviceForm.price} onChange={e => setServiceForm({ ...serviceForm, price: e.target.value })} />
                     </div>
                     <div className="form-group">
@@ -689,7 +670,7 @@ export default function ProviderStoreSection() {
                       <input className="form-input" type="number" placeholder="60" value={serviceForm.duration_minutes} onChange={e => setServiceForm({ ...serviceForm, duration_minutes: e.target.value })} />
                     </div>
                     <div className="form-group">
-                      <label className="form-label">{t('admin.store.form.sort_order', 'Sort Order')}</label>
+                      <label className="form-label">{t('admin.service.form.sort_order', 'Sort Order')}</label>
                       <input className="form-input" type="number" value={serviceForm.sort_order} onChange={e => setServiceForm({ ...serviceForm, sort_order: e.target.value })} />
                     </div>
                   </div>
@@ -709,18 +690,18 @@ export default function ProviderStoreSection() {
                 </div>
                 <div className="modal-body" style={{ display: 'grid', gap: 12 }}>
                   <div className="form-group">
-                    <label className="form-label">{t('admin.store.form.discount_rate', 'Discount Rate (%)')} *</label>
+                    <label className="form-label">{t('admin.discount.form.rate', 'Discount Rate (%)')} *</label>
                     <input className="form-input" type="number" min="1" max="100" value={discountForm.discount_rate}
                       onChange={e => setDiscountForm({ ...discountForm, discount_rate: e.target.value })} />
                   </div>
                   <div className="form-row col2">
                     <div className="form-group">
-                      <label className="form-label">{t('admin.store.form.start_date', 'Start Date')}</label>
+                      <label className="form-label">{t('admin.discount.form.start_date', 'Start Date')}</label>
                       <input className="form-input" type="date" value={discountForm.start_date}
                         onChange={e => setDiscountForm({ ...discountForm, start_date: e.target.value })} />
                     </div>
                     <div className="form-group">
-                      <label className="form-label">{t('admin.store.form.end_date', 'End Date')}</label>
+                      <label className="form-label">{t('admin.discount.form.end_date', 'End Date')}</label>
                       <input className="form-input" type="date" value={discountForm.end_date}
                         onChange={e => setDiscountForm({ ...discountForm, end_date: e.target.value })} />
                     </div>
