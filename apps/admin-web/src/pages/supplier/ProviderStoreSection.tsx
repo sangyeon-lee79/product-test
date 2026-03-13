@@ -109,8 +109,10 @@ export default function ProviderStoreSection() {
   useEffect(() => {
     api.countries.publicList().then(setCountries).catch(() => {});
     api.petBreeds.list({ lang }).then(r => setPetBreeds(r.items)).catch(() => {});
-    api.master.public.items('pet-type', null, lang, { item_level: '1' }).then((items: MasterItem[]) => {
-      setPetL1Items(items.map(i => ({ id: i.id, code: i.key || '', label: i.display_label || i.key || '' })));
+    api.master.public.items('pet_type', undefined, lang).then((items: MasterItem[]) => {
+      // L1 = parent_id가 없는 항목 (dog, cat, bird...)
+      const l1 = items.filter(i => !i.parent_id);
+      setPetL1Items(l1.map(i => ({ id: i.id, code: i.key || '', label: i.display_label || i.key || '' })));
     }).catch(() => {});
   }, [lang]);
 
