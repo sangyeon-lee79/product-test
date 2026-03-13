@@ -2,14 +2,13 @@ import { useEffect, useState, useCallback, useMemo } from 'react';
 import { api } from '../../lib/api';
 import type { Store, StoreService, ServiceDiscount, StoreIndustry, Country } from '../../types/api';
 import { useI18n, useT } from '../../lib/i18n';
-import { SUPPORTED_LANGS, LANG_LABELS } from '@petfolio/shared';
 import { BUSINESS_CATEGORIES, BUSINESS_MAP } from '../../data/businessCategories';
 import { COUNTRY_REGIONS } from '../../data/countryRegions';
+import { TranslationFields } from '../../components/TranslationFields';
+import { autoTranslate, emptyTrans } from '../../lib/catalogUtils';
 
 type Modal = 'store' | 'service' | 'discount' | null;
 type ModalMode = 'create' | 'edit';
-
-const emptyTrans = (): Record<string, string> => Object.fromEntries(SUPPORTED_LANGS.map(l => [l, '']));
 
 const DAYS = ['mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun'] as const;
 const DAY_LABELS: Record<string, string> = { mon: 'Mon', tue: 'Tue', wed: 'Wed', thu: 'Thu', fri: 'Fri', sat: 'Sat', sun: 'Sun' };
@@ -59,6 +58,9 @@ export default function ProviderStoreSection() {
   const [serviceNameTrans, setServiceNameTrans] = useState<Record<string, string>>(emptyTrans());
   const [serviceDescTrans, setServiceDescTrans] = useState<Record<string, string>>(emptyTrans());
   const [editServiceId, setEditServiceId] = useState('');
+
+  // Auto-translate
+  const [translating, setTranslating] = useState(false);
 
   // Discount form
   const [discountForm, setDiscountForm] = useState({ discount_rate: '', start_date: '', end_date: '' });
@@ -492,20 +494,24 @@ export default function ProviderStoreSection() {
                     <label className="form-label">{t('admin.store.form.name', 'Name')} *</label>
                     <input className="form-input" value={storeForm.name} onChange={e => setStoreForm({ ...storeForm, name: e.target.value })} />
                   </div>
-                  <div className="form-group">
-                    <label className="form-label">{t('admin.store.form.name_translations', 'Name Translations')}</label>
-                    {SUPPORTED_LANGS.map(l => (
-                      <div key={l} style={{ display: 'flex', gap: 4, marginBottom: 4 }}>
-                        <span style={{ width: 50, fontSize: 11, color: 'var(--text-muted)', paddingTop: 6 }}>{LANG_LABELS[l]}</span>
-                        <input className="form-input" style={{ flex: 1 }} value={storeNameTrans[l] || ''}
-                          onChange={e => setStoreNameTrans({ ...storeNameTrans, [l]: e.target.value })} />
-                      </div>
-                    ))}
-                  </div>
+                  <TranslationFields
+                    translations={storeNameTrans}
+                    onChange={setStoreNameTrans}
+                    translating={translating}
+                    onAutoTranslate={() => void autoTranslate(storeNameTrans.ko || storeForm.name, storeNameTrans, setStoreNameTrans, setTranslating, setError)}
+                    t={t}
+                  />
                   <div className="form-group">
                     <label className="form-label">{t('admin.store.form.description', 'Description')}</label>
                     <textarea className="form-textarea" value={storeForm.description} onChange={e => setStoreForm({ ...storeForm, description: e.target.value })} />
                   </div>
+                  <TranslationFields
+                    translations={storeDescTrans}
+                    onChange={setStoreDescTrans}
+                    translating={translating}
+                    onAutoTranslate={() => void autoTranslate(storeDescTrans.ko || storeForm.description, storeDescTrans, setStoreDescTrans, setTranslating, setError)}
+                    t={t}
+                  />
 
                   {/* ─── Business Type L1/L2 ─── */}
                   <div className="form-row col2">
@@ -655,20 +661,24 @@ export default function ProviderStoreSection() {
                     <label className="form-label">{t('admin.store.form.name', 'Name')} *</label>
                     <input className="form-input" value={serviceForm.name} onChange={e => setServiceForm({ ...serviceForm, name: e.target.value })} />
                   </div>
-                  <div className="form-group">
-                    <label className="form-label">{t('admin.store.form.name_translations', 'Name Translations')}</label>
-                    {SUPPORTED_LANGS.map(l => (
-                      <div key={l} style={{ display: 'flex', gap: 4, marginBottom: 4 }}>
-                        <span style={{ width: 50, fontSize: 11, color: 'var(--text-muted)', paddingTop: 6 }}>{LANG_LABELS[l]}</span>
-                        <input className="form-input" style={{ flex: 1 }} value={serviceNameTrans[l] || ''}
-                          onChange={e => setServiceNameTrans({ ...serviceNameTrans, [l]: e.target.value })} />
-                      </div>
-                    ))}
-                  </div>
+                  <TranslationFields
+                    translations={serviceNameTrans}
+                    onChange={setServiceNameTrans}
+                    translating={translating}
+                    onAutoTranslate={() => void autoTranslate(serviceNameTrans.ko || serviceForm.name, serviceNameTrans, setServiceNameTrans, setTranslating, setError)}
+                    t={t}
+                  />
                   <div className="form-group">
                     <label className="form-label">{t('admin.store.form.description', 'Description')}</label>
                     <textarea className="form-textarea" value={serviceForm.description} onChange={e => setServiceForm({ ...serviceForm, description: e.target.value })} />
                   </div>
+                  <TranslationFields
+                    translations={serviceDescTrans}
+                    onChange={setServiceDescTrans}
+                    translating={translating}
+                    onAutoTranslate={() => void autoTranslate(serviceDescTrans.ko || serviceForm.description, serviceDescTrans, setServiceDescTrans, setTranslating, setError)}
+                    t={t}
+                  />
                   <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 12 }}>
                     <div className="form-group">
                       <label className="form-label">{t('admin.store.form.price', 'Price')}</label>
