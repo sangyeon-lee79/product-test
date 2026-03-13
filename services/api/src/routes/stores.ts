@@ -747,5 +747,105 @@ export async function handleStores(request: Request, env: Env, url: URL): Promis
     return deleteDiscount(env, auth as JwtPayload, discountDeleteMatch[1]);
   }
 
+  // ─── /api/v1/stores/:id/settings (PATCH) ────────────────────────────────────
+  const settingsMatch = path.match(/^\/api\/v1\/stores\/([^/]+)\/settings$/);
+  if (settingsMatch && method === 'PATCH') {
+    const auth = await requireAuth(request, env);
+    if (auth instanceof Response) return auth;
+    return updateStoreSettings(request, env, auth as JwtPayload, settingsMatch[1]);
+  }
+
+  // ─── /api/v1/stores/:id/reviews (GET, public) ─────────────────────────────
+  const reviewsMatch = path.match(/^\/api\/v1\/stores\/([^/]+)\/reviews$/);
+  if (reviewsMatch && method === 'GET') {
+    return listStoreReviews(env, reviewsMatch[1], url);
+  }
+
   return err('Not Found', 404);
+}
+
+/* ─── Store settings (overtime + review visibility) ─── */
+async function updateStoreSettings(request: Request, env: Env, me: JwtPayload, storeId: string): Promise<Response> {
+  const store = await verifyStoreOwner(env, storeId, me.sub);
+  if (!store) return err('store not found or not owner', 404);
+
+  let body: Record<string, unknown>;
+  try { body = await request.json() as Record<string, unknown>; } catch { return err('Invalid JSON'); }
+
+  const sets: string[] = [];
+  const binds: unknown[] = [];
+
+  if ('allow_overtime' in body || 'allowOvertime' in body) {
+    sets.push('allow_overtime = ?');
+    binds.push(!!(body.allow_overtime ?? body.allowOvertime));
+  }
+  if ('overtime_fee_type' in body || 'overtimeFeeType' in body) {
+    const feeType = String(body.overtime_fee_type ?? body.overtimeFeeType ?? 'free');
+    if (!['free', 'fixed', 'per_30min'].includes(feeType)) return err('overtime_fee_type must be free|fixed|per_30min');
+    sets.push('overtime_fee_type = ?');
+    binds.push(feeType);
+  }
+  if ('overtime_fee_amount' in body || 'overtimeFeeAmount' in body) {
+    sets.push('overtime_fee_amount = ?');
+    binds.push(Number(body.overtime_fee_amount ?? body.overtimeFeeAmount ?? 0));
+  }
+  if ('review_public' in body || 'reviewPublic' in body) {
+    sets.push('review_public = ?');
+    binds.push(!!(body.review_public ?? body.reviewPublic));
+  }
+  if ('operating_hours' in body || 'operatingHours' in body) {
+    sets.push('operating_hours = ?::jsonb');
+    binds.push(JSON.stringify(body.operating_hours ?? body.operatingHours ?? {}));
+  }
+
+  if (sets.length === 0) return err('no settings to update');
+
+  sets.push('updated_at = ?');
+  binds.push(now());
+  binds.push(storeId);
+
+  await env.DB.prepare(
+    `UPDATE stores SET ${sets.join(', ')} WHERE id = ?`
+  ).bind(...binds).run();
+
+  return ok({ id: storeId, updated: true });
+}
+
+/* ─── Store public reviews ─── */
+async function listStoreReviews(env: Env, storeId: string, url: URL): Promise<Response> {
+  // Check if store has review_public enabled
+  const store = await env.DB.prepare(
+    'SELECT id, review_public FROM stores WHERE id = ?'
+  ).bind(storeId).first<Record<string, unknown>>();
+  if (!store) return err('store not found', 404);
+  if (!store.review_public) return ok({ reviews: [], avg_rating: 0, total: 0, review_public: false });
+
+  const limit = Math.min(parseInt(url.searchParams.get('limit') || '20'), 50);
+  const offset = parseInt(url.searchParams.get('offset') || '0');
+
+  const rows = await env.DB.prepare(
+    `SELECT ar.id, ar.appointment_id, ar.author_type, ar.rating, ar.content, ar.created_at,
+      COALESCE(up.display_name, u.email) AS author_name,
+      p.name AS pet_name, p.avatar_url AS pet_avatar
+    FROM appointment_reviews ar
+    LEFT JOIN users u ON u.id = ar.author_user_id
+    LEFT JOIN user_profiles up ON up.user_id = ar.author_user_id
+    LEFT JOIN pets p ON p.id = ar.pet_id
+    WHERE ar.store_id = ? AND ar.author_type = 'guardian' AND ar.is_visible = true
+    ORDER BY ar.created_at DESC
+    LIMIT ? OFFSET ?`
+  ).bind(storeId, limit, offset).all();
+
+  const stats = await env.DB.prepare(
+    `SELECT COUNT(*) AS total, COALESCE(AVG(rating), 0) AS avg_rating
+     FROM appointment_reviews
+     WHERE store_id = ? AND author_type = 'guardian' AND is_visible = true`
+  ).bind(storeId).first<{ total: number; avg_rating: number }>();
+
+  return ok({
+    reviews: rows.results,
+    avg_rating: Number(Number(stats?.avg_rating || 0).toFixed(1)),
+    total: stats?.total || 0,
+    review_public: true,
+  });
 }

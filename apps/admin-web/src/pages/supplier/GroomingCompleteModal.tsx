@@ -15,6 +15,8 @@ const PLACEHOLDER = '/assets/images/placeholder_feed.svg';
 export default function GroomingCompleteModal({ open, appointment, t, onClose, onSuccess }: Props) {
   const [groomingType, setGroomingType] = useState(appointment.service_type || '');
   const [cutStyle, setCutStyle] = useState('');
+  const [customCutName, setCustomCutName] = useState('');
+  const [memo, setMemo] = useState('');
   const [durationMinutes, setDurationMinutes] = useState<number | ''>(appointment.duration_minutes || '');
   const [productsUsed, setProductsUsed] = useState('');
   const [supplierComment, setSupplierComment] = useState('');
@@ -85,6 +87,8 @@ export default function GroomingCompleteModal({ open, appointment, t, onClose, o
         guardianId: appointment.guardian_id,
         groomingType: groomingType || undefined,
         cutStyle: cutStyle || undefined,
+        customCutName: customCutName || undefined,
+        memo: memo || undefined,
         durationMinutes: durationMinutes || undefined,
         productsUsed: productsUsed || undefined,
         supplierComment: supplierComment || undefined,
@@ -192,6 +196,12 @@ export default function GroomingCompleteModal({ open, appointment, t, onClose, o
             </select>
           </div>
 
+          {/* Custom cut name */}
+          <div className="form-group">
+            <label className="form-label">{t('booking.completion_custom_cut', 'Custom Cut Name (Optional)')}</label>
+            <input className="form-input" value={customCutName} onChange={e => setCustomCutName(e.target.value)} placeholder={t('booking.completion_custom_cut_placeholder', 'e.g., Summer Trim')} />
+          </div>
+
           {/* Duration + Products */}
           <div className="form-row col2">
             <div className="form-group">
@@ -202,6 +212,12 @@ export default function GroomingCompleteModal({ open, appointment, t, onClose, o
               <label className="form-label">{t('booking.completion_product', 'Products Used')}</label>
               <input className="form-input" value={productsUsed} onChange={e => setProductsUsed(e.target.value)} />
             </div>
+          </div>
+
+          {/* Memo (internal) */}
+          <div className="form-group">
+            <label className="form-label">{t('booking.completion_memo', 'Internal Memo')}</label>
+            <textarea className="form-input" rows={2} value={memo} onChange={e => setMemo(e.target.value)} placeholder={t('booking.completion_memo_placeholder', 'Notes for your records (not visible to guardian)')} />
           </div>
 
           {/* Comment */}

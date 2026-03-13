@@ -20,7 +20,7 @@ import type {
   ProviderProfile, DashboardStats, PetReport,
   Store, StoreIndustry, StoreService, ServiceDiscount, StoreStats,
   CatalogStats,
-  Appointment, GroomingRecord, GroomingPhoto,
+  Appointment, AppointmentReview, GroomingRecord, GroomingPhoto,
   DummyStore, DummyStoreService,
   FeedCardSetting, FeedDummyCard, FeedPreviewItem,
 } from '../types/api';
@@ -43,7 +43,7 @@ export type {
   ProviderProfile, DashboardStats, PetReport,
   Store, StoreIndustry, StoreService, ServiceDiscount, StoreStats,
   CatalogStats,
-  Appointment, GroomingRecord, GroomingPhoto,
+  Appointment, AppointmentReview, GroomingRecord, GroomingPhoto,
   DummyStore, DummyStoreService,
   FeedCardSetting, FeedDummyCard, FeedPreviewItem,
 };
@@ -1107,6 +1107,14 @@ export const api = {
       delete: (discountId: string) =>
         request<{ deleted: boolean }>(`/api/v1/services/discounts/${discountId}`, { method: 'DELETE' }),
     },
+    settings: (storeId: string, data: {
+      allowOvertime?: boolean; overtimeFeeType?: string; overtimeFeeAmount?: number;
+      reviewPublic?: boolean; operatingHours?: Record<string, unknown>;
+    }) => request<{ id: string; updated: boolean }>(`/api/v1/stores/${storeId}/settings`, { method: 'PATCH', body: JSON.stringify(data) }),
+    reviews: (storeId: string, params?: { limit?: number; offset?: number }) =>
+      request<{ reviews: AppointmentReview[]; avg_rating: number; total: number; review_public: boolean }>(
+        `/api/v1/stores/${storeId}/reviews${buildQuery(params || {})}`
+      ),
   },
 
   // ─── Dummy Stores (demo data) ──────────────────────────────────────────
@@ -1127,11 +1135,30 @@ export const api = {
       petId?: string; supplierId: string; storeId?: string; serviceId?: string;
       serviceType?: string; scheduledAt?: string; durationMinutes?: number;
       price?: number; requestNote?: string;
+      businessType?: string; extraData?: Record<string, unknown>;
+      petReportPeriod?: string;
+      isOvertime?: boolean; overtimeMinutes?: number; overtimeFee?: number;
     }) => request<{ id: string; status: string }>('/api/v1/appointments', { method: 'POST', body: JSON.stringify(data) }),
     confirm: (id: string) =>
       request<{ id: string; status: string }>(`/api/v1/appointments/${id}/confirm`, { method: 'PATCH' }),
     reject: (id: string, reason?: string) =>
       request<{ id: string; status: string }>(`/api/v1/appointments/${id}/reject`, { method: 'PATCH', body: JSON.stringify({ reason }) }),
+    cancel: (id: string, reason?: string) =>
+      request<{ id: string; status: string }>(`/api/v1/appointments/${id}/cancel`, { method: 'PATCH', body: JSON.stringify({ reason }) }),
+    availableSlots: (params: { storeId: string; date: string; serviceId?: string }) =>
+      request<{ slots: Array<{ time: string; type: 'normal' | 'overtime' | 'closed'; booked: boolean }>; store: Record<string, unknown>; service_duration_minutes: number }>(
+        `/api/v1/appointments/available-slots${buildQuery(params)}`
+      ),
+    reviews: {
+      create: (appointmentId: string, data: { rating: number; content?: string }) =>
+        request<{ id: string; rating: number }>(`/api/v1/appointments/${appointmentId}/reviews`, { method: 'POST', body: JSON.stringify(data) }),
+      get: (appointmentId: string) =>
+        request<{ my_review: AppointmentReview | null; other_review: AppointmentReview | null; both_written: boolean; can_write: boolean }>(
+          `/api/v1/appointments/${appointmentId}/reviews`
+        ),
+    },
+    sendReport: (id: string) =>
+      request<{ id: string; pet_report_sent: boolean }>(`/api/v1/appointments/${id}/send-report`, { method: 'POST' }),
   },
 
   // ─── Grooming Records ──────────────────────────────────────────────────
@@ -1145,6 +1172,7 @@ export const api = {
       groomingType?: string; cutStyle?: string; durationMinutes?: number;
       productsUsed?: string; specialNotes?: string; supplierComment?: string;
       photos?: GroomingPhoto[];
+      cutStyleItemId?: string; customCutName?: string; memo?: string;
     }) => request<{ id: string; status: string }>('/api/v1/grooming-records', { method: 'POST', body: JSON.stringify(data) }),
     guardianChoice: (id: string, choice: 'feed_only' | 'approve_only' | 'approve_and_feed') =>
       request<{ id: string; status: string; post_id: string | null }>(`/api/v1/grooming-records/${id}/guardian-choice`, {

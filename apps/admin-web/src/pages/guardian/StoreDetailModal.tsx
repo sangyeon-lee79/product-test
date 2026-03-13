@@ -1,4 +1,5 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
+import { api, type AppointmentReview } from '../../lib/api';
 import { useT } from '../../lib/i18n';
 
 interface StoreService {
@@ -18,6 +19,7 @@ interface DisplayStore {
   reviewCount: number;
   avatarUrl?: string | null;
   services: StoreService[];
+  storeId?: string;
 }
 
 interface Props {
@@ -33,7 +35,26 @@ const catEmoji: Record<string, string> = {
 
 export default function StoreDetailModal({ store, onClose, onBook }: Props) {
   const t = useT();
-  const [tab, setTab] = useState<'services' | 'info'>('services');
+  const [tab, setTab] = useState<'services' | 'info' | 'reviews'>('services');
+
+  // Reviews state
+  const [reviews, setReviews] = useState<AppointmentReview[]>([]);
+  const [avgRating, setAvgRating] = useState(0);
+  const [reviewTotal, setReviewTotal] = useState(0);
+  const [loadingReviews, setLoadingReviews] = useState(false);
+
+  useEffect(() => {
+    if (tab !== 'reviews' || !store.storeId) return;
+    setLoadingReviews(true);
+    api.stores.reviews(store.storeId, { limit: 20 })
+      .then(res => {
+        setReviews(res.reviews || []);
+        setAvgRating(res.avg_rating || 0);
+        setReviewTotal(res.total || 0);
+      })
+      .catch(() => {})
+      .finally(() => setLoadingReviews(false));
+  }, [tab, store.storeId]);
 
   return (
     <div className="modal-overlay" onClick={onClose}>
@@ -79,6 +100,12 @@ export default function StoreDetailModal({ store, onClose, onBook }: Props) {
             onClick={() => setTab('info')}
           >
             {t('guardian.store.detail.tab_info', 'Store Info')}
+          </button>
+          <button
+            className={`gm-store-detail-tab${tab === 'reviews' ? ' active' : ''}`}
+            onClick={() => setTab('reviews')}
+          >
+            {t('booking.review.title', 'Reviews')}
           </button>
         </div>
 
@@ -129,6 +156,43 @@ export default function StoreDetailModal({ store, onClose, onBook }: Props) {
                   <div className="gm-store-info-label">{t('guardian.store.detail.about', 'About')}</div>
                   <div className="gm-store-info-value">{store.displayDescription}</div>
                 </div>
+              )}
+            </div>
+          )}
+
+          {tab === 'reviews' && (
+            <div className="gm-store-detail-info">
+              {loadingReviews ? (
+                <div style={{ padding: 20, textAlign: 'center', color: 'var(--text-muted)' }}>{t('common.loading', 'Loading...')}</div>
+              ) : reviews.length === 0 ? (
+                <div style={{ padding: 20, textAlign: 'center', color: 'var(--text-muted)', fontSize: 13 }}>
+                  {t('booking.review.none', 'No reviews yet')}
+                </div>
+              ) : (
+                <>
+                  <div style={{ padding: '12px 16px', background: 'var(--bg)', borderRadius: 8, marginBottom: 12, textAlign: 'center' }}>
+                    <span style={{ fontSize: 24, fontWeight: 700 }}>{avgRating.toFixed(1)}</span>
+                    <span style={{ fontSize: 18, marginLeft: 6, color: '#f59e0b' }}>{'\u2605'}</span>
+                    <span style={{ fontSize: 13, color: 'var(--text-muted)', marginLeft: 8 }}>({reviewTotal} {t('guardian.store.card.reviews', 'reviews')})</span>
+                  </div>
+                  {reviews.map(r => (
+                    <div key={r.id} className="gm-review-card">
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 4 }}>
+                        <strong style={{ fontSize: 13 }}>{r.author_name || t('booking.review.anonymous', 'User')}</strong>
+                        <span style={{ fontSize: 13 }}>
+                          {[0, 1, 2, 3, 4].map(i => (
+                            <span key={i} style={{ color: r.rating >= i + 1 ? '#f59e0b' : r.rating >= i + 0.5 ? '#f59e0b' : '#d1d5db' }}>
+                              {r.rating >= i + 1 ? '\u2605' : r.rating >= i + 0.5 ? '\u2BEA' : '\u2606'}
+                            </span>
+                          ))}
+                          <span style={{ marginLeft: 4, fontWeight: 600 }}>{r.rating.toFixed(1)}</span>
+                        </span>
+                      </div>
+                      {r.content && <p style={{ fontSize: 13, color: 'var(--text)', lineHeight: 1.5, margin: '4px 0' }}>{r.content}</p>}
+                      <div style={{ fontSize: 11, color: 'var(--text-muted)' }}>{new Date(r.created_at).toLocaleDateString()}</div>
+                    </div>
+                  ))}
+                </>
               )}
             </div>
           )}

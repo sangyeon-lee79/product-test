@@ -4,6 +4,7 @@ import { useI18n, useT } from '../../lib/i18n';
 import { BCP47_LOCALE_MAP, type Lang } from '@petfolio/shared';
 import StoreDetailModal from './StoreDetailModal';
 import StepBookingModal from './StepBookingModal';
+import ReviewWriteModal from './ReviewWriteModal';
 import { formatDate } from './guardianTypes';
 
 /* ─── Constants ────────────────────────────────────────────────────────── */
@@ -108,6 +109,10 @@ export default function StoreExploreTab({ pets, selectedPet, appointments, onOpe
 
   // Appointments collapse
   const [aptCollapsed, setAptCollapsed] = useState(false);
+  const [cancellingId, setCancellingId] = useState('');
+  const [cancelReason, setCancelReason] = useState('');
+  const [cancelModalId, setCancelModalId] = useState('');
+  const [reviewApt, setReviewApt] = useState<Appointment | null>(null);
 
   // Fetch real stores only
   const loadStores = useCallback(async () => {
@@ -172,8 +177,29 @@ export default function StoreExploreTab({ pets, selectedPet, appointments, onOpe
     setBookingService(service || null);
   }
 
+  async function handleCancel() {
+    if (!cancelModalId) return;
+    setCancellingId(cancelModalId);
+    try {
+      await api.appointments.cancel(cancelModalId, cancelReason || undefined);
+      setCancelModalId('');
+      setCancelReason('');
+      onRefresh();
+    } catch {
+      // silently fail
+    } finally {
+      setCancellingId('');
+    }
+  }
+
+  const statusIcon: Record<string, string> = {
+    pending: '\uD83D\uDD52', confirmed: '\u2705', completed: '\u2702\uFE0F',
+    rejected: '\u274C', cancelled: '\u26D4',
+  };
+
   const filteredAppointments = appointments
     .filter(a => !selectedPet || !a.pet_id || a.pet_id === selectedPet.id)
+    .filter(a => !a.deleted_at)
     .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
 
   return (
@@ -186,24 +212,45 @@ export default function StoreExploreTab({ pets, selectedPet, appointments, onOpe
             <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>{aptCollapsed ? '\u25BC' : '\u25B2'}</span>
           </div>
           {!aptCollapsed && (
-            <div className="pf-gd-section-body">
+            <div className="pf-gd-section-body" style={{ display: 'grid', gap: 8 }}>
               {filteredAppointments.map(apt => (
-                <div
-                  key={apt.id}
-                  className="pf-gd-tl-card"
-                  style={{ cursor: apt.status === 'completed' ? 'pointer' : undefined }}
-                  onClick={() => { if (apt.status === 'completed') onOpenGroomingApproval(apt); }}
-                >
-                  <div className="pf-gd-tl-icon">{apt.status === 'completed' ? '\u2702\uFE0F' : '\uD83D\uDCC5'}</div>
-                  <div className="pf-gd-tl-body">
-                    <span>{apt.supplier_name || apt.supplier_id.slice(0, 8)}</span>
-                    <span className="pf-gd-tl-sep">&middot;</span>
-                    <span style={{ fontWeight: 500 }}>{t(`supplier.appointment.status.${apt.status}`, apt.status)}</span>
-                    {apt.service_type && <><span className="pf-gd-tl-sep">&middot;</span><span>{apt.service_type}</span></>}
-                    <span className="pf-gd-tl-sep">&middot;</span>
-                    <span className="pf-gd-tl-time">{formatDate(apt.scheduled_at, '-', locale)}</span>
-                    {apt.status === 'completed' && (
-                      <span style={{ marginLeft: 6, fontSize: 11, color: '#E87C2B', fontWeight: 600 }}>{t('grooming.guardian.noti_title', 'Review')}</span>
+                <div key={apt.id} className="gm-apt-card">
+                  <div className="gm-apt-card-icon">{statusIcon[apt.status] || '\uD83D\uDCC5'}</div>
+                  <div className="gm-apt-card-body">
+                    <div className="gm-apt-card-header">
+                      <span className="gm-apt-card-title">{apt.store_name || apt.supplier_name || apt.supplier_id.slice(0, 8)}</span>
+                      <span className={`gm-status-badge ${apt.status}`}>{t(`supplier.appointment.status.${apt.status}`, apt.status)}</span>
+                    </div>
+                    <div className="gm-apt-card-meta">
+                      {apt.service_type && <span>{apt.service_type}</span>}
+                      <span>{formatDate(apt.scheduled_at, '-', locale)}</span>
+                      {apt.is_overtime && <span className="gm-overtime-badge" style={{ fontSize: 10, padding: '1px 6px' }}>{t('booking.slot.overtime', 'OT')}</span>}
+                      {apt.price != null && apt.price > 0 && <span>{apt.price.toLocaleString()}</span>}
+                    </div>
+                    <div className="gm-apt-card-actions">
+                      {apt.status === 'completed' && (
+                        <button className="btn btn-primary btn-sm" onClick={() => onOpenGroomingApproval(apt)}>
+                          {t('grooming.guardian.noti_title', 'View Report')}
+                        </button>
+                      )}
+                      {(apt.status === 'completed') && !apt.has_guardian_review && (
+                        <button className="btn btn-secondary btn-sm" onClick={() => setReviewApt(apt)}>
+                          {t('booking.review.write_btn', 'Write Review')}
+                        </button>
+                      )}
+                      {apt.status === 'completed' && !!apt.has_guardian_review && (
+                        <span style={{ fontSize: 11, color: 'var(--text-muted)', alignSelf: 'center' }}>{t('booking.review.written', 'Review Written')}</span>
+                      )}
+                      {(apt.status === 'pending' || apt.status === 'confirmed') && (
+                        <button className="btn btn-danger btn-sm" onClick={() => { setCancelModalId(apt.id); setCancelReason(''); }}>
+                          {t('booking.cancel_btn', 'Cancel')}
+                        </button>
+                      )}
+                    </div>
+                    {apt.cancelled_reason && (
+                      <div style={{ fontSize: 11, color: 'var(--text-muted)', marginTop: 4 }}>
+                        {t('booking.cancel_reason', 'Reason')}: {apt.cancelled_reason}
+                      </div>
                     )}
                   </div>
                 </div>
@@ -211,6 +258,43 @@ export default function StoreExploreTab({ pets, selectedPet, appointments, onOpe
             </div>
           )}
         </div>
+      )}
+
+      {/* Cancel confirmation modal */}
+      {cancelModalId && (
+        <div className="modal-overlay" onClick={() => setCancelModalId('')}>
+          <div className="modal" style={{ maxWidth: 400 }} onClick={e => e.stopPropagation()}>
+            <div className="modal-header">
+              <h3 className="modal-title">{t('booking.cancel_confirm_title', 'Cancel Booking?')}</h3>
+              <button className="modal-close" onClick={() => setCancelModalId('')}>&times;</button>
+            </div>
+            <div className="modal-body">
+              <p style={{ fontSize: 13, color: 'var(--text-muted)', marginBottom: 12 }}>{t('booking.cancel_confirm_desc', 'This action cannot be undone.')}</p>
+              <textarea
+                className="form-input"
+                rows={2}
+                placeholder={t('booking.cancel_reason', 'Reason (optional)')}
+                value={cancelReason}
+                onChange={e => setCancelReason(e.target.value)}
+              />
+            </div>
+            <div className="modal-footer">
+              <button className="btn btn-secondary" onClick={() => setCancelModalId('')}>{t('common.cancel', 'Cancel')}</button>
+              <button className="btn btn-danger" disabled={!!cancellingId} onClick={handleCancel}>
+                {cancellingId ? '...' : t('booking.cancel_btn', 'Cancel Booking')}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Review write modal */}
+      {reviewApt && (
+        <ReviewWriteModal
+          appointment={reviewApt}
+          onClose={() => setReviewApt(null)}
+          onSuccess={() => { setReviewApt(null); onRefresh(); }}
+        />
       )}
 
       {/* ── Filter Bar ── */}

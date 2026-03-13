@@ -1011,10 +1011,20 @@ export interface Appointment {
   duration_minutes: number | null;
   price: number | null;
   request_note: string | null;
-  status: 'pending' | 'confirmed' | 'rejected' | 'completed';
+  status: 'pending' | 'confirmed' | 'rejected' | 'completed' | 'cancelled';
   rejected_reason: string | null;
   created_at: string;
   updated_at: string;
+  // New fields (007 migration)
+  business_type: string | null;
+  extra_data: Record<string, unknown>;
+  pet_report_period: string | null;
+  pet_report_sent: boolean;
+  deleted_at: string | null;
+  cancelled_reason: string | null;
+  is_overtime: boolean;
+  overtime_minutes: number;
+  overtime_fee: number;
   // Joined
   pet_name?: string | null;
   pet_avatar?: string | null;
@@ -1022,8 +1032,30 @@ export interface Appointment {
   guardian_email?: string | null;
   supplier_name?: string | null;
   supplier_email?: string | null;
+  store_name?: string | null;
   species?: string | null;
   breed_id?: string | null;
+  review_count?: number;
+  has_guardian_review?: number;
+  has_supplier_review?: number;
+}
+
+export interface AppointmentReview {
+  id: string;
+  appointment_id: string;
+  store_id: string | null;
+  author_user_id: string;
+  pet_id: string | null;
+  author_type: 'guardian' | 'supplier';
+  rating: number;
+  content: string | null;
+  is_visible: boolean;
+  created_at: string;
+  updated_at: string;
+  // Joined
+  author_name?: string;
+  pet_name?: string | null;
+  pet_avatar?: string | null;
 }
 
 // ─── Grooming Records ───────────────────────────────────────────────────────
@@ -1051,6 +1083,12 @@ export interface GroomingRecord {
   post_id: string | null;
   created_at: string;
   completed_at: string | null;
+  // New fields (007 migration)
+  cut_style_item_id: string | null;
+  custom_cut_name: string | null;
+  memo: string | null;
+  report_sent_at: string | null;
+  guardian_choice_at: string | null;
   // Joined
   pet_name?: string | null;
   pet_avatar?: string | null;

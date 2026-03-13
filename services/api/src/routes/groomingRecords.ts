@@ -42,13 +42,18 @@ async function createGroomingRecord(request: Request, env: Env, me: JwtPayload):
   const id = newId();
   const timestamp = now();
 
+  const cutStyleItemId = String(body.cutStyleItemId ?? body.cut_style_item_id ?? '').trim() || null;
+  const customCutName = String(body.customCutName ?? body.custom_cut_name ?? '').trim() || null;
+  const memo = String(body.memo ?? '').trim() || null;
+
   await env.DB.prepare(
     `INSERT INTO grooming_records (
       id, appointment_id, pet_id, supplier_id, guardian_id,
       grooming_type, cut_style, duration_minutes, products_used,
       special_notes, supplier_comment, photos,
+      cut_style_item_id, custom_cut_name, memo,
       status, created_at, completed_at
-    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?::jsonb, 'pending_guardian', ?, ?)`
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?::jsonb, ?, ?, ?, 'pending_guardian', ?, ?)`
   ).bind(
     id,
     appointmentId || null,
@@ -62,6 +67,9 @@ async function createGroomingRecord(request: Request, env: Env, me: JwtPayload):
     body.specialNotes ?? body.special_notes ?? null,
     body.supplierComment ?? body.supplier_comment ?? null,
     JSON.stringify(photos),
+    cutStyleItemId,
+    customCutName,
+    memo,
     timestamp,
     timestamp,
   ).run();
@@ -116,8 +124,8 @@ async function guardianChoice(request: Request, env: Env, me: JwtPayload, id: st
   if (choice === 'approve_only') {
     // Just approve, no feed
     await env.DB.prepare(
-      'UPDATE grooming_records SET status = ?, guardian_choice = ?, completed_at = ? WHERE id = ?'
-    ).bind('approved', choice, timestamp, id).run();
+      'UPDATE grooming_records SET status = ?, guardian_choice = ?, guardian_choice_at = ?, completed_at = ? WHERE id = ?'
+    ).bind('approved', choice, timestamp, timestamp, id).run();
   } else {
     // feed_only or approve_and_feed → create feed post
     postId = newId();
@@ -170,8 +178,8 @@ async function guardianChoice(request: Request, env: Env, me: JwtPayload, id: st
 
     const newStatus = choice === 'approve_and_feed' ? 'published' : 'published';
     await env.DB.prepare(
-      'UPDATE grooming_records SET status = ?, guardian_choice = ?, post_id = ?, completed_at = ? WHERE id = ?'
-    ).bind(newStatus, choice, postId, timestamp, id).run();
+      'UPDATE grooming_records SET status = ?, guardian_choice = ?, guardian_choice_at = ?, post_id = ?, completed_at = ? WHERE id = ?'
+    ).bind(newStatus, choice, timestamp, postId, timestamp, id).run();
   }
 
   return ok({ id, status: choice === 'approve_only' ? 'approved' : 'published', post_id: postId });

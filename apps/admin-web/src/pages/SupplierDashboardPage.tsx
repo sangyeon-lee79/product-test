@@ -5,6 +5,7 @@ import { logout } from '../lib/auth';
 import { useI18n, useT } from '../lib/i18n';
 import ProviderStoreSection from './supplier/ProviderStoreSection';
 import AppointmentSection from './supplier/AppointmentSection';
+import SupplierSettingsSection from './supplier/SupplierSettingsSection';
 import ComposeModal from './guardian/ComposeModal';
 
 type BookingFilter = 'all' | Booking['status'];
@@ -409,6 +410,16 @@ export default function SupplierDashboardPage() {
         </div>
         <div className="card-body">
           <AppointmentSection t={t} locale={LANG_TO_LOCALE[lang] || 'en-US'} />
+        </div>
+      </section>
+
+      {/* ── Store Settings Section ── */}
+      <section className="card" style={{ marginTop: 20 }}>
+        <div className="card-header">
+          <div className="card-title">{t('supplier.settings.title', 'Store Settings')}</div>
+        </div>
+        <div className="card-body">
+          <SupplierSettingsSection />
         </div>
       </section>
 

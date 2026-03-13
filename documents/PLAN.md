@@ -11,22 +11,34 @@ Your pet's life portfolio
 
 ---
 
-## 0.0 개발 현황 업데이트 (2026-03-11)
+## 0.0 개발 현황 업데이트 (2026-03-12)
 
 최근 코드 반영 기준 요약:
 
+- [x] **Guardian 매장탐색 + 예약 UI** (2026-03-12): 가디언 서비스 탭에 3개 화면 신규 구현
+  - `StoreExploreTab.tsx`: 매장탐색 목록 (시/도 드롭다운 + 업종칩 + 키워드 검색 + 매장카드)
+  - `StoreDetailModal.tsx`: 매장 상세 (사진 + 이름/뱃지/평점 + [서비스/매장정보] 탭)
+  - `StepBookingModal.tsx`: 4단계 예약 위저드 (①날짜캘린더 →②시간슬롯 →③반려동물 →④확인)
+  - GuardianMainPage services 탭을 StoreExploreTab 컴포넌트로 교체
+  - 실제 stores API만 사용 (dummy 매장 fallback 없음)
+  - stores.ts에 address_state_code/address_city_code 필터 추가
+  - 005_store_explore_i18n.sql: ~50 i18n 키 × 13개 언어
+- [x] **Admin Dummy Store Management** (2026-03-12): 플랫폼 방향성 데모용 70개 매장 시드
+  - 004_dummy_stores.sql: dummy_stores + dummy_store_services 테이블, 7개 업종(미용/병원/호텔/훈련/쇼핑/카페/사진)
+  - dummyStores.ts: GET /api/v1/dummy-stores API (public)
+  - AdminDummyStorePage.tsx: 관리자 데모매장 관리 화면
+  - **정책: dummy_stores는 시연 전용 — 가디언 예약 플로우에 절대 사용 금지**
+- [x] **Grooming 완료/승인 플로우**: R2 사진 업로드 + push 알림 + 피드 공유 연동
+  - 004_completion_approval_i18n.sql: ~30 i18n 키
+  - GroomingCompleteModal: R2 업로드 + 완료 요청
+  - GroomingApprovalModal: 승인/거절 + 1-click 피드 공유
+- [x] **pg-schema 통합** (2026-03-12): 160개 마이그레이션 → 3개 파일 (001_schema + 002_seed + 003_i18n)
 - [x] **Catalog Factory 리팩토링**: 사료/영양제/의약품 카탈로그를 `catalogFactory.ts` 단일 팩토리로 통합 (~1,600 LOC 절약)
-  - `feedCatalog.ts` (30줄), `supplementCatalog.ts` (32줄), `medicineCatalog.ts` (13줄)
-  - 공통 UI 훅: `useCatalogPage.ts`, 공통 컴포넌트: `CatalogGrid.tsx`, 유틸: `catalogUtils.ts`
-  - 아키텍처 문서: `docs/catalog-architecture.md`
-- [x] **영양제 카탈로그**: 18개 모델 (관절/소화/비타민/피부/면역/처방) + 영양정보 + 7개 제조사
-- [x] **의약품 카탈로그**: 30개 모델 (인슐린/항생제/진통/소화/심장/신장/피부/안이비/구충) + 10개 유형 + 9개 제조사
-- [x] **급여 시스템**: pet_feeds(등록) + pet_feeding_logs(기록) + pet_feeding_log_items(혼합) + feeding_mix_favorites(즐겨찾기)
+- [x] **급여 시스템**: pet_feeds + pet_feeding_logs + pet_feeding_log_items + feeding_mix_favorites
 - [x] **Pet Report 탭**: 급여/운동/건강/주간요약 통합 리포트 (차트 + 영양비율 + 알림)
-- [x] **급여 기록 버그 수정** (2026-03-11): 영양제 복용확인 SQL, 날짜 포맷 M/D, Infinity% 방지, 즐겨찾기 영양제 포함
 - [x] **Provider 가입/프로필**: 사업자 등록 + 업종 선택 + 자격증 + 운영시간 + 승인 워크플로우
 - [x] **친구 시스템**: Guardian↔Provider 커넥션 + 친구 요청/수락/차단
-- [x] **제품 이미지 URL**: 모델별 외부 이미지 URL + placeholder SVG + 관리자 입력 UI
+- [x] **Push Notification System**: FCM HTTP v1 + in-app 알림 + 알림 설정
 - [x] **Shared i18n 패키지**: `packages/shared/i18n/` — SUPPORTED_LANGS, Lang 타입, getTranslation() 등 앱 간 공유
 - [x] **코드 최적화**: sqlHelpers.ts(공통 DB 헬퍼), api.ts buildQuery(), GuardianMainPage 분할, pets.ts 분할, KV rate limiting
 
@@ -907,19 +919,21 @@ DB 테이블/마이그레이션
 > PRD §3.3 PRV-01~03 | LLD §4.4 stores, store_industries, services, service_discounts
 
 ## S9-1. DB
-[ ] stores 테이블 (owner_id, name, name_translations, address, phone, country_id, currency_id, avatar_url)
-[ ] store_industries 테이블 (store_id, industry_id — 다중)
-[ ] services 테이블 (store_id, name, name_translations, description, description_translations, price, currency_id, photo_urls[], sort_order)
+[x] stores 테이블 (owner_id, name, name_translations, address, phone, country_id, currency_id, avatar_url)
+[x] store_industries 테이블 (store_id, industry_id — 다중)
+[x] services 테이블 (store_id, name, name_translations, description, description_translations, price, currency_id, photo_urls[], sort_order)
 [ ] service_discounts 테이블 (service_id, discount_rate, start_date, end_date, is_active)
+[x] dummy_stores + dummy_store_services 테이블 (시연용 70개 매장, 7개 업종)
 
 ## S9-2. API
-[ ] POST /api/v1/stores — 매장 생성 (country_id → currency_id 자동 연결)
-[ ] PUT /api/v1/stores/:id — 매장 수정
-[ ] GET /api/v1/stores/:id — 매장 상세
-[ ] GET /api/v1/stores — 매장 검색
-[ ] POST /api/v1/stores/:id/services — 서비스 등록
-[ ] PUT /api/v1/services/:id — 서비스 수정
+[x] POST /api/v1/stores — 매장 생성 (country_id → currency_id 자동 연결)
+[x] PUT /api/v1/stores/:id — 매장 수정
+[x] GET /api/v1/stores/:id — 매장 상세
+[x] GET /api/v1/stores — 매장 검색 (address_state_code/address_city_code 필터 포함)
+[x] POST /api/v1/stores/:id/services — 서비스 등록
+[x] PUT /api/v1/services/:id — 서비스 수정
 [ ] POST /api/v1/services/:id/discounts — 할인 등록
+[x] GET /api/v1/dummy-stores — 데모 매장 조회 (public)
 
 ## S9-3. Mobile UI (Provider 권한 스위치)
 [ ] 권한 스위치 (Guardian ↔ Provider 모드 전환)
@@ -933,9 +947,12 @@ DB 테이블/마이그레이션
     - 할인 설정 (기간/율)
 [ ] (선택) SNS 홍보 카드 생성
 
-## S9-4. Guardian Mobile UI (소비자 측)
-[ ] 매장 검색/목록 화면
-[ ] 매장 상세 + 서비스 목록 화면
+## S9-4. Guardian Web UI (소비자 측)
+[x] 매장 탐색 목록 (StoreExploreTab: 시/도 필터 + 업종칩 + 키워드 + 매장카드)
+[x] 매장 상세 모달 (StoreDetailModal: 사진/이름/뱃지/평점 + 서비스/매장정보 탭)
+[x] 4단계 예약 위저드 (StepBookingModal: 날짜→시간→펫→확인)
+[ ] Mobile: 매장 검색/목록 화면
+[ ] Mobile: 매장 상세 + 서비스 목록 화면
 
 ## S9-5. 테스트 데이터 & 검증
 [ ] 테스트 Provider 계정 생성
@@ -991,9 +1008,12 @@ DB 테이블/마이그레이션
     - 매장 링크 자동 포함 확인
 [x] 피드 리스트 + 좋아요/댓글
 
-## S10-5. Guardian Web UI (최소)
-[ ] 피드 보기 (옵션)
-[ ] 예약 상태 확인 (옵션)
+## S10-5. Guardian Web UI
+[x] 매장 탐색 + 예약 요청 (StoreExploreTab → StepBookingModal)
+[x] 예약 상태 확인 (My Bookings 접이식 섹션)
+[x] 미용 완료 승인/거절 (GroomingApprovalModal)
+[x] 1-click 피드 공유 (승인 → 피드 게시)
+[x] 피드 보기 (PublicHome/ExplorePage)
 
 ## S10-6. 테스트 & 검증 (전체 바이럴 루프)
 [ ] Guardian → "해피 펫 미용실" 전체 미용 예약 요청
@@ -1100,19 +1120,23 @@ DB 테이블/마이그레이션
 [x] S6: Guardian 프로필 + 펫 등록 — 질병 연결 포함
 [x] S7: 질병 기록 7종 + 위험 경고 + 타임라인 + 운동 기록 + 급여 시스템 + Pet Report
 [ ] S8: 오프라인 기록 + 동기화
-[ ] S9: Provider 매장/서비스 등록
-[ ] S10: 예약 → 완료 → 1-click 피드 공유 바이럴 루프
+[x] S9: Provider 매장/서비스 등록 (DB/API/Guardian Web 완료, Mobile 미구현)
+[x] S10: 예약 → 완료 → 1-click 피드 공유 바이럴 루프 (Guardian Web 완료, Mobile 미구현)
 [ ] S11: 광고(건강 화면 미노출) + 통계 대시보드
 [ ] S12: OAuth 전환 + 하드코딩 제로 + E2E 통과
 
-진행 메모 (2026-03-11):
+진행 메모 (2026-03-12):
 - S7 DB/API/Guardian Web UI 완료 (질병 기록 + 타임라인 + 운동 기록 + 급여 시스템 + Pet Report).
-- S10은 DB/핵심 API(booking status, completion-request, approve, feed like/comment)가 선행 구현되어 "부분완료" 상태.
-- S6는 기본 완료 상태이며, `birthday/current_weight/weight logs/health chart` 확장 + GuardianMainPage 전면 리디자인(Instagram 프로필 스타일)까지 반영됨.
-- Admin 카탈로그: 사료/영양제/의약품 3개 카탈로그를 `catalogFactory.ts` 팩토리 패턴으로 통합 완료.
+- S10은 DB/핵심 API + Guardian 매장탐색/예약 UI까지 구현 완료. 부분완료 → 대폭 진전.
+  - Guardian 서비스 탭: StoreExploreTab(매장탐색) + StoreDetailModal(상세) + StepBookingModal(4단계 예약)
+  - Grooming 완료/승인 플로우: R2 사진 업로드 + push 알림 + 피드 공유
+- S6는 기본 완료 상태이며, GuardianMainPage 전면 리디자인(Instagram 프로필 스타일)까지 반영됨.
+- Admin: 카탈로그 팩토리 통합, Dummy Store 관리(70개 시연용 매장) 완료.
+- pg-schema 통합 완료: 160개 마이그레이션 → 3개 파일 (001_schema + 002_seed + 003_i18n), 신규는 004부터.
+- Push Notification System 완료: FCM HTTP v1 + in-app 알림 + 알림 설정.
 - Provider 가입/프로필 + 친구 시스템 기본 구현 완료.
 - Shared i18n 패키지(`@petfolio/shared`) 도입으로 앱 간 언어 상수/유틸 공유.
-- 다음 단계: S8 오프라인 동기화 또는 S9 Provider 매장/서비스 본격 구현.
+- 다음 단계: S9 Provider 매장/서비스 본격 구현 또는 S8 오프라인 동기화.
 
 ---
 
