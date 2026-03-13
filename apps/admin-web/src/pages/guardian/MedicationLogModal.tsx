@@ -138,14 +138,10 @@ export default function MedicationLogModal({
     }));
   }, [form.medicine_model_id, allModels]);
 
-  if (!open) return null;
-
-  const isEdit = !!editingLog;
-
   // IME composition tracking (Korean input on mobile)
   const composingRef = useRef(false);
 
-  // Client-side filtered models (useMemo — matches Feed/Device pattern)
+  // Client-side filtered models
   const filteredModels = useMemo(() => {
     let result = allModels;
     if (searchTerm.trim()) {
@@ -158,6 +154,9 @@ export default function MedicationLogModal({
     return result;
   }, [allModels, searchTerm]);
 
+  if (!open) return null;
+
+  const isEdit = !!editingLog;
   const selectedModel = allModels.find((m) => m.id === form.medicine_model_id);
   const modelMeta = selectedModel ? parseModelMeta(selectedModel) : {};
 
