@@ -8,6 +8,16 @@ const LANG_LABELS: Record<string, string> = {
   es:'Español', fr:'Français', de:'Deutsch', pt:'Português', vi:'Tiếng Việt',
   th:'ภาษาไทย', id_lang:'Bahasa Indonesia', ar:'العربية',
 };
+const LANG_FLAGS: Record<string, string> = {
+  ko:'🇰🇷', en:'🇺🇸', ja:'🇯🇵', zh_cn:'🇨🇳', zh_tw:'🇹🇼',
+  es:'🇪🇸', fr:'🇫🇷', de:'🇩🇪', pt:'🇧🇷', vi:'🇻🇳',
+  th:'🇹🇭', id_lang:'🇮🇩', ar:'🇸🇦',
+};
+const LANG_GROUPS = [
+  { label: 'East Asian', langs: ['ko', 'en', 'ja', 'zh_cn', 'zh_tw'] as const },
+  { label: 'European', langs: ['es', 'fr', 'de', 'pt'] as const },
+  { label: 'Southeast Asian & Arabic', langs: ['vi', 'th', 'id_lang', 'ar'] as const },
+];
 
 const EMPTY_FORM = (): Partial<I18nRow> & { key: string; page: string } => ({ key: '', page: '' });
 
@@ -91,8 +101,25 @@ export default function I18nPage() {
 
   const totalPages = Math.ceil(total / LIMIT);
 
+  function langCoverage(row: I18nRow): number {
+    let filled = 0;
+    const r = row as unknown as Record<string, string>;
+    for (const lang of LANGS) {
+      if (String(r[lang] ?? '').trim()) filled++;
+    }
+    return filled;
+  }
+
+  const formCoverage = (() => {
+    let filled = 0;
+    for (const lang of LANGS) {
+      if (String((form as Record<string, string>)[lang] ?? '').trim()) filled++;
+    }
+    return filled;
+  })();
+
   return (
-    <>
+    <div className="pf-i18n">
       <div className="topbar">
         <div className="topbar-title">🌐 {t('admin.i18n.title', '언어 관리 (i18n)')}</div>
         <button className="btn btn-primary btn-sm" onClick={openCreate}>{t('admin.i18n.add_btn', '+ 번역 키 추가')}</button>
@@ -101,12 +128,40 @@ export default function I18nPage() {
         {error && <div className="alert alert-error">{error}</div>}
         {success && <div className="alert alert-success">{success}</div>}
 
+        {/* Stats bar */}
+        <div className="pf-i18n-stats">
+          <div className="pf-i18n-stat">
+            <span className="pf-i18n-stat-icon">📋</span>
+            <div className="pf-i18n-stat-body">
+              <span className="pf-i18n-stat-value">{total}</span>
+              <span className="pf-i18n-stat-label">{t('admin.i18n.stat_total', 'Total Keys')}</span>
+            </div>
+          </div>
+          <div className="pf-i18n-stat">
+            <span className="pf-i18n-stat-icon">🌍</span>
+            <div className="pf-i18n-stat-body">
+              <span className="pf-i18n-stat-value">{LANGS.length}</span>
+              <span className="pf-i18n-stat-label">{t('admin.i18n.stat_langs', 'Languages')}</span>
+            </div>
+          </div>
+          <div className="pf-i18n-stat">
+            <span className="pf-i18n-stat-icon">✅</span>
+            <div className="pf-i18n-stat-body">
+              <span className="pf-i18n-stat-value">{rows.length > 0 ? Math.round(rows.reduce((s, r) => s + langCoverage(r), 0) / (rows.length * LANGS.length) * 100) : 0}%</span>
+              <span className="pf-i18n-stat-label">{t('admin.i18n.stat_coverage', 'Coverage')}</span>
+            </div>
+          </div>
+        </div>
+
         <div className="card">
           <div className="card-header">
             <div className="filters" style={{ margin: 0 }}>
-              <input className="form-input" placeholder={t('admin.i18n.search_prefix', '키 접두사 검색')} value={prefix}
-                onChange={e => { setPrefix(e.target.value); setPage(1); }} style={{ width: 240 }} />
-              <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13 }}>
+              <div className="pf-i18n-search">
+                <span className="pf-i18n-search-icon">🔍</span>
+                <input className="form-input" placeholder={t('admin.i18n.search_prefix', '키 접두사 검색')} value={prefix}
+                  onChange={e => { setPrefix(e.target.value); setPage(1); }} />
+              </div>
+              <label className="pf-i18n-check">
                 <input type="checkbox" checked={activeOnly} onChange={e => { setActiveOnly(e.target.checked); setPage(1); }} />
                 {t('admin.i18n.active_only', '활성만 보기')}
               </label>
@@ -122,33 +177,46 @@ export default function I18nPage() {
                     <th>{t('admin.i18n.col_page', '페이지')}</th>
                     <th>{t('admin.i18n.col_ko', '한국어')}</th>
                     <th>{t('admin.i18n.col_en', 'English')}</th>
+                    <th>{t('admin.i18n.col_coverage', 'Coverage')}</th>
                     <th>{t('admin.common.status', '상태')}</th>
                     <th>{t('admin.common.action', '작업')}</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {rows.map(row => (
-                    <tr key={row.id}>
-                      <td><span className="font-mono" style={{ fontSize: 12 }}>{row.key}</span></td>
-                      <td><span className="text-muted text-sm">{row.page || '-'}</span></td>
-                      <td className="truncate" style={{ maxWidth: 200 }}>{row.ko || <span className="text-muted">-</span>}</td>
-                      <td className="truncate" style={{ maxWidth: 180 }}>{row.en || <span className="text-muted">-</span>}</td>
-                      <td>
-                        <span className={`badge ${row.is_active ? 'badge-green' : 'badge-gray'}`}>
-                          {row.is_active ? t('admin.common.active', '활성') : t('admin.common.inactive', '비활성')}
-                        </span>
-                      </td>
-                      <td>
-                        <div className="td-actions">
-                          <button className="btn btn-secondary btn-sm" title={t('common.edit', 'Edit')} aria-label={t('common.edit', 'Edit')} onClick={() => openEdit(row)}>✏️</button>
-                          {row.is_active ? (
-                            <button className="btn btn-danger btn-sm" onClick={() => handleDeactivate(row.id)}>{t('admin.common.deactivate', '비활성화')}</button>
-                          ) : null}
-                        </div>
-                      </td>
-                    </tr>
-                  ))}
-                  {rows.length === 0 && <tr><td colSpan={6} style={{ textAlign: 'center', padding: 32, color: 'var(--text-muted)' }}>{t('admin.common.no_data', '데이터가 없습니다')}</td></tr>}
+                  {rows.map(row => {
+                    const cov = langCoverage(row);
+                    const covPct = Math.round((cov / LANGS.length) * 100);
+                    return (
+                      <tr key={row.id}>
+                        <td><span className="pf-i18n-key">{row.key}</span></td>
+                        <td>{row.page ? <span className="pf-i18n-page-badge">{row.page}</span> : <span className="text-muted">-</span>}</td>
+                        <td className="truncate" style={{ maxWidth: 200 }}>{row.ko || <span className="text-muted">-</span>}</td>
+                        <td className="truncate" style={{ maxWidth: 180 }}>{row.en || <span className="text-muted">-</span>}</td>
+                        <td>
+                          <div className="pf-i18n-cov">
+                            <div className="pf-i18n-cov-bar">
+                              <div className="pf-i18n-cov-fill" style={{ width: `${covPct}%`, background: covPct === 100 ? 'var(--green)' : covPct >= 70 ? 'var(--amber)' : 'var(--red)' }} />
+                            </div>
+                            <span className="pf-i18n-cov-text">{cov}/{LANGS.length}</span>
+                          </div>
+                        </td>
+                        <td>
+                          <span className={`badge ${row.is_active ? 'badge-green' : 'badge-gray'}`}>
+                            {row.is_active ? t('admin.common.active', '활성') : t('admin.common.inactive', '비활성')}
+                          </span>
+                        </td>
+                        <td>
+                          <div className="td-actions">
+                            <button className="btn btn-secondary btn-sm" title={t('common.edit', 'Edit')} aria-label={t('common.edit', 'Edit')} onClick={() => openEdit(row)}>✏️</button>
+                            {row.is_active ? (
+                              <button className="btn btn-danger btn-sm" onClick={() => handleDeactivate(row.id)}>{t('admin.common.deactivate', '비활성화')}</button>
+                            ) : null}
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                  {rows.length === 0 && <tr><td colSpan={7} style={{ textAlign: 'center', padding: 32, color: 'var(--text-muted)' }}>{t('admin.common.no_data', '데이터가 없습니다')}</td></tr>}
                 </tbody>
               </table>
             )}
@@ -167,9 +235,14 @@ export default function I18nPage() {
 
       {modal && (
         <div className="modal-overlay" onClick={e => e.target === e.currentTarget && closeModal()}>
-          <div className="modal">
+          <div className="modal pf-i18n-modal">
             <div className="modal-header">
               <div className="modal-title">{modal === 'create' ? t('admin.i18n.modal_create', '번역 키 추가') : t('admin.i18n.modal_edit', '번역 수정')}</div>
+              <div className="pf-i18n-modal-cov">
+                <span className={`pf-i18n-modal-cov-badge${formCoverage === LANGS.length ? ' complete' : ''}`}>
+                  {formCoverage}/{LANGS.length}
+                </span>
+              </div>
               <button className="modal-close" onClick={closeModal}>×</button>
             </div>
             <div className="modal-body" style={{ maxHeight: '70vh', overflowY: 'auto' }}>
@@ -186,23 +259,41 @@ export default function I18nPage() {
                     onChange={e => setForm(f => ({ ...f, page: e.target.value }))} placeholder="home, auth, ..." />
                 </div>
               </div>
-              <div style={{ borderTop: '1px solid var(--border)', marginBottom: 16 }} />
-              {LANGS.map(lang => (
-                <div className="form-group" key={lang}>
-                  <label className="form-label" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <span>{LANG_LABELS[lang]} <span className="font-mono" style={{ opacity: .5 }}>({lang})</span></span>
-                    {lang === 'ko' && (
-                      <button className="btn btn-secondary btn-xs" onClick={handleAutoTranslate} disabled={translating || !form.ko}>
-                        {translating ? <><span className="spinner" /> {t('admin.i18n.translating', '번역중...')}</> : t('admin.i18n.auto_translate_btn', '✨ 12개국어 자동번역')}
-                      </button>
-                    )}
-                  </label>
-                  <input className="form-input" value={(form as Record<string, string>)[lang] || ''}
-                    onChange={e => setForm(f => ({ ...f, [lang]: e.target.value }))} />
+
+              {/* Auto-translate bar */}
+              <div className="pf-i18n-translate-bar">
+                <button className="pf-i18n-translate-btn" onClick={handleAutoTranslate} disabled={translating || !form.ko}>
+                  {translating ? <><span className="spinner" /> {t('admin.i18n.translating', '번역중...')}</> : <><span>✨</span> {t('admin.i18n.auto_translate_btn', '12개국어 자동번역')}</>}
+                </button>
+                <span className="pf-i18n-translate-hint">{t('admin.i18n.translate_bar_hint', '한국어 입력 후 빈 필드를 자동 번역합니다')}</span>
+              </div>
+
+              {/* Language groups */}
+              {LANG_GROUPS.map(group => (
+                <div key={group.label} className="pf-i18n-lang-group">
+                  <div className="pf-i18n-lang-group-title">{group.label}</div>
+                  <div className="pf-i18n-lang-group-grid">
+                    {group.langs.map(lang => {
+                      const val = String((form as Record<string, string>)[lang] ?? '').trim();
+                      return (
+                        <div className={`pf-i18n-lang-field${val ? ' filled' : ''}`} key={lang}>
+                          <label className="pf-i18n-lang-label">
+                            <span className="pf-i18n-lang-flag">{LANG_FLAGS[lang]}</span>
+                            <span>{LANG_LABELS[lang]}</span>
+                            <span className="pf-i18n-lang-code">{lang}</span>
+                            {val && <span className="pf-i18n-lang-check">✓</span>}
+                          </label>
+                          <input className="form-input" value={(form as Record<string, string>)[lang] || ''}
+                            onChange={e => setForm(f => ({ ...f, [lang]: e.target.value }))} />
+                        </div>
+                      );
+                    })}
+                  </div>
                 </div>
               ))}
+
               {modal === 'edit' && (
-                <div className="form-group">
+                <div className="form-group" style={{ marginTop: 16 }}>
                   <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13, cursor: 'pointer' }}>
                     <input type="checkbox" checked={!!form.is_active}
                       onChange={e => setForm(f => ({ ...f, is_active: e.target.checked ? 1 : 0 }))} />
@@ -220,6 +311,6 @@ export default function I18nPage() {
           </div>
         </div>
       )}
-    </>
+    </div>
   );
 }
