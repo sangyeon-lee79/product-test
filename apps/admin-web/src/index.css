@@ -3564,9 +3564,66 @@ html[data-theme="dark"] .pf-card--health .pf-friend-btn--add { border-color: #F5
   background: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='.025'/%3E%3C/svg%3E");
   pointer-events: none;
 }
+/* ── Diagonal photo background ── */
+.pf-gd-hero-photos {
+  position: absolute; inset: 0; z-index: 0;
+}
+.pf-gd-hero-slice {
+  position: absolute; width: 100%; height: 100%;
+  object-fit: cover; object-position: center;
+}
+/* 4-photo layout */
+.pf-gd-hero-photos--4 .pf-gd-hero-slice--1 { clip-path: polygon(0% 0%, 28% 0%, 22% 100%, 0% 100%); }
+.pf-gd-hero-photos--4 .pf-gd-hero-slice--2 { clip-path: polygon(26% 0%, 54% 0%, 48% 100%, 20% 100%); }
+.pf-gd-hero-photos--4 .pf-gd-hero-slice--3 { clip-path: polygon(52% 0%, 78% 0%, 72% 100%, 46% 100%); }
+.pf-gd-hero-photos--4 .pf-gd-hero-slice--4 { clip-path: polygon(76% 0%, 100% 0%, 100% 100%, 70% 100%); }
+/* 3-photo layout */
+.pf-gd-hero-photos--3 .pf-gd-hero-slice--1 { clip-path: polygon(0% 0%, 38% 0%, 30% 100%, 0% 100%); }
+.pf-gd-hero-photos--3 .pf-gd-hero-slice--2 { clip-path: polygon(36% 0%, 68% 0%, 60% 100%, 28% 100%); }
+.pf-gd-hero-photos--3 .pf-gd-hero-slice--3 { clip-path: polygon(66% 0%, 100% 0%, 100% 100%, 58% 100%); }
+/* 2-photo layout */
+.pf-gd-hero-photos--2 .pf-gd-hero-slice--1 { clip-path: polygon(0% 0%, 55% 0%, 45% 100%, 0% 100%); }
+.pf-gd-hero-photos--2 .pf-gd-hero-slice--2 { clip-path: polygon(53% 0%, 100% 0%, 100% 100%, 43% 100%); }
+/* 1-photo layout */
+.pf-gd-hero-photos--1 .pf-gd-hero-slice--1 {
+  clip-path: none; filter: blur(2px); transform: scale(1.05);
+}
+/* Slice divider lines */
+.pf-gd-hero-slice-lines { position: absolute; inset: 0; z-index: 1; pointer-events: none; }
+.pf-gd-hero-slice-line {
+  position: absolute; top: 0; width: 2px; height: 100%;
+  background: rgba(255,255,255,.5);
+  transform-origin: top center;
+}
+/* Line positions for 4-photo */
+.pf-gd-hero-photos--4 .pf-gd-hero-slice-line--1 { left: 24%; transform: rotate(-2.3deg); }
+.pf-gd-hero-photos--4 .pf-gd-hero-slice-line--2 { left: 50%; transform: rotate(-2.3deg); }
+.pf-gd-hero-photos--4 .pf-gd-hero-slice-line--3 { left: 74%; transform: rotate(-2.3deg); }
+/* Line positions for 3-photo */
+.pf-gd-hero-photos--3 .pf-gd-hero-slice-line--1 { left: 33%; transform: rotate(-3deg); }
+.pf-gd-hero-photos--3 .pf-gd-hero-slice-line--2 { left: 63%; transform: rotate(-3deg); }
+/* Line positions for 2-photo */
+.pf-gd-hero-photos--2 .pf-gd-hero-slice-line--1 { left: 49%; transform: rotate(-3.5deg); }
+
+/* Gradient overlays for text readability */
+.pf-gd-hero-overlay-left {
+  position: absolute; left: 0; top: 0; width: 45%; height: 100%;
+  background: linear-gradient(to right, rgba(245,196,154,.92) 0%, rgba(245,196,154,0) 100%);
+  z-index: 1; pointer-events: none;
+}
+.pf-gd-hero-overlay-right {
+  position: absolute; right: 0; top: 0; width: 30%; height: 100%;
+  background: linear-gradient(to left, rgba(245,196,154,.7) 0%, rgba(245,196,154,0) 100%);
+  z-index: 1; pointer-events: none;
+}
+
+/* When photos present, suppress default background patterns */
+.pf-gd-hero--has-photos::before,
+.pf-gd-hero--has-photos::after { display: none; }
+
 .pf-gd-hero-inner {
   display: flex; align-items: center; gap: 20px; flex-wrap: wrap;
-  position: relative; z-index: 1;
+  position: relative; z-index: 2;
 }
 
 /* Avatar with animated conic-gradient ring */
@@ -3625,7 +3682,7 @@ html[data-theme="dark"] .pf-card--health .pf-friend-btn--add { border-color: #F5
   box-shadow: 0 6px 20px rgba(245,130,58,.45); transform: translateY(-1px);
 }
 .pf-gd-hero-chips {
-  display: flex; flex-wrap: wrap; gap: 6px; margin-top: 18px; position: relative; z-index: 1;
+  display: flex; flex-wrap: wrap; gap: 6px; margin-top: 18px; position: relative; z-index: 2;
 }
 .pf-gd-chip {
   font-size: 11px; padding: 4px 12px; border-radius: 20px;
@@ -4473,6 +4530,13 @@ html[data-theme="dark"] .pf-gd-hero::before {
     radial-gradient(circle at 85% 20%, rgba(245,130,58,.18), transparent 40%),
     radial-gradient(circle at 10% 80%, rgba(217,119,6,.12), transparent 50%);
 }
+html[data-theme="dark"] .pf-gd-hero-overlay-left {
+  background: linear-gradient(to right, rgba(26,18,8,.92) 0%, rgba(26,18,8,0) 100%);
+}
+html[data-theme="dark"] .pf-gd-hero-overlay-right {
+  background: linear-gradient(to left, rgba(26,18,8,.7) 0%, rgba(26,18,8,0) 100%);
+}
+html[data-theme="dark"] .pf-gd-hero-slice-line { background: rgba(255,255,255,.2); }
 html[data-theme="dark"] .pf-gd-hero-info h2 { color: #fff; }
 html[data-theme="dark"] .pf-gd-hero-info p { color: rgba(255,255,255,.5); }
 html[data-theme="dark"] .pf-gd-hero-stat strong { color: #fff; }
@@ -4534,6 +4598,20 @@ html[data-theme="dark"] .pf-gd-pet-switch { background: var(--surface); }
 }
 @media (max-width: 767px) {
   .pf-gd-hero { padding: 24px 16px 22px; border-radius: 0 0 28px 28px; }
+  .pf-gd-hero-overlay-left { width: 60%; }
+  /* Limit to 2 slices on mobile */
+  .pf-gd-hero-photos--4 .pf-gd-hero-slice--3,
+  .pf-gd-hero-photos--4 .pf-gd-hero-slice--4,
+  .pf-gd-hero-photos--3 .pf-gd-hero-slice--3 { display: none; }
+  .pf-gd-hero-photos--4 .pf-gd-hero-slice--1 { clip-path: polygon(0% 0%, 55% 0%, 45% 100%, 0% 100%); }
+  .pf-gd-hero-photos--4 .pf-gd-hero-slice--2 { clip-path: polygon(53% 0%, 100% 0%, 100% 100%, 43% 100%); }
+  .pf-gd-hero-photos--3 .pf-gd-hero-slice--1 { clip-path: polygon(0% 0%, 55% 0%, 45% 100%, 0% 100%); }
+  .pf-gd-hero-photos--3 .pf-gd-hero-slice--2 { clip-path: polygon(53% 0%, 100% 0%, 100% 100%, 43% 100%); }
+  .pf-gd-hero-photos--4 .pf-gd-hero-slice-line--2,
+  .pf-gd-hero-photos--4 .pf-gd-hero-slice-line--3,
+  .pf-gd-hero-photos--3 .pf-gd-hero-slice-line--2 { display: none; }
+  .pf-gd-hero-photos--4 .pf-gd-hero-slice-line--1 { left: 49%; transform: rotate(-3.5deg); }
+  .pf-gd-hero-photos--3 .pf-gd-hero-slice-line--1 { left: 49%; transform: rotate(-3.5deg); }
   .pf-gd-hero-stats { gap: 16px; }
   .pf-gd-hero-inner { gap: 14px; }
   .pf-gd-avatar-ring { width: 60px; height: 60px; }

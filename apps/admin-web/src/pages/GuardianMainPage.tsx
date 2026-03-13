@@ -220,6 +220,16 @@ export default function GuardianMainPage() {
 
   const selectedPet = useMemo(() => pets.find((p) => p.id === selectedPetId) || pets[0] || null, [pets, selectedPetId]);
 
+  // Diagonal header photos — up to 4 recent images for the selected pet
+  const headerPhotos = useMemo(() => {
+    if (!selectedPet) return [];
+    const petImages = albumMedia
+      .filter(m => m.pet_id === selectedPet.id && m.media_type === 'image' && m.media_url)
+      .slice(0, 4)
+      .map(m => m.thumbnail_url || m.media_url);
+    return petImages;
+  }, [albumMedia, selectedPet]);
+
   const latestBooking = useMemo(() => {
     if (!bookings.length) return null;
     const rows = selectedPet ? bookings.filter((b) => !b.pet_id || b.pet_id === selectedPet.id) : bookings;
@@ -700,8 +710,36 @@ export default function GuardianMainPage() {
 
   return (
     <div className="pf-gd-page">
-      {/* ── Dark hero header ── */}
-      <div className="pf-gd-hero">
+      {/* ── Hero header with diagonal photo background ── */}
+      <div className={`pf-gd-hero${headerPhotos.length > 0 ? ' pf-gd-hero--has-photos' : ''}`}>
+        {/* Diagonal photo slices */}
+        {headerPhotos.length > 0 && (
+          <div className={`pf-gd-hero-photos pf-gd-hero-photos--${Math.min(headerPhotos.length, 4)}`}>
+            {headerPhotos.map((url, i) => (
+              <img
+                key={i}
+                src={url}
+                alt=""
+                className={`pf-gd-hero-slice pf-gd-hero-slice--${i + 1}`}
+                onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
+              />
+            ))}
+            {headerPhotos.length >= 2 && (
+              <div className="pf-gd-hero-slice-lines">
+                {Array.from({ length: headerPhotos.length - 1 }, (_, i) => (
+                  <div key={i} className={`pf-gd-hero-slice-line pf-gd-hero-slice-line--${i + 1}`} />
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+        {/* Gradient overlays for text readability */}
+        {headerPhotos.length > 0 && (
+          <>
+            <div className="pf-gd-hero-overlay-left" />
+            <div className="pf-gd-hero-overlay-right" />
+          </>
+        )}
         <div className="pf-gd-hero-inner">
           <div className="pf-gd-avatar-ring">
             <div className="pf-gd-avatar-inner">
@@ -711,7 +749,7 @@ export default function GuardianMainPage() {
             </div>
           </div>
           <div className="pf-gd-hero-info">
-            <h2>{selectedPet?.name || t('guardian.empty.no_pets_title', 'No pet selected')}</h2>
+            <h2>{selectedPet?.name || t('guardian.empty.no_pets_title')}</h2>
             {selectedPet && (
               <p>
                 {labelOf(optPetType, selectedPet.pet_type_id, '')}
@@ -722,20 +760,20 @@ export default function GuardianMainPage() {
           </div>
           {selectedPet && (
             <div className="pf-gd-hero-stats">
-              <div className="pf-gd-hero-stat"><strong>{feeds.length}</strong><span>{t('guardian.stats.posts', 'Posts')}</span></div>
-              <div className="pf-gd-hero-stat"><strong>{albumMedia.length}</strong><span>{t('guardian.stats.media', 'Media')}</span></div>
+              <div className="pf-gd-hero-stat"><strong>{feeds.length}</strong><span>{t('guardian.stats.posts')}</span></div>
+              <div className="pf-gd-hero-stat"><strong>{albumMedia.length}</strong><span>{t('guardian.stats.media')}</span></div>
               <div className="pf-gd-hero-stat pf-gd-hero-stat--clickable" onClick={() => { setFriendsModalTab('friends'); setFriendsModalOpen(true); }}>
-                <strong>{friendCount}</strong><span>{t('guardian.stats.friends', 'Friends')}</span>
+                <strong>{friendCount}</strong><span>{t('guardian.stats.friends')}</span>
                 {pendingRequests.length > 0 && <span className="pf-gd-pending-badge">{pendingRequests.length}</span>}
               </div>
             </div>
           )}
           <div className="pf-gd-hero-actions">
             {pets.length <= 1 && (
-              <button className="btn btn-primary btn-sm" style={{ borderRadius: 20, fontSize: 12 }} onClick={openCreatePet}>+ {t('common.add_pet', 'Add Pet')}</button>
+              <button className="btn btn-primary btn-sm" style={{ borderRadius: 20, fontSize: 12 }} onClick={openCreatePet}>+ {t('common.add_pet')}</button>
             )}
-            <Link className="btn btn-secondary btn-sm" style={{ borderRadius: 20, fontSize: 12 }} to="/">{t('guardian.main.public_feed', 'Feed')}</Link>
-            <button className="btn btn-secondary btn-sm" style={{ borderRadius: 20, fontSize: 12 }} onClick={() => { logout(); navigate('/', { replace: true }); }}>{t('admin.common.logout', 'Logout')}</button>
+            <Link className="btn btn-secondary btn-sm" style={{ borderRadius: 20, fontSize: 12 }} to="/">{t('guardian.main.public_feed')}</Link>
+            <button className="btn btn-secondary btn-sm" style={{ borderRadius: 20, fontSize: 12 }} onClick={() => { logout(); navigate('/', { replace: true }); }}>{t('admin.common.logout')}</button>
           </div>
         </div>
         {selectedPet && petSummaryDetails && (
