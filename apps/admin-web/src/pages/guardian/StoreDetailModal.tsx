@@ -20,6 +20,7 @@ interface DisplayStore {
   avatarUrl?: string | null;
   services: StoreService[];
   storeId?: string;
+  operatingHours?: Record<string, { open: string; close: string; closed?: boolean }> | null;
 }
 
 interface Props {
@@ -155,6 +156,26 @@ export default function StoreDetailModal({ store, onClose, onBook }: Props) {
                 <div className="gm-store-info-row">
                   <div className="gm-store-info-label">{t('guardian.store.detail.about', 'About')}</div>
                   <div className="gm-store-info-value">{store.displayDescription}</div>
+                </div>
+              )}
+              {store.operatingHours && Object.keys(store.operatingHours).length > 0 && (
+                <div className="gm-store-info-row">
+                  <div className="gm-store-info-label">{t('supplier.settings.hours_title', 'Operating Hours')}</div>
+                  <div className="gm-store-info-value">
+                    {['mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun'].map(day => {
+                      const dh = store.operatingHours?.[day];
+                      if (!dh) return null;
+                      const dayLabel: Record<string, string> = { mon: 'Mon', tue: 'Tue', wed: 'Wed', thu: 'Thu', fri: 'Fri', sat: 'Sat', sun: 'Sun' };
+                      return (
+                        <div key={day} style={{ display: 'flex', gap: 8, fontSize: 13, lineHeight: '22px' }}>
+                          <span style={{ width: 36, fontWeight: 600 }}>{dayLabel[day]}</span>
+                          <span style={{ color: dh.closed ? 'var(--text-muted)' : 'var(--text)' }}>
+                            {dh.closed ? t('supplier.settings.closed', 'Closed') : `${dh.open} ~ ${dh.close}`}
+                          </span>
+                        </div>
+                      );
+                    })}
+                  </div>
                 </div>
               )}
             </div>

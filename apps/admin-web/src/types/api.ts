@@ -944,6 +944,11 @@ export interface Store {
   address_city_code: string | null;
   address_detail: string | null;
   status: string;
+  operating_hours?: Record<string, { open: string; close: string; closed?: boolean }> | null;
+  allow_overtime?: boolean;
+  overtime_fee_type?: string;
+  overtime_fee_amount?: number;
+  review_public?: boolean;
   created_at: string;
   updated_at: string;
   // Joined
@@ -973,6 +978,7 @@ export interface StoreService {
   currency_id: string | null;
   currency_code?: string;
   photo_urls: string[];
+  duration_minutes?: number | null;
   sort_order: number;
   is_active: boolean;
   display_name?: string;

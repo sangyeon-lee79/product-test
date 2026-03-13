@@ -40,6 +40,7 @@ export interface DisplayStore {
   services: { id: string; displayName: string; price: number | null; durationMin: number | null }[];
   supplierId: string;
   storeId: string;
+  operatingHours?: Record<string, { open: string; close: string; closed?: boolean }> | null;
 }
 
 function storeToDisplay(s: Store, services: StoreService[]): DisplayStore {
@@ -57,10 +58,11 @@ function storeToDisplay(s: Store, services: StoreService[]): DisplayStore {
       id: svc.id,
       displayName: svc.display_name || svc.name || '',
       price: svc.price ?? null,
-      durationMin: null,
+      durationMin: svc.duration_minutes ?? null,
     })),
     supplierId: s.owner_id,
     storeId: s.id,
+    operatingHours: s.operating_hours || null,
   };
 }
 

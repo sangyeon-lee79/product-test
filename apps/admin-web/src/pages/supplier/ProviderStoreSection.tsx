@@ -11,6 +11,21 @@ type ModalMode = 'create' | 'edit';
 
 const emptyTrans = (): Record<string, string> => Object.fromEntries(SUPPORTED_LANGS.map(l => [l, '']));
 
+const DAYS = ['mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun'] as const;
+const DAY_LABELS: Record<string, string> = { mon: 'Mon', tue: 'Tue', wed: 'Wed', thu: 'Thu', fri: 'Fri', sat: 'Sat', sun: 'Sun' };
+type DayHours = { open: string; close: string; closed?: boolean };
+type OperatingHours = Record<string, DayHours>;
+
+const DEFAULT_HOURS: OperatingHours = Object.fromEntries(
+  DAYS.map(d => [d, d === 'sun' ? { open: '09:00', close: '21:00', closed: true } : { open: '09:00', close: '21:00' }])
+);
+
+const TIME_OPTIONS: string[] = [];
+for (let h = 0; h < 24; h++) {
+  TIME_OPTIONS.push(`${String(h).padStart(2, '0')}:00`);
+  TIME_OPTIONS.push(`${String(h).padStart(2, '0')}:30`);
+}
+
 export default function ProviderStoreSection() {
   const t = useT();
   const { lang } = useI18n();
@@ -35,11 +50,12 @@ export default function ProviderStoreSection() {
   });
   const [storeNameTrans, setStoreNameTrans] = useState<Record<string, string>>(emptyTrans());
   const [storeDescTrans, setStoreDescTrans] = useState<Record<string, string>>(emptyTrans());
+  const [storeHours, setStoreHours] = useState<OperatingHours>({ ...DEFAULT_HOURS });
   const [selectedIndustryIds, setSelectedIndustryIds] = useState<string[]>([]);
   const [editStoreId, setEditStoreId] = useState('');
 
   // Service form
-  const [serviceForm, setServiceForm] = useState({ name: '', description: '', price: '', sort_order: '0' });
+  const [serviceForm, setServiceForm] = useState({ name: '', description: '', price: '', sort_order: '0', duration_minutes: '' });
   const [serviceNameTrans, setServiceNameTrans] = useState<Record<string, string>>(emptyTrans());
   const [serviceDescTrans, setServiceDescTrans] = useState<Record<string, string>>(emptyTrans());
   const [editServiceId, setEditServiceId] = useState('');
@@ -145,6 +161,7 @@ export default function ProviderStoreSection() {
       });
       setStoreNameTrans({ ...emptyTrans(), ...(store.name_translations || {}) });
       setStoreDescTrans({ ...emptyTrans(), ...(store.description_translations || {}) });
+      setStoreHours(store.operating_hours ? { ...DEFAULT_HOURS, ...store.operating_hours } : { ...DEFAULT_HOURS });
       setSelectedIndustryIds((store.industries || []).map(i => i.industry_id));
     } else {
       setEditStoreId('');
@@ -156,6 +173,7 @@ export default function ProviderStoreSection() {
       });
       setStoreNameTrans(emptyTrans());
       setStoreDescTrans(emptyTrans());
+      setStoreHours({ ...DEFAULT_HOURS });
       setSelectedIndustryIds([]);
     }
   };
@@ -177,6 +195,7 @@ export default function ProviderStoreSection() {
         longitude: storeForm.longitude ? parseFloat(storeForm.longitude) : undefined,
         avatar_url: storeForm.avatar_url || undefined,
         industry_ids: selectedIndustryIds,
+        operating_hours: storeHours,
         business_type: storeForm.business_type || undefined,
         business_subtype: storeForm.business_subtype || undefined,
         address_state_code: storeForm.address_state_code || undefined,
@@ -216,12 +235,13 @@ export default function ProviderStoreSection() {
       setServiceForm({
         name: svc.name || '', description: svc.description || '',
         price: svc.price != null ? String(svc.price) : '', sort_order: String(svc.sort_order || 0),
+        duration_minutes: svc.duration_minutes != null ? String(svc.duration_minutes) : '',
       });
       setServiceNameTrans({ ...emptyTrans(), ...(svc.name_translations || {}) });
       setServiceDescTrans({ ...emptyTrans(), ...(svc.description_translations || {}) });
     } else {
       setEditServiceId('');
-      setServiceForm({ name: '', description: '', price: '', sort_order: '0' });
+      setServiceForm({ name: '', description: '', price: '', sort_order: '0', duration_minutes: '' });
       setServiceNameTrans(emptyTrans());
       setServiceDescTrans(emptyTrans());
     }
@@ -237,6 +257,7 @@ export default function ProviderStoreSection() {
         description: serviceForm.description || undefined,
         description_translations: serviceDescTrans,
         price: serviceForm.price ? parseFloat(serviceForm.price) : undefined,
+        duration_minutes: serviceForm.duration_minutes ? parseInt(serviceForm.duration_minutes) : undefined,
         sort_order: parseInt(serviceForm.sort_order) || 0,
       };
       if (modalMode === 'edit') {
@@ -400,6 +421,11 @@ export default function ProviderStoreSection() {
                           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                             <div>
                               <strong>{svc.display_name || svc.name}</strong>
+                              {svc.duration_minutes != null && (
+                                <span style={{ marginLeft: 8, fontSize: 12, color: 'var(--text-muted)' }}>
+                                  {svc.duration_minutes}{t('booking.minutes', 'min')}
+                                </span>
+                              )}
                               {svc.price != null && (
                                 <span style={{ marginLeft: 8, color: 'var(--primary)', fontWeight: 600 }}>
                                   {svc.currency_code || ''} {svc.price.toLocaleString()}
@@ -569,6 +595,41 @@ export default function ProviderStoreSection() {
                     </div>
                   )}
 
+                  {/* ─── Operating Hours ─── */}
+                  <div className="form-group">
+                    <label className="form-label">{t('supplier.settings.hours_title', 'Operating Hours')}</label>
+                    <div className="sp-hours-grid">
+                      {DAYS.map(day => {
+                        const h = storeHours[day] || { open: '09:00', close: '21:00' };
+                        const isClosed = !!h.closed;
+                        return (
+                          <div key={day} className={`sp-hours-row${isClosed ? ' closed' : ''}`}>
+                            <input
+                              type="checkbox"
+                              checked={!isClosed}
+                              onChange={e => setStoreHours(prev => ({ ...prev, [day]: { ...prev[day], closed: !e.target.checked } }))}
+                              style={{ accentColor: 'var(--primary)' }}
+                            />
+                            <span className="sp-hours-day">{DAY_LABELS[day]}</span>
+                            {isClosed ? (
+                              <span className="sp-hours-closed-label">{t('supplier.settings.closed', 'Closed')}</span>
+                            ) : (
+                              <div className="sp-hours-time">
+                                <select value={h.open} onChange={e => setStoreHours(prev => ({ ...prev, [day]: { ...prev[day], open: e.target.value } }))}>
+                                  {TIME_OPTIONS.map(t => <option key={t} value={t}>{t}</option>)}
+                                </select>
+                                <span className="sp-hours-separator">~</span>
+                                <select value={h.close} onChange={e => setStoreHours(prev => ({ ...prev, [day]: { ...prev[day], close: e.target.value } }))}>
+                                  {TIME_OPTIONS.map(t => <option key={t} value={t}>{t}</option>)}
+                                </select>
+                              </div>
+                            )}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+
                   <div className="form-group">
                     <label className="form-label">{t('admin.store.form.avatar_url', 'Avatar URL')}</label>
                     <input className="form-input" value={storeForm.avatar_url} onChange={e => setStoreForm({ ...storeForm, avatar_url: e.target.value })} />
@@ -608,10 +669,14 @@ export default function ProviderStoreSection() {
                     <label className="form-label">{t('admin.store.form.description', 'Description')}</label>
                     <textarea className="form-textarea" value={serviceForm.description} onChange={e => setServiceForm({ ...serviceForm, description: e.target.value })} />
                   </div>
-                  <div className="form-row col2">
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 12 }}>
                     <div className="form-group">
                       <label className="form-label">{t('admin.store.form.price', 'Price')}</label>
                       <input className="form-input" type="number" value={serviceForm.price} onChange={e => setServiceForm({ ...serviceForm, price: e.target.value })} />
+                    </div>
+                    <div className="form-group">
+                      <label className="form-label">{t('booking.duration', 'Duration (min)')}</label>
+                      <input className="form-input" type="number" placeholder="60" value={serviceForm.duration_minutes} onChange={e => setServiceForm({ ...serviceForm, duration_minutes: e.target.value })} />
                     </div>
                     <div className="form-group">
                       <label className="form-label">{t('admin.store.form.sort_order', 'Sort Order')}</label>

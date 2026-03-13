@@ -2,6 +2,19 @@ import { useEffect, useState, useCallback } from 'react';
 import { api, type Store } from '../../lib/api';
 import { useI18n, useT } from '../../lib/i18n';
 
+const DAYS = ['mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun'] as const;
+const DAY_LABELS: Record<string, string> = { mon: 'Mon', tue: 'Tue', wed: 'Wed', thu: 'Thu', fri: 'Fri', sat: 'Sat', sun: 'Sun' };
+type DayHours = { open: string; close: string; closed?: boolean };
+type OperatingHours = Record<string, DayHours>;
+const DEFAULT_HOURS: OperatingHours = Object.fromEntries(
+  DAYS.map(d => [d, d === 'sun' ? { open: '09:00', close: '21:00', closed: true } : { open: '09:00', close: '21:00' }])
+);
+const TIME_OPTIONS: string[] = [];
+for (let h = 0; h < 24; h++) {
+  TIME_OPTIONS.push(`${String(h).padStart(2, '0')}:00`);
+  TIME_OPTIONS.push(`${String(h).padStart(2, '0')}:30`);
+}
+
 const OT_FEE_TYPES = [
   { value: 'free', i18nKey: 'supplier.settings.overtime_free' },
   { value: 'fixed', i18nKey: 'supplier.settings.overtime_fixed' },
@@ -19,6 +32,7 @@ export default function SupplierSettingsSection() {
   const [success, setSuccess] = useState('');
 
   // Settings form
+  const [operatingHours, setOperatingHours] = useState<OperatingHours>({ ...DEFAULT_HOURS });
   const [allowOvertime, setAllowOvertime] = useState(false);
   const [overtimeFeeType, setOvertimeFeeType] = useState('free');
   const [overtimeFeeAmount, setOvertimeFeeAmount] = useState(0);
@@ -47,17 +61,11 @@ export default function SupplierSettingsSection() {
     if (!selectedStoreId) return;
     const store = stores.find(s => s.id === selectedStoreId);
     if (!store) return;
-    // Read from store object fields (may have been added by 007 migration)
-    const s = store as Store & {
-      allow_overtime?: boolean;
-      overtime_fee_type?: string;
-      overtime_fee_amount?: number;
-      review_public?: boolean;
-    };
-    setAllowOvertime(!!s.allow_overtime);
-    setOvertimeFeeType(s.overtime_fee_type || 'free');
-    setOvertimeFeeAmount(s.overtime_fee_amount || 0);
-    setReviewPublic(s.review_public !== false);
+    setOperatingHours(store.operating_hours ? { ...DEFAULT_HOURS, ...store.operating_hours } : { ...DEFAULT_HOURS });
+    setAllowOvertime(!!store.allow_overtime);
+    setOvertimeFeeType(store.overtime_fee_type || 'free');
+    setOvertimeFeeAmount(store.overtime_fee_amount || 0);
+    setReviewPublic(store.review_public !== false);
   }, [selectedStoreId, stores]);
 
   async function handleSave() {
@@ -67,6 +75,7 @@ export default function SupplierSettingsSection() {
     setSuccess('');
     try {
       await api.stores.settings(selectedStoreId, {
+        operatingHours,
         allowOvertime,
         overtimeFeeType,
         overtimeFeeAmount,
@@ -107,6 +116,61 @@ export default function SupplierSettingsSection() {
               </select>
             </div>
           )}
+
+          {/* Operating hours */}
+          <div style={{ marginBottom: 20 }}>
+            <h4 style={{ fontSize: 15, fontWeight: 600, marginBottom: 12, color: 'var(--text)' }}>
+              {t('supplier.settings.hours_title', 'Operating Hours')}
+            </h4>
+            <div className="sp-hours-grid">
+              {DAYS.map(day => {
+                const dh = operatingHours[day] || { open: '09:00', close: '21:00' };
+                return (
+                  <div key={day} className="sp-hours-row">
+                    <input
+                      type="checkbox"
+                      checked={!dh.closed}
+                      onChange={e => setOperatingHours(prev => ({
+                        ...prev,
+                        [day]: { ...prev[day], closed: !e.target.checked }
+                      }))}
+                      style={{ width: 16, height: 16, accentColor: 'var(--primary)' }}
+                    />
+                    <span className="sp-hours-day">{DAY_LABELS[day]}</span>
+                    {dh.closed ? (
+                      <span style={{ fontSize: 13, color: 'var(--text-muted)', fontStyle: 'italic' }}>
+                        {t('supplier.settings.closed', 'Closed')}
+                      </span>
+                    ) : (
+                      <span className="sp-hours-time">
+                        <select
+                          className="form-select"
+                          value={dh.open}
+                          onChange={e => setOperatingHours(prev => ({
+                            ...prev,
+                            [day]: { ...prev[day], open: e.target.value }
+                          }))}
+                        >
+                          {TIME_OPTIONS.map(t => <option key={t} value={t}>{t}</option>)}
+                        </select>
+                        <span style={{ color: 'var(--text-muted)' }}>~</span>
+                        <select
+                          className="form-select"
+                          value={dh.close}
+                          onChange={e => setOperatingHours(prev => ({
+                            ...prev,
+                            [day]: { ...prev[day], close: e.target.value }
+                          }))}
+                        >
+                          {TIME_OPTIONS.map(t => <option key={t} value={t}>{t}</option>)}
+                        </select>
+                      </span>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          </div>
 
           {/* Overtime settings */}
           <div style={{ marginBottom: 20 }}>
