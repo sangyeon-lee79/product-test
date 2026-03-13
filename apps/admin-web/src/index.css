@@ -3812,9 +3812,9 @@ html[data-theme="dark"] .pf-card--health .pf-friend-btn--add { border-color: #F5
 
 /* ── Health toolkit — color-coded action tiles ── */
 .pf-gd-toolkit {
-  display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 8px;
+  display: flex; gap: 10px; align-items: stretch; margin-bottom: 8px;
 }
-.pf-gd-toolkit-group { display: flex; gap: 8px; flex-wrap: wrap; }
+.pf-gd-toolkit-group { display: flex; gap: 8px; flex-wrap: wrap; flex-shrink: 0; }
 .pf-gd-tool-tile {
   display: flex; flex-direction: column; align-items: center; gap: 6px;
   padding: 14px 16px; border-radius: 16px; border: 1px solid var(--border);
@@ -3870,7 +3870,7 @@ html[data-theme="dark"] .pf-card--health .pf-friend-btn--add { border-color: #F5
 /* ── Setup Banner ── */
 .pf-gd-setup-banner {
   display: flex; align-items: center; gap: 14px;
-  padding: 14px 18px; margin-bottom: 10px;
+  padding: 14px 18px; flex: 1; min-width: 0;
   border-radius: 16px; border: 1px solid #c7d2fe;
   background: linear-gradient(135deg, #eef2ff 0%, #e0e7ff 50%, #dbeafe 100%);
 }
@@ -4697,12 +4697,12 @@ html[data-theme="dark"] .pf-gd-pet-switch { background: var(--surface); }
   .pf-gd-pet-ring { width: 52px; height: 52px; }
   .pf-gd-pet-ring-inner { width: 44px; height: 44px; font-size: 14px; }
   .pf-gd-pet-ring--add { width: 52px; height: 52px; font-size: 18px; }
-  .pf-gd-toolkit { gap: 6px; }
+  .pf-gd-toolkit { gap: 6px; flex-wrap: wrap; }
   .pf-gd-tool-tile { padding: 10px 12px; min-width: 64px; border-radius: 12px; }
   .pf-gd-tool-icon { font-size: 18px; }
   .pf-gd-tool-label { font-size: 10px; }
   .pf-gd-setup-icons { display: none; }
-  .pf-gd-setup-banner { padding: 12px 14px; gap: 10px; border-radius: 12px; }
+  .pf-gd-setup-banner { padding: 12px 14px; gap: 10px; border-radius: 12px; flex-basis: 100%; }
   .pf-gd-setup-title { font-size: 12px; }
   .pf-gd-setup-desc { font-size: 11px; }
   .pf-gd-section { border-radius: 16px; }

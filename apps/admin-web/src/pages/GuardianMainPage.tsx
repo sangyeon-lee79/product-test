@@ -926,7 +926,7 @@ export default function GuardianMainPage() {
               {/* ── Health ── */}
               {petTab === 'health' && selectedPet && (
                 <>
-                      {/* ── Health Toolkit ── */}
+                      {/* ── Health Toolkit + Setup Banner ── */}
                       <div className="pf-gd-toolkit">
                         <div className="pf-gd-toolkit-group">
                           <button className="pf-gd-tool-tile" onClick={() => { setEditingWeightLog(null); setWeightModalOpen(true); }}>
@@ -950,16 +950,14 @@ export default function GuardianMainPage() {
                             <span className="pf-gd-tool-label">{t('guardian.health.medication_log', '약품 기록')}</span>
                           </button>
                         </div>
+                        <SetupBanner
+                          petId={selectedPet?.id}
+                          devices={guardianDevices}
+                          feeds={petFeeds}
+                          onOpenDeviceManage={() => setDeviceManageModalOpen(true)}
+                          onOpenFeedManage={() => setFeedManageModalOpen(true)}
+                        />
                       </div>
-
-                      {/* ── Setup Banner (devices + feeds) ── */}
-                      <SetupBanner
-                        petId={selectedPet?.id}
-                        devices={guardianDevices}
-                        feeds={petFeeds}
-                        onOpenDeviceManage={() => setDeviceManageModalOpen(true)}
-                        onOpenFeedManage={() => setFeedManageModalOpen(true)}
-                      />
 
                       {/* ── Timeline ── */}
                       <div className="pf-gd-section">
