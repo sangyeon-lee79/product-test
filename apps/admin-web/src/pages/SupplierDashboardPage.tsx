@@ -171,6 +171,9 @@ export default function SupplierDashboardPage() {
   const [completionMedia, setCompletionMedia] = useState('');
   const me = useMemo(() => decodeToken(), []);
 
+  // Tab state
+  const [spTab, setSpTab] = useState<'store' | 'appointments' | 'feed' | 'settings'>('store');
+
   // Feed state
   const [supplierFeeds, setSupplierFeeds] = useState<FeedPost[]>([]);
   const [composeOpen, setComposeOpen] = useState(false);
@@ -368,116 +371,312 @@ export default function SupplierDashboardPage() {
 
   /* ─── Approved: full dashboard ─── */
   return (
-    <div className="provider-page" style={{ padding: 24, display: 'grid', gap: 20 }}>
-      <section className="card" style={{ overflow: 'hidden' }}>
-        <div className="card-body" style={{ background: 'linear-gradient(135deg, #fff7ed 0%, #ffffff 60%, #fef3c7 100%)' }}>
-          <p className="hero-eyebrow">{t('admin.provider.hero.eyebrow')}</p>
-          <div style={{ display: 'flex', justifyContent: 'space-between', gap: 16, alignItems: 'flex-start', flexWrap: 'wrap' }}>
-            <div>
-              <h2 style={{ fontSize: 30, lineHeight: 1.1, marginBottom: 8 }}>{t('admin.provider.hero.title')}</h2>
-              <p style={{ color: 'var(--text-muted)', maxWidth: 720 }}>
-                {t('admin.provider.hero.description')}
-              </p>
-            </div>
-            <div style={{ minWidth: 240, padding: 16, background: 'rgba(255,255,255,0.8)', border: '1px solid var(--border)', borderRadius: 12 }}>
-              <div style={{ fontSize: 12, color: 'var(--text-muted)', marginBottom: 6 }}>{t('admin.provider.account.current')}</div>
-              <div style={{ fontWeight: 700 }}>{me.email || t('admin.provider.account.fallback_email')}</div>
-              <div style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 4 }}>{t('admin.provider.account.supplier_id')}: {me.sub || '-'}</div>
-              <button className="btn btn-secondary btn-sm" style={{ marginTop: 12 }} onClick={handleLogout}>
-                {t('admin.common.logout', '로그아웃')}
-              </button>
-            </div>
+    <div className="sp-page">
+      {/* ── Hero (always visible) ── */}
+      <div className="sp-hero">
+        <div className="sp-hero-inner">
+          <div>
+            <div className="sp-hero-eyebrow">{t('admin.provider.hero.eyebrow')}</div>
+            <h2>{t('admin.provider.hero.title')}</h2>
+            <p className="sp-hero-desc">{t('admin.provider.hero.description')}</p>
+          </div>
+          <div className="sp-hero-account">
+            <div className="sp-hero-account-label">{t('admin.provider.account.current')}</div>
+            <div className="sp-hero-account-email">{me.email || t('admin.provider.account.fallback_email')}</div>
+            <div className="sp-hero-account-id">{t('admin.provider.account.supplier_id')}: {me.sub || '-'}</div>
+            <button className="btn btn-secondary btn-sm" style={{ marginTop: 10 }} onClick={handleLogout}>
+              {t('admin.common.logout', 'Logout')}
+            </button>
           </div>
         </div>
-      </section>
+      </div>
 
       {error ? <div className="alert alert-error">{error}</div> : null}
       {message ? <div className="alert alert-success">{message}</div> : null}
 
-      <section className="provider-stats-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 12 }}>
-        <div className="card"><div className="card-body"><div className="text-muted">{t('admin.provider.stats.total')}</div><div style={{ fontSize: 28, fontWeight: 700 }}>{stats.total}</div></div></div>
-        <div className="card"><div className="card-body"><div className="text-muted">{t('admin.provider.stats.pending')}</div><div style={{ fontSize: 28, fontWeight: 700 }}>{stats.pending}</div></div></div>
-        <div className="card"><div className="card-body"><div className="text-muted">{t('admin.provider.stats.active')}</div><div style={{ fontSize: 28, fontWeight: 700 }}>{stats.active}</div></div></div>
-        <div className="card"><div className="card-body"><div className="text-muted">{t('admin.provider.stats.approval')}</div><div style={{ fontSize: 28, fontWeight: 700 }}>{stats.approval}</div></div></div>
-      </section>
+      {/* ── Stats (always visible) ── */}
+      <div className="sp-stats">
+        <div className="sp-stat-card">
+          <div className="sp-stat-label">{t('admin.provider.stats.total')}</div>
+          <div className="sp-stat-value">{stats.total}</div>
+        </div>
+        <div className="sp-stat-card">
+          <div className="sp-stat-label">{t('admin.provider.stats.pending')}</div>
+          <div className="sp-stat-value">{stats.pending}</div>
+        </div>
+        <div className="sp-stat-card">
+          <div className="sp-stat-label">{t('admin.provider.stats.active')}</div>
+          <div className="sp-stat-value">{stats.active}</div>
+        </div>
+        <div className="sp-stat-card">
+          <div className="sp-stat-label">{t('admin.provider.stats.approval')}</div>
+          <div className="sp-stat-value">{stats.approval}</div>
+        </div>
+      </div>
 
-      <ProviderStoreSection />
+      {/* ── Tab bar ── */}
+      <div className="sp-tabs">
+        <button className={`sp-tab${spTab === 'store' ? ' active' : ''}`} onClick={() => setSpTab('store')}>
+          {t('supplier.tab.store', 'Store')}
+        </button>
+        <button className={`sp-tab${spTab === 'appointments' ? ' active' : ''}`} onClick={() => setSpTab('appointments')}>
+          {t('supplier.tab.appointments', 'Appointments')}
+        </button>
+        <button className={`sp-tab${spTab === 'feed' ? ' active' : ''}`} onClick={() => setSpTab('feed')}>
+          {t('supplier.tab.feed', 'Feed')}
+        </button>
+        <button className={`sp-tab${spTab === 'settings' ? ' active' : ''}`} onClick={() => setSpTab('settings')}>
+          {t('supplier.tab.settings', 'Settings')}
+        </button>
+      </div>
 
-      {/* ── Appointment Management Section ── */}
-      <section className="card" style={{ marginTop: 20 }}>
-        <div className="card-header">
-          <div className="card-title">{t('supplier.appointment.new_request', 'Appointment Management')}</div>
-        </div>
-        <div className="card-body">
-          <AppointmentSection t={t} locale={LANG_TO_LOCALE[lang] || 'en-US'} />
-        </div>
-      </section>
+      {/* ── Tab content ── */}
+      <div className="sp-content">
+        {/* Store tab */}
+        {spTab === 'store' && <ProviderStoreSection />}
 
-      {/* ── Store Settings Section ── */}
-      <section className="card" style={{ marginTop: 20 }}>
-        <div className="card-header">
-          <div className="card-title">{t('supplier.settings.title', 'Store Settings')}</div>
-        </div>
-        <div className="card-body">
-          <SupplierSettingsSection />
-        </div>
-      </section>
+        {/* Appointments tab */}
+        {spTab === 'appointments' && (
+          <>
+            <section className="sp-card">
+              <div className="sp-card-header">
+                <span>{t('supplier.appointment.new_request', 'Appointment Management')}</span>
+              </div>
+              <div className="sp-card-body">
+                <AppointmentSection t={t} locale={LANG_TO_LOCALE[lang] || 'en-US'} />
+              </div>
+            </section>
 
-      {/* ── Supplier Feed Section ── */}
-      <section className="card">
-        <div className="card-header">
-          <div className="card-title">{t('supplier.feed.title', 'My Posts')}</div>
-          <button className="btn btn-primary btn-sm" onClick={() => setComposeOpen(true)}>+ {t('guardian.feed.post', 'Post')}</button>
-        </div>
-        <div className="card-body">
-          <div className="pf-gd-compose" onClick={() => setComposeOpen(true)} style={{ marginBottom: 16 }}>
-            <div className="pf-gd-compose-avatar">{(me.email || '?')[0].toUpperCase()}</div>
-            <div className="pf-gd-compose-text">{t('supplier.post.placeholder', 'Share your business news')}</div>
-            <span style={{ fontSize: 18, color: 'var(--text-muted)' }}>📷</span>
-          </div>
-          {feedLoading && <div className="loading-center"><span className="spinner" /></div>}
-          {!feedLoading && supplierFeeds.length === 0 && (
-            <div style={{ textAlign: 'center', padding: '24px 0', color: 'var(--text-muted)' }}>
-              {t('supplier.feed.empty', 'No posts yet.')}
-            </div>
-          )}
-          {supplierFeeds.map((f) => {
-            const media = Array.isArray(f.media_urls) ? f.media_urls : [];
-            const postType = (f.post_type || 'GENERAL').toUpperCase();
-            return (
-              <div key={f.id} className="pf-gd-feed-card">
-                <div className="pf-gd-feed-header">
-                  <div className="pf-gd-feed-avatar">{(f.author_email || '?')[0].toUpperCase()}</div>
-                  <div className="pf-gd-feed-info">
-                    <div className="pf-gd-feed-author">{f.author_email || '-'}</div>
-                    <div className="pf-gd-feed-time">{fmtRelativeDate(f.created_at, lang)}</div>
-                  </div>
-                  <div className="pf-gd-feed-right">
-                    {postType !== 'GENERAL' && (
-                      <span className={`pf-badge pf-badge--post-type pf-badge--${postType.toLowerCase()}`}>
-                        {t(`supplier.post.type.${postType.toLowerCase()}`, postType)}
-                      </span>
-                    )}
-                    <button className="btn btn-danger btn-sm" style={{ fontSize: 12 }} onClick={() => removeSupplierFeed(f.id)}>🗑️</button>
-                  </div>
-                </div>
-                <div className="pf-gd-feed-body">
-                  {f.caption && <p className="pf-gd-feed-caption">{f.caption}</p>}
-                  {media[0] && (
-                    <div className="pf-gd-feed-image-wrap">
-                      <img className="pf-gd-feed-image" src={media[0]} alt={f.caption || 'feed'} loading="lazy" />
-                    </div>
-                  )}
-                </div>
-                <div className="pf-gd-feed-actions">
-                  <span className="pf-gd-feed-action">♥ {f.like_count || 0}</span>
-                  <span className="pf-gd-feed-action">💬 {f.comment_count || 0}</span>
+            {/* Booking list + detail 2-column */}
+            <section className="sp-card">
+              <div className="sp-card-header">
+                <span>{t('admin.provider.list.title')}</span>
+                <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                  <select className="form-select" value={filter} onChange={(e) => setFilter(e.target.value as BookingFilter)} style={{ minWidth: 160 }}>
+                    <option value="all">{t('admin.provider.filter.all')}</option>
+                    {statusOptions.map((option) => (
+                      <option key={option.value} value={option.value}>{option.label}</option>
+                    ))}
+                  </select>
+                  <button className="btn btn-secondary btn-sm" onClick={() => void loadBookings()} disabled={loading}>{t('admin.provider.action.refresh')}</button>
                 </div>
               </div>
-            );
-          })}
-        </div>
-      </section>
+              <div className="sp-card-body" style={{ padding: 0 }}>
+                <div style={{ display: 'grid', gridTemplateColumns: 'minmax(320px, 1.1fr) minmax(280px, 0.9fr)', alignItems: 'start' }}>
+                  {/* Booking list */}
+                  <div style={{ borderRight: '1px solid var(--border)' }}>
+                    {loading ? (
+                      <div style={{ padding: 20, color: 'var(--text-muted)' }}>{t('admin.provider.list.loading')}</div>
+                    ) : filteredBookings.length === 0 ? (
+                      <div style={{ padding: 20, color: 'var(--text-muted)' }}>{t('admin.provider.list.empty')}</div>
+                    ) : (
+                      <div style={{ display: 'grid' }}>
+                        {filteredBookings.map((booking) => {
+                          const meta = STATUS_META[booking.status] || { labelKey: 'admin.provider.booking.status.unknown', badge: 'badge-gray' };
+                          const active = booking.id === selectedBooking?.id;
+                          return (
+                            <button
+                              key={booking.id}
+                              type="button"
+                              onClick={() => setSelectedId(booking.id)}
+                              style={{
+                                border: 0,
+                                background: active ? 'rgba(245,130,58,.08)' : 'transparent',
+                                borderBottom: '1px solid var(--border)',
+                                padding: 16,
+                                textAlign: 'left',
+                                cursor: 'pointer',
+                              }}
+                            >
+                              <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, marginBottom: 8, alignItems: 'center' }}>
+                                <strong style={{ fontSize: 13 }}>{booking.id}</strong>
+                                <span className={`badge ${meta.badge}`}>{t(meta.labelKey)}</span>
+                              </div>
+                              <div style={{ display: 'grid', gap: 3, color: 'var(--text-muted)', fontSize: 12 }}>
+                                <div>{t('admin.provider.list.guardian')}: {booking.guardian_id}</div>
+                                <div>{t('admin.provider.list.pet')}: {booking.pet_id || '-'}</div>
+                                <div>{t('admin.provider.list.requested_at')}: {fmtDateTime(booking.requested_date, booking.requested_time)}</div>
+                                <div>{t('admin.provider.list.updated_at')}: {fmtRelativeDate(booking.updated_at, locale)}</div>
+                              </div>
+                            </button>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Booking detail */}
+                  <div style={{ padding: 20, display: 'grid', gap: 16 }}>
+                    {!selectedBooking ? (
+                      <div style={{ color: 'var(--text-muted)' }}>{t('admin.provider.detail.empty')}</div>
+                    ) : (
+                      <>
+                        <div style={{ display: 'grid', gap: 10 }}>
+                          <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, alignItems: 'center', flexWrap: 'wrap' }}>
+                            <strong style={{ fontSize: 16 }}>{selectedBooking.id}</strong>
+                            <span className={`badge ${(STATUS_META[selectedBooking.status] || STATUS_META.cancelled).badge}`}>
+                              {t((STATUS_META[selectedBooking.status] || { labelKey: 'admin.provider.booking.status.unknown' }).labelKey)}
+                            </span>
+                          </div>
+                          <div className="form-row col2">
+                            <div className="form-group" style={{ marginBottom: 0 }}>
+                              <div className="form-label">{t('admin.provider.detail.guardian_id')}</div>
+                              <div>{selectedBooking.guardian_id}</div>
+                            </div>
+                            <div className="form-group" style={{ marginBottom: 0 }}>
+                              <div className="form-label">{t('admin.provider.detail.pet_id')}</div>
+                              <div>{selectedBooking.pet_id || '-'}</div>
+                            </div>
+                            <div className="form-group" style={{ marginBottom: 0 }}>
+                              <div className="form-label">{t('admin.provider.detail.requested_at')}</div>
+                              <div>{fmtDateTime(selectedBooking.requested_date, selectedBooking.requested_time)}</div>
+                            </div>
+                            <div className="form-group" style={{ marginBottom: 0 }}>
+                              <div className="form-label">{t('admin.provider.detail.business_category')}</div>
+                              <div>{selectedBooking.business_category_id || '-'}</div>
+                            </div>
+                          </div>
+                          <div className="form-group" style={{ marginBottom: 0 }}>
+                            <div className="form-label">{t('admin.provider.detail.guardian_note')}</div>
+                            <div style={{ whiteSpace: 'pre-wrap' }}>{selectedBooking.notes || '-'}</div>
+                          </div>
+                        </div>
+
+                        <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                          <button
+                            className="btn btn-secondary btn-sm"
+                            onClick={() => void changeStatus(selectedBooking.id, 'in_progress')}
+                            disabled={busyId === selectedBooking.id || !['created', 'in_progress'].includes(selectedBooking.status)}
+                          >
+                            {t('admin.provider.action.start_progress')}
+                          </button>
+                          <button
+                            className="btn btn-primary btn-sm"
+                            onClick={() => void changeStatus(selectedBooking.id, 'service_completed')}
+                            disabled={busyId === selectedBooking.id || !['in_progress', 'service_completed', 'publish_rejected'].includes(selectedBooking.status)}
+                          >
+                            {t('admin.provider.action.complete_service')}
+                          </button>
+                          <button
+                            className="btn btn-danger btn-sm"
+                            onClick={() => void changeStatus(selectedBooking.id, 'cancelled')}
+                            disabled={busyId === selectedBooking.id || selectedBooking.status === 'cancelled'}
+                          >
+                            {t('admin.provider.action.cancel_booking')}
+                          </button>
+                        </div>
+
+                        <div style={{ borderTop: '1px solid var(--border)', paddingTop: 14, display: 'grid', gap: 10 }}>
+                          <div>
+                            <div style={{ fontWeight: 600, marginBottom: 4, fontSize: 14 }}>{t('admin.provider.completion.title')}</div>
+                            <p style={{ color: 'var(--text-muted)', fontSize: 12 }}>
+                              {t('admin.provider.completion.description')}
+                            </p>
+                          </div>
+                          <div className="form-group" style={{ marginBottom: 0 }}>
+                            <label className="form-label">{t('admin.provider.completion.memo')}</label>
+                            <textarea
+                              className="form-textarea"
+                              value={completionMemo}
+                              onChange={(e) => setCompletionMemo(e.target.value)}
+                              placeholder={t('admin.provider.completion.memo_placeholder')}
+                            />
+                          </div>
+                          <div className="form-group" style={{ marginBottom: 0 }}>
+                            <label className="form-label">{t('admin.provider.completion.media_urls')}</label>
+                            <textarea
+                              className="form-textarea"
+                              value={completionMedia}
+                              onChange={(e) => setCompletionMedia(e.target.value)}
+                              placeholder={t('admin.provider.completion.media_placeholder')}
+                            />
+                          </div>
+                          <button
+                            className="btn btn-primary btn-sm"
+                            onClick={() => void requestCompletion()}
+                            disabled={busyId === selectedBooking.id || !['service_completed', 'publish_rejected', 'publish_requested'].includes(selectedBooking.status)}
+                          >
+                            {t('admin.provider.action.request_completion')}
+                          </button>
+                        </div>
+                      </>
+                    )}
+                  </div>
+                </div>
+              </div>
+            </section>
+          </>
+        )}
+
+        {/* Feed tab */}
+        {spTab === 'feed' && (
+          <section className="sp-card">
+            <div className="sp-card-header">
+              <span>{t('supplier.feed.title', 'My Posts')}</span>
+              <button className="btn btn-primary btn-sm" onClick={() => setComposeOpen(true)}>+ {t('guardian.feed.post', 'Post')}</button>
+            </div>
+            <div className="sp-card-body">
+              <div className="pf-gd-compose" onClick={() => setComposeOpen(true)} style={{ marginBottom: 16 }}>
+                <div className="pf-gd-compose-avatar">{(me.email || '?')[0].toUpperCase()}</div>
+                <div className="pf-gd-compose-text">{t('supplier.post.placeholder', 'Share your business news')}</div>
+              </div>
+              {feedLoading && <div className="loading-center"><span className="spinner" /></div>}
+              {!feedLoading && supplierFeeds.length === 0 && (
+                <div style={{ textAlign: 'center', padding: '24px 0', color: 'var(--text-muted)' }}>
+                  {t('supplier.feed.empty', 'No posts yet.')}
+                </div>
+              )}
+              {supplierFeeds.map((f) => {
+                const media = Array.isArray(f.media_urls) ? f.media_urls : [];
+                const postType = (f.post_type || 'GENERAL').toUpperCase();
+                return (
+                  <div key={f.id} className="pf-gd-feed-card">
+                    <div className="pf-gd-feed-header">
+                      <div className="pf-gd-feed-avatar">{(f.author_email || '?')[0].toUpperCase()}</div>
+                      <div className="pf-gd-feed-info">
+                        <div className="pf-gd-feed-author">{f.author_email || '-'}</div>
+                        <div className="pf-gd-feed-time">{fmtRelativeDate(f.created_at, lang)}</div>
+                      </div>
+                      <div className="pf-gd-feed-right">
+                        {postType !== 'GENERAL' && (
+                          <span className={`pf-badge pf-badge--post-type pf-badge--${postType.toLowerCase()}`}>
+                            {t(`supplier.post.type.${postType.toLowerCase()}`, postType)}
+                          </span>
+                        )}
+                        <button className="btn btn-danger btn-sm" style={{ fontSize: 12 }} onClick={() => removeSupplierFeed(f.id)}>🗑️</button>
+                      </div>
+                    </div>
+                    <div className="pf-gd-feed-body">
+                      {f.caption && <p className="pf-gd-feed-caption">{f.caption}</p>}
+                      {media[0] && (
+                        <div className="pf-gd-feed-image-wrap">
+                          <img className="pf-gd-feed-image" src={media[0]} alt={f.caption || 'feed'} loading="lazy" />
+                        </div>
+                      )}
+                    </div>
+                    <div className="pf-gd-feed-actions">
+                      <span className="pf-gd-feed-action">♥ {f.like_count || 0}</span>
+                      <span className="pf-gd-feed-action">💬 {f.comment_count || 0}</span>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </section>
+        )}
+
+        {/* Settings tab */}
+        {spTab === 'settings' && (
+          <section className="sp-card">
+            <div className="sp-card-header">
+              <span>{t('supplier.settings.title', 'Store Settings')}</span>
+            </div>
+            <div className="sp-card-body">
+              <SupplierSettingsSection />
+            </div>
+          </section>
+        )}
+      </div>
 
       <ComposeModal
         open={composeOpen}
@@ -489,165 +688,6 @@ export default function SupplierDashboardPage() {
         onClose={() => setComposeOpen(false)}
         onSuccess={() => void loadSupplierFeeds()}
       />
-
-      <section className="provider-booking-layout" style={{ display: 'grid', gridTemplateColumns: 'minmax(360px, 1.1fr) minmax(320px, 0.9fr)', gap: 20, alignItems: 'start' }}>
-        <div className="card">
-          <div className="card-header">
-            <div className="card-title">{t('admin.provider.list.title')}</div>
-            <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-              <select className="form-select" value={filter} onChange={(e) => setFilter(e.target.value as BookingFilter)} style={{ minWidth: 160 }}>
-                <option value="all">{t('admin.provider.filter.all')}</option>
-                {statusOptions.map((option) => (
-                  <option key={option.value} value={option.value}>{option.label}</option>
-                ))}
-              </select>
-              <button className="btn btn-secondary btn-sm" onClick={() => void loadBookings()} disabled={loading}>{t('admin.provider.action.refresh')}</button>
-            </div>
-          </div>
-          <div className="card-body" style={{ padding: 0 }}>
-            {loading ? (
-              <div style={{ padding: 20, color: 'var(--text-muted)' }}>{t('admin.provider.list.loading')}</div>
-            ) : filteredBookings.length === 0 ? (
-              <div style={{ padding: 20, color: 'var(--text-muted)' }}>{t('admin.provider.list.empty')}</div>
-            ) : (
-              <div style={{ display: 'grid' }}>
-                {filteredBookings.map((booking) => {
-                  const meta = STATUS_META[booking.status] || { labelKey: 'admin.provider.booking.status.unknown', badge: 'badge-gray' };
-                  const active = booking.id === selectedBooking?.id;
-                  return (
-                    <button
-                      key={booking.id}
-                      type="button"
-                      onClick={() => setSelectedId(booking.id)}
-                      style={{
-                        border: 0,
-                        background: active ? '#fff7ed' : 'transparent',
-                        borderBottom: '1px solid var(--border)',
-                        padding: 18,
-                        textAlign: 'left',
-                        cursor: 'pointer',
-                      }}
-                    >
-                      <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, marginBottom: 10, alignItems: 'center' }}>
-                        <strong>{booking.id}</strong>
-                        <span className={`badge ${meta.badge}`}>{t(meta.labelKey)}</span>
-                      </div>
-                      <div style={{ display: 'grid', gap: 4, color: 'var(--text-muted)', fontSize: 13 }}>
-                        <div>{t('admin.provider.list.guardian')}: {booking.guardian_id}</div>
-                        <div>{t('admin.provider.list.pet')}: {booking.pet_id || '-'}</div>
-                        <div>{t('admin.provider.list.requested_at')}: {fmtDateTime(booking.requested_date, booking.requested_time)}</div>
-                        <div>{t('admin.provider.list.updated_at')}: {fmtRelativeDate(booking.updated_at, locale)}</div>
-                      </div>
-                    </button>
-                  );
-                })}
-              </div>
-            )}
-          </div>
-        </div>
-
-        <div className="card">
-          <div className="card-header">
-            <div className="card-title">{t('admin.provider.detail.title')}</div>
-          </div>
-          <div className="card-body" style={{ display: 'grid', gap: 16 }}>
-            {!selectedBooking ? (
-              <div style={{ color: 'var(--text-muted)' }}>{t('admin.provider.detail.empty')}</div>
-            ) : (
-              <>
-                <div style={{ display: 'grid', gap: 10 }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, alignItems: 'center', flexWrap: 'wrap' }}>
-                    <strong style={{ fontSize: 18 }}>{selectedBooking.id}</strong>
-                    <span className={`badge ${(STATUS_META[selectedBooking.status] || STATUS_META.cancelled).badge}`}>
-                      {t((STATUS_META[selectedBooking.status] || { labelKey: 'admin.provider.booking.status.unknown' }).labelKey)}
-                    </span>
-                  </div>
-                  <div className="form-row col2">
-                    <div className="form-group" style={{ marginBottom: 0 }}>
-                      <div className="form-label">{t('admin.provider.detail.guardian_id')}</div>
-                      <div>{selectedBooking.guardian_id}</div>
-                    </div>
-                    <div className="form-group" style={{ marginBottom: 0 }}>
-                      <div className="form-label">{t('admin.provider.detail.pet_id')}</div>
-                      <div>{selectedBooking.pet_id || '-'}</div>
-                    </div>
-                    <div className="form-group" style={{ marginBottom: 0 }}>
-                      <div className="form-label">{t('admin.provider.detail.requested_at')}</div>
-                      <div>{fmtDateTime(selectedBooking.requested_date, selectedBooking.requested_time)}</div>
-                    </div>
-                    <div className="form-group" style={{ marginBottom: 0 }}>
-                      <div className="form-label">{t('admin.provider.detail.business_category')}</div>
-                      <div>{selectedBooking.business_category_id || '-'}</div>
-                    </div>
-                  </div>
-                  <div className="form-group" style={{ marginBottom: 0 }}>
-                    <div className="form-label">{t('admin.provider.detail.guardian_note')}</div>
-                    <div style={{ whiteSpace: 'pre-wrap' }}>{selectedBooking.notes || '-'}</div>
-                  </div>
-                </div>
-
-                <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-                  <button
-                    className="btn btn-secondary"
-                    onClick={() => void changeStatus(selectedBooking.id, 'in_progress')}
-                    disabled={busyId === selectedBooking.id || !['created', 'in_progress'].includes(selectedBooking.status)}
-                  >
-                    {t('admin.provider.action.start_progress')}
-                  </button>
-                  <button
-                    className="btn btn-primary"
-                    onClick={() => void changeStatus(selectedBooking.id, 'service_completed')}
-                    disabled={busyId === selectedBooking.id || !['in_progress', 'service_completed', 'publish_rejected'].includes(selectedBooking.status)}
-                  >
-                    {t('admin.provider.action.complete_service')}
-                  </button>
-                  <button
-                    className="btn btn-danger"
-                    onClick={() => void changeStatus(selectedBooking.id, 'cancelled')}
-                    disabled={busyId === selectedBooking.id || selectedBooking.status === 'cancelled'}
-                  >
-                    {t('admin.provider.action.cancel_booking')}
-                  </button>
-                </div>
-
-                <div style={{ borderTop: '1px solid var(--border)', paddingTop: 16, display: 'grid', gap: 12 }}>
-                  <div>
-                    <div style={{ fontWeight: 600, marginBottom: 4 }}>{t('admin.provider.completion.title')}</div>
-                    <p style={{ color: 'var(--text-muted)', fontSize: 13 }}>
-                      {t('admin.provider.completion.description')}
-                    </p>
-                  </div>
-                  <div className="form-group" style={{ marginBottom: 0 }}>
-                    <label className="form-label">{t('admin.provider.completion.memo')}</label>
-                    <textarea
-                      className="form-textarea"
-                      value={completionMemo}
-                      onChange={(e) => setCompletionMemo(e.target.value)}
-                      placeholder={t('admin.provider.completion.memo_placeholder')}
-                    />
-                  </div>
-                  <div className="form-group" style={{ marginBottom: 0 }}>
-                    <label className="form-label">{t('admin.provider.completion.media_urls')}</label>
-                    <textarea
-                      className="form-textarea"
-                      value={completionMedia}
-                      onChange={(e) => setCompletionMedia(e.target.value)}
-                      placeholder={t('admin.provider.completion.media_placeholder')}
-                    />
-                  </div>
-                  <button
-                    className="btn btn-primary"
-                    onClick={() => void requestCompletion()}
-                    disabled={busyId === selectedBooking.id || !['service_completed', 'publish_rejected', 'publish_requested'].includes(selectedBooking.status)}
-                  >
-                    {t('admin.provider.action.request_completion')}
-                  </button>
-                </div>
-              </>
-            )}
-          </div>
-        </div>
-      </section>
     </div>
   );
 }

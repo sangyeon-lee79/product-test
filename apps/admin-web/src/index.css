@@ -5564,6 +5564,115 @@ html[data-theme="dark"] .gm-review-card { background: var(--surface); }
 .sp-hours-closed-label { font-size: 12px; color: var(--text-muted); font-style: italic; }
 html[data-theme="dark"] .sp-hours-time select { background: var(--surface); border-color: var(--border); }
 
+/* ─── Supplier Dashboard — Tab-based Layout ─── */
+.sp-page { min-height: 100vh; background: var(--bg); padding: 24px; max-width: 1140px; margin: 0 auto; display: flex; flex-direction: column; gap: 20px; }
+
+/* Hero */
+.sp-hero {
+  background: linear-gradient(135deg, #FFF5EB 0%, #FFE8D6 40%, #F5C9A0 100%);
+  border-radius: 22px; padding: 28px 32px;
+  position: relative; overflow: hidden;
+}
+.sp-hero::before {
+  content: ''; position: absolute; inset: 0;
+  background: radial-gradient(circle at 90% 20%, rgba(245,130,58,.12), transparent 40%);
+  pointer-events: none;
+}
+.sp-hero-inner {
+  display: flex; justify-content: space-between; gap: 16px;
+  align-items: flex-start; flex-wrap: wrap; position: relative; z-index: 1;
+}
+.sp-hero-eyebrow { font-size: 12px; color: var(--primary); font-weight: 600; letter-spacing: .5px; text-transform: uppercase; margin-bottom: 6px; }
+.sp-hero h2 { font-family: var(--font-serif); font-size: 28px; margin: 0 0 8px; color: var(--charcoal); line-height: 1.15; }
+.sp-hero-desc { color: var(--mid); font-size: 14px; max-width: 520px; line-height: 1.5; }
+.sp-hero-account {
+  padding: 14px 18px; background: rgba(255,255,255,.7); backdrop-filter: blur(8px);
+  border: 1px solid rgba(245,130,58,.12); border-radius: 14px; min-width: 220px;
+}
+.sp-hero-account-label { font-size: 12px; color: var(--mid); margin-bottom: 4px; }
+.sp-hero-account-email { font-weight: 700; color: var(--charcoal); font-size: 14px; }
+.sp-hero-account-id { font-size: 12px; color: var(--mid); margin-top: 2px; }
+
+/* Stats */
+.sp-stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; }
+.sp-stat-card {
+  background: var(--surface); border-radius: 16px; padding: 18px 20px;
+  box-shadow: 0 2px 12px rgba(0,0,0,.04); text-align: center;
+  transition: box-shadow .2s var(--ease), transform .2s var(--ease);
+}
+.sp-stat-card:hover { box-shadow: 0 6px 20px rgba(0,0,0,.07); transform: translateY(-1px); }
+.sp-stat-label { font-size: 12px; color: var(--mid); margin-bottom: 6px; font-weight: 500; }
+.sp-stat-value { font-size: 28px; font-weight: 800; color: var(--charcoal); font-family: var(--font-serif); }
+
+/* Tabs — pill segment (matches Guardian) */
+.sp-tabs {
+  display: flex; gap: 4px; background: var(--bg); border-radius: 14px; padding: 4px;
+}
+.sp-tab {
+  flex: 1; padding: 12px 16px; font-size: 13px; font-weight: 600;
+  color: var(--text-muted); background: none; border: none; border-radius: 10px;
+  cursor: pointer; transition: all .25s var(--ease);
+  display: flex; align-items: center; justify-content: center; gap: 6px;
+  white-space: nowrap;
+}
+.sp-tab:hover { color: var(--text); background: rgba(0,0,0,.03); }
+.sp-tab.active {
+  background: var(--surface); color: var(--primary);
+  box-shadow: 0 2px 8px rgba(0,0,0,.08);
+}
+
+/* Content area */
+.sp-content { display: flex; flex-direction: column; gap: 20px; }
+
+/* Card wrapper — borderless shadow style */
+.sp-card {
+  background: var(--surface); border-radius: 22px; border: none;
+  box-shadow: 0 4px 20px rgba(0,0,0,.05); overflow: hidden;
+}
+.sp-card-header {
+  display: flex; justify-content: space-between; align-items: center;
+  padding: 16px 20px; border-bottom: 1px solid rgba(245,130,58,.08);
+  background: linear-gradient(to right, rgba(245,130,58,.04), transparent);
+  font-size: 15px; font-weight: 700; color: var(--text);
+}
+.sp-card-body { padding: 20px; }
+
+/* Dark mode */
+html[data-theme="dark"] .sp-hero {
+  background: linear-gradient(135deg, #1a1208 0%, #231810 30%, #2a1c10 60%, #1e1408 100%);
+}
+html[data-theme="dark"] .sp-hero h2 { color: #fff; }
+html[data-theme="dark"] .sp-hero-eyebrow { color: #F5A66A; }
+html[data-theme="dark"] .sp-hero-desc { color: rgba(255,255,255,.5); }
+html[data-theme="dark"] .sp-hero-account {
+  background: rgba(255,255,255,.06); border-color: rgba(255,255,255,.08);
+}
+html[data-theme="dark"] .sp-hero-account-email { color: #fff; }
+html[data-theme="dark"] .sp-hero-account-label,
+html[data-theme="dark"] .sp-hero-account-id { color: rgba(255,255,255,.4); }
+html[data-theme="dark"] .sp-stat-card { box-shadow: 0 2px 12px rgba(0,0,0,.15); }
+html[data-theme="dark"] .sp-stat-value { color: #fff; }
+html[data-theme="dark"] .sp-stat-label { color: rgba(255,255,255,.4); }
+html[data-theme="dark"] .sp-tabs { background: rgba(255,255,255,.04); }
+html[data-theme="dark"] .sp-tab:hover { background: rgba(255,255,255,.06); }
+html[data-theme="dark"] .sp-tab.active { background: var(--surface); box-shadow: 0 2px 8px rgba(0,0,0,.2); }
+html[data-theme="dark"] .sp-card { box-shadow: 0 4px 20px rgba(0,0,0,.15); }
+html[data-theme="dark"] .sp-card-header { background: linear-gradient(to right, rgba(245,130,58,.06), transparent); border-bottom-color: rgba(255,255,255,.06); }
+
+/* Responsive */
+@media (max-width: 767px) {
+  .sp-page { padding: 16px 12px; gap: 14px; }
+  .sp-stats { grid-template-columns: repeat(2, 1fr); }
+  .sp-tabs { flex-wrap: wrap; }
+  .sp-tab { flex: none; min-width: calc(50% - 4px); font-size: 12px; padding: 10px 12px; }
+  .sp-hero { padding: 20px 16px; border-radius: 16px; }
+  .sp-hero h2 { font-size: 22px; }
+  .sp-card { border-radius: 16px; }
+  .sp-card-body { padding: 14px; }
+  .sp-stat-card { padding: 14px 16px; }
+  .sp-stat-value { font-size: 24px; }
+}
+
 /* ─── Responsive ─── */
 @media (max-width: 767px) {
   .gm-store-explore-card { flex-direction: column; }
