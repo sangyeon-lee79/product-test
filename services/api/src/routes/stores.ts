@@ -647,18 +647,18 @@ async function listPetBreeds(env: Env, url: URL): Promise<Response> {
   const lang = resolveLang(url);
   const petTypeL1Id = url.searchParams.get('pet_type_l1_id') || '';
 
-  let sql = `SELECT mi.id, mi.code, mi.parent_id,
+  let sql = `SELECT mi.id, mi.code, mi.parent_item_id AS parent_id,
        COALESCE(NULLIF(TRIM(tr.${lang}), ''), NULLIF(TRIM(tr.ko), ''), mi.code) AS label
      FROM master_items mi
      LEFT JOIN master_categories mc ON mc.id = mi.category_id
      LEFT JOIN i18n_translations tr ON tr.key = 'master.' || mc.code || '.' || mi.code
      WHERE mi.category_id = 'mc-pet-type'
-       AND mi.parent_id IS NOT NULL
+       AND mi.parent_item_id IS NOT NULL
        AND mi.status = 'active'`;
 
   const binds: unknown[] = [];
   if (petTypeL1Id) {
-    sql += ` AND mi.parent_id = ?`;
+    sql += ` AND mi.parent_item_id = ?`;
     binds.push(petTypeL1Id);
   }
 
