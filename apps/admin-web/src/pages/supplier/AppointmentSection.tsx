@@ -25,13 +25,22 @@ const BUSINESS_TYPE_LABELS: Record<string, string> = {
 interface Props {
   t: (key: string, fallback?: string) => string;
   locale: string;
+  lang: string;
 }
 
 function getDaysInMonth(y: number, m: number) { return new Date(y, m + 1, 0).getDate(); }
 function getFirstDayOfWeek(y: number, m: number) { return new Date(y, m, 1).getDay(); }
 function pad2(n: number) { return String(n).padStart(2, '0'); }
 
-export default function AppointmentSection({ t, locale }: Props) {
+const STATUS_TEXT_KEY: Record<string, string> = {
+  pending: 'appointment.status.pending',
+  confirmed: 'appointment.status.confirmed',
+  rejected: 'appointment.status.rejected',
+  completed: 'appointment.status.completed',
+  cancelled: 'appointment.status.cancelled',
+};
+
+export default function AppointmentSection({ t, locale, lang }: Props) {
   const [appointments, setAppointments] = useState<Appointment[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -134,7 +143,7 @@ export default function AppointmentSection({ t, locale }: Props) {
           ? { ...apt, status: 'confirmed', updated_at: new Date().toISOString() }
           : apt
       )));
-      setMessage(t('appointment.action.accept') + ' ' + t('common.saved', 'completed'));
+      setMessage(`${t('appointment.action.accept')} ${t('common.saved', 'completed')}`);
     } catch (e) {
       setError(e instanceof Error ? e.message : t('common.err.failed'));
     } finally {
@@ -158,7 +167,7 @@ export default function AppointmentSection({ t, locale }: Props) {
       )));
       setRejectModalId('');
       setRejectReason('');
-      setMessage(t('appointment.action.reject') + ' ' + t('common.saved', 'completed'));
+      setMessage(`${t('appointment.action.reject')} ${t('common.saved', 'completed')}`);
     } catch (e) {
       setError(e instanceof Error ? e.message : t('common.err.failed'));
     } finally {
@@ -231,14 +240,28 @@ export default function AppointmentSection({ t, locale }: Props) {
   }
 
   // Service display helpers
-  function svcName(apt: Appointment) { return apt.service_name || apt.service_type || '-'; }
+  function guardianLabel(apt: Appointment) {
+    const name = String(apt.guardian_name || '').trim();
+    if (name) return name;
+    const email = String(apt.guardian_email || '').trim();
+    if (!email) return '-';
+    return email.split('@')[0] || email;
+  }
+
+  function svcName(apt: Appointment) {
+    const translated = apt.service_name_translations?.[lang];
+    return translated || apt.service_name || apt.service_type || '-';
+  }
   function svcDuration(apt: Appointment) {
     const d = apt.duration_minutes || apt.service_duration;
-    return d ? `${d}${t('booking.minutes')}` : '-';
+    return d ? `${d}${lang === 'ko' ? '분' : ` ${t('booking.minutes', 'min')}`}` : '-';
   }
   function svcPrice(apt: Appointment) {
     const p = apt.price || apt.service_price;
-    return p ? Number(p).toLocaleString() : '-';
+    return p ? `${Number(p).toLocaleString(locale)}${lang === 'ko' ? '원' : ''}` : '-';
+  }
+  function statusLabel(status: Appointment['status']) {
+    return t(STATUS_TEXT_KEY[status] || status);
   }
 
   if (loading) return <div style={{ padding: 20, textAlign: 'center', color: 'var(--text-muted)' }}>...</div>;
@@ -360,12 +383,12 @@ export default function AppointmentSection({ t, locale }: Props) {
                         >
                           <span style={{ fontWeight: 600, fontSize: 13, minWidth: 50 }}>{fmtTime(apt.scheduled_at)}</span>
                           <span style={{ flex: 1, fontSize: 13 }}>
-                            {apt.guardian_name || apt.guardian_email || '-'}
+                            {guardianLabel(apt)}
                             <span style={{ color: 'var(--text-muted)', marginLeft: 6 }}>
                               {apt.pet_name && `${apt.pet_name} · `}{svcName(apt)}
                             </span>
                           </span>
-                          {meta && <span className={`badge ${meta.badge}`} style={{ fontSize: 10 }}>{t(meta.key)}</span>}
+                          {meta && <span className={`badge ${meta.badge}`} style={{ fontSize: 10 }}>{statusLabel(apt.status)}</span>}
                           {apt.status === 'pending' && (
                             <span style={{ display: 'flex', gap: 4 }}>
                               <button className="btn btn-primary" style={{ fontSize: 11, padding: '2px 8px' }} disabled={busyId === apt.id} onClick={e => { e.stopPropagation(); handleConfirm(apt.id); }}>
@@ -400,7 +423,7 @@ export default function AppointmentSection({ t, locale }: Props) {
         <div style={{ display: 'grid', gridTemplateColumns: 'minmax(320px, 1.1fr) minmax(300px, 0.9fr)', gap: 16, alignItems: 'start' }}>
           {/* Left: list */}
           <div className="card">
-            {filtered.length === 0 && <div style={{ padding: 20, textAlign: 'center', color: 'var(--text-secondary)' }}>{t('common.empty')}</div>}
+            {filtered.length === 0 && <div style={{ padding: 20, textAlign: 'center', color: 'var(--text-secondary)' }}>{t('supplier.appointments.no_result')}</div>}
             {filtered.map(apt => {
               const active = selected?.id === apt.id;
               const meta = APT_STATUS_META[apt.status];
@@ -417,10 +440,10 @@ export default function AppointmentSection({ t, locale }: Props) {
                 >
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                     <span style={{ fontWeight: 600 }}>
-                      {apt.guardian_name || apt.guardian_email || apt.guardian_id.slice(0, 8)}
+                      {guardianLabel(apt)}
                       {apt.is_overtime && <span className="gm-overtime-badge" style={{ marginLeft: 6, fontSize: 10, padding: '1px 5px' }}>{t('booking.slot.overtime')}</span>}
                     </span>
-                    {meta && <span className={`badge ${meta.badge}`} style={{ fontSize: 11 }}>{t(meta.key)}</span>}
+                    {meta && <span className={`badge ${meta.badge}`} style={{ fontSize: 11 }}>{statusLabel(apt.status)}</span>}
                   </div>
                   <div style={{ fontSize: 12, color: 'var(--text-secondary)', marginTop: 4 }}>
                     {apt.pet_name && <span>{apt.pet_name} · </span>}
@@ -440,19 +463,19 @@ export default function AppointmentSection({ t, locale }: Props) {
               <div style={{ padding: 16 }}>
                 {/* Header */}
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
-                  <h4 style={{ margin: 0 }}>{selected.guardian_name || selected.guardian_email}</h4>
+                  <h4 style={{ margin: 0 }}>{guardianLabel(selected)}</h4>
                   <span className={`badge ${APT_STATUS_META[selected.status]?.badge || ''}`}>
-                    {t(APT_STATUS_META[selected.status]?.key || selected.status)}
+                    {statusLabel(selected.status)}
                   </span>
                 </div>
 
                 {/* Info grid */}
                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px 16px', fontSize: 13, marginBottom: 16 }}>
-                  <div><strong>{t('booking.pet_select')}:</strong> {selected.pet_name || '-'}</div>
-                  <div><strong>{t('booking.service_type')}:</strong> {svcName(selected)}</div>
-                  <div><strong>{t('booking.date_select')}:</strong> {fmtDate(selected.scheduled_at)}</div>
-                  <div><strong>{t('booking.duration')}:</strong> {svcDuration(selected)}</div>
-                  <div><strong>{t('booking.price')}:</strong> {svcPrice(selected)}</div>
+                  <div><strong>{t('appointment.detail.pet')}:</strong> {selected.pet_name || '-'}</div>
+                  <div><strong>{t('appointment.detail.service')}:</strong> {svcName(selected)}</div>
+                  <div><strong>{t('appointment.detail.date')}:</strong> {fmtDate(selected.scheduled_at)}</div>
+                  <div><strong>{t('appointment.detail.duration')}:</strong> {svcDuration(selected)}</div>
+                  <div><strong>{t('appointment.detail.price')}:</strong> {svcPrice(selected)}</div>
                   {selected.business_type && (
                     <div><strong>{t('booking.business_type')}:</strong> {t(BUSINESS_TYPE_LABELS[selected.business_type] || selected.business_type, selected.business_type)}</div>
                   )}

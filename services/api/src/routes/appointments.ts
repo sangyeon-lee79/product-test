@@ -17,6 +17,7 @@ async function listAppointments(env: Env, me: JwtPayload, url: URL): Promise<Res
       su.email AS supplier_email,
       st.name AS store_name,
       svc.name AS service_name,
+      svc.name_translations AS service_name_translations,
       svc.duration_minutes AS service_duration,
       svc.price AS service_price,
       (SELECT COUNT(*) FROM appointment_reviews ar WHERE ar.appointment_id = a.id) AS review_count,
@@ -58,6 +59,10 @@ async function listAppointments(env: Env, me: JwtPayload, url: URL): Promise<Res
   const results = rows.results.map((r: Record<string, unknown>) => ({
     ...r,
     extra_data: typeof r.extra_data === 'string' ? JSON.parse(r.extra_data) : r.extra_data,
+    service_name_translations:
+      typeof r.service_name_translations === 'string'
+        ? JSON.parse(r.service_name_translations)
+        : r.service_name_translations,
   }));
 
   return ok({ appointments: results });
@@ -240,9 +245,11 @@ async function getAppointment(env: Env, me: JwtPayload, id: string): Promise<Res
     `SELECT a.*,
       p.name AS pet_name, p.avatar_url AS pet_avatar, p.species, p.breed_id,
       COALESCE(gup.display_name, gu.email) AS guardian_name,
+      gu.email AS guardian_email,
       COALESCE(sup.display_name, su.email) AS supplier_name,
       st.name AS store_name,
       svc.name AS service_name,
+      svc.name_translations AS service_name_translations,
       svc.duration_minutes AS service_duration,
       svc.price AS service_price
     FROM appointments a
@@ -261,6 +268,10 @@ async function getAppointment(env: Env, me: JwtPayload, id: string): Promise<Res
     appointment: {
       ...row,
       extra_data: typeof row.extra_data === 'string' ? JSON.parse(row.extra_data as string) : row.extra_data,
+      service_name_translations:
+        typeof row.service_name_translations === 'string'
+          ? JSON.parse(row.service_name_translations as string)
+          : row.service_name_translations,
     },
   });
 }

@@ -443,7 +443,7 @@ export default function SupplierDashboardPage() {
                 <span>{t('supplier.appointment.new_request')}</span>
               </div>
               <div className="sp-card-body">
-                <AppointmentSection t={t} locale={LANG_TO_LOCALE[lang] || 'en-US'} />
+                <AppointmentSection t={t} locale={LANG_TO_LOCALE[lang] || 'en-US'} lang={lang} />
               </div>
             </section>
 

@@ -1054,6 +1054,7 @@ export interface Appointment {
   has_guardian_review?: number;
   has_supplier_review?: number;
   service_name?: string | null;
+  service_name_translations?: Record<string, string> | null;
   service_duration?: number | null;
   service_price?: number | null;
 }
