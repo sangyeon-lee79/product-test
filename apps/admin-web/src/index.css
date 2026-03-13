@@ -5879,10 +5879,19 @@ html[data-theme="dark"] .sp-card-header { background: linear-gradient(to right, 
 .wiz-body { min-height: 480px; padding: 20px 24px; overflow-y: auto; max-height: calc(90vh - 180px); }
 .wiz-footer { display: flex; justify-content: space-between; padding: 12px 24px; border-top: 1px solid var(--border); }
 /* Pet type chips */
-.wiz-pet-chip { display: inline-flex; align-items: center; gap: 6px; padding: 8px 14px; border-radius: 20px; border: 1px solid var(--border); cursor: pointer; font-size: 13px; background: var(--surface); transition: all .15s; color: var(--text); }
+.wiz-pet-chip { display: inline-flex; align-items: center; gap: 6px; padding: 8px 14px; border-radius: 20px; border: 1px solid var(--border); cursor: pointer; font-size: 13px; background: var(--surface); transition: all .15s; color: var(--text); position: relative; }
 .wiz-pet-chip:hover { border-color: var(--primary); }
 .wiz-pet-chip.selected { background: var(--primary); color: #fff; border-color: var(--primary); }
+.wiz-pet-chip.added { border-color: #22c55e; }
 .wiz-pet-chip .emoji { font-size: 18px; }
+.wiz-pet-check { display: inline-flex; align-items: center; justify-content: center; width: 16px; height: 16px; border-radius: 50%; background: #22c55e; color: #fff; font-size: 10px; font-weight: 700; margin-left: 2px; }
+/* Phase fade animation */
+.wiz-phase-fade { animation: wizFadeIn .2s ease; }
+@keyframes wizFadeIn { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
+/* Selected breeds summary */
+.wiz-pet-summary { background: #FFF3E8; border: 1px solid var(--primary); border-radius: 10px; padding: 10px 14px; font-size: 13px; color: var(--text); }
+/* Combination card */
+.wiz-pet-combo-card { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 14px 16px; }
 
 /* ─── Responsive ─── */
 @media (max-width: 767px) {

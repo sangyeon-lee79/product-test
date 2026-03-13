@@ -59,8 +59,14 @@ export default function ProviderStoreSection() {
   const [editStoreId, setEditStoreId] = useState('');
   const [wizardStep, setWizardStep] = useState(0);
   const [petL1Items, setPetL1Items] = useState<{ id: string; code: string; label: string }[]>([]);
-  const [supportedPetL1Ids, setSupportedPetL1Ids] = useState<string[]>([]);
-  const [supportedPetL2Ids, setSupportedPetL2Ids] = useState<string[]>([]);
+
+  // Phase-based pet selection state
+  type PetCombo = { l1: { id: string; code: string; label: string }; l2s: { id: string; label: string }[] };
+  const [petPhase, setPetPhase] = useState<'list' | 'select-l1' | 'select-l2'>('select-l1');
+  const [activeL1, setActiveL1] = useState<{ id: string; code: string; label: string } | null>(null);
+  const [selectedL2s, setSelectedL2s] = useState<{ id: string; label: string }[]>([]);
+  const [editingComboIdx, setEditingComboIdx] = useState<number | null>(null);
+  const [addedCombinations, setAddedCombinations] = useState<PetCombo[]>([]);
 
   // Service form
   const [serviceForm, setServiceForm] = useState({
@@ -185,10 +191,22 @@ export default function ProviderStoreSection() {
       setStoreDescTrans({ ...emptyTrans(), ...(store.description_translations || {}) });
       setStoreHours(store.operating_hours ? { ...DEFAULT_HOURS, ...store.operating_hours } : { ...DEFAULT_HOURS });
       setSelectedIndustryIds((store.industries || []).map(i => i.industry_id));
-      const l1 = Array.isArray(store.supported_pet_l1_ids) ? store.supported_pet_l1_ids : [];
-      const l2 = Array.isArray(store.supported_pet_l2_ids) ? store.supported_pet_l2_ids : [];
-      setSupportedPetL1Ids(l1);
-      setSupportedPetL2Ids(l2);
+      // Rebuild combinations from stored L1/L2 IDs
+      const storedL1 = Array.isArray(store.supported_pet_l1_ids) ? store.supported_pet_l1_ids : [];
+      const storedL2 = Array.isArray(store.supported_pet_l2_ids) ? store.supported_pet_l2_ids : [];
+      const combos: PetCombo[] = storedL1.map(l1Id => {
+        const l1Info = petL1Items.find(x => x.id === l1Id);
+        const l2Items = petBreeds.filter(b => b.parent_id === l1Id && storedL2.includes(b.id));
+        return {
+          l1: l1Info || { id: l1Id, code: l1Id, label: l1Id },
+          l2s: l2Items.map(b => ({ id: b.id, label: b.label })),
+        };
+      }).filter(c => c.l2s.length > 0);
+      setAddedCombinations(combos);
+      setPetPhase(combos.length > 0 ? 'list' : 'select-l1');
+      setActiveL1(null);
+      setSelectedL2s([]);
+      setEditingComboIdx(null);
     } else {
       setEditStoreId('');
       setStoreForm({
@@ -201,8 +219,11 @@ export default function ProviderStoreSection() {
       setStoreDescTrans(emptyTrans());
       setStoreHours({ ...DEFAULT_HOURS });
       setSelectedIndustryIds([]);
-      setSupportedPetL1Ids([]);
-      setSupportedPetL2Ids([]);
+      setAddedCombinations([]);
+      setPetPhase('select-l1');
+      setActiveL1(null);
+      setSelectedL2s([]);
+      setEditingComboIdx(null);
     }
   };
 
@@ -229,8 +250,8 @@ export default function ProviderStoreSection() {
         address_state_code: storeForm.address_state_code || undefined,
         address_city_code: storeForm.address_city_code || undefined,
         address_detail: storeForm.address_detail || undefined,
-        supported_pet_l1_ids: supportedPetL1Ids,
-        supported_pet_l2_ids: supportedPetL2Ids,
+        supported_pet_l1_ids: addedCombinations.map(c => c.l1.id),
+        supported_pet_l2_ids: addedCombinations.flatMap(c => c.l2s.map(b => b.id)),
       };
       if (modalMode === 'edit') {
         await api.stores.update(editStoreId, payload);
@@ -349,31 +370,67 @@ export default function ProviderStoreSection() {
     setSaving(false);
   };
 
-  // Pet support helpers
-  const togglePetL1 = (id: string) => {
-    setSupportedPetL1Ids(prev => {
-      const next = prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id];
-      // Remove L2 items that belong to deselected L1
-      if (!next.includes(id)) {
-        const l2ToRemove = new Set(petBreeds.filter(b => b.parent_id === id).map(b => b.id));
-        setSupportedPetL2Ids(prev2 => prev2.filter(x => !l2ToRemove.has(x)));
+  // Pet phase helpers
+  const handleSelectL1 = (item: { id: string; code: string; label: string }) => {
+    const existingIdx = addedCombinations.findIndex(c => c.l1.id === item.id);
+    setActiveL1(item);
+    if (existingIdx >= 0) {
+      // Edit existing combination
+      setEditingComboIdx(existingIdx);
+      setSelectedL2s([...addedCombinations[existingIdx].l2s]);
+    } else {
+      setEditingComboIdx(null);
+      setSelectedL2s([]);
+    }
+    setPetPhase('select-l2');
+  };
+
+  const toggleL2Breed = (breed: { id: string; label: string }) => {
+    setSelectedL2s(prev =>
+      prev.some(b => b.id === breed.id)
+        ? prev.filter(b => b.id !== breed.id)
+        : [...prev, breed],
+    );
+  };
+
+  const toggleAllL2 = () => {
+    if (!activeL1) return;
+    const children = petBreeds.filter(b => b.parent_id === activeL1.id);
+    const allSelected = children.every(c => selectedL2s.some(s => s.id === c.id));
+    setSelectedL2s(allSelected ? [] : children.map(c => ({ id: c.id, label: c.label })));
+  };
+
+  const registerCombination = () => {
+    if (!activeL1 || selectedL2s.length === 0) return;
+    const combo: PetCombo = { l1: activeL1, l2s: [...selectedL2s] };
+    setAddedCombinations(prev => {
+      if (editingComboIdx !== null) {
+        const next = [...prev];
+        next[editingComboIdx] = combo;
+        return next;
       }
+      return [...prev, combo];
+    });
+    setActiveL1(null);
+    setSelectedL2s([]);
+    setEditingComboIdx(null);
+    setPetPhase('list');
+  };
+
+  const removeCombo = (idx: number) => {
+    setAddedCombinations(prev => {
+      const next = prev.filter((_, i) => i !== idx);
+      if (next.length === 0) setPetPhase('select-l1');
       return next;
     });
   };
 
-  const togglePetL2 = (id: string) => {
-    setSupportedPetL2Ids(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]);
-  };
-
-  const toggleAllL2ForL1 = (l1Id: string) => {
-    const childIds = petBreeds.filter(b => b.parent_id === l1Id).map(b => b.id);
-    const allSelected = childIds.every(id => supportedPetL2Ids.includes(id));
-    if (allSelected) {
-      setSupportedPetL2Ids(prev => prev.filter(x => !childIds.includes(x)));
-    } else {
-      setSupportedPetL2Ids(prev => [...new Set([...prev, ...childIds])]);
-    }
+  const editCombo = (idx: number) => {
+    const combo = addedCombinations[idx];
+    setActiveL1(combo.l1);
+    setSelectedL2s([...combo.l2s]);
+    setEditingComboIdx(idx);
+    setPetPhase('select-l2');
   };
 
   const wizardSteps = useMemo(() => [
@@ -638,76 +695,145 @@ export default function ProviderStoreSection() {
                 </div>
               </div>
 
-              {/* Pet L1 — Animal Category */}
+              {/* ─── Pet Selection (Phase A/B/C) ─── */}
               <div className="form-group">
-                <label className="form-label">{t('supplier.wizard.pet_support_title', 'Supported Pet Types')}</label>
-                <p style={{ fontSize: 12, color: 'var(--text-muted)', margin: '0 0 8px' }}>
-                  {t('supplier.wizard.pet_support_desc', 'Select pet types this store supports')}
-                </p>
-                <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-                  {petL1Items.map(item => {
-                    const selected = supportedPetL1Ids.includes(item.id);
-                    const emoji = PET_EMOJI[item.code] || PET_EMOJI.other || '\uD83D\uDC3E';
-                    return (
-                      <button
-                        key={item.id}
-                        type="button"
-                        className={`wiz-pet-chip${selected ? ' selected' : ''}`}
-                        onClick={() => togglePetL1(item.id)}
-                      >
-                        <span className="emoji">{emoji}</span>
-                        {item.label}
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
+                <label className="form-label" style={{ marginBottom: 8 }}>
+                  {t('supplier.wizard.pet_support_title', 'Supported Pet Types')}
+                </label>
 
-              {/* Pet L2 — Specific Breeds (filtered by selected L1) */}
-              {supportedPetL1Ids.length > 0 && (
-                <div className="form-group">
-                  <label className="form-label">{t('supplier.wizard.pet_l2_label', 'Specific Breeds')}</label>
-                  {supportedPetL1Ids.map(l1Id => {
-                    const l1 = petL1Items.find(x => x.id === l1Id);
-                    const children = petBreeds.filter(b => b.parent_id === l1Id);
-                    if (children.length === 0) return null;
-                    const allSelected = children.every(c => supportedPetL2Ids.includes(c.id));
-                    return (
-                      <div key={l1Id} style={{ marginBottom: 12 }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
-                          <strong style={{ fontSize: 13 }}>
-                            {PET_EMOJI[l1?.code || ''] || '\uD83D\uDC3E'} {l1?.label}
-                          </strong>
+                {/* Phase A: Select L1 */}
+                {petPhase === 'select-l1' && (
+                  <div className="wiz-phase-fade">
+                    <p style={{ fontSize: 13, color: 'var(--text-muted)', margin: '0 0 12px' }}>
+                      {t('store.pet.select_animal')}
+                    </p>
+                    <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                      {petL1Items.map(item => {
+                        const emoji = PET_EMOJI[item.code] || PET_EMOJI.other || '\uD83D\uDC3E';
+                        const alreadyAdded = addedCombinations.some(c => c.l1.id === item.id);
+                        return (
                           <button
+                            key={item.id}
                             type="button"
-                            className={`btn btn-sm ${allSelected ? 'btn-primary' : 'btn-secondary'}`}
-                            style={{ fontSize: 11, padding: '2px 8px' }}
-                            onClick={() => toggleAllL2ForL1(l1Id)}
+                            className={`wiz-pet-chip${alreadyAdded ? ' added' : ''}`}
+                            onClick={() => handleSelectL1(item)}
                           >
-                            {t('supplier.wizard.pet_l2_all', 'All Breeds')}
+                            <span className="emoji">{emoji}</span>
+                            {item.label}
+                            {alreadyAdded && <span className="wiz-pet-check">{'\u2713'}</span>}
                           </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
+
+                {/* Phase B: Select L2 breeds */}
+                {petPhase === 'select-l2' && activeL1 && (() => {
+                  const children = petBreeds.filter(b => b.parent_id === activeL1.id);
+                  const allSelected = children.length > 0 && children.every(c => selectedL2s.some(s => s.id === c.id));
+                  const emoji = PET_EMOJI[activeL1.code] || '\uD83D\uDC3E';
+                  return (
+                    <div className="wiz-phase-fade">
+                      {/* Header with back */}
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                          <span style={{ fontSize: 20 }}>{emoji}</span>
+                          <strong style={{ fontSize: 15 }}>{activeL1.label}</strong>
                         </div>
-                        <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
-                          {children.map(breed => {
-                            const sel = supportedPetL2Ids.includes(breed.id);
-                            return (
-                              <button
-                                key={breed.id}
-                                type="button"
-                                className={`wiz-pet-chip${sel ? ' selected' : ''}`}
-                                onClick={() => togglePetL2(breed.id)}
-                                style={{ fontSize: 12, padding: '5px 10px' }}
-                              >
-                                {breed.label}
-                              </button>
-                            );
-                          })}
-                        </div>
+                        <button type="button" className="btn btn-secondary btn-sm"
+                          onClick={() => setPetPhase(addedCombinations.length > 0 ? 'list' : 'select-l1')}>
+                          {'\u2190'} {t('store.pet.change_animal')}
+                        </button>
                       </div>
-                    );
-                  })}
-                </div>
-              )}
+
+                      <p style={{ fontSize: 13, color: 'var(--text-muted)', margin: '0 0 10px' }}>
+                        {t('store.pet.select_breed')}
+                      </p>
+
+                      {/* All breeds toggle + breed chips */}
+                      <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 12 }}>
+                        <button type="button"
+                          className={`wiz-pet-chip${allSelected ? ' selected' : ''}`}
+                          onClick={toggleAllL2}
+                          style={{ fontWeight: 600 }}>
+                          {t('store.pet.all_breeds')}
+                        </button>
+                        {children.map(breed => {
+                          const sel = selectedL2s.some(s => s.id === breed.id);
+                          return (
+                            <button key={breed.id} type="button"
+                              className={`wiz-pet-chip${sel ? ' selected' : ''}`}
+                              onClick={() => toggleL2Breed({ id: breed.id, label: breed.label })}
+                              style={{ fontSize: 12, padding: '5px 10px' }}>
+                              {breed.label}
+                            </button>
+                          );
+                        })}
+                      </div>
+
+                      {/* Selected summary */}
+                      {selectedL2s.length > 0 && (
+                        <div className="wiz-pet-summary">
+                          {t('store.pet.selected_breeds').replace('{list}', selectedL2s.map(b => b.label).join(', '))}
+                        </div>
+                      )}
+
+                      {/* Register button */}
+                      <button type="button" className="btn btn-primary"
+                        disabled={selectedL2s.length === 0}
+                        onClick={registerCombination}
+                        style={{ marginTop: 12, width: '100%' }}>
+                        + {t('store.pet.add_combination')}
+                      </button>
+                    </div>
+                  );
+                })()}
+
+                {/* Phase C: Registered combinations list */}
+                {petPhase === 'list' && (
+                  <div className="wiz-phase-fade">
+                    <p style={{ fontSize: 13, color: 'var(--text-muted)', margin: '0 0 10px' }}>
+                      {t('store.pet.registered')}
+                    </p>
+                    <div style={{ display: 'grid', gap: 10, marginBottom: 12 }}>
+                      {addedCombinations.map((combo, idx) => {
+                        const emoji = PET_EMOJI[combo.l1.code] || '\uD83D\uDC3E';
+                        return (
+                          <div key={combo.l1.id} className="wiz-pet-combo-card">
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                                <span style={{ fontSize: 18 }}>{emoji}</span>
+                                <strong style={{ fontSize: 14 }}>{combo.l1.label}</strong>
+                              </div>
+                              <div style={{ display: 'flex', gap: 4 }}>
+                                <button type="button" className="btn btn-secondary btn-sm"
+                                  style={{ fontSize: 11, padding: '2px 8px' }}
+                                  onClick={() => editCombo(idx)}>
+                                  {t('store.pet.edit')}
+                                </button>
+                                <button type="button" className="btn btn-danger btn-sm"
+                                  style={{ fontSize: 11, padding: '2px 8px' }}
+                                  onClick={() => removeCombo(idx)}>
+                                  x
+                                </button>
+                              </div>
+                            </div>
+                            <div style={{ fontSize: 13, color: 'var(--text-muted)', marginTop: 6 }}>
+                              {combo.l2s.map(b => b.label).join(' \u00B7 ')}
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                    <button type="button" className="btn btn-secondary"
+                      onClick={() => { setEditingComboIdx(null); setPetPhase('select-l1'); }}
+                      style={{ width: '100%' }}>
+                      + {t('store.pet.add_another')}
+                    </button>
+                  </div>
+                )}
+              </div>
             </div>
           )}
 
