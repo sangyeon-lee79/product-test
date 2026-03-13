@@ -163,9 +163,19 @@ async function getStoreDetail(env: Env, storeId: string, url: URL): Promise<Resp
 
   // Services
   const services = await env.DB.prepare(
-    `SELECT sv.*, cur.code AS currency_code
+    `SELECT sv.*, cur.code AS currency_code,
+       pet.id AS pet_type_l2_item_id, pet.code AS pet_type_l2_code,
+       cut.id AS cut_l3_item_id, cut.code AS cut_l3_code,
+       COALESCE(NULLIF(TRIM(pet_tr.${lang}), ''), NULLIF(TRIM(pet_tr.ko), ''), pet.code) AS pet_type_l2_label,
+       COALESCE(NULLIF(TRIM(cut_tr.${lang}), ''), NULLIF(TRIM(cut_tr.ko), ''), cut.code) AS cut_l3_label
      FROM services sv
      LEFT JOIN currencies cur ON cur.id = sv.currency_id
+     LEFT JOIN master_items pet ON pet.id = sv.pet_type_l2_id
+     LEFT JOIN master_categories pet_mc ON pet_mc.id = pet.category_id
+     LEFT JOIN i18n_translations pet_tr ON pet_tr.key = 'master.' || pet_mc.code || '.' || pet.code
+     LEFT JOIN master_items cut ON cut.id = sv.service_category_l3_id
+     LEFT JOIN master_categories cut_mc ON cut_mc.id = cut.category_id
+     LEFT JOIN i18n_translations cut_tr ON cut_tr.key = 'master.' || cut_mc.code || '.' || cut.code
      WHERE sv.store_id = ? AND sv.is_active = true
      ORDER BY sv.sort_order, sv.created_at`
   ).bind(storeId).all();
@@ -346,14 +356,31 @@ async function deleteStore(env: Env, me: JwtPayload, storeId: string): Promise<R
 
 async function listServices(env: Env, storeId: string, url: URL): Promise<Response> {
   const lang = resolveLang(url);
+  const petTypeL2Id = url.searchParams.get('pet_type_l2_id') || '';
 
-  const rows = await env.DB.prepare(
-    `SELECT sv.*, cur.code AS currency_code
+  let sql = `SELECT sv.*, cur.code AS currency_code,
+       pet.id AS pet_type_l2_item_id, pet.code AS pet_type_l2_code,
+       cut.id AS cut_l3_item_id, cut.code AS cut_l3_code,
+       COALESCE(NULLIF(TRIM(pet_tr.${lang}), ''), NULLIF(TRIM(pet_tr.ko), ''), pet.code) AS pet_type_l2_label,
+       COALESCE(NULLIF(TRIM(cut_tr.${lang}), ''), NULLIF(TRIM(cut_tr.ko), ''), cut.code) AS cut_l3_label
      FROM services sv
      LEFT JOIN currencies cur ON cur.id = sv.currency_id
-     WHERE sv.store_id = ? AND sv.is_active = true
-     ORDER BY sv.sort_order, sv.created_at`
-  ).bind(storeId).all();
+     LEFT JOIN master_items pet ON pet.id = sv.pet_type_l2_id
+     LEFT JOIN master_categories pet_mc ON pet_mc.id = pet.category_id
+     LEFT JOIN i18n_translations pet_tr ON pet_tr.key = 'master.' || pet_mc.code || '.' || pet.code
+     LEFT JOIN master_items cut ON cut.id = sv.service_category_l3_id
+     LEFT JOIN master_categories cut_mc ON cut_mc.id = cut.category_id
+     LEFT JOIN i18n_translations cut_tr ON cut_tr.key = 'master.' || cut_mc.code || '.' || cut.code
+     WHERE sv.store_id = ? AND sv.is_active = true`;
+
+  const binds: unknown[] = [storeId];
+  if (petTypeL2Id) {
+    sql += ` AND (sv.pet_type_l2_id = ? OR sv.pet_type_l2_id IS NULL)`;
+    binds.push(petTypeL2Id);
+  }
+  sql += ` ORDER BY sv.sort_order, sv.created_at`;
+
+  const rows = await env.DB.prepare(sql).bind(...binds).all();
 
   const items = rows.results.map((sv: Record<string, unknown>) => {
     const nameTr = typeof sv.name_translations === 'string' ? JSON.parse(sv.name_translations as string) : sv.name_translations || {};
@@ -392,8 +419,10 @@ async function createService(request: Request, env: Env, me: JwtPayload, storeId
 
   await env.DB.prepare(
     `INSERT INTO services (id, store_id, name, name_translations, description, description_translations,
-       price, currency_id, photo_urls, sort_order, is_active, created_at, updated_at)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, true, ?, ?)`
+       price, currency_id, photo_urls, sort_order, duration_minutes,
+       pet_type_l2_id, service_category_l3_id,
+       is_active, created_at, updated_at)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, true, ?, ?)`
   ).bind(
     id, storeId, name,
     JSON.stringify(body.name_translations || {}),
@@ -403,6 +432,9 @@ async function createService(request: Request, env: Env, me: JwtPayload, storeId
     currencyId,
     JSON.stringify(Array.isArray(body.photo_urls) ? body.photo_urls : []),
     typeof body.sort_order === 'number' ? body.sort_order : 0,
+    typeof body.duration_minutes === 'number' ? body.duration_minutes : null,
+    typeof body.pet_type_l2_id === 'string' ? body.pet_type_l2_id : null,
+    typeof body.service_category_l3_id === 'string' ? body.service_category_l3_id : null,
     timestamp, timestamp,
   ).run();
 
@@ -420,30 +452,29 @@ async function updateService(request: Request, env: Env, me: JwtPayload, service
   try { body = await request.json() as Record<string, unknown>; } catch { return err('Invalid JSON'); }
 
   const timestamp = now();
+
+  // Build dynamic SET for optional fields
+  const sets: string[] = ['updated_at = ?'];
+  const binds: unknown[] = [timestamp];
+
+  if (typeof body.name === 'string' && body.name.trim()) { sets.push('name = ?'); binds.push(body.name.trim()); }
+  if (body.name_translations) { sets.push('name_translations = ?'); binds.push(JSON.stringify(body.name_translations)); }
+  if (typeof body.description === 'string') { sets.push('description = ?'); binds.push(body.description); }
+  if (body.description_translations) { sets.push('description_translations = ?'); binds.push(JSON.stringify(body.description_translations)); }
+  if (typeof body.price === 'number') { sets.push('price = ?'); binds.push(body.price); }
+  if (typeof body.currency_id === 'string') { sets.push('currency_id = ?'); binds.push(body.currency_id); }
+  if (Array.isArray(body.photo_urls)) { sets.push('photo_urls = ?'); binds.push(JSON.stringify(body.photo_urls)); }
+  if (typeof body.sort_order === 'number') { sets.push('sort_order = ?'); binds.push(body.sort_order); }
+  if (typeof body.duration_minutes === 'number') { sets.push('duration_minutes = ?'); binds.push(body.duration_minutes); }
+  if ('pet_type_l2_id' in body) { sets.push('pet_type_l2_id = ?'); binds.push(typeof body.pet_type_l2_id === 'string' ? body.pet_type_l2_id : null); }
+  if ('service_category_l3_id' in body) { sets.push('service_category_l3_id = ?'); binds.push(typeof body.service_category_l3_id === 'string' ? body.service_category_l3_id : null); }
+  if ('is_active' in body && typeof body.is_active === 'boolean') { sets.push('is_active = ?'); binds.push(body.is_active); }
+
+  binds.push(serviceId);
+
   await env.DB.prepare(
-    `UPDATE services SET
-       name = COALESCE(?, name),
-       name_translations = COALESCE(?, name_translations),
-       description = COALESCE(?, description),
-       description_translations = COALESCE(?, description_translations),
-       price = COALESCE(?, price),
-       currency_id = COALESCE(?, currency_id),
-       photo_urls = COALESCE(?, photo_urls),
-       sort_order = COALESCE(?, sort_order),
-       updated_at = ?
-     WHERE id = ?`
-  ).bind(
-    typeof body.name === 'string' ? body.name.trim() || null : null,
-    body.name_translations ? JSON.stringify(body.name_translations) : null,
-    typeof body.description === 'string' ? body.description : null,
-    body.description_translations ? JSON.stringify(body.description_translations) : null,
-    typeof body.price === 'number' ? body.price : null,
-    typeof body.currency_id === 'string' ? body.currency_id : null,
-    Array.isArray(body.photo_urls) ? JSON.stringify(body.photo_urls) : null,
-    typeof body.sort_order === 'number' ? body.sort_order : null,
-    timestamp,
-    serviceId,
-  ).run();
+    `UPDATE services SET ${sets.join(', ')} WHERE id = ?`
+  ).bind(...binds).run();
 
   return ok({ updated: true });
 }
@@ -519,6 +550,110 @@ async function deleteDiscount(env: Env, me: JwtPayload, discountId: string): Pro
   ).bind(discountId).run();
 
   return ok({ deleted: true });
+}
+
+// ─── Supplier Available Cuts ──────────────────────────────────────────────────
+
+async function listAvailableCuts(env: Env, storeId: string, url: URL): Promise<Response> {
+  const lang = resolveLang(url);
+  const rows = await env.DB.prepare(
+    `SELECT sac.id, sac.cut_item_id, mi.code AS cut_code,
+       COALESCE(NULLIF(TRIM(tr.${lang}), ''), NULLIF(TRIM(tr.ko), ''), mi.code) AS cut_label,
+       mi.extra_data
+     FROM supplier_available_cuts sac
+     JOIN master_items mi ON mi.id = sac.cut_item_id
+     LEFT JOIN master_categories mc ON mc.id = mi.category_id
+     LEFT JOIN i18n_translations tr ON tr.key = 'master.' || mc.code || '.' || mi.code
+     WHERE sac.store_id = ?
+     ORDER BY mi.sort_order`
+  ).bind(storeId).all();
+  return ok({ items: rows.results });
+}
+
+async function saveAvailableCuts(request: Request, env: Env, me: JwtPayload, storeId: string): Promise<Response> {
+  const own = await verifyStoreOwner(env, storeId, me.sub);
+  if (!own && me.role !== 'admin') return err('Forbidden', 403);
+
+  let body: Record<string, unknown>;
+  try { body = await request.json() as Record<string, unknown>; } catch { return err('Invalid JSON'); }
+
+  const cutItemIds = Array.isArray(body.cut_item_ids) ? body.cut_item_ids.filter((v): v is string => typeof v === 'string') : [];
+
+  // Delete existing and re-insert
+  await env.DB.prepare(`DELETE FROM supplier_available_cuts WHERE store_id = ?`).bind(storeId).run();
+
+  for (const cutId of cutItemIds) {
+    await env.DB.prepare(
+      `INSERT INTO supplier_available_cuts (id, store_id, cut_item_id, created_at)
+       VALUES (?, ?, ?, ?) ON CONFLICT (store_id, cut_item_id) DO NOTHING`
+    ).bind(newId(), storeId, cutId, now()).run();
+  }
+
+  return ok({ saved: true, count: cutItemIds.length });
+}
+
+// ─── Cut Styles by pet type (for dropdowns) ────────────────────────────────
+
+async function listCutStyles(env: Env, url: URL): Promise<Response> {
+  const lang = resolveLang(url);
+  const petTypeL2Id = url.searchParams.get('pet_type_l2_id') || '';
+  const storeId = url.searchParams.get('store_id') || '';
+
+  let sql = `SELECT mi.id, mi.code,
+       COALESCE(NULLIF(TRIM(tr.${lang}), ''), NULLIF(TRIM(tr.ko), ''), mi.code) AS label,
+       mi.extra_data
+     FROM master_items mi
+     LEFT JOIN master_categories mc ON mc.id = mi.category_id
+     LEFT JOIN i18n_translations tr ON tr.key = 'master.' || mc.code || '.' || mi.code
+     WHERE mi.category_id = 'mc-business-category'
+       AND mi.extra_data::jsonb->>'item_level' = 'l3'
+       AND mi.extra_data::jsonb->>'business_category_l1_id' = 'mi-business-grooming'
+       AND mi.status = 'active'`;
+
+  const binds: unknown[] = [];
+
+  if (petTypeL2Id) {
+    sql += ` AND mi.extra_data::jsonb->>'pet_type_l2_id' = ?`;
+    binds.push(petTypeL2Id);
+  }
+
+  // If store_id provided, filter by supplier_available_cuts
+  if (storeId) {
+    sql += ` AND mi.id IN (SELECT cut_item_id FROM supplier_available_cuts WHERE store_id = ?)`;
+    binds.push(storeId);
+  }
+
+  sql += ` ORDER BY mi.sort_order`;
+
+  const rows = await env.DB.prepare(sql).bind(...binds).all();
+  return ok({ items: rows.results });
+}
+
+// ─── Pet breeds (L2 items under mc-pet-type) ─────────────────────────────────
+
+async function listPetBreeds(env: Env, url: URL): Promise<Response> {
+  const lang = resolveLang(url);
+  const petTypeL1Id = url.searchParams.get('pet_type_l1_id') || '';
+
+  let sql = `SELECT mi.id, mi.code, mi.parent_id,
+       COALESCE(NULLIF(TRIM(tr.${lang}), ''), NULLIF(TRIM(tr.ko), ''), mi.code) AS label
+     FROM master_items mi
+     LEFT JOIN master_categories mc ON mc.id = mi.category_id
+     LEFT JOIN i18n_translations tr ON tr.key = 'master.' || mc.code || '.' || mi.code
+     WHERE mi.category_id = 'mc-pet-type'
+       AND mi.parent_id IS NOT NULL
+       AND mi.status = 'active'`;
+
+  const binds: unknown[] = [];
+  if (petTypeL1Id) {
+    sql += ` AND mi.parent_id = ?`;
+    binds.push(petTypeL1Id);
+  }
+
+  sql += ` ORDER BY mi.sort_order`;
+
+  const rows = await env.DB.prepare(sql).bind(...binds).all();
+  return ok({ items: rows.results });
 }
 
 // ─── Store Booking (moved from providers.ts) ──────────────────────────────────
@@ -724,7 +859,7 @@ export async function handleStores(request: Request, env: Env, url: URL): Promis
     const auth = await requireAuth(request, env);
     if (auth instanceof Response) return auth;
     const me = auth as JwtPayload;
-    if (method === 'PUT') return updateService(request, env, me, serviceIdMatch[1]);
+    if (method === 'PUT' || method === 'PATCH') return updateService(request, env, me, serviceIdMatch[1]);
     if (method === 'DELETE') return deleteService(env, me, serviceIdMatch[1]);
     return err('Method not allowed', 405);
   }
@@ -745,6 +880,27 @@ export async function handleStores(request: Request, env: Env, url: URL): Promis
     const auth = await requireAuth(request, env);
     if (auth instanceof Response) return auth;
     return deleteDiscount(env, auth as JwtPayload, discountDeleteMatch[1]);
+  }
+
+  // ─── /api/v1/stores/:id/available-cuts ────────────────────────────────────
+  const cutsMatch = path.match(/^\/api\/v1\/stores\/([^/]+)\/available-cuts$/);
+  if (cutsMatch) {
+    const storeId = cutsMatch[1];
+    if (method === 'GET') return listAvailableCuts(env, storeId, url);
+    const auth = await requireAuth(request, env);
+    if (auth instanceof Response) return auth;
+    if (method === 'PUT' || method === 'POST') return saveAvailableCuts(request, env, auth as JwtPayload, storeId);
+    return err('Method not allowed', 405);
+  }
+
+  // ─── /api/v1/service-categories/cuts (public, for dropdowns) ───────────────
+  if (path === '/api/v1/service-categories/cuts' && method === 'GET') {
+    return listCutStyles(env, url);
+  }
+
+  // ─── /api/v1/pet-breeds (public, for dropdowns) ───────────────────────────
+  if (path === '/api/v1/pet-breeds' && method === 'GET') {
+    return listPetBreeds(env, url);
   }
 
   // ─── /api/v1/stores/:id/settings (PATCH) ────────────────────────────────────

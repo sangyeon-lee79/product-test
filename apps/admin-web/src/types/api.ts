@@ -983,6 +983,15 @@ export interface StoreService {
   is_active: boolean;
   display_name?: string;
   display_description?: string;
+  // Pet type + cut style
+  pet_type_l2_id?: string | null;
+  pet_type_l2_code?: string | null;
+  pet_type_l2_label?: string | null;
+  pet_type_l2_item_id?: string | null;
+  service_category_l3_id?: string | null;
+  cut_l3_item_id?: string | null;
+  cut_l3_code?: string | null;
+  cut_l3_label?: string | null;
   created_at: string;
   updated_at: string;
 }

@@ -1115,6 +1115,30 @@ export const api = {
       request<{ reviews: AppointmentReview[]; avg_rating: number; total: number; review_public: boolean }>(
         `/api/v1/stores/${storeId}/reviews${buildQuery(params || {})}`
       ),
+    availableCuts: {
+      list: (storeId: string, lang?: string) =>
+        request<{ items: { id: string; cut_item_id: string; cut_code: string; cut_label: string; extra_data: string }[] }>(
+          `/api/v1/stores/${storeId}/available-cuts${buildQuery({ lang })}`
+        ),
+      save: (storeId: string, cutItemIds: string[]) =>
+        request<{ saved: boolean }>(`/api/v1/stores/${storeId}/available-cuts`, {
+          method: 'PUT', body: JSON.stringify({ cut_item_ids: cutItemIds }),
+        }),
+    },
+  },
+
+  // ─── Service Categories / Pet Breeds (for dropdowns) ──────────────────
+  serviceCuts: {
+    list: (params?: { pet_type_l2_id?: string; store_id?: string; lang?: string }) =>
+      request<{ items: { id: string; code: string; label: string; extra_data: string }[] }>(
+        `/api/v1/service-categories/cuts${buildQuery(params || {})}`
+      ),
+  },
+  petBreeds: {
+    list: (params?: { pet_type_l1_id?: string; lang?: string }) =>
+      request<{ items: { id: string; code: string; label: string; parent_id: string }[] }>(
+        `/api/v1/pet-breeds${buildQuery(params || {})}`
+      ),
   },
 
   // ─── Dummy Stores (demo data) ──────────────────────────────────────────

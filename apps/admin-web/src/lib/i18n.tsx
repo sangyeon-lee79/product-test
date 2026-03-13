@@ -52,7 +52,7 @@ export function I18nProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     setIsLoaded(false);
     // 병합이 필요한 프리픽스 정의
-    const prefixes = ['admin', 'master', 'platform', 'guardian', 'common', 'public', 'friend', 'notification'];
+    const prefixes = ['admin', 'master', 'platform', 'guardian', 'common', 'public', 'friend', 'notification', 'supplier', 'booking', 'appointment', 'review', 'grooming'];
     
     Promise.all(
       prefixes.map(prefix => 

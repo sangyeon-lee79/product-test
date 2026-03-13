@@ -429,41 +429,60 @@ export default function ProviderStoreSection() {
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
                     <strong>{t('admin.store.form.services')}</strong>
                     <button className="btn btn-secondary btn-sm" onClick={() => openServiceModal('create')}>
-                      + {t('provider.store.service.add')}
+                      + {t('supplier.service.add_btn')}
                     </button>
                   </div>
                   {(selectedStore.services || []).length === 0 ? (
-                    <p style={{ color: 'var(--text-muted)', fontSize: 13 }}>{t('provider.store.no_services')}</p>
+                    <p style={{ color: 'var(--text-muted)', fontSize: 13 }}>{t('guardian.service.no_services')}</p>
                   ) : (
-                    <div style={{ display: 'grid', gap: 8 }}>
+                    <div style={{ display: 'grid', gap: 10 }}>
                       {selectedStore.services.map(svc => (
-                        <div key={svc.id} style={{ border: '1px solid var(--border)', borderRadius: 8, padding: 12 }}>
-                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <div key={svc.id} className="sp-svc-card" style={{
+                          border: '1px solid var(--border)', borderRadius: 12, padding: 16,
+                          opacity: svc.is_active === false ? 0.5 : 1,
+                        }}>
+                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
                             <div>
-                              <strong>{svc.display_name || svc.name}</strong>
-                              {svc.duration_minutes != null && (
-                                <span style={{ marginLeft: 8, fontSize: 12, color: 'var(--text-muted)' }}>
-                                  {svc.duration_minutes}{t('booking.minutes')}
-                                </span>
-                              )}
-                              {svc.price != null && (
-                                <span style={{ marginLeft: 8, color: 'var(--primary)', fontWeight: 600 }}>
-                                  {svc.currency_code || ''} {svc.price.toLocaleString()}
-                                </span>
-                              )}
+                              <strong style={{ fontSize: 15 }}>{svc.display_name || svc.name}</strong>
+                              {/* Pet type + cut style info */}
+                              <div style={{ marginTop: 4, display: 'flex', gap: 6, flexWrap: 'wrap', alignItems: 'center' }}>
+                                {svc.pet_type_l2_label && (
+                                  <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>
+                                    {svc.pet_type_l2_label}
+                                  </span>
+                                )}
+                                {svc.cut_l3_label && (
+                                  <span style={{ fontSize: 12, color: 'var(--primary)', fontWeight: 600 }}>
+                                    {svc.cut_l3_label}
+                                  </span>
+                                )}
+                              </div>
+                              {/* Duration + Price */}
+                              <div style={{ marginTop: 6, display: 'flex', gap: 16, fontSize: 13, color: 'var(--text-muted)' }}>
+                                {svc.duration_minutes != null && svc.duration_minutes > 0 && (
+                                  <span>{svc.duration_minutes}{t('supplier.service.duration_unit')}</span>
+                                )}
+                                {svc.price != null && svc.price > 0 && (
+                                  <span style={{ color: 'var(--primary)', fontWeight: 600 }}>
+                                    {Number(svc.price).toLocaleString()}{t('supplier.service.price_unit')}
+                                  </span>
+                                )}
+                              </div>
                             </div>
-                            <div style={{ display: 'flex', gap: 4 }}>
+                            <div style={{ display: 'flex', gap: 4, alignItems: 'center' }}>
+                              <span className={`badge ${svc.is_active !== false ? 'badge-green' : 'badge-gray'}`} style={{ fontSize: 10 }}>
+                                {svc.is_active !== false ? t('supplier.service.active_label') : 'OFF'}
+                              </span>
                               <button className="btn btn-secondary btn-sm" onClick={() => openServiceModal('edit', svc)}>
                                 {t('provider.store.service.edit')}
                               </button>
-                              <button className="btn btn-danger btn-sm" onClick={() => void deleteService(svc.id)}>x</button>
+                              <button className="btn btn-danger btn-sm" onClick={() => {
+                                if (confirm(t('supplier.service.delete_confirm'))) void deleteService(svc.id);
+                              }}>x</button>
                             </div>
                           </div>
-                          {svc.display_description && (
-                            <div className="text-muted" style={{ fontSize: 12, marginTop: 4 }}>{svc.display_description}</div>
-                          )}
                           {/* Discounts */}
-                          <div style={{ marginTop: 8 }}>
+                          <div style={{ marginTop: 8, borderTop: '1px solid var(--border)', paddingTop: 6 }}>
                             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                               <span style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-muted)' }}>
                                 {t('admin.store.form.discounts')}
@@ -662,42 +681,114 @@ export default function ProviderStoreSection() {
               <>
                 <div className="modal-header">
                   <div className="modal-title">
-                    {modalMode === 'edit' ? t('provider.store.service.edit') : t('provider.store.service.add')}
+                    {modalMode === 'edit' ? t('supplier.service.edit_title') : t('supplier.service.add_title')}
                   </div>
                   <button className="modal-close" onClick={() => setModal(null)}>x</button>
                 </div>
                 <div className="modal-body" style={{ display: 'grid', gap: 12 }}>
+                  {/* Service Name */}
                   <div className="form-group">
                     <label className="form-label">
-                      {t('admin.service.form.name')} *
-                      <TranslationPopup label={t('admin.service.form.name')} sourceText={serviceForm.name} translations={serviceNameTrans} onChange={setServiceNameTrans} t={t} />
+                      {t('supplier.service.name_label')} *
+                      <TranslationPopup label={t('supplier.service.name_label')} sourceText={serviceForm.name} translations={serviceNameTrans} onChange={setServiceNameTrans} t={t} />
                     </label>
-                    <input className="form-input" value={serviceForm.name} onChange={e => setServiceForm({ ...serviceForm, name: e.target.value })} />
+                    <input className="form-input" value={serviceForm.name}
+                      placeholder={t('supplier.service.name_placeholder')}
+                      onChange={e => setServiceForm({ ...serviceForm, name: e.target.value })} />
                   </div>
+
+                  {/* Pet Type (L2 breed) */}
                   <div className="form-group">
-                    <label className="form-label">
-                      {t('admin.service.form.description')}
-                      <TranslationPopup label={t('admin.service.form.description')} sourceText={serviceForm.description} translations={serviceDescTrans} onChange={setServiceDescTrans} t={t} />
-                    </label>
-                    <textarea className="form-textarea" value={serviceForm.description} onChange={e => setServiceForm({ ...serviceForm, description: e.target.value })} />
+                    <label className="form-label">{t('supplier.service.pet_label')}</label>
+                    <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+                      <button
+                        type="button"
+                        className={`btn btn-sm ${!serviceForm.pet_type_l2_id ? 'btn-primary' : 'btn-secondary'}`}
+                        onClick={() => {
+                          setServiceForm({ ...serviceForm, pet_type_l2_id: '', service_category_l3_id: '' });
+                          setCutStyles([]);
+                        }}
+                      >
+                        {t('common.all')}
+                      </button>
+                      {petBreeds.map(b => (
+                        <button
+                          key={b.id}
+                          type="button"
+                          className={`btn btn-sm ${serviceForm.pet_type_l2_id === b.id ? 'btn-primary' : 'btn-secondary'}`}
+                          onClick={() => {
+                            setServiceForm({ ...serviceForm, pet_type_l2_id: b.id, service_category_l3_id: '' });
+                            if (selectedStore) {
+                              api.serviceCuts.list({ pet_type_l2_id: b.id, store_id: selectedStore.id, lang })
+                                .then(r => setCutStyles(r.items)).catch(() => setCutStyles([]));
+                            }
+                          }}
+                        >
+                          {b.label}
+                        </button>
+                      ))}
+                    </div>
                   </div>
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 12 }}>
+
+                  {/* Cut Style (L3, filtered by pet + store available_cuts) */}
+                  <div className="form-group">
+                    <label className="form-label">{t('supplier.service.cut_label')}</label>
+                    {!serviceForm.pet_type_l2_id ? (
+                      <select className="form-select" disabled>
+                        <option>{t('supplier.service.pet_select_first')}</option>
+                      </select>
+                    ) : (
+                      <select className="form-select"
+                        value={serviceForm.service_category_l3_id}
+                        onChange={e => setServiceForm({ ...serviceForm, service_category_l3_id: e.target.value })}>
+                        <option value="">{t('supplier.service.cut_none')}</option>
+                        {cutStyles.map(c => (
+                          <option key={c.id} value={c.id}>{c.label}</option>
+                        ))}
+                      </select>
+                    )}
+                  </div>
+
+                  {/* Price + Duration */}
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
                     <div className="form-group">
-                      <label className="form-label">{t('admin.service.form.price')}</label>
-                      <input className="form-input" type="number" value={serviceForm.price} onChange={e => setServiceForm({ ...serviceForm, price: e.target.value })} />
+                      <label className="form-label">{t('supplier.service.price_label')}</label>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                        <input className="form-input" type="number" value={serviceForm.price}
+                          placeholder={t('supplier.service.price_placeholder')}
+                          onChange={e => setServiceForm({ ...serviceForm, price: e.target.value })}
+                          style={{ flex: 1 }} />
+                        <span style={{ fontSize: 13, color: 'var(--text-muted)' }}>{t('supplier.service.price_unit')}</span>
+                      </div>
                     </div>
                     <div className="form-group">
-                      <label className="form-label">{t('booking.duration')}</label>
-                      <input className="form-input" type="number" placeholder="60" value={serviceForm.duration_minutes} onChange={e => setServiceForm({ ...serviceForm, duration_minutes: e.target.value })} />
-                    </div>
-                    <div className="form-group">
-                      <label className="form-label">{t('admin.service.form.sort_order')}</label>
-                      <input className="form-input" type="number" value={serviceForm.sort_order} onChange={e => setServiceForm({ ...serviceForm, sort_order: e.target.value })} />
+                      <label className="form-label">{t('supplier.service.duration_label')}</label>
+                      <select className="form-select" value={serviceForm.duration_minutes}
+                        onChange={e => setServiceForm({ ...serviceForm, duration_minutes: e.target.value })}>
+                        <option value="">{t('supplier.service.duration_select')}</option>
+                        {[30, 60, 90, 120, 150, 180, 210, 240, 270, 300, 330, 360, 390, 420, 450, 480].map(m => (
+                          <option key={m} value={String(m)}>{m}{t('supplier.service.duration_unit')}</option>
+                        ))}
+                      </select>
                     </div>
                   </div>
-                  <button className="btn btn-primary" onClick={() => void saveService()} disabled={saving}>
-                    {saving ? '...' : t('admin.common.save')}
-                  </button>
+
+                  {/* Active toggle */}
+                  <div className="form-group" style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                    <input type="checkbox" checked={serviceForm.is_active}
+                      onChange={e => setServiceForm({ ...serviceForm, is_active: e.target.checked })}
+                      style={{ accentColor: 'var(--primary)', width: 18, height: 18 }} />
+                    <label className="form-label" style={{ margin: 0 }}>{t('supplier.service.active_label')}</label>
+                  </div>
+
+                  <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
+                    <button className="btn btn-secondary" onClick={() => setModal(null)}>
+                      {t('common.cancel', 'Cancel')}
+                    </button>
+                    <button className="btn btn-primary" onClick={() => void saveService()} disabled={saving}>
+                      {saving ? '...' : t('supplier.service.save_btn')}
+                    </button>
+                  </div>
                 </div>
               </>
             )}

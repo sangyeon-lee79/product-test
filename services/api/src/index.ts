@@ -149,8 +149,9 @@ async function dispatch(request: Request, env: Env, url: URL): Promise<Response>
     return handleDummyStores(request, env, url);
   }
 
-  // S9: Stores + Services
-  if (path.startsWith('/api/v1/stores') || path.startsWith('/api/v1/services')) {
+  // S9: Stores + Services + Pet Breeds + Cut Styles
+  if (path.startsWith('/api/v1/stores') || path.startsWith('/api/v1/services')
+    || path.startsWith('/api/v1/pet-breeds') || path.startsWith('/api/v1/service-categories')) {
     const { handleStores } = await import('./routes/stores');
     return handleStores(request, env, url);
   }

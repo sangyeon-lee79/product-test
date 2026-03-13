@@ -49,13 +49,13 @@ export const KEY_LITERAL_PATTERN = /^(master|admin|platform|guardian|common|publ
 export function getTranslation(
   trans: Record<string, string>,
   key: string,
-  lang: Lang,
-  missingMap: Record<Lang, string>,
+  _lang: Lang,
+  _missingMap: Record<Lang, string>,
   fallback?: string
 ): string {
   const value = trans[key];
   if (value !== undefined && value !== null && String(value).trim() !== '') {
     return value;
   }
-  return fallback ?? missingMap[lang] ?? 'Missing translation';
+  return fallback ?? key;
 }

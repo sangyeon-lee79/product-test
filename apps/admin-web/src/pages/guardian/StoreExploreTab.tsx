@@ -37,7 +37,11 @@ export interface DisplayStore {
   reviewCount: number;
   isDemo: false;
   avatarUrl?: string | null;
-  services: { id: string; displayName: string; price: number | null; durationMin: number | null }[];
+  services: {
+    id: string; displayName: string; price: number | null; durationMin: number | null;
+    petTypeL2Id?: string | null; petTypeL2Label?: string | null;
+    cutL3Label?: string | null; cutL3Id?: string | null;
+  }[];
   supplierId: string;
   storeId: string;
   operatingHours?: Record<string, { open: string; close: string; closed?: boolean }> | null;
@@ -59,6 +63,10 @@ function storeToDisplay(s: Store, services: StoreService[]): DisplayStore {
       displayName: svc.display_name || svc.name || '',
       price: svc.price ?? null,
       durationMin: svc.duration_minutes ?? null,
+      petTypeL2Id: svc.pet_type_l2_id ?? null,
+      petTypeL2Label: svc.pet_type_l2_label ?? null,
+      cutL3Label: svc.cut_l3_label ?? null,
+      cutL3Id: svc.cut_l3_item_id ?? null,
     })),
     supplierId: s.owner_id,
     storeId: s.id,

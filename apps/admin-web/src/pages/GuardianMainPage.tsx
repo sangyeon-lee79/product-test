@@ -747,31 +747,6 @@ export default function GuardianMainPage() {
         )}
       </div>
 
-      {/* ── Pet switching (story-ring style) ── */}
-      {pets.length >= 2 && (
-        <div className="pf-gd-pet-switch">
-          {pets.map((p) => {
-            const isActive = selectedPet?.id === p.id;
-            return (
-              <button key={p.id} className="pf-gd-pet-btn" onClick={() => setSelectedPetId(p.id)}>
-                <div className={`pf-gd-pet-ring${isActive ? ' active' : ''}`}>
-                  <div className="pf-gd-pet-ring-inner">
-                    {p.avatar_url
-                      ? <img src={p.avatar_url} alt={p.name} className="pf-avatar-img" />
-                      : p.name[0].toUpperCase()}
-                  </div>
-                </div>
-                <span className="pf-gd-pet-name">{p.name}</span>
-              </button>
-            );
-          })}
-          <button className="pf-gd-pet-btn" onClick={openCreatePet} title={t('common.add_pet', 'Add Pet')} aria-label={t('common.add_pet', 'Add Pet')}>
-            <div className="pf-gd-pet-ring--add">+</div>
-            <span className="pf-gd-pet-name">{t('common.add', 'Add')}</span>
-          </button>
-        </div>
-      )}
-
       {/* ── Sticky tab bar ── */}
       <div className="pf-gd-tabs-wrap">
         <div className="pf-gd-tabs-inner" ref={tabsRef}>

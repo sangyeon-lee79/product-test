@@ -96,6 +96,15 @@ export default function AppointmentSection({ t, locale }: Props) {
   const daysInMonth = getDaysInMonth(calYear, calMonth);
   const firstDay = getFirstDayOfWeek(calYear, calMonth);
   const todayStr = `${now.getFullYear()}-${pad2(now.getMonth() + 1)}-${pad2(now.getDate())}`;
+  const weekDays = [
+    t('supplier.settings.day.su'),
+    t('supplier.settings.day.mo'),
+    t('supplier.settings.day.tu'),
+    t('supplier.settings.day.we'),
+    t('supplier.settings.day.th'),
+    t('supplier.settings.day.fr'),
+    t('supplier.settings.day.sa'),
+  ];
 
   const calendarDayAppointments = useMemo(() => {
     if (!selectedCalDate) return [];
@@ -117,10 +126,15 @@ export default function AppointmentSection({ t, locale }: Props) {
   async function handleConfirm(id: string) {
     setBusyId(id);
     setMessage('');
+    setError('');
     try {
       await api.appointments.confirm(id);
-      setMessage(t('supplier.appointment.status.confirmed'));
-      await loadAppointments({ silent: true });
+      setAppointments(prev => prev.map(apt => (
+        apt.id === id
+          ? { ...apt, status: 'confirmed', updated_at: new Date().toISOString() }
+          : apt
+      )));
+      setMessage(t('appointment.action.accept') + ' ' + t('common.saved', 'completed'));
     } catch (e) {
       setError(e instanceof Error ? e.message : t('common.err.failed'));
     } finally {
@@ -131,12 +145,20 @@ export default function AppointmentSection({ t, locale }: Props) {
   async function handleReject() {
     if (!rejectModalId) return;
     setBusyId(rejectModalId);
+    setMessage('');
+    setError('');
     try {
-      await api.appointments.reject(rejectModalId, rejectReason);
+      const targetId = rejectModalId;
+      const reason = rejectReason.trim();
+      await api.appointments.reject(targetId, reason);
+      setAppointments(prev => prev.map(apt => (
+        apt.id === targetId
+          ? { ...apt, status: 'rejected', rejected_reason: reason || null, updated_at: new Date().toISOString() }
+          : apt
+      )));
       setRejectModalId('');
       setRejectReason('');
-      setMessage(t('supplier.appointment.status.rejected'));
-      await loadAppointments({ silent: true });
+      setMessage(t('appointment.action.reject') + ' ' + t('common.saved', 'completed'));
     } catch (e) {
       setError(e instanceof Error ? e.message : t('common.err.failed'));
     } finally {
@@ -287,7 +309,7 @@ export default function AppointmentSection({ t, locale }: Props) {
 
           {/* Calendar grid */}
           <div className="gm-cal-grid">
-            {['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa'].map(d => (
+            {weekDays.map(d => (
               <div key={d} className="gm-cal-header">{d}</div>
             ))}
             {Array.from({ length: firstDay }, (_, i) => (
@@ -347,10 +369,10 @@ export default function AppointmentSection({ t, locale }: Props) {
                           {apt.status === 'pending' && (
                             <span style={{ display: 'flex', gap: 4 }}>
                               <button className="btn btn-primary" style={{ fontSize: 11, padding: '2px 8px' }} disabled={busyId === apt.id} onClick={e => { e.stopPropagation(); handleConfirm(apt.id); }}>
-                                {t('supplier.appointment.confirm_btn')}
+                                {busyId === apt.id ? '...' : t('supplier.appointment.confirm_btn')}
                               </button>
                               <button className="btn btn-danger" style={{ fontSize: 11, padding: '2px 8px' }} disabled={busyId === apt.id} onClick={e => { e.stopPropagation(); setRejectModalId(apt.id); setRejectReason(''); }}>
-                                {t('supplier.appointment.reject_btn')}
+                                {busyId === apt.id ? '...' : t('supplier.appointment.reject_btn')}
                               </button>
                             </span>
                           )}
@@ -524,10 +546,10 @@ export default function AppointmentSection({ t, locale }: Props) {
                   {selected.status === 'pending' && (
                     <>
                       <button className="btn btn-primary btn-sm" disabled={busyId === selected.id} onClick={() => handleConfirm(selected.id)}>
-                        {t('supplier.appointment.confirm_btn')}
+                        {busyId === selected.id ? '...' : t('supplier.appointment.confirm_btn')}
                       </button>
                       <button className="btn btn-danger btn-sm" disabled={busyId === selected.id} onClick={() => { setRejectModalId(selected.id); setRejectReason(''); }}>
-                        {t('supplier.appointment.reject_btn')}
+                        {busyId === selected.id ? '...' : t('supplier.appointment.reject_btn')}
                       </button>
                     </>
                   )}

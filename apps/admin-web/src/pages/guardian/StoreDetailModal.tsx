@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import { api, type AppointmentReview } from '../../lib/api';
 import { useT } from '../../lib/i18n';
 
@@ -7,6 +7,10 @@ interface StoreService {
   displayName: string;
   price: number | null;
   durationMin: number | null;
+  petTypeL2Id?: string | null;
+  petTypeL2Label?: string | null;
+  cutL3Label?: string | null;
+  cutL3Id?: string | null;
 }
 
 interface DisplayStore {
@@ -23,10 +27,18 @@ interface DisplayStore {
   operatingHours?: Record<string, { open: string; close: string; closed?: boolean }> | null;
 }
 
+interface GuardianPet {
+  id: string;
+  name: string;
+  petTypeL2Id?: string | null;
+  petTypeL2Label?: string | null;
+}
+
 interface Props {
   store: DisplayStore;
   onClose: () => void;
   onBook: (service?: StoreService) => void;
+  guardianPets?: GuardianPet[];
 }
 
 const catEmoji: Record<string, string> = {
@@ -34,15 +46,24 @@ const catEmoji: Record<string, string> = {
   training: '\uD83C\uDFAF', shop: '\uD83D\uDED2', cafe: '\u2615', photo: '\uD83D\uDCF7',
 };
 
-export default function StoreDetailModal({ store, onClose, onBook }: Props) {
+export default function StoreDetailModal({ store, onClose, onBook, guardianPets }: Props) {
   const t = useT();
   const [tab, setTab] = useState<'services' | 'info' | 'reviews'>('services');
+  const [selectedPetFilter, setSelectedPetFilter] = useState<string>(''); // '' = all
 
   // Reviews state
   const [reviews, setReviews] = useState<AppointmentReview[]>([]);
   const [avgRating, setAvgRating] = useState(0);
   const [reviewTotal, setReviewTotal] = useState(0);
   const [loadingReviews, setLoadingReviews] = useState(false);
+
+  // Filter services by pet type
+  const filteredServices = useMemo(() => {
+    if (!selectedPetFilter) return store.services;
+    return store.services.filter(svc =>
+      !svc.petTypeL2Id || svc.petTypeL2Id === selectedPetFilter
+    );
+  }, [store.services, selectedPetFilter]);
 
   useEffect(() => {
     if (tab !== 'reviews' || !store.storeId) return;
@@ -114,21 +135,51 @@ export default function StoreDetailModal({ store, onClose, onBook }: Props) {
         <div className="gm-store-detail-body">
           {tab === 'services' && (
             <div className="gm-store-detail-services">
-              {store.services.length === 0 ? (
+              {/* Pet filter tabs */}
+              {guardianPets && guardianPets.length > 0 && (
+                <div style={{ display: 'flex', gap: 6, marginBottom: 12, flexWrap: 'wrap' }}>
+                  {guardianPets.map(pet => (
+                    <button
+                      key={pet.id}
+                      type="button"
+                      className={`gm-store-category-chip${selectedPetFilter === (pet.petTypeL2Id || '') ? ' active' : ''}`}
+                      onClick={() => setSelectedPetFilter(pet.petTypeL2Id || '')}
+                    >
+                      {pet.name} {pet.petTypeL2Label ? `(${pet.petTypeL2Label})` : ''}
+                    </button>
+                  ))}
+                  <button
+                    type="button"
+                    className={`gm-store-category-chip${!selectedPetFilter ? ' active' : ''}`}
+                    onClick={() => setSelectedPetFilter('')}
+                  >
+                    {t('guardian.service.all_pets')}
+                  </button>
+                </div>
+              )}
+
+              {filteredServices.length === 0 ? (
                 <div style={{ padding: '24px 0', textAlign: 'center', color: 'var(--text-muted)', fontSize: 13 }}>
-                  {t('guardian.store.detail.no_services', 'No services available')}
+                  {t('guardian.service.no_services')}
                 </div>
               ) : (
-                store.services.map(svc => (
-                  <div key={svc.id} className="gm-store-service-card">
-                    <div className="gm-store-service-info">
-                      <div className="gm-store-service-name">{svc.displayName}</div>
-                      <div className="gm-store-service-meta">
-                        {svc.durationMin != null && (
-                          <span>{svc.durationMin}{t('guardian.store.detail.minutes', 'min')}</span>
+                filteredServices.map(svc => (
+                  <div key={svc.id} className="gm-svc-enhanced-card">
+                    <div style={{ flex: 1 }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                        <span style={{ fontSize: 16, fontWeight: 700 }}>{svc.displayName}</span>
+                        {svc.cutL3Label && (
+                          <span style={{ fontSize: 13, color: 'var(--primary)', fontWeight: 600 }}>
+                            {svc.cutL3Label}
+                          </span>
                         )}
-                        {svc.price != null && (
-                          <span style={{ fontWeight: 600 }}>{svc.price.toLocaleString()}</span>
+                      </div>
+                      <div style={{ display: 'flex', gap: 16, marginTop: 6, fontSize: 14, color: '#666' }}>
+                        {svc.durationMin != null && svc.durationMin > 0 && (
+                          <span>{svc.durationMin}{t('supplier.service.duration_unit', 'min')}</span>
+                        )}
+                        {svc.price != null && svc.price > 0 && (
+                          <span style={{ fontWeight: 600 }}>{Number(svc.price).toLocaleString()}{t('supplier.service.price_unit', 'KRW')}</span>
                         )}
                       </div>
                     </div>
