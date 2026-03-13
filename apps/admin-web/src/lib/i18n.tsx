@@ -51,23 +51,13 @@ export function I18nProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     setIsLoaded(false);
-    // 병합이 필요한 프리픽스 정의
-    const prefixes = ['admin', 'master', 'platform', 'guardian', 'common', 'public', 'friend', 'notification', 'supplier', 'booking', 'appointment', 'review', 'grooming'];
-    
-    Promise.all(
-      prefixes.map(prefix => 
-        fetch(`${API_BASE}/api/v1/i18n?lang=${lang}&prefix=${prefix}`)
-          .then(r => r.json() as Promise<{ success: boolean; data: Record<string, string> }>)
-          .catch(() => ({ success: false, data: {} }))
-      )
-    )
-      .then(results => {
-        const merged: Record<string, string> = {};
-        results.forEach(res => {
-          if (res.success) Object.assign(merged, res.data);
-        });
-        setTrans(merged);
-        initApiTranslator((key, fb) => getTranslation(merged, key, lang, MISSING_TRANSLATION_MAP, fb));
+    // prefix 없이 전체 번역 로드 — 누락 prefix 방지
+    fetch(`${API_BASE}/api/v1/i18n?lang=${lang}`)
+      .then(r => r.json() as Promise<{ success: boolean; data: Record<string, string> }>)
+      .then(res => {
+        const data = res.success ? res.data : {};
+        setTrans(data);
+        initApiTranslator((key, fb) => getTranslation(data, key, lang, MISSING_TRANSLATION_MAP, fb));
         setIsLoaded(true);
       })
       .catch(() => {

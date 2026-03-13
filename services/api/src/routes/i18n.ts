@@ -257,14 +257,22 @@ export async function handleI18n(request: Request, env: Env, url: URL): Promise<
     if (!LANGS.includes(lang as Lang)) return err('Unsupported lang');
 
     const col = lang as string;
-    let query = `SELECT key, ${col} as value FROM i18n_translations WHERE is_active = true`;
+    // Fallback chain: selected lang → ko → en → key
+    const valueSql = col === 'ko'
+      ? `COALESCE(NULLIF(TRIM(ko), ''), NULLIF(TRIM(en), ''), key)`
+      : col === 'en'
+        ? `COALESCE(NULLIF(TRIM(en), ''), NULLIF(TRIM(ko), ''), key)`
+        : `COALESCE(NULLIF(TRIM(${col}), ''), NULLIF(TRIM(ko), ''), NULLIF(TRIM(en), ''), key)`;
+    let query = `SELECT key, ${valueSql} as value FROM i18n_translations WHERE is_active = true`;
     const params: string[] = [];
     if (prefix) { query += ' AND key LIKE ?'; params.push(`${prefix}%`); }
     query += ' ORDER BY key';
 
     const rows = await env.DB.prepare(query).bind(...params).all<{ key: string; value: string }>();
     const result: Record<string, string> = {};
-    for (const r of rows.results) result[r.key] = r.value ?? '';
+    for (const r of rows.results) {
+      if (r.value && r.value !== r.key) result[r.key] = r.value;
+    }
     return ok(result);
   }
 
