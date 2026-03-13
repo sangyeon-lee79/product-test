@@ -5409,6 +5409,20 @@ html[data-theme="dark"] .fcs-test-banner {
   background: var(--amber); color: #fff; border-color: var(--amber); font-weight: 700;
 }
 
+/* ─── Supplier Calendar Dots ─── */
+.sp-cal-dots { display: flex; gap: 3px; justify-content: center; margin-top: 2px; }
+.sp-cal-dot { width: 6px; height: 6px; border-radius: 50%; display: inline-block; }
+.sp-cal-dot.dot-pending   { background: #f59e0b; }
+.sp-cal-dot.dot-confirmed { background: #22c55e; }
+.sp-cal-dot.dot-completed { background: #3b82f6; }
+.sp-cal-apt-row {
+  display: flex; align-items: center; gap: 10px; padding: 10px 12px;
+  border-bottom: 1px solid var(--border); cursor: pointer; transition: background .15s;
+}
+.sp-cal-apt-row:hover { background: rgba(245,130,58,.06); }
+.sp-cal-apt-row:last-child { border-bottom: none; }
+html[data-theme="dark"] .sp-cal-apt-row:hover { background: rgba(245,130,58,.1); }
+
 /* ─── Time slots ─── */
 .gm-booking-timeslot-grid {
   display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px;

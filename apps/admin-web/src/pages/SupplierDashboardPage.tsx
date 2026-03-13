@@ -172,7 +172,7 @@ export default function SupplierDashboardPage() {
   const me = useMemo(() => decodeToken(), []);
 
   // Tab state
-  const [spTab, setSpTab] = useState<'store' | 'appointments' | 'feed' | 'settings'>('store');
+  const [spTab, setSpTab] = useState<'store' | 'appointments' | 'feed' | 'settings'>('appointments');
 
   // Feed state
   const [supplierFeeds, setSupplierFeeds] = useState<FeedPost[]>([]);
@@ -338,7 +338,7 @@ export default function SupplierDashboardPage() {
               <div style={{ textAlign: 'right' }}>
                 <div style={{ fontSize: 12, color: 'var(--text-muted)' }}>{me.email || ''}</div>
                 <button className="btn btn-secondary btn-sm" style={{ marginTop: 8 }} onClick={handleLogout}>
-                  {t('admin.common.logout', '로그아웃')}
+                  {t('admin.common.logout')}
                 </button>
               </div>
             </div>
@@ -385,7 +385,7 @@ export default function SupplierDashboardPage() {
             <div className="sp-hero-account-email">{me.email || t('admin.provider.account.fallback_email')}</div>
             <div className="sp-hero-account-id">{t('admin.provider.account.supplier_id')}: {me.sub || '-'}</div>
             <button className="btn btn-secondary btn-sm" style={{ marginTop: 10 }} onClick={handleLogout}>
-              {t('admin.common.logout', 'Logout')}
+              {t('admin.common.logout')}
             </button>
           </div>
         </div>
@@ -417,16 +417,16 @@ export default function SupplierDashboardPage() {
       {/* ── Tab bar ── */}
       <div className="sp-tabs">
         <button className={`sp-tab${spTab === 'store' ? ' active' : ''}`} onClick={() => setSpTab('store')}>
-          {t('supplier.tab.store', 'Store')}
+          {t('supplier.tab.store')}
         </button>
         <button className={`sp-tab${spTab === 'appointments' ? ' active' : ''}`} onClick={() => setSpTab('appointments')}>
-          {t('supplier.tab.appointments', 'Appointments')}
+          {t('supplier.tab.appointments')}
         </button>
         <button className={`sp-tab${spTab === 'feed' ? ' active' : ''}`} onClick={() => setSpTab('feed')}>
-          {t('supplier.tab.feed', 'Feed')}
+          {t('supplier.tab.feed')}
         </button>
         <button className={`sp-tab${spTab === 'settings' ? ' active' : ''}`} onClick={() => setSpTab('settings')}>
-          {t('supplier.tab.settings', 'Settings')}
+          {t('supplier.tab.settings')}
         </button>
       </div>
 
@@ -440,7 +440,7 @@ export default function SupplierDashboardPage() {
           <>
             <section className="sp-card">
               <div className="sp-card-header">
-                <span>{t('supplier.appointment.new_request', 'Appointment Management')}</span>
+                <span>{t('supplier.appointment.new_request')}</span>
               </div>
               <div className="sp-card-body">
                 <AppointmentSection t={t} locale={LANG_TO_LOCALE[lang] || 'en-US'} />
@@ -612,18 +612,18 @@ export default function SupplierDashboardPage() {
         {spTab === 'feed' && (
           <section className="sp-card">
             <div className="sp-card-header">
-              <span>{t('supplier.feed.title', 'My Posts')}</span>
-              <button className="btn btn-primary btn-sm" onClick={() => setComposeOpen(true)}>+ {t('guardian.feed.post', 'Post')}</button>
+              <span>{t('supplier.feed.title')}</span>
+              <button className="btn btn-primary btn-sm" onClick={() => setComposeOpen(true)}>+ {t('guardian.feed.post')}</button>
             </div>
             <div className="sp-card-body">
               <div className="pf-gd-compose" onClick={() => setComposeOpen(true)} style={{ marginBottom: 16 }}>
                 <div className="pf-gd-compose-avatar">{(me.email || '?')[0].toUpperCase()}</div>
-                <div className="pf-gd-compose-text">{t('supplier.post.placeholder', 'Share your business news')}</div>
+                <div className="pf-gd-compose-text">{t('supplier.post.placeholder')}</div>
               </div>
               {feedLoading && <div className="loading-center"><span className="spinner" /></div>}
               {!feedLoading && supplierFeeds.length === 0 && (
                 <div style={{ textAlign: 'center', padding: '24px 0', color: 'var(--text-muted)' }}>
-                  {t('supplier.feed.empty', 'No posts yet.')}
+                  {t('supplier.feed.empty')}
                 </div>
               )}
               {supplierFeeds.map((f) => {
@@ -669,7 +669,7 @@ export default function SupplierDashboardPage() {
         {spTab === 'settings' && (
           <section className="sp-card">
             <div className="sp-card-header">
-              <span>{t('supplier.settings.title', 'Store Settings')}</span>
+              <span>{t('supplier.settings.title')}</span>
             </div>
             <div className="sp-card-body">
               <SupplierSettingsSection />

@@ -16,6 +16,9 @@ async function listAppointments(env: Env, me: JwtPayload, url: URL): Promise<Res
       COALESCE(sup.display_name, su.email) AS supplier_name,
       su.email AS supplier_email,
       st.name AS store_name,
+      svc.name AS service_name,
+      svc.duration_minutes AS service_duration,
+      svc.price AS service_price,
       (SELECT COUNT(*) FROM appointment_reviews ar WHERE ar.appointment_id = a.id) AS review_count,
       (SELECT COUNT(*) FROM appointment_reviews ar WHERE ar.appointment_id = a.id AND ar.author_type = 'guardian') AS has_guardian_review,
       (SELECT COUNT(*) FROM appointment_reviews ar WHERE ar.appointment_id = a.id AND ar.author_type = 'supplier') AS has_supplier_review
@@ -26,6 +29,7 @@ async function listAppointments(env: Env, me: JwtPayload, url: URL): Promise<Res
     LEFT JOIN users su ON su.id = a.supplier_id
     LEFT JOIN user_profiles sup ON sup.user_id = a.supplier_id
     LEFT JOIN stores st ON st.id = a.store_id
+    LEFT JOIN services svc ON svc.id = a.service_id
     WHERE a.deleted_at IS NULL`;
   const binds: unknown[] = [];
 
@@ -237,7 +241,10 @@ async function getAppointment(env: Env, me: JwtPayload, id: string): Promise<Res
       p.name AS pet_name, p.avatar_url AS pet_avatar, p.species, p.breed_id,
       COALESCE(gup.display_name, gu.email) AS guardian_name,
       COALESCE(sup.display_name, su.email) AS supplier_name,
-      st.name AS store_name
+      st.name AS store_name,
+      svc.name AS service_name,
+      svc.duration_minutes AS service_duration,
+      svc.price AS service_price
     FROM appointments a
     LEFT JOIN pets p ON p.id = a.pet_id
     LEFT JOIN users gu ON gu.id = a.guardian_id
@@ -245,6 +252,7 @@ async function getAppointment(env: Env, me: JwtPayload, id: string): Promise<Res
     LEFT JOIN users su ON su.id = a.supplier_id
     LEFT JOIN user_profiles sup ON sup.user_id = a.supplier_id
     LEFT JOIN stores st ON st.id = a.store_id
+    LEFT JOIN services svc ON svc.id = a.service_id
     WHERE a.id = ? AND (a.guardian_id = ? OR a.supplier_id = ?)`
   ).bind(id, me.sub, me.sub).first<Record<string, unknown>>();
   if (!row) return err('appointment not found', 404);
