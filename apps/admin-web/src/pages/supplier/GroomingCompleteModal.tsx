@@ -58,7 +58,7 @@ export default function GroomingCompleteModal({ open, appointment, t, onClose, o
         return next;
       });
     } catch (e) {
-      setError(e instanceof Error ? e.message : t('common.err.save', 'Upload failed'));
+      setError(e instanceof Error ? e.message : t('common.err.save'));
     } finally {
       setUploading(false);
       if (fileRef.current) fileRef.current.value = '';
@@ -97,7 +97,7 @@ export default function GroomingCompleteModal({ open, appointment, t, onClose, o
       onSuccess();
       onClose();
     } catch (e) {
-      setError(e instanceof Error ? e.message : t('common.err.save', 'Failed to save'));
+      setError(e instanceof Error ? e.message : t('common.err.save'));
     } finally {
       setSaving(false);
     }
@@ -121,7 +121,7 @@ export default function GroomingCompleteModal({ open, appointment, t, onClose, o
     <div className="modal-overlay" onClick={onClose}>
       <div className="modal" style={{ maxWidth: 560 }} onClick={e => e.stopPropagation()}>
         <div className="modal-header">
-          <h3 className="modal-title">{t('booking.completion_title', 'Grooming Completion Report')}</h3>
+          <h3 className="modal-title">{t('booking.completion_title')}</h3>
           <button className="modal-close" onClick={onClose}>&times;</button>
         </div>
         <div className="modal-body">
@@ -129,7 +129,7 @@ export default function GroomingCompleteModal({ open, appointment, t, onClose, o
 
           {/* Photos — R2 file upload */}
           <div className="form-group">
-            <label className="form-label">{t('booking.completion_photos', 'Completion Photos')}</label>
+            <label className="form-label">{t('booking.completion_photos')}</label>
             <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', marginBottom: 8 }}>
               {photos.map((photo, i) => (
                 <div key={i} style={{ position: 'relative', width: 80, height: 80 }}>
@@ -168,7 +168,7 @@ export default function GroomingCompleteModal({ open, appointment, t, onClose, o
                   disabled={uploading}
                   onClick={() => fileRef.current?.click()}
                 >
-                  {uploading ? '...' : `+ ${t('booking.completion_photos', 'Photos')} (${photos.length}/${MAX_PHOTOS})`}
+                  {uploading ? '...' : `+ ${t('booking.completion_photos')} (${photos.length}/${MAX_PHOTOS})`}
                 </button>
               </div>
             )}
@@ -176,7 +176,7 @@ export default function GroomingCompleteModal({ open, appointment, t, onClose, o
 
           {/* Grooming type */}
           <div className="form-group">
-            <label className="form-label">{t('booking.completion_style', 'Grooming Type')}</label>
+            <label className="form-label">{t('booking.completion_style')}</label>
             <select className="form-input" value={groomingType} onChange={e => setGroomingType(e.target.value)}>
               <option value="">—</option>
               {GROOMING_TYPES.map(gt => (
@@ -187,7 +187,7 @@ export default function GroomingCompleteModal({ open, appointment, t, onClose, o
 
           {/* Cut style */}
           <div className="form-group">
-            <label className="form-label">{t('booking.completion_cut', 'Cut Style')}</label>
+            <label className="form-label">{t('booking.completion_cut')}</label>
             <select className="form-input" value={cutStyle} onChange={e => setCutStyle(e.target.value)}>
               <option value="">—</option>
               {CUT_STYLES.map(cs => (
@@ -198,39 +198,39 @@ export default function GroomingCompleteModal({ open, appointment, t, onClose, o
 
           {/* Custom cut name */}
           <div className="form-group">
-            <label className="form-label">{t('booking.completion_custom_cut', 'Custom Cut Name (Optional)')}</label>
-            <input className="form-input" value={customCutName} onChange={e => setCustomCutName(e.target.value)} placeholder={t('booking.completion_custom_cut_placeholder', 'e.g., Summer Trim')} />
+            <label className="form-label">{t('booking.completion_custom_cut')}</label>
+            <input className="form-input" value={customCutName} onChange={e => setCustomCutName(e.target.value)} placeholder={t('booking.completion_custom_cut_placeholder')} />
           </div>
 
           {/* Duration + Products */}
           <div className="form-row col2">
             <div className="form-group">
-              <label className="form-label">{t('booking.completion_duration', 'Duration')}</label>
-              <input type="number" className="form-input" value={durationMinutes} onChange={e => setDurationMinutes(e.target.value ? Number(e.target.value) : '')} placeholder={t('booking.minutes', 'min')} />
+              <label className="form-label">{t('booking.completion_duration')}</label>
+              <input type="number" className="form-input" value={durationMinutes} onChange={e => setDurationMinutes(e.target.value ? Number(e.target.value) : '')} placeholder={t('booking.minutes')} />
             </div>
             <div className="form-group">
-              <label className="form-label">{t('booking.completion_product', 'Products Used')}</label>
+              <label className="form-label">{t('booking.completion_product')}</label>
               <input className="form-input" value={productsUsed} onChange={e => setProductsUsed(e.target.value)} />
             </div>
           </div>
 
           {/* Memo (internal) */}
           <div className="form-group">
-            <label className="form-label">{t('booking.completion_memo', 'Internal Memo')}</label>
-            <textarea className="form-input" rows={2} value={memo} onChange={e => setMemo(e.target.value)} placeholder={t('booking.completion_memo_placeholder', 'Notes for your records (not visible to guardian)')} />
+            <label className="form-label">{t('booking.completion_memo')}</label>
+            <textarea className="form-input" rows={2} value={memo} onChange={e => setMemo(e.target.value)} placeholder={t('booking.completion_memo_placeholder')} />
           </div>
 
           {/* Comment */}
           <div className="form-group">
-            <label className="form-label">{t('booking.completion_comment', 'Comment to Guardian')}</label>
+            <label className="form-label">{t('booking.completion_comment')}</label>
             <textarea className="form-input" rows={3} value={supplierComment} onChange={e => setSupplierComment(e.target.value)} />
           </div>
         </div>
 
         <div className="modal-footer">
-          <button className="btn btn-secondary" onClick={onClose}>{t('common.cancel', 'Cancel')}</button>
+          <button className="btn btn-secondary" onClick={onClose}>{t('common.cancel')}</button>
           <button className="btn btn-primary" disabled={saving || uploading} onClick={handleSubmit}>
-            {saving ? '...' : t('booking.completion_send', 'Send to Guardian')}
+            {saving ? '...' : t('booking.completion_send')}
           </button>
         </div>
       </div>

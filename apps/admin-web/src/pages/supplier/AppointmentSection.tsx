@@ -212,7 +212,7 @@ export default function AppointmentSection({ t, locale }: Props) {
   function svcName(apt: Appointment) { return apt.service_name || apt.service_type || '-'; }
   function svcDuration(apt: Appointment) {
     const d = apt.duration_minutes || apt.service_duration;
-    return d ? `${d}${t('booking.minutes', 'min')}` : '-';
+    return d ? `${d}${t('booking.minutes')}` : '-';
   }
   function svcPrice(apt: Appointment) {
     const p = apt.price || apt.service_price;
@@ -236,7 +236,7 @@ export default function AppointmentSection({ t, locale }: Props) {
               onClick={() => setFilter(f)}
               className={`btn btn-sm ${filter === f ? 'btn-primary' : 'btn-secondary'}`}
             >
-              {f === 'all' ? t('common.all', 'All') : t(APT_STATUS_META[f]?.key || f)}
+              {f === 'all' ? t('common.all') : t(APT_STATUS_META[f]?.key || f)}
               {f !== 'all' && ` (${appointments.filter(a => a.status === f).length})`}
             </button>
           ))}
@@ -247,7 +247,7 @@ export default function AppointmentSection({ t, locale }: Props) {
           <button
             className={`btn btn-sm ${viewMode === 'calendar' ? 'btn-primary' : 'btn-secondary'}`}
             onClick={() => setViewMode('calendar')}
-            title={t('supplier.appointments.view.calendar', 'Calendar')}
+            title={t('supplier.appointments.view.calendar')}
           >
             <svg width="16" height="16" viewBox="0 0 16 16" fill="none" style={{ verticalAlign: 'middle' }}>
               <rect x="1" y="3" width="14" height="12" rx="2" stroke="currentColor" strokeWidth="1.5" fill="none"/>
@@ -259,7 +259,7 @@ export default function AppointmentSection({ t, locale }: Props) {
           <button
             className={`btn btn-sm ${viewMode === 'list' ? 'btn-primary' : 'btn-secondary'}`}
             onClick={() => setViewMode('list')}
-            title={t('supplier.appointments.view.list', 'List')}
+            title={t('supplier.appointments.view.list')}
           >
             <svg width="16" height="16" viewBox="0 0 16 16" fill="none" style={{ verticalAlign: 'middle' }}>
               <line x1="5" y1="4" x2="14" y2="4" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round"/>
@@ -347,10 +347,10 @@ export default function AppointmentSection({ t, locale }: Props) {
                           {apt.status === 'pending' && (
                             <span style={{ display: 'flex', gap: 4 }}>
                               <button className="btn btn-primary" style={{ fontSize: 11, padding: '2px 8px' }} disabled={busyId === apt.id} onClick={e => { e.stopPropagation(); handleConfirm(apt.id); }}>
-                                {t('supplier.appointment.confirm_btn', 'Accept')}
+                                {t('supplier.appointment.confirm_btn')}
                               </button>
                               <button className="btn btn-danger" style={{ fontSize: 11, padding: '2px 8px' }} disabled={busyId === apt.id} onClick={e => { e.stopPropagation(); setRejectModalId(apt.id); setRejectReason(''); }}>
-                                {t('supplier.appointment.reject_btn', 'Reject')}
+                                {t('supplier.appointment.reject_btn')}
                               </button>
                             </span>
                           )}
@@ -360,13 +360,13 @@ export default function AppointmentSection({ t, locale }: Props) {
                   </div>
                 ) : (
                   <div style={{ padding: 20, textAlign: 'center', color: 'var(--text-muted)', fontSize: 13 }}>
-                    {t('supplier.appointments.date_none', 'No appointments on this date')}
+                    {t('supplier.appointments.date_none')}
                   </div>
                 )}
               </>
             ) : (
               <div style={{ padding: 20, textAlign: 'center', color: 'var(--text-muted)', fontSize: 13 }}>
-                {t('supplier.appointments.select_date', 'Select a date')}
+                {t('supplier.appointments.select_date')}
               </div>
             )}
           </div>

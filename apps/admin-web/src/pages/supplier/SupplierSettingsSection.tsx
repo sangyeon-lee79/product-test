@@ -3,7 +3,6 @@ import { api, type Store } from '../../lib/api';
 import { useI18n, useT } from '../../lib/i18n';
 
 const DAYS = ['mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun'] as const;
-const DAY_LABELS: Record<string, string> = { mon: 'Mon', tue: 'Tue', wed: 'Wed', thu: 'Thu', fri: 'Fri', sat: 'Sat', sun: 'Sun' };
 type DayHours = { open: string; close: string; closed?: boolean };
 type OperatingHours = Record<string, DayHours>;
 const DEFAULT_HOURS: OperatingHours = Object.fromEntries(
@@ -16,9 +15,9 @@ for (let h = 0; h < 24; h++) {
 }
 
 const OT_FEE_TYPES = [
-  { value: 'free', i18nKey: 'supplier.settings.overtime_free' },
-  { value: 'fixed', i18nKey: 'supplier.settings.overtime_fixed' },
-  { value: 'per_30min', i18nKey: 'supplier.settings.overtime_per30' },
+  { value: 'free', i18nKey: 'supplier.setting.overtime_fee_free' },
+  { value: 'fixed', i18nKey: 'supplier.setting.overtime_fee_fixed' },
+  { value: 'per_30min', i18nKey: 'supplier.setting.overtime_fee_per30' },
 ];
 
 export default function SupplierSettingsSection() {
@@ -48,7 +47,7 @@ export default function SupplierSettingsSection() {
         setSelectedStoreId(items[0].id);
       }
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Failed');
+      setError(e instanceof Error ? e.message : t('common.err.failed'));
     } finally {
       setLoading(false);
     }
@@ -81,10 +80,10 @@ export default function SupplierSettingsSection() {
         overtimeFeeAmount,
         reviewPublic,
       });
-      setSuccess(t('common.saved', 'Settings saved'));
+      setSuccess(t('common.saved'));
       setTimeout(() => setSuccess(''), 3000);
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Failed');
+      setError(e instanceof Error ? e.message : t('common.err.failed'));
     } finally {
       setSaving(false);
     }
@@ -98,13 +97,13 @@ export default function SupplierSettingsSection() {
       {success && <div className="alert alert-success" style={{ marginBottom: 12 }}>{success}</div>}
 
       {stores.length === 0 ? (
-        <div style={{ padding: 20, textAlign: 'center', color: 'var(--text-muted)' }}>{t('provider.store.no_stores', 'No stores')}</div>
+        <div style={{ padding: 20, textAlign: 'center', color: 'var(--text-muted)' }}>{t('provider.store.no_stores')}</div>
       ) : (
         <>
           {/* Store selector if multiple stores */}
           {stores.length > 1 && (
             <div style={{ marginBottom: 16 }}>
-              <label className="form-label">{t('supplier.settings.select_store', 'Select Store')}</label>
+              <label className="form-label">{t('supplier.settings.select_store')}</label>
               <select
                 className="form-select"
                 value={selectedStoreId}
@@ -120,7 +119,7 @@ export default function SupplierSettingsSection() {
           {/* Operating hours */}
           <div style={{ marginBottom: 20 }}>
             <h4 style={{ fontSize: 15, fontWeight: 600, marginBottom: 12, color: 'var(--text)' }}>
-              {t('supplier.settings.hours_title', 'Operating Hours')}
+              {t('supplier.settings.hours_title')}
             </h4>
             <div className="sp-hours-grid">
               {DAYS.map(day => {
@@ -136,10 +135,10 @@ export default function SupplierSettingsSection() {
                       }))}
                       style={{ width: 16, height: 16, accentColor: 'var(--primary)' }}
                     />
-                    <span className="sp-hours-day">{DAY_LABELS[day]}</span>
+                    <span className="sp-hours-day">{t(`supplier.settings.day.${day}`)}</span>
                     {dh.closed ? (
                       <span style={{ fontSize: 13, color: 'var(--text-muted)', fontStyle: 'italic' }}>
-                        {t('supplier.settings.closed', 'Closed')}
+                        {t('supplier.settings.closed')}
                       </span>
                     ) : (
                       <span className="sp-hours-time">
@@ -151,7 +150,7 @@ export default function SupplierSettingsSection() {
                             [day]: { ...prev[day], open: e.target.value }
                           }))}
                         >
-                          {TIME_OPTIONS.map(t => <option key={t} value={t}>{t}</option>)}
+                          {TIME_OPTIONS.map(v => <option key={v} value={v}>{v}</option>)}
                         </select>
                         <span style={{ color: 'var(--text-muted)' }}>~</span>
                         <select
@@ -162,7 +161,7 @@ export default function SupplierSettingsSection() {
                             [day]: { ...prev[day], close: e.target.value }
                           }))}
                         >
-                          {TIME_OPTIONS.map(t => <option key={t} value={t}>{t}</option>)}
+                          {TIME_OPTIONS.map(v => <option key={v} value={v}>{v}</option>)}
                         </select>
                       </span>
                     )}
@@ -175,7 +174,7 @@ export default function SupplierSettingsSection() {
           {/* Overtime settings */}
           <div style={{ marginBottom: 20 }}>
             <h4 style={{ fontSize: 15, fontWeight: 600, marginBottom: 12, color: 'var(--text)' }}>
-              {t('supplier.settings.overtime_title', 'Overtime Booking Settings')}
+              {t('supplier.setting.overtime_title')}
             </h4>
 
             <label style={{ display: 'flex', alignItems: 'center', gap: 10, cursor: 'pointer', fontSize: 14, marginBottom: 12 }}>
@@ -185,13 +184,13 @@ export default function SupplierSettingsSection() {
                 onChange={e => setAllowOvertime(e.target.checked)}
                 style={{ width: 18, height: 18, accentColor: 'var(--primary)' }}
               />
-              {t('supplier.settings.allow_overtime', 'Allow overtime bookings')}
+              {t('supplier.setting.overtime_allow')}
             </label>
 
             {allowOvertime && (
               <div style={{ marginLeft: 28, display: 'grid', gap: 10 }}>
                 <div>
-                  <label className="form-label" style={{ fontSize: 13 }}>{t('supplier.settings.overtime_fee_type', 'Overtime Fee Type')}</label>
+                  <label className="form-label" style={{ fontSize: 13 }}>{t('supplier.setting.overtime_fee')}</label>
                   <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
                     {OT_FEE_TYPES.map(ft => (
                       <button
@@ -199,7 +198,7 @@ export default function SupplierSettingsSection() {
                         className={`btn btn-sm ${overtimeFeeType === ft.value ? 'btn-primary' : 'btn-secondary'}`}
                         onClick={() => setOvertimeFeeType(ft.value)}
                       >
-                        {t(ft.i18nKey, ft.value)}
+                        {t(ft.i18nKey)}
                       </button>
                     ))}
                   </div>
@@ -207,7 +206,7 @@ export default function SupplierSettingsSection() {
 
                 {overtimeFeeType !== 'free' && (
                   <div>
-                    <label className="form-label" style={{ fontSize: 13 }}>{t('supplier.settings.overtime_fee_amount', 'Fee Amount')}</label>
+                    <label className="form-label" style={{ fontSize: 13 }}>{t('supplier.settings.overtime_fee_amount')}</label>
                     <input
                       type="number"
                       className="form-input"
@@ -225,7 +224,7 @@ export default function SupplierSettingsSection() {
           {/* Review settings */}
           <div style={{ marginBottom: 20 }}>
             <h4 style={{ fontSize: 15, fontWeight: 600, marginBottom: 12, color: 'var(--text)' }}>
-              {t('supplier.settings.review_title', 'Review Settings')}
+              {t('supplier.setting.review_title')}
             </h4>
 
             <label style={{ display: 'flex', alignItems: 'center', gap: 10, cursor: 'pointer', fontSize: 14 }}>
@@ -235,16 +234,16 @@ export default function SupplierSettingsSection() {
                 onChange={e => setReviewPublic(e.target.checked)}
                 style={{ width: 18, height: 18, accentColor: 'var(--primary)' }}
               />
-              {t('supplier.settings.review_public', 'Show reviews on store profile')}
+              {t('supplier.setting.review_public_on')}
             </label>
             <p style={{ fontSize: 12, color: 'var(--text-muted)', marginTop: 4, marginLeft: 28 }}>
-              {t('supplier.settings.review_public_desc', 'When enabled, guardian reviews will be visible on your store page')}
+              {t('supplier.setting.review_public_desc')}
             </p>
           </div>
 
           {/* Save */}
           <button className="btn btn-primary" disabled={saving} onClick={handleSave}>
-            {saving ? '...' : t('admin.common.save', 'Save Settings')}
+            {saving ? '...' : t('admin.common.save')}
           </button>
         </>
       )}

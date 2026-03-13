@@ -11,7 +11,6 @@ type Modal = 'store' | 'service' | 'discount' | null;
 type ModalMode = 'create' | 'edit';
 
 const DAYS = ['mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun'] as const;
-const DAY_LABELS: Record<string, string> = { mon: 'Mon', tue: 'Tue', wed: 'Wed', thu: 'Thu', fri: 'Fri', sat: 'Sat', sun: 'Sun' };
 type DayHours = { open: string; close: string; closed?: boolean };
 type OperatingHours = Record<string, DayHours>;
 
@@ -54,10 +53,17 @@ export default function ProviderStoreSection() {
   const [editStoreId, setEditStoreId] = useState('');
 
   // Service form
-  const [serviceForm, setServiceForm] = useState({ name: '', description: '', price: '', sort_order: '0', duration_minutes: '' });
+  const [serviceForm, setServiceForm] = useState({
+    name: '', description: '', price: '', sort_order: '0', duration_minutes: '',
+    pet_type_l2_id: '', service_category_l3_id: '', is_active: true,
+  });
   const [serviceNameTrans, setServiceNameTrans] = useState<Record<string, string>>(emptyTrans());
   const [serviceDescTrans, setServiceDescTrans] = useState<Record<string, string>>(emptyTrans());
   const [editServiceId, setEditServiceId] = useState('');
+
+  // Pet breeds + cut styles for service form
+  const [petBreeds, setPetBreeds] = useState<{ id: string; code: string; label: string; parent_id: string }[]>([]);
+  const [cutStyles, setCutStyles] = useState<{ id: string; code: string; label: string }[]>([]);
 
   // Discount form
   const [discountForm, setDiscountForm] = useState({ discount_rate: '', start_date: '', end_date: '' });
@@ -92,6 +98,7 @@ export default function ProviderStoreSection() {
 
   useEffect(() => {
     api.countries.publicList().then(setCountries).catch(() => {});
+    api.petBreeds.list({ lang }).then(r => setPetBreeds(r.items)).catch(() => {});
   }, [lang]);
 
   const loadStores = useCallback(async () => {
@@ -203,10 +210,10 @@ export default function ProviderStoreSection() {
       };
       if (modalMode === 'edit') {
         await api.stores.update(editStoreId, payload);
-        flash(t('provider.store.alert.updated', 'Store updated'));
+        flash(t('provider.store.alert.updated'));
       } else {
         await api.stores.create(payload);
-        flash(t('provider.store.alert.created', 'Store created'));
+        flash(t('provider.store.alert.created'));
       }
       setModal(null);
       await loadStores();
@@ -216,10 +223,10 @@ export default function ProviderStoreSection() {
   };
 
   const handleDeleteStore = async (id: string) => {
-    if (!confirm(t('provider.store.delete_confirm', 'Delete this store?'))) return;
+    if (!confirm(t('provider.store.delete_confirm'))) return;
     try {
       await api.stores.delete(id);
-      flash(t('provider.store.alert.deleted', 'Store deleted'));
+      flash(t('provider.store.alert.deleted'));
       await loadStores();
       if (selectedStore?.id === id) setSelectedStore(null);
     } catch (e) { setError(String(e)); }
@@ -235,14 +242,25 @@ export default function ProviderStoreSection() {
         name: svc.name || '', description: svc.description || '',
         price: svc.price != null ? String(svc.price) : '', sort_order: String(svc.sort_order || 0),
         duration_minutes: svc.duration_minutes != null ? String(svc.duration_minutes) : '',
+        pet_type_l2_id: svc.pet_type_l2_id || '',
+        service_category_l3_id: svc.service_category_l3_id || '',
+        is_active: svc.is_active !== false,
       });
       setServiceNameTrans({ ...emptyTrans(), ...(svc.name_translations || {}) });
       setServiceDescTrans({ ...emptyTrans(), ...(svc.description_translations || {}) });
+      // Load cut styles for the selected pet type
+      if (svc.pet_type_l2_id && selectedStore) {
+        api.serviceCuts.list({ pet_type_l2_id: svc.pet_type_l2_id, store_id: selectedStore.id, lang }).then(r => setCutStyles(r.items)).catch(() => {});
+      }
     } else {
       setEditServiceId('');
-      setServiceForm({ name: '', description: '', price: '', sort_order: '0', duration_minutes: '' });
+      setServiceForm({
+        name: '', description: '', price: '', sort_order: '0', duration_minutes: '',
+        pet_type_l2_id: '', service_category_l3_id: '', is_active: true,
+      });
       setServiceNameTrans(emptyTrans());
       setServiceDescTrans(emptyTrans());
+      setCutStyles([]);
     }
   };
 
@@ -258,13 +276,16 @@ export default function ProviderStoreSection() {
         price: serviceForm.price ? parseFloat(serviceForm.price) : undefined,
         duration_minutes: serviceForm.duration_minutes ? parseInt(serviceForm.duration_minutes) : undefined,
         sort_order: parseInt(serviceForm.sort_order) || 0,
+        pet_type_l2_id: serviceForm.pet_type_l2_id || null,
+        service_category_l3_id: serviceForm.service_category_l3_id || null,
+        is_active: serviceForm.is_active,
       };
       if (modalMode === 'edit') {
         await api.stores.services.update(editServiceId, payload);
-        flash(t('provider.store.service.edit', 'Service updated'));
+        flash(t('supplier.service.save_success'));
       } else {
         await api.stores.services.create(selectedStore.id, payload);
-        flash(t('provider.store.service.add', 'Service added'));
+        flash(t('supplier.service.save_success'));
       }
       setModal(null);
       selectStore(selectedStore.id);
@@ -276,7 +297,7 @@ export default function ProviderStoreSection() {
     if (!selectedStore) return;
     try {
       await api.stores.services.delete(serviceId);
-      flash(t('admin.service.alert.deleted', 'Service deleted'));
+      flash(t('admin.service.alert.deleted'));
       selectStore(selectedStore.id);
     } catch (e) { setError(String(e)); }
   };
@@ -297,7 +318,7 @@ export default function ProviderStoreSection() {
         start_date: discountForm.start_date || undefined,
         end_date: discountForm.end_date || undefined,
       });
-      flash(t('provider.store.discount.add', 'Discount added'));
+      flash(t('provider.store.discount.add'));
       setModal(null);
       if (selectedStore) selectStore(selectedStore.id);
     } catch (e) { setError(String(e)); }
@@ -307,7 +328,7 @@ export default function ProviderStoreSection() {
   const deleteDiscount = async (discountId: string) => {
     try {
       await api.stores.discounts.delete(discountId);
-      flash(t('admin.discount.alert.deleted', 'Discount deleted'));
+      flash(t('admin.discount.alert.deleted'));
       if (selectedStore) selectStore(selectedStore.id);
     } catch (e) { setError(String(e)); }
   };
@@ -315,9 +336,9 @@ export default function ProviderStoreSection() {
   return (
     <section className="card">
       <div className="card-header">
-        <div className="card-title">{t('provider.store.my_stores', 'My Stores')}</div>
+        <div className="card-title">{t('provider.store.my_stores')}</div>
         <button className="btn btn-primary btn-sm" onClick={() => openStoreModal('create')}>
-          + {t('provider.store.create', 'Add Store')}
+          + {t('provider.store.create')}
         </button>
       </div>
       <div className="card-body" style={{ display: 'grid', gap: 16 }}>
@@ -328,7 +349,7 @@ export default function ProviderStoreSection() {
           {/* ─── Left: Store List ─── */}
           <div style={{ borderRight: '1px solid var(--border)', paddingRight: 16 }}>
             {stores.length === 0 ? (
-              <p style={{ color: 'var(--text-muted)', fontSize: 14 }}>{t('provider.store.no_stores', 'No stores yet')}</p>
+              <p style={{ color: 'var(--text-muted)', fontSize: 14 }}>{t('provider.store.no_stores')}</p>
             ) : (
               <div style={{ display: 'grid', gap: 8 }}>
                 {stores.map(s => (
@@ -356,7 +377,7 @@ export default function ProviderStoreSection() {
                         </span>
                       )}
                       <span style={{ fontSize: 11, color: 'var(--text-muted)' }}>
-                        {t('provider.store.services_count', '{count} services').replace('{count}', String(s.service_count || 0))}
+                        {t('provider.store.services_count').replace('{count}', String(s.service_count || 0))}
                       </span>
                     </div>
                   </button>
@@ -369,7 +390,7 @@ export default function ProviderStoreSection() {
           <div>
             {!selectedStore ? (
               <div style={{ color: 'var(--text-muted)', padding: 24, textAlign: 'center' }}>
-                {t('provider.store.select_store', 'Select a store')}
+                {t('provider.store.select_store')}
               </div>
             ) : (
               <div style={{ display: 'grid', gap: 16 }}>
@@ -395,10 +416,10 @@ export default function ProviderStoreSection() {
                   </div>
                   <div style={{ display: 'flex', gap: 6 }}>
                     <button className="btn btn-secondary btn-sm" onClick={() => openStoreModal('edit', selectedStore)}>
-                      {t('provider.store.edit', 'Edit')}
+                      {t('provider.store.edit')}
                     </button>
                     <button className="btn btn-danger btn-sm" onClick={() => void handleDeleteStore(selectedStore.id)}>
-                      {t('admin.common.delete', 'Delete')}
+                      {t('admin.common.delete')}
                     </button>
                   </div>
                 </div>
@@ -406,13 +427,13 @@ export default function ProviderStoreSection() {
                 {/* Services */}
                 <div style={{ borderTop: '1px solid var(--border)', paddingTop: 12 }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
-                    <strong>{t('admin.store.form.services', 'Services')}</strong>
+                    <strong>{t('admin.store.form.services')}</strong>
                     <button className="btn btn-secondary btn-sm" onClick={() => openServiceModal('create')}>
-                      + {t('provider.store.service.add', 'Add Service')}
+                      + {t('provider.store.service.add')}
                     </button>
                   </div>
                   {(selectedStore.services || []).length === 0 ? (
-                    <p style={{ color: 'var(--text-muted)', fontSize: 13 }}>{t('provider.store.no_services', 'No services yet')}</p>
+                    <p style={{ color: 'var(--text-muted)', fontSize: 13 }}>{t('provider.store.no_services')}</p>
                   ) : (
                     <div style={{ display: 'grid', gap: 8 }}>
                       {selectedStore.services.map(svc => (
@@ -422,7 +443,7 @@ export default function ProviderStoreSection() {
                               <strong>{svc.display_name || svc.name}</strong>
                               {svc.duration_minutes != null && (
                                 <span style={{ marginLeft: 8, fontSize: 12, color: 'var(--text-muted)' }}>
-                                  {svc.duration_minutes}{t('booking.minutes', 'min')}
+                                  {svc.duration_minutes}{t('booking.minutes')}
                                 </span>
                               )}
                               {svc.price != null && (
@@ -433,7 +454,7 @@ export default function ProviderStoreSection() {
                             </div>
                             <div style={{ display: 'flex', gap: 4 }}>
                               <button className="btn btn-secondary btn-sm" onClick={() => openServiceModal('edit', svc)}>
-                                {t('provider.store.service.edit', 'Edit')}
+                                {t('provider.store.service.edit')}
                               </button>
                               <button className="btn btn-danger btn-sm" onClick={() => void deleteService(svc.id)}>x</button>
                             </div>
@@ -445,14 +466,14 @@ export default function ProviderStoreSection() {
                           <div style={{ marginTop: 8 }}>
                             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                               <span style={{ fontSize: 11, fontWeight: 600, color: 'var(--text-muted)' }}>
-                                {t('admin.store.form.discounts', 'Discounts')}
+                                {t('admin.store.form.discounts')}
                               </span>
                               <button
                                 className="btn btn-secondary"
                                 style={{ fontSize: 10, padding: '2px 6px' }}
                                 onClick={() => openDiscountModal(svc.id)}
                               >
-                                + {t('provider.store.discount.add', 'Add')}
+                                + {t('provider.store.discount.add')}
                               </button>
                             </div>
                             {(discounts[svc.id] || []).map(disc => (
@@ -482,22 +503,22 @@ export default function ProviderStoreSection() {
               <>
                 <div className="modal-header">
                   <div className="modal-title">
-                    {modalMode === 'edit' ? t('provider.store.edit', 'Edit Store') : t('provider.store.create', 'Add Store')}
+                    {modalMode === 'edit' ? t('provider.store.edit') : t('provider.store.create')}
                   </div>
                   <button className="modal-close" onClick={() => setModal(null)}>x</button>
                 </div>
                 <div className="modal-body" style={{ display: 'grid', gap: 12 }}>
                   <div className="form-group">
                     <label className="form-label">
-                      {t('admin.store.form.name', 'Name')} *
-                      <TranslationPopup label={t('admin.store.form.name', 'Name')} sourceText={storeForm.name} translations={storeNameTrans} onChange={setStoreNameTrans} t={t} />
+                      {t('admin.store.form.name')} *
+                      <TranslationPopup label={t('admin.store.form.name')} sourceText={storeForm.name} translations={storeNameTrans} onChange={setStoreNameTrans} t={t} />
                     </label>
                     <input className="form-input" value={storeForm.name} onChange={e => setStoreForm({ ...storeForm, name: e.target.value })} />
                   </div>
                   <div className="form-group">
                     <label className="form-label">
-                      {t('admin.store.form.description', 'Description')}
-                      <TranslationPopup label={t('admin.store.form.description', 'Description')} sourceText={storeForm.description} translations={storeDescTrans} onChange={setStoreDescTrans} t={t} />
+                      {t('admin.store.form.description')}
+                      <TranslationPopup label={t('admin.store.form.description')} sourceText={storeForm.description} translations={storeDescTrans} onChange={setStoreDescTrans} t={t} />
                     </label>
                     <textarea className="form-textarea" value={storeForm.description} onChange={e => setStoreForm({ ...storeForm, description: e.target.value })} />
                   </div>
@@ -505,21 +526,21 @@ export default function ProviderStoreSection() {
                   {/* ─── Business Type L1/L2 ─── */}
                   <div className="form-row col2">
                     <div className="form-group">
-                      <label className="form-label">{t('store.business.type', 'Business Type')}</label>
+                      <label className="form-label">{t('store.business.type')}</label>
                       <select className="form-select" value={storeForm.business_type}
                         onChange={e => setStoreForm({ ...storeForm, business_type: e.target.value, business_subtype: '' })}>
-                        <option value="">{t('store.business.select_type', 'Select Type')}</option>
+                        <option value="">{t('store.business.select_type')}</option>
                         {BUSINESS_CATEGORIES.map(c => (
                           <option key={c.code} value={c.code}>{t(c.i18nKey, c.code)}</option>
                         ))}
                       </select>
                     </div>
                     <div className="form-group">
-                      <label className="form-label">{t('store.business.subtype', 'Sub Category')}</label>
+                      <label className="form-label">{t('store.business.subtype')}</label>
                       <select className="form-select" value={storeForm.business_subtype}
                         onChange={e => setStoreForm({ ...storeForm, business_subtype: e.target.value })}
                         disabled={!storeForm.business_type}>
-                        <option value="">{t('store.business.select_subtype', 'Select Sub Type')}</option>
+                        <option value="">{t('store.business.select_subtype')}</option>
                         {businessSubOptions.map(s => (
                           <option key={s.code} value={s.code}>{t(s.i18nKey, s.code)}</option>
                         ))}
@@ -530,7 +551,7 @@ export default function ProviderStoreSection() {
                   {/* ─── Country + Phone ─── */}
                   <div className="form-row col2">
                     <div className="form-group">
-                      <label className="form-label">{t('admin.store.form.country', 'Country')}</label>
+                      <label className="form-label">{t('admin.store.form.country')}</label>
                       <select className="form-select" value={storeForm.country_id}
                         onChange={e => setStoreForm({ ...storeForm, country_id: e.target.value, address_state_code: '', address_city_code: '' })}>
                         <option value="">-</option>
@@ -538,7 +559,7 @@ export default function ProviderStoreSection() {
                       </select>
                     </div>
                     <div className="form-group">
-                      <label className="form-label">{t('admin.store.form.phone', 'Phone')}</label>
+                      <label className="form-label">{t('admin.store.form.phone')}</label>
                       <input className="form-input" value={storeForm.phone} onChange={e => setStoreForm({ ...storeForm, phone: e.target.value })} />
                     </div>
                   </div>
@@ -548,22 +569,22 @@ export default function ProviderStoreSection() {
                     <>
                       <div className="form-row col2">
                         <div className="form-group">
-                          <label className="form-label">{t('store.address.state', 'State/Province')}</label>
+                          <label className="form-label">{t('store.address.state')}</label>
                           <select className="form-select" value={storeForm.address_state_code}
                             onChange={e => setStoreForm({ ...storeForm, address_state_code: e.target.value, address_city_code: '' })}>
-                            <option value="">{t('store.address.select_state', 'Select State')}</option>
+                            <option value="">{t('store.address.select_state')}</option>
                             {regionOptions.map(r => (
                               <option key={r.name} value={r.name}>{r.name}</option>
                             ))}
                           </select>
                         </div>
                         <div className="form-group">
-                          <label className="form-label">{t('store.address.city', 'City/District')}</label>
+                          <label className="form-label">{t('store.address.city')}</label>
                           {cityOptions.length > 0 ? (
                             <select className="form-select" value={storeForm.address_city_code}
                               onChange={e => setStoreForm({ ...storeForm, address_city_code: e.target.value })}
                               disabled={!storeForm.address_state_code}>
-                              <option value="">{t('store.address.select_city', 'Select City')}</option>
+                              <option value="">{t('store.address.select_city')}</option>
                               {cityOptions.map(c => (
                                 <option key={c} value={c}>{c}</option>
                               ))}
@@ -571,28 +592,28 @@ export default function ProviderStoreSection() {
                           ) : (
                             <input className="form-input" value={storeForm.address_city_code}
                               onChange={e => setStoreForm({ ...storeForm, address_city_code: e.target.value })}
-                              placeholder={t('store.address.select_city', 'City/District')}
+                              placeholder={t('store.address.select_city')}
                               disabled={!storeForm.address_state_code} />
                           )}
                         </div>
                       </div>
                       <div className="form-group">
-                        <label className="form-label">{t('store.address.detail', 'Detail Address')}</label>
+                        <label className="form-label">{t('store.address.detail')}</label>
                         <input className="form-input" value={storeForm.address_detail}
                           onChange={e => setStoreForm({ ...storeForm, address_detail: e.target.value })}
-                          placeholder={t('store.address.detail_placeholder', 'Enter detail address')} />
+                          placeholder={t('store.address.detail_placeholder')} />
                       </div>
                     </>
                   ) : (
                     <div className="form-group">
-                      <label className="form-label">{t('admin.store.form.address', 'Address')}</label>
+                      <label className="form-label">{t('admin.store.form.address')}</label>
                       <input className="form-input" value={storeForm.address} onChange={e => setStoreForm({ ...storeForm, address: e.target.value })} />
                     </div>
                   )}
 
                   {/* ─── Operating Hours ─── */}
                   <div className="form-group">
-                    <label className="form-label">{t('supplier.settings.hours_title', 'Operating Hours')}</label>
+                    <label className="form-label">{t('supplier.settings.hours_title')}</label>
                     <div className="sp-hours-grid">
                       {DAYS.map(day => {
                         const h = storeHours[day] || { open: '09:00', close: '21:00' };
@@ -605,17 +626,17 @@ export default function ProviderStoreSection() {
                               onChange={e => setStoreHours(prev => ({ ...prev, [day]: { ...prev[day], closed: !e.target.checked } }))}
                               style={{ accentColor: 'var(--primary)' }}
                             />
-                            <span className="sp-hours-day">{DAY_LABELS[day]}</span>
+                            <span className="sp-hours-day">{t(`supplier.settings.day.${day}`)}</span>
                             {isClosed ? (
-                              <span className="sp-hours-closed-label">{t('supplier.settings.closed', 'Closed')}</span>
+                              <span className="sp-hours-closed-label">{t('supplier.settings.closed')}</span>
                             ) : (
                               <div className="sp-hours-time">
                                 <select value={h.open} onChange={e => setStoreHours(prev => ({ ...prev, [day]: { ...prev[day], open: e.target.value } }))}>
-                                  {TIME_OPTIONS.map(t => <option key={t} value={t}>{t}</option>)}
+                                  {TIME_OPTIONS.map(v => <option key={v} value={v}>{v}</option>)}
                                 </select>
                                 <span className="sp-hours-separator">~</span>
                                 <select value={h.close} onChange={e => setStoreHours(prev => ({ ...prev, [day]: { ...prev[day], close: e.target.value } }))}>
-                                  {TIME_OPTIONS.map(t => <option key={t} value={t}>{t}</option>)}
+                                  {TIME_OPTIONS.map(v => <option key={v} value={v}>{v}</option>)}
                                 </select>
                               </div>
                             )}
@@ -626,11 +647,11 @@ export default function ProviderStoreSection() {
                   </div>
 
                   <div className="form-group">
-                    <label className="form-label">{t('admin.store.form.avatar', 'Avatar URL')}</label>
+                    <label className="form-label">{t('admin.store.form.avatar')}</label>
                     <input className="form-input" value={storeForm.avatar_url} onChange={e => setStoreForm({ ...storeForm, avatar_url: e.target.value })} />
                   </div>
                   <button className="btn btn-primary" onClick={() => void saveStore()} disabled={saving}>
-                    {saving ? '...' : t('admin.common.save', 'Save')}
+                    {saving ? '...' : t('admin.common.save')}
                   </button>
                 </div>
               </>
@@ -641,41 +662,41 @@ export default function ProviderStoreSection() {
               <>
                 <div className="modal-header">
                   <div className="modal-title">
-                    {modalMode === 'edit' ? t('provider.store.service.edit', 'Edit Service') : t('provider.store.service.add', 'Add Service')}
+                    {modalMode === 'edit' ? t('provider.store.service.edit') : t('provider.store.service.add')}
                   </div>
                   <button className="modal-close" onClick={() => setModal(null)}>x</button>
                 </div>
                 <div className="modal-body" style={{ display: 'grid', gap: 12 }}>
                   <div className="form-group">
                     <label className="form-label">
-                      {t('admin.service.form.name', 'Name')} *
-                      <TranslationPopup label={t('admin.service.form.name', 'Name')} sourceText={serviceForm.name} translations={serviceNameTrans} onChange={setServiceNameTrans} t={t} />
+                      {t('admin.service.form.name')} *
+                      <TranslationPopup label={t('admin.service.form.name')} sourceText={serviceForm.name} translations={serviceNameTrans} onChange={setServiceNameTrans} t={t} />
                     </label>
                     <input className="form-input" value={serviceForm.name} onChange={e => setServiceForm({ ...serviceForm, name: e.target.value })} />
                   </div>
                   <div className="form-group">
                     <label className="form-label">
-                      {t('admin.service.form.description', 'Description')}
-                      <TranslationPopup label={t('admin.service.form.description', 'Description')} sourceText={serviceForm.description} translations={serviceDescTrans} onChange={setServiceDescTrans} t={t} />
+                      {t('admin.service.form.description')}
+                      <TranslationPopup label={t('admin.service.form.description')} sourceText={serviceForm.description} translations={serviceDescTrans} onChange={setServiceDescTrans} t={t} />
                     </label>
                     <textarea className="form-textarea" value={serviceForm.description} onChange={e => setServiceForm({ ...serviceForm, description: e.target.value })} />
                   </div>
                   <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 12 }}>
                     <div className="form-group">
-                      <label className="form-label">{t('admin.service.form.price', 'Price')}</label>
+                      <label className="form-label">{t('admin.service.form.price')}</label>
                       <input className="form-input" type="number" value={serviceForm.price} onChange={e => setServiceForm({ ...serviceForm, price: e.target.value })} />
                     </div>
                     <div className="form-group">
-                      <label className="form-label">{t('booking.duration', 'Duration (min)')}</label>
+                      <label className="form-label">{t('booking.duration')}</label>
                       <input className="form-input" type="number" placeholder="60" value={serviceForm.duration_minutes} onChange={e => setServiceForm({ ...serviceForm, duration_minutes: e.target.value })} />
                     </div>
                     <div className="form-group">
-                      <label className="form-label">{t('admin.service.form.sort_order', 'Sort Order')}</label>
+                      <label className="form-label">{t('admin.service.form.sort_order')}</label>
                       <input className="form-input" type="number" value={serviceForm.sort_order} onChange={e => setServiceForm({ ...serviceForm, sort_order: e.target.value })} />
                     </div>
                   </div>
                   <button className="btn btn-primary" onClick={() => void saveService()} disabled={saving}>
-                    {saving ? '...' : t('admin.common.save', 'Save')}
+                    {saving ? '...' : t('admin.common.save')}
                   </button>
                 </div>
               </>
@@ -685,29 +706,29 @@ export default function ProviderStoreSection() {
             {modal === 'discount' && (
               <>
                 <div className="modal-header">
-                  <div className="modal-title">{t('provider.store.discount.add', 'Add Discount')}</div>
+                  <div className="modal-title">{t('provider.store.discount.add')}</div>
                   <button className="modal-close" onClick={() => setModal(null)}>x</button>
                 </div>
                 <div className="modal-body" style={{ display: 'grid', gap: 12 }}>
                   <div className="form-group">
-                    <label className="form-label">{t('admin.discount.form.rate', 'Discount Rate (%)')} *</label>
+                    <label className="form-label">{t('admin.discount.form.rate')} *</label>
                     <input className="form-input" type="number" min="1" max="100" value={discountForm.discount_rate}
                       onChange={e => setDiscountForm({ ...discountForm, discount_rate: e.target.value })} />
                   </div>
                   <div className="form-row col2">
                     <div className="form-group">
-                      <label className="form-label">{t('admin.discount.form.start_date', 'Start Date')}</label>
+                      <label className="form-label">{t('admin.discount.form.start_date')}</label>
                       <input className="form-input" type="date" value={discountForm.start_date}
                         onChange={e => setDiscountForm({ ...discountForm, start_date: e.target.value })} />
                     </div>
                     <div className="form-group">
-                      <label className="form-label">{t('admin.discount.form.end_date', 'End Date')}</label>
+                      <label className="form-label">{t('admin.discount.form.end_date')}</label>
                       <input className="form-input" type="date" value={discountForm.end_date}
                         onChange={e => setDiscountForm({ ...discountForm, end_date: e.target.value })} />
                     </div>
                   </div>
                   <button className="btn btn-primary" onClick={() => void saveDiscount()} disabled={saving}>
-                    {saving ? '...' : t('admin.common.save', 'Save')}
+                    {saving ? '...' : t('admin.common.save')}
                   </button>
                 </div>
               </>
