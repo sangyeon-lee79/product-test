@@ -43,6 +43,7 @@ import GuardianProfileEditModal from './guardian/GuardianProfileEditModal';
 import MedicationLogModal from './guardian/MedicationLogModal';
 import FriendsModal from './guardian/FriendsModal';
 import GroomingApprovalModal from './guardian/GroomingApprovalModal';
+import SetupBanner from './guardian/SetupBanner';
 import StoreExploreTab from './guardian/StoreExploreTab';
 import RecordCard, { type RecordCardImage } from '../components/health/RecordCard';
 import { mapWeightLog, mapMeasurementLog, mapFeedingLog, mapExerciseLog, mapMedicationLog } from '../components/health/recordCardMappers';
@@ -949,19 +950,16 @@ export default function GuardianMainPage() {
                             <span className="pf-gd-tool-label">{t('guardian.health.medication_log', '약품 기록')}</span>
                           </button>
                         </div>
-                        <div className="pf-gd-toolkit-divider" />
-                        <div className="pf-gd-toolkit-group">
-                          <button className="pf-gd-tool-tile" onClick={() => setDeviceManageModalOpen(true)}>
-                            <span className="pf-gd-tool-icon">🩺</span>
-                            <span className="pf-gd-tool-label">{t('guardian.health.device_manage', '장비 관리')}</span>
-                          </button>
-                          <button className="pf-gd-tool-tile" onClick={() => setFeedManageModalOpen(true)}>
-                            <span className="pf-gd-tool-icon">🥣</span>
-                            <span className="pf-gd-tool-label">{t('guardian.health.feed_manage', '사료 관리')}</span>
-                          </button>
-                        </div>
                       </div>
 
+                      {/* ── Setup Banner (devices + feeds) ── */}
+                      <SetupBanner
+                        petId={selectedPet?.id}
+                        devices={guardianDevices}
+                        feeds={petFeeds}
+                        onOpenDeviceManage={() => setDeviceManageModalOpen(true)}
+                        onOpenFeedManage={() => setFeedManageModalOpen(true)}
+                      />
 
                       {/* ── Timeline ── */}
                       <div className="pf-gd-section">

@@ -3867,6 +3867,66 @@ html[data-theme="dark"] .pf-card--health .pf-friend-btn--add { border-color: #F5
 .pf-gd-tool-tile:nth-child(5) .pf-gd-tool-label { color: #be123c; }
 .pf-gd-tool-tile:nth-child(5):hover { border-color: #fda4af; }
 
+/* ── Setup Banner ── */
+.pf-gd-setup-banner {
+  display: flex; align-items: center; gap: 14px;
+  padding: 14px 18px; margin-bottom: 10px;
+  border-radius: 16px; border: 1px solid #c7d2fe;
+  background: linear-gradient(135deg, #eef2ff 0%, #e0e7ff 50%, #dbeafe 100%);
+}
+.pf-gd-setup-icons {
+  display: flex; gap: 0; flex-shrink: 0;
+}
+.pf-gd-setup-icon {
+  font-size: 22px; width: 36px; height: 36px;
+  display: flex; align-items: center; justify-content: center;
+  border-radius: 50%; background: rgba(255,255,255,.7);
+  border: 2px solid #fff; box-shadow: 0 1px 3px rgba(0,0,0,.06);
+}
+.pf-gd-setup-icon + .pf-gd-setup-icon { margin-left: -10px; }
+.pf-gd-setup-text {
+  flex: 1; display: flex; flex-direction: column; gap: 2px; min-width: 0;
+}
+.pf-gd-setup-title {
+  font-size: 13px; font-weight: 700; color: #312e81;
+}
+.pf-gd-setup-desc {
+  font-size: 11.5px; color: #4338ca; opacity: .75; line-height: 1.4;
+}
+.pf-gd-setup-actions {
+  display: flex; flex-direction: column; gap: 6px; flex-shrink: 0;
+}
+.pf-gd-setup-btn {
+  padding: 6px 14px; border-radius: 10px; font-size: 12px; font-weight: 600;
+  border: none; cursor: pointer; white-space: nowrap;
+  transition: all .2s ease;
+}
+.pf-gd-setup-btn--equip {
+  background: #4338ca; color: #fff;
+}
+.pf-gd-setup-btn--equip:hover { background: #3730a3; }
+.pf-gd-setup-btn--food {
+  background: #fff; color: #4338ca; border: 1px solid #c7d2fe;
+}
+.pf-gd-setup-btn--food:hover { background: #eef2ff; }
+
+/* ── Setup Banner — Dark mode ── */
+html[data-theme="dark"] .pf-gd-setup-banner {
+  background: linear-gradient(135deg, rgba(99,102,241,.12) 0%, rgba(67,56,202,.1) 50%, rgba(59,130,246,.08) 100%);
+  border-color: rgba(99,102,241,.25);
+}
+html[data-theme="dark"] .pf-gd-setup-icon {
+  background: rgba(255,255,255,.08); border-color: rgba(255,255,255,.1);
+}
+html[data-theme="dark"] .pf-gd-setup-title { color: #a5b4fc; }
+html[data-theme="dark"] .pf-gd-setup-desc { color: #c7d2fe; }
+html[data-theme="dark"] .pf-gd-setup-btn--equip { background: #6366f1; }
+html[data-theme="dark"] .pf-gd-setup-btn--equip:hover { background: #818cf8; }
+html[data-theme="dark"] .pf-gd-setup-btn--food {
+  background: rgba(255,255,255,.06); color: #a5b4fc; border-color: rgba(99,102,241,.3);
+}
+html[data-theme="dark"] .pf-gd-setup-btn--food:hover { background: rgba(99,102,241,.15); }
+
 /* ── Timeline ── */
 .pf-gd-timeline { display: flex; flex-direction: column; gap: 2px; }
 .pf-gd-tl-date {
@@ -4632,6 +4692,10 @@ html[data-theme="dark"] .pf-gd-pet-switch { background: var(--surface); }
   .pf-gd-tool-tile { padding: 10px 12px; min-width: 64px; border-radius: 12px; }
   .pf-gd-tool-icon { font-size: 18px; }
   .pf-gd-tool-label { font-size: 10px; }
+  .pf-gd-setup-icons { display: none; }
+  .pf-gd-setup-banner { padding: 12px 14px; gap: 10px; border-radius: 12px; }
+  .pf-gd-setup-title { font-size: 12px; }
+  .pf-gd-setup-desc { font-size: 11px; }
   .pf-gd-section { border-radius: 16px; }
   .pf-gd-section-header { padding: 12px 14px; }
   .pf-gd-section-body { padding: 12px 14px; }
