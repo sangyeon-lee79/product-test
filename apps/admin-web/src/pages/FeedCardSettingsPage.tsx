@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useT } from '../lib/i18n';
 import { api } from '../lib/api';
 import type { FeedCardSetting, FeedDummyCard, FeedPreviewItem } from '../lib/api';
@@ -80,20 +80,45 @@ export default function FeedCardSettingsPage() {
 function SettingsTab() {
   const t = useT();
   const [settings, setSettings] = useState<FeedCardSetting[]>([]);
-  const [preview, setPreview] = useState<FeedPreviewItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [msg, setMsg] = useState('');
   const [adTestStatus, setAdTestStatus] = useState<'' | 'ok' | 'fail'>('');
 
+  /* Client-side preview: recomputes instantly when settings change */
+  const preview = useMemo<FeedPreviewItem[]>(() => {
+    const enabled = settings
+      .filter(s => s.is_enabled)
+      .sort((a, b) => a.sort_order - b.sort_order);
+    const totalSlots = 20;
+    const cardPositions = new Map<number, string>();
+    for (const s of enabled) {
+      if (s.interval_n <= 0) continue;
+      for (let pos = s.interval_n; pos <= totalSlots + enabled.length * 5; pos += s.interval_n) {
+        if (!cardPositions.has(pos)) {
+          cardPositions.set(pos, s.card_type);
+        }
+      }
+    }
+    const items: FeedPreviewItem[] = [];
+    let postIndex = 1;
+    let pos = 1;
+    while (items.length < totalSlots) {
+      const cardType = cardPositions.get(pos);
+      if (cardType) {
+        items.push({ position: items.length + 1, type: cardType as FeedPreviewItem['type'], label: cardType });
+      } else {
+        items.push({ position: items.length + 1, type: 'post', label: `Post #${postIndex++}` });
+      }
+      pos++;
+    }
+    return items;
+  }, [settings]);
+
   const load = useCallback(async () => {
     try {
-      const [sRes, pRes] = await Promise.all([
-        api.feedCardSettings.list(),
-        api.feedCardSettings.preview(),
-      ]);
+      const sRes = await api.feedCardSettings.list();
       setSettings(sRes.settings);
-      setPreview(pRes.preview);
     } catch { /* ignore */ }
     setLoading(false);
   }, []);
@@ -151,9 +176,6 @@ function SettingsTab() {
         }))
       );
       setMsg(t('admin.feed_card.save_success', 'Settings saved successfully'));
-      // Refresh preview
-      const pRes = await api.feedCardSettings.preview();
-      setPreview(pRes.preview);
     } catch {
       setMsg(t('admin.feed_card.save_error', 'Failed to save settings'));
     }
