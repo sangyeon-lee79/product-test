@@ -374,6 +374,8 @@ async function listFeeds(request: Request, env: Env, url: URL): Promise<Response
   const businessCategoryId = (url.searchParams.get('business_category_id') || '').trim();
   const petTypeId = (url.searchParams.get('pet_type_id') || '').trim();
   const tab = (url.searchParams.get('tab') || 'all').trim();
+  const isMineTab = tab === 'mine';
+  const isFriendsTab = tab === 'friends';
   const limit = Math.min(100, Math.max(1, Number(url.searchParams.get('limit') || 30)));
 
   const hasFeedPosts = await hasTable(env, 'feed_posts');
@@ -381,6 +383,17 @@ async function listFeeds(request: Request, env: Env, url: URL): Promise<Response
     const where: string[] = [];
     const params: (string | number)[] = [];
     if (feedType) { where.push('f.feed_type = ?'); params.push(feedType); }
+    if (isMineTab) {
+      if (!me) return ok({ feeds: [], filters: { feed_type: feedType || null, business_category_id: businessCategoryId || null, pet_type_id: petTypeId || null, tab } });
+      where.push('f.author_user_id = ?');
+      params.push(me.sub);
+    } else if (isFriendsTab) {
+      if (!me || friends.size === 0) return ok({ feeds: [], filters: { feed_type: feedType || null, business_category_id: businessCategoryId || null, pet_type_id: petTypeId || null, tab } });
+      const placeholders = Array.from(friends).map(() => '?').join(',');
+      where.push(`f.author_user_id IN (${placeholders})`);
+      where.push(`f.visibility_scope IN ('public', 'friends_only')`);
+      params.push(...Array.from(friends));
+    }
     const rows = await env.DB.prepare(
       `SELECT
         f.*,
@@ -418,7 +431,7 @@ async function listFeeds(request: Request, env: Env, url: URL): Promise<Response
     ).bind(me?.sub ?? null, me?.sub ?? null, ...params, limit).all<FeedRow>();
 
     const data = rows.results.map(normalizeFeedRow).filter((r) => canViewFeed(r, me, friends));
-    const merged = await injectCards(env, data);
+    const merged = isMineTab || isFriendsTab ? data : await injectCards(env, data);
     return ok({ feeds: merged, filters: { feed_type: feedType || null, business_category_id: businessCategoryId || null, pet_type_id: petTypeId || null, tab } });
   }
 
@@ -427,6 +440,17 @@ async function listFeeds(request: Request, env: Env, url: URL): Promise<Response
   if (feedType) { where.push('f.feed_type = ?'); params.push(feedType); }
   if (businessCategoryId) { where.push('f.business_category_id = ?'); params.push(businessCategoryId); }
   if (petTypeId) { where.push('f.pet_type_id = ?'); params.push(petTypeId); }
+  if (isMineTab) {
+    if (!me) return ok({ feeds: [], filters: { feed_type: feedType || null, business_category_id: businessCategoryId || null, pet_type_id: petTypeId || null, tab } });
+    where.push('f.author_user_id = ?');
+    params.push(me.sub);
+  } else if (isFriendsTab) {
+    if (!me || friends.size === 0) return ok({ feeds: [], filters: { feed_type: feedType || null, business_category_id: businessCategoryId || null, pet_type_id: petTypeId || null, tab } });
+    const placeholders = Array.from(friends).map(() => '?').join(',');
+    where.push(`f.author_user_id IN (${placeholders})`);
+    where.push(`f.visibility_scope IN ('public', 'friends_only')`);
+    params.push(...Array.from(friends));
+  }
 
   const rows = await env.DB.prepare(
     `SELECT
@@ -472,7 +496,7 @@ async function listFeeds(request: Request, env: Env, url: URL): Promise<Response
   ).bind(me?.sub ?? null, me?.sub ?? null, ...params, limit).all<FeedRow>();
 
   const data = rows.results.map(normalizeFeedRow).filter((r) => canViewFeed(r, me, friends));
-  const merged = await injectCards(env, data);
+  const merged = isMineTab || isFriendsTab ? data : await injectCards(env, data);
 
   return ok({ feeds: merged, filters: { feed_type: feedType || null, business_category_id: businessCategoryId || null, pet_type_id: petTypeId || null, tab } });
 }

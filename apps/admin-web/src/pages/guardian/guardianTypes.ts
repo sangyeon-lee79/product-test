@@ -3,7 +3,7 @@ import { api, type MasterItem } from '../../lib/api';
 import type { Lang } from '../../lib/i18n';
 
 // ── 타입 ──────────────────────────────────────────────────
-export type FeedTab = 'all' | 'friends';
+export type FeedTab = 'mine' | 'friends';
 export type Mode = 'create' | 'edit';
 export type PetProfileTab = 'timeline' | 'health' | 'services' | 'gallery' | 'profile' | 'report';
 export type WeightRange = '7d' | '15d' | '1m' | '3m' | '6m' | '1y' | 'all';
@@ -311,24 +311,34 @@ export function normalizeMultiStableIds(raw: string[] | string | null | undefine
   );
 }
 
-export function feedTypeLabel(t: (key: string, fallback?: string) => string, value: string): string {
-  const map: Record<string, string> = {
-    guardian_post: t('guardian.feed.type.guardian_post', 'Guardian Post'),
-    health_update: t('guardian.feed.type.health_update', 'Health Update'),
-    pet_milestone: t('guardian.feed.type.pet_milestone', 'Pet Milestone'),
-    supplier_story: t('guardian.feed.type.supplier_story', 'Supplier Story'),
-    booking_completed: t('guardian.feed.type.booking_completed', 'Booking Completed'),
-  };
-  return map[value] || value;
+export function feedTypeLabel(
+  t: (key: string, fallback?: string) => string,
+  feedType: string,
+  postType?: string | null,
+): string {
+  const normalizedPostType = String(postType || '').trim().toLowerCase();
+  const normalizedFeedType = String(feedType || '').trim().toLowerCase();
+
+  if (normalizedFeedType === 'supplier_post') {
+    return t('feed.type.supplier_post', 'Store Post');
+  }
+  if (normalizedFeedType === 'booking_completed' || normalizedFeedType === 'grooming_record' || normalizedPostType === 'grooming') {
+    return t('feed.type.grooming_record', 'Grooming');
+  }
+  if (normalizedFeedType === 'health_update' || normalizedFeedType === 'health_record') {
+    return t('feed.type.health_record', 'Health');
+  }
+  return t('feed.type.general', 'Post');
 }
 
 export function visibilityLabel(t: (key: string, fallback?: string) => string, value: string): string {
   const map: Record<string, string> = {
-    public: t('guardian.feed.visibility.public', 'Public'),
-    friends_only: t('guardian.feed.visibility.friends_only', 'Friends Only'),
-    private: t('guardian.feed.visibility.private', 'Private'),
-    connected_only: t('guardian.feed.visibility.connected_only', 'Connected Only'),
-    booking_related_only: t('guardian.feed.visibility.booking_related_only', 'Booking Related Only'),
+    public: t('feed.visibility.public', 'Public'),
+    friends: t('feed.visibility.friends', 'Friends'),
+    friends_only: t('feed.visibility.friends', 'Friends'),
+    connected_only: t('feed.visibility.friends', 'Friends'),
+    booking_related_only: t('feed.visibility.friends', 'Friends'),
+    private: t('feed.visibility.private', 'Private'),
   };
   return map[value] || value;
 }

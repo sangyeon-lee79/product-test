@@ -117,7 +117,7 @@ export default function GuardianMainPage() {
   const [guardianProfile, setGuardianProfile] = useState<GuardianProfile | null>(null);
   const [guardianCountries, setGuardianCountries] = useState<Country[]>([]);
   const [guardianProfileEditOpen, setGuardianProfileEditOpen] = useState(false);
-  const [feedTab, setFeedTab] = useState<FeedTab>('all');
+  const [feedTab, setFeedTab] = useState<FeedTab>('mine');
   const [petTab, setPetTab] = useState<PetProfileTab>('health');
   const [composeModalOpen, setComposeModalOpen] = useState(false);
 
@@ -853,9 +853,13 @@ export default function GuardianMainPage() {
                   </div>
                   <div className="pf-gd-section">
                     <div className="pf-gd-section-header">
-                      <div className="pf-feed-tabs" style={{ margin: 0 }}>
-                        <button className={`pf-feed-tab${feedTab === 'all' ? ' active' : ''}`} onClick={() => { setFeedTab('all'); loadAll('all'); }}>{t('guardian.feed.filter.all', 'All')}</button>
-                        <button className={`pf-feed-tab${feedTab === 'friends' ? ' active' : ''}`} onClick={() => { setFeedTab('friends'); loadAll('friends'); }}>{t('guardian.feed.filter.friends', 'Friends Feed')}</button>
+                      <div className="pf-feed-tabs pf-gd-timeline-tabs" style={{ margin: 0 }}>
+                        <button className={`pf-feed-tab${feedTab === 'mine' ? ' active' : ''}`} onClick={() => { setFeedTab('mine'); loadAll('mine'); }}>
+                          {t('timeline.tab.my_feed', 'My Feed')}
+                        </button>
+                        <button className={`pf-feed-tab${feedTab === 'friends' ? ' active' : ''}`} onClick={() => { setFeedTab('friends'); loadAll('friends'); }}>
+                          {t('timeline.tab.friend_feed', 'Friends Feed')}
+                        </button>
                       </div>
                     </div>
                     <div className="pf-gd-section-body">
@@ -868,7 +872,7 @@ export default function GuardianMainPage() {
                                 : (f.author_email || '?')[0].toUpperCase()}
                             </div>
                             <div className="pf-gd-feed-info">
-                              <div className="pf-gd-feed-type">{feedTypeLabel(t, f.feed_type)}</div>
+                              <div className="pf-gd-feed-type">{feedTypeLabel(t, f.feed_type, f.post_type)}</div>
                               <div className="pf-gd-feed-author">{f.author_email || t('common.none', '-')}</div>
                               <div className="pf-gd-feed-time">{formatDate(f.created_at, t('common.none', '-'), locale)}</div>
                             </div>
@@ -884,7 +888,7 @@ export default function GuardianMainPage() {
                             {f.caption && <p className="pf-gd-feed-caption">{f.caption}</p>}
                             {Array.isArray(f.media_urls) && f.media_urls[0] && (
                               <div className="pf-gd-feed-image-wrap">
-                                <img className="pf-gd-feed-image" src={f.media_urls[0]} alt={f.caption || 'feed'} loading="lazy" />
+                                <img className="pf-gd-feed-image" src={f.media_urls[0]} alt={f.caption || t('feed.type.general', 'Post')} loading="lazy" />
                               </div>
                             )}
                           </div>

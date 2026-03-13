@@ -2995,6 +2995,24 @@ html[data-theme="dark"] .pf-story-ring--add { border-color: #555; }
 .pf-feed-tab:disabled { opacity: .4; cursor: not-allowed; }
 html[data-theme="dark"] .pf-feed-tab.active { color: #fafafa; }
 html[data-theme="dark"] .pf-feed-tab:hover { color: #ccc; }
+.pf-gd-timeline-tabs { gap: 0; }
+.pf-gd-timeline-tabs .pf-feed-tab {
+  flex: 0 0 auto;
+  white-space: nowrap;
+  font-size: 15px;
+  font-weight: 600;
+  padding: 10px 16px;
+  color: #999;
+  border-bottom: none;
+}
+.pf-gd-timeline-tabs .pf-feed-tab:hover { color: #999; }
+.pf-gd-timeline-tabs .pf-feed-tab.active {
+  color: #E87C2B;
+  border-bottom: 2px solid #E87C2B;
+}
+html[data-theme="dark"] .pf-gd-timeline-tabs .pf-feed-tab { color: #999; }
+html[data-theme="dark"] .pf-gd-timeline-tabs .pf-feed-tab:hover { color: #999; }
+html[data-theme="dark"] .pf-gd-timeline-tabs .pf-feed-tab.active { color: #E87C2B; }
 
 /* ── Filter Pills ──────────────────────────────────────────── */
 .pf-filter-row { display: flex; flex-direction: column; gap: 8px; margin-bottom: 16px; }
