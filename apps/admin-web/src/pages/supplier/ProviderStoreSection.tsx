@@ -1,14 +1,20 @@
 import { useEffect, useState, useCallback, useMemo } from 'react';
 import { api } from '../../lib/api';
-import type { Store, StoreService, ServiceDiscount, StoreIndustry, Country } from '../../types/api';
+import type { Store, StoreService, ServiceDiscount, StoreIndustry, Country, MasterItem } from '../../types/api';
 import { useI18n, useT } from '../../lib/i18n';
 import { BUSINESS_CATEGORIES, BUSINESS_MAP } from '../../data/businessCategories';
 import { COUNTRY_REGIONS } from '../../data/countryRegions';
 import { TranslationPopup } from '../../components/TranslationPopup';
 import { emptyTrans } from '../../lib/catalogUtils';
+import WizardModal from '../../components/WizardModal';
 
 type Modal = 'store' | 'service' | 'discount' | null;
 type ModalMode = 'create' | 'edit';
+
+const PET_EMOJI: Record<string, string> = {
+  dog: '\uD83D\uDC15', cat: '\uD83D\uDC08', bird: '\uD83D\uDC26',
+  rabbit: '\uD83D\uDC07', reptile: '\uD83E\uDD8E', other: '\uD83D\uDC3E',
+};
 
 const DAYS = ['mon', 'tue', 'wed', 'thu', 'fri', 'sat', 'sun'] as const;
 type DayHours = { open: string; close: string; closed?: boolean };
@@ -51,6 +57,10 @@ export default function ProviderStoreSection() {
   const [storeHours, setStoreHours] = useState<OperatingHours>({ ...DEFAULT_HOURS });
   const [selectedIndustryIds, setSelectedIndustryIds] = useState<string[]>([]);
   const [editStoreId, setEditStoreId] = useState('');
+  const [wizardStep, setWizardStep] = useState(0);
+  const [petL1Items, setPetL1Items] = useState<{ id: string; code: string; label: string }[]>([]);
+  const [supportedPetL1Ids, setSupportedPetL1Ids] = useState<string[]>([]);
+  const [supportedPetL2Ids, setSupportedPetL2Ids] = useState<string[]>([]);
 
   // Service form
   const [serviceForm, setServiceForm] = useState({
@@ -99,6 +109,9 @@ export default function ProviderStoreSection() {
   useEffect(() => {
     api.countries.publicList().then(setCountries).catch(() => {});
     api.petBreeds.list({ lang }).then(r => setPetBreeds(r.items)).catch(() => {});
+    api.master.public.items('pet-type', null, lang, { item_level: '1' }).then((items: MasterItem[]) => {
+      setPetL1Items(items.map(i => ({ id: i.id, code: i.key || '', label: i.display_label || i.key || '' })));
+    }).catch(() => {});
   }, [lang]);
 
   const loadStores = useCallback(async () => {
@@ -150,6 +163,7 @@ export default function ProviderStoreSection() {
   const openStoreModal = (mode: ModalMode, store?: Store & { industries?: StoreIndustry[] }) => {
     setModalMode(mode);
     setModal('store');
+    setWizardStep(0);
     if (mode === 'edit' && store) {
       setEditStoreId(store.id);
       setStoreForm({
@@ -169,6 +183,10 @@ export default function ProviderStoreSection() {
       setStoreDescTrans({ ...emptyTrans(), ...(store.description_translations || {}) });
       setStoreHours(store.operating_hours ? { ...DEFAULT_HOURS, ...store.operating_hours } : { ...DEFAULT_HOURS });
       setSelectedIndustryIds((store.industries || []).map(i => i.industry_id));
+      const l1 = Array.isArray(store.supported_pet_l1_ids) ? store.supported_pet_l1_ids : [];
+      const l2 = Array.isArray(store.supported_pet_l2_ids) ? store.supported_pet_l2_ids : [];
+      setSupportedPetL1Ids(l1);
+      setSupportedPetL2Ids(l2);
     } else {
       setEditStoreId('');
       setStoreForm({
@@ -181,6 +199,8 @@ export default function ProviderStoreSection() {
       setStoreDescTrans(emptyTrans());
       setStoreHours({ ...DEFAULT_HOURS });
       setSelectedIndustryIds([]);
+      setSupportedPetL1Ids([]);
+      setSupportedPetL2Ids([]);
     }
   };
 
@@ -207,6 +227,8 @@ export default function ProviderStoreSection() {
         address_state_code: storeForm.address_state_code || undefined,
         address_city_code: storeForm.address_city_code || undefined,
         address_detail: storeForm.address_detail || undefined,
+        supported_pet_l1_ids: supportedPetL1Ids,
+        supported_pet_l2_ids: supportedPetL2Ids,
       };
       if (modalMode === 'edit') {
         await api.stores.update(editStoreId, payload);
@@ -324,6 +346,39 @@ export default function ProviderStoreSection() {
     } catch (e) { setError(String(e)); }
     setSaving(false);
   };
+
+  // Pet support helpers
+  const togglePetL1 = (id: string) => {
+    setSupportedPetL1Ids(prev => {
+      const next = prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id];
+      // Remove L2 items that belong to deselected L1
+      if (!next.includes(id)) {
+        const l2ToRemove = new Set(petBreeds.filter(b => b.parent_id === id).map(b => b.id));
+        setSupportedPetL2Ids(prev2 => prev2.filter(x => !l2ToRemove.has(x)));
+      }
+      return next;
+    });
+  };
+
+  const togglePetL2 = (id: string) => {
+    setSupportedPetL2Ids(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]);
+  };
+
+  const toggleAllL2ForL1 = (l1Id: string) => {
+    const childIds = petBreeds.filter(b => b.parent_id === l1Id).map(b => b.id);
+    const allSelected = childIds.every(id => supportedPetL2Ids.includes(id));
+    if (allSelected) {
+      setSupportedPetL2Ids(prev => prev.filter(x => !childIds.includes(x)));
+    } else {
+      setSupportedPetL2Ids(prev => [...new Set([...prev, ...childIds])]);
+    }
+  };
+
+  const wizardSteps = useMemo(() => [
+    { title: t('supplier.wizard.step1_title', 'Basic Info') },
+    { title: t('supplier.wizard.step2_title', 'Business & Pet Types') },
+    { title: t('supplier.wizard.step3_title', 'Address & Hours') },
+  ], [t]);
 
   const deleteDiscount = async (discountId: string) => {
     try {
@@ -513,169 +568,253 @@ export default function ProviderStoreSection() {
         </div>
       </div>
 
-      {/* ─── Modals ─── */}
-      {modal && (
+      {/* ─── Store Wizard Modal ─── */}
+      {modal === 'store' && (
+        <WizardModal
+          steps={wizardSteps}
+          currentStep={wizardStep}
+          onStepChange={setWizardStep}
+          onClose={() => setModal(null)}
+          onSave={() => void saveStore()}
+          saving={saving}
+          title={modalMode === 'edit' ? t('provider.store.edit') : t('provider.store.create')}
+          t={t}
+        >
+          {/* Step 1 — Basic Info */}
+          {wizardStep === 0 && (
+            <div style={{ display: 'grid', gap: 12 }}>
+              <div className="form-group">
+                <label className="form-label">
+                  {t('admin.store.form.name')} *
+                  <TranslationPopup label={t('admin.store.form.name')} sourceText={storeForm.name} translations={storeNameTrans} onChange={setStoreNameTrans} t={t} />
+                </label>
+                <input className="form-input" value={storeForm.name} onChange={e => setStoreForm({ ...storeForm, name: e.target.value })} />
+              </div>
+              <div className="form-group">
+                <label className="form-label">
+                  {t('admin.store.form.description')}
+                  <TranslationPopup label={t('admin.store.form.description')} sourceText={storeForm.description} translations={storeDescTrans} onChange={setStoreDescTrans} t={t} />
+                </label>
+                <textarea className="form-textarea" value={storeForm.description} onChange={e => setStoreForm({ ...storeForm, description: e.target.value })} />
+              </div>
+              <div className="form-group">
+                <label className="form-label">{t('admin.store.form.phone')}</label>
+                <input className="form-input" value={storeForm.phone} onChange={e => setStoreForm({ ...storeForm, phone: e.target.value })} />
+              </div>
+              <div className="form-group">
+                <label className="form-label">{t('admin.store.form.avatar')}</label>
+                <input className="form-input" value={storeForm.avatar_url} onChange={e => setStoreForm({ ...storeForm, avatar_url: e.target.value })} />
+              </div>
+            </div>
+          )}
+
+          {/* Step 2 — Business & Pet Types */}
+          {wizardStep === 1 && (
+            <div style={{ display: 'grid', gap: 16 }}>
+              {/* Business Type L1/L2 */}
+              <div className="form-row col2">
+                <div className="form-group">
+                  <label className="form-label">{t('store.business.type')}</label>
+                  <select className="form-select" value={storeForm.business_type}
+                    onChange={e => setStoreForm({ ...storeForm, business_type: e.target.value, business_subtype: '' })}>
+                    <option value="">{t('store.business.select_type')}</option>
+                    {BUSINESS_CATEGORIES.map(c => (
+                      <option key={c.code} value={c.code}>{t(c.i18nKey, c.code)}</option>
+                    ))}
+                  </select>
+                </div>
+                <div className="form-group">
+                  <label className="form-label">{t('store.business.subtype')}</label>
+                  <select className="form-select" value={storeForm.business_subtype}
+                    onChange={e => setStoreForm({ ...storeForm, business_subtype: e.target.value })}
+                    disabled={!storeForm.business_type}>
+                    <option value="">{t('store.business.select_subtype')}</option>
+                    {businessSubOptions.map(s => (
+                      <option key={s.code} value={s.code}>{t(s.i18nKey, s.code)}</option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+
+              {/* Pet L1 — Animal Category */}
+              <div className="form-group">
+                <label className="form-label">{t('supplier.wizard.pet_support_title', 'Supported Pet Types')}</label>
+                <p style={{ fontSize: 12, color: 'var(--text-muted)', margin: '0 0 8px' }}>
+                  {t('supplier.wizard.pet_support_desc', 'Select pet types this store supports')}
+                </p>
+                <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
+                  {petL1Items.map(item => {
+                    const selected = supportedPetL1Ids.includes(item.id);
+                    const emoji = PET_EMOJI[item.code] || PET_EMOJI.other || '\uD83D\uDC3E';
+                    return (
+                      <button
+                        key={item.id}
+                        type="button"
+                        className={`wiz-pet-chip${selected ? ' selected' : ''}`}
+                        onClick={() => togglePetL1(item.id)}
+                      >
+                        <span className="emoji">{emoji}</span>
+                        {item.label}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* Pet L2 — Specific Breeds (filtered by selected L1) */}
+              {supportedPetL1Ids.length > 0 && (
+                <div className="form-group">
+                  <label className="form-label">{t('supplier.wizard.pet_l2_label', 'Specific Breeds')}</label>
+                  {supportedPetL1Ids.map(l1Id => {
+                    const l1 = petL1Items.find(x => x.id === l1Id);
+                    const children = petBreeds.filter(b => b.parent_id === l1Id);
+                    if (children.length === 0) return null;
+                    const allSelected = children.every(c => supportedPetL2Ids.includes(c.id));
+                    return (
+                      <div key={l1Id} style={{ marginBottom: 12 }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
+                          <strong style={{ fontSize: 13 }}>
+                            {PET_EMOJI[l1?.code || ''] || '\uD83D\uDC3E'} {l1?.label}
+                          </strong>
+                          <button
+                            type="button"
+                            className={`btn btn-sm ${allSelected ? 'btn-primary' : 'btn-secondary'}`}
+                            style={{ fontSize: 11, padding: '2px 8px' }}
+                            onClick={() => toggleAllL2ForL1(l1Id)}
+                          >
+                            {t('supplier.wizard.pet_l2_all', 'All Breeds')}
+                          </button>
+                        </div>
+                        <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+                          {children.map(breed => {
+                            const sel = supportedPetL2Ids.includes(breed.id);
+                            return (
+                              <button
+                                key={breed.id}
+                                type="button"
+                                className={`wiz-pet-chip${sel ? ' selected' : ''}`}
+                                onClick={() => togglePetL2(breed.id)}
+                                style={{ fontSize: 12, padding: '5px 10px' }}
+                              >
+                                {breed.label}
+                              </button>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Step 3 — Address & Hours */}
+          {wizardStep === 2 && (
+            <div style={{ display: 'grid', gap: 12 }}>
+              {/* Country */}
+              <div className="form-row col2">
+                <div className="form-group">
+                  <label className="form-label">{t('admin.store.form.country')}</label>
+                  <select className="form-select" value={storeForm.country_id}
+                    onChange={e => setStoreForm({ ...storeForm, country_id: e.target.value, address_state_code: '', address_city_code: '' })}>
+                    <option value="">-</option>
+                    {countries.map(c => <option key={c.id} value={c.id}>{c.ko_name || c.name_key}</option>)}
+                  </select>
+                </div>
+                <div className="form-group" />
+              </div>
+
+              {/* Address: State/City/Detail */}
+              {regionOptions.length > 0 ? (
+                <>
+                  <div className="form-row col2">
+                    <div className="form-group">
+                      <label className="form-label">{t('store.address.state')}</label>
+                      <select className="form-select" value={storeForm.address_state_code}
+                        onChange={e => setStoreForm({ ...storeForm, address_state_code: e.target.value, address_city_code: '' })}>
+                        <option value="">{t('store.address.select_state')}</option>
+                        {regionOptions.map(r => (
+                          <option key={r.name} value={r.name}>{r.name}</option>
+                        ))}
+                      </select>
+                    </div>
+                    <div className="form-group">
+                      <label className="form-label">{t('store.address.city')}</label>
+                      {cityOptions.length > 0 ? (
+                        <select className="form-select" value={storeForm.address_city_code}
+                          onChange={e => setStoreForm({ ...storeForm, address_city_code: e.target.value })}
+                          disabled={!storeForm.address_state_code}>
+                          <option value="">{t('store.address.select_city')}</option>
+                          {cityOptions.map(c => (
+                            <option key={c} value={c}>{c}</option>
+                          ))}
+                        </select>
+                      ) : (
+                        <input className="form-input" value={storeForm.address_city_code}
+                          onChange={e => setStoreForm({ ...storeForm, address_city_code: e.target.value })}
+                          placeholder={t('store.address.select_city')}
+                          disabled={!storeForm.address_state_code} />
+                      )}
+                    </div>
+                  </div>
+                  <div className="form-group">
+                    <label className="form-label">{t('store.address.detail')}</label>
+                    <input className="form-input" value={storeForm.address_detail}
+                      onChange={e => setStoreForm({ ...storeForm, address_detail: e.target.value })}
+                      placeholder={t('store.address.detail_placeholder')} />
+                  </div>
+                </>
+              ) : (
+                <div className="form-group">
+                  <label className="form-label">{t('admin.store.form.address')}</label>
+                  <input className="form-input" value={storeForm.address} onChange={e => setStoreForm({ ...storeForm, address: e.target.value })} />
+                </div>
+              )}
+
+              {/* Operating Hours */}
+              <div className="form-group">
+                <label className="form-label">{t('supplier.settings.hours_title')}</label>
+                <div className="sp-hours-grid">
+                  {DAYS.map(day => {
+                    const h = storeHours[day] || { open: '09:00', close: '21:00' };
+                    const isClosed = !!h.closed;
+                    return (
+                      <div key={day} className={`sp-hours-row${isClosed ? ' closed' : ''}`}>
+                        <input
+                          type="checkbox"
+                          checked={!isClosed}
+                          onChange={e => setStoreHours(prev => ({ ...prev, [day]: { ...prev[day], closed: !e.target.checked } }))}
+                          style={{ accentColor: 'var(--primary)' }}
+                        />
+                        <span className="sp-hours-day">{t(`supplier.settings.day.${day}`)}</span>
+                        {isClosed ? (
+                          <span className="sp-hours-closed-label">{t('supplier.settings.closed')}</span>
+                        ) : (
+                          <div className="sp-hours-time">
+                            <select value={h.open} onChange={e => setStoreHours(prev => ({ ...prev, [day]: { ...prev[day], open: e.target.value } }))}>
+                              {TIME_OPTIONS.map(v => <option key={v} value={v}>{v}</option>)}
+                            </select>
+                            <span className="sp-hours-separator">~</span>
+                            <select value={h.close} onChange={e => setStoreHours(prev => ({ ...prev, [day]: { ...prev[day], close: e.target.value } }))}>
+                              {TIME_OPTIONS.map(v => <option key={v} value={v}>{v}</option>)}
+                            </select>
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            </div>
+          )}
+        </WizardModal>
+      )}
+
+      {/* ─── Service / Discount Modals ─── */}
+      {(modal === 'service' || modal === 'discount') && (
         <div className="modal-overlay" onClick={() => setModal(null)}>
           <div className="modal" onClick={e => e.stopPropagation()} style={{ maxWidth: 600, maxHeight: '90vh', overflowY: 'auto' }}>
-            {/* Store Modal */}
-            {modal === 'store' && (
-              <>
-                <div className="modal-header">
-                  <div className="modal-title">
-                    {modalMode === 'edit' ? t('provider.store.edit') : t('provider.store.create')}
-                  </div>
-                  <button className="modal-close" onClick={() => setModal(null)}>x</button>
-                </div>
-                <div className="modal-body" style={{ display: 'grid', gap: 12 }}>
-                  <div className="form-group">
-                    <label className="form-label">
-                      {t('admin.store.form.name')} *
-                      <TranslationPopup label={t('admin.store.form.name')} sourceText={storeForm.name} translations={storeNameTrans} onChange={setStoreNameTrans} t={t} />
-                    </label>
-                    <input className="form-input" value={storeForm.name} onChange={e => setStoreForm({ ...storeForm, name: e.target.value })} />
-                  </div>
-                  <div className="form-group">
-                    <label className="form-label">
-                      {t('admin.store.form.description')}
-                      <TranslationPopup label={t('admin.store.form.description')} sourceText={storeForm.description} translations={storeDescTrans} onChange={setStoreDescTrans} t={t} />
-                    </label>
-                    <textarea className="form-textarea" value={storeForm.description} onChange={e => setStoreForm({ ...storeForm, description: e.target.value })} />
-                  </div>
-
-                  {/* ─── Business Type L1/L2 ─── */}
-                  <div className="form-row col2">
-                    <div className="form-group">
-                      <label className="form-label">{t('store.business.type')}</label>
-                      <select className="form-select" value={storeForm.business_type}
-                        onChange={e => setStoreForm({ ...storeForm, business_type: e.target.value, business_subtype: '' })}>
-                        <option value="">{t('store.business.select_type')}</option>
-                        {BUSINESS_CATEGORIES.map(c => (
-                          <option key={c.code} value={c.code}>{t(c.i18nKey, c.code)}</option>
-                        ))}
-                      </select>
-                    </div>
-                    <div className="form-group">
-                      <label className="form-label">{t('store.business.subtype')}</label>
-                      <select className="form-select" value={storeForm.business_subtype}
-                        onChange={e => setStoreForm({ ...storeForm, business_subtype: e.target.value })}
-                        disabled={!storeForm.business_type}>
-                        <option value="">{t('store.business.select_subtype')}</option>
-                        {businessSubOptions.map(s => (
-                          <option key={s.code} value={s.code}>{t(s.i18nKey, s.code)}</option>
-                        ))}
-                      </select>
-                    </div>
-                  </div>
-
-                  {/* ─── Country + Phone ─── */}
-                  <div className="form-row col2">
-                    <div className="form-group">
-                      <label className="form-label">{t('admin.store.form.country')}</label>
-                      <select className="form-select" value={storeForm.country_id}
-                        onChange={e => setStoreForm({ ...storeForm, country_id: e.target.value, address_state_code: '', address_city_code: '' })}>
-                        <option value="">-</option>
-                        {countries.map(c => <option key={c.id} value={c.id}>{c.ko_name || c.name_key}</option>)}
-                      </select>
-                    </div>
-                    <div className="form-group">
-                      <label className="form-label">{t('admin.store.form.phone')}</label>
-                      <input className="form-input" value={storeForm.phone} onChange={e => setStoreForm({ ...storeForm, phone: e.target.value })} />
-                    </div>
-                  </div>
-
-                  {/* ─── Address: State/City/Detail ─── */}
-                  {regionOptions.length > 0 ? (
-                    <>
-                      <div className="form-row col2">
-                        <div className="form-group">
-                          <label className="form-label">{t('store.address.state')}</label>
-                          <select className="form-select" value={storeForm.address_state_code}
-                            onChange={e => setStoreForm({ ...storeForm, address_state_code: e.target.value, address_city_code: '' })}>
-                            <option value="">{t('store.address.select_state')}</option>
-                            {regionOptions.map(r => (
-                              <option key={r.name} value={r.name}>{r.name}</option>
-                            ))}
-                          </select>
-                        </div>
-                        <div className="form-group">
-                          <label className="form-label">{t('store.address.city')}</label>
-                          {cityOptions.length > 0 ? (
-                            <select className="form-select" value={storeForm.address_city_code}
-                              onChange={e => setStoreForm({ ...storeForm, address_city_code: e.target.value })}
-                              disabled={!storeForm.address_state_code}>
-                              <option value="">{t('store.address.select_city')}</option>
-                              {cityOptions.map(c => (
-                                <option key={c} value={c}>{c}</option>
-                              ))}
-                            </select>
-                          ) : (
-                            <input className="form-input" value={storeForm.address_city_code}
-                              onChange={e => setStoreForm({ ...storeForm, address_city_code: e.target.value })}
-                              placeholder={t('store.address.select_city')}
-                              disabled={!storeForm.address_state_code} />
-                          )}
-                        </div>
-                      </div>
-                      <div className="form-group">
-                        <label className="form-label">{t('store.address.detail')}</label>
-                        <input className="form-input" value={storeForm.address_detail}
-                          onChange={e => setStoreForm({ ...storeForm, address_detail: e.target.value })}
-                          placeholder={t('store.address.detail_placeholder')} />
-                      </div>
-                    </>
-                  ) : (
-                    <div className="form-group">
-                      <label className="form-label">{t('admin.store.form.address')}</label>
-                      <input className="form-input" value={storeForm.address} onChange={e => setStoreForm({ ...storeForm, address: e.target.value })} />
-                    </div>
-                  )}
-
-                  {/* ─── Operating Hours ─── */}
-                  <div className="form-group">
-                    <label className="form-label">{t('supplier.settings.hours_title')}</label>
-                    <div className="sp-hours-grid">
-                      {DAYS.map(day => {
-                        const h = storeHours[day] || { open: '09:00', close: '21:00' };
-                        const isClosed = !!h.closed;
-                        return (
-                          <div key={day} className={`sp-hours-row${isClosed ? ' closed' : ''}`}>
-                            <input
-                              type="checkbox"
-                              checked={!isClosed}
-                              onChange={e => setStoreHours(prev => ({ ...prev, [day]: { ...prev[day], closed: !e.target.checked } }))}
-                              style={{ accentColor: 'var(--primary)' }}
-                            />
-                            <span className="sp-hours-day">{t(`supplier.settings.day.${day}`)}</span>
-                            {isClosed ? (
-                              <span className="sp-hours-closed-label">{t('supplier.settings.closed')}</span>
-                            ) : (
-                              <div className="sp-hours-time">
-                                <select value={h.open} onChange={e => setStoreHours(prev => ({ ...prev, [day]: { ...prev[day], open: e.target.value } }))}>
-                                  {TIME_OPTIONS.map(v => <option key={v} value={v}>{v}</option>)}
-                                </select>
-                                <span className="sp-hours-separator">~</span>
-                                <select value={h.close} onChange={e => setStoreHours(prev => ({ ...prev, [day]: { ...prev[day], close: e.target.value } }))}>
-                                  {TIME_OPTIONS.map(v => <option key={v} value={v}>{v}</option>)}
-                                </select>
-                              </div>
-                            )}
-                          </div>
-                        );
-                      })}
-                    </div>
-                  </div>
-
-                  <div className="form-group">
-                    <label className="form-label">{t('admin.store.form.avatar')}</label>
-                    <input className="form-input" value={storeForm.avatar_url} onChange={e => setStoreForm({ ...storeForm, avatar_url: e.target.value })} />
-                  </div>
-                  <button className="btn btn-primary" onClick={() => void saveStore()} disabled={saving}>
-                    {saving ? '...' : t('admin.common.save')}
-                  </button>
-                </div>
-              </>
-            )}
-
             {/* Service Modal */}
             {modal === 'service' && (
               <>

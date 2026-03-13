@@ -73,6 +73,7 @@ async function listStores(env: Env, url: URL): Promise<Response> {
        s.address, s.phone, s.country_id, s.currency_id, s.latitude, s.longitude,
        s.avatar_url, s.status, s.business_type, s.business_subtype,
        s.address_state_code, s.address_city_code, s.address_detail,
+       s.supported_pet_l1_ids, s.supported_pet_l2_ids,
        s.created_at, s.updated_at,
        c.name_key AS country_name, cur.code AS currency_code,
        (SELECT COUNT(*) FROM services sv WHERE sv.store_id = s.id AND sv.is_active = true) AS service_count
@@ -112,6 +113,7 @@ async function getMyStores(env: Env, me: JwtPayload, url: URL): Promise<Response
        s.address, s.phone, s.country_id, s.currency_id, s.avatar_url, s.status,
        s.business_type, s.business_subtype,
        s.address_state_code, s.address_city_code, s.address_detail,
+       s.supported_pet_l1_ids, s.supported_pet_l2_ids,
        s.created_at, s.updated_at,
        c.name_key AS country_name, cur.code AS currency_code,
        (SELECT COUNT(*) FROM services sv WHERE sv.store_id = s.id AND sv.is_active = true) AS service_count
@@ -230,8 +232,9 @@ async function createStore(request: Request, env: Env, me: JwtPayload): Promise<
     `INSERT INTO stores (id, owner_id, name, name_translations, description, description_translations,
        address, phone, country_id, currency_id, latitude, longitude, avatar_url,
        business_type, business_subtype, address_state_code, address_city_code, address_detail,
+       operating_hours, supported_pet_l1_ids, supported_pet_l2_ids,
        status, created_at, updated_at)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'active', ?, ?)`
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?::jsonb, ?::jsonb, ?::jsonb, 'active', ?, ?)`
   ).bind(
     id,
     me.sub,
@@ -251,6 +254,9 @@ async function createStore(request: Request, env: Env, me: JwtPayload): Promise<
     typeof body.address_state_code === 'string' ? body.address_state_code : null,
     typeof body.address_city_code === 'string' ? body.address_city_code : null,
     typeof body.address_detail === 'string' ? body.address_detail : null,
+    body.operating_hours ? JSON.stringify(body.operating_hours) : null,
+    Array.isArray(body.supported_pet_l1_ids) ? JSON.stringify(body.supported_pet_l1_ids) : '[]',
+    Array.isArray(body.supported_pet_l2_ids) ? JSON.stringify(body.supported_pet_l2_ids) : '[]',
     timestamp,
     timestamp,
   ).run();
@@ -299,6 +305,9 @@ async function updateStore(request: Request, env: Env, me: JwtPayload, storeId: 
        address_state_code = COALESCE(?, address_state_code),
        address_city_code = COALESCE(?, address_city_code),
        address_detail = COALESCE(?, address_detail),
+       operating_hours = COALESCE(?::jsonb, operating_hours),
+       supported_pet_l1_ids = COALESCE(?::jsonb, supported_pet_l1_ids),
+       supported_pet_l2_ids = COALESCE(?::jsonb, supported_pet_l2_ids),
        updated_at = ?
      WHERE id = ?`
   ).bind(
@@ -318,6 +327,9 @@ async function updateStore(request: Request, env: Env, me: JwtPayload, storeId: 
     typeof body.address_state_code === 'string' ? body.address_state_code : null,
     typeof body.address_city_code === 'string' ? body.address_city_code : null,
     typeof body.address_detail === 'string' ? body.address_detail : null,
+    body.operating_hours ? JSON.stringify(body.operating_hours) : null,
+    Array.isArray(body.supported_pet_l1_ids) ? JSON.stringify(body.supported_pet_l1_ids) : null,
+    Array.isArray(body.supported_pet_l2_ids) ? JSON.stringify(body.supported_pet_l2_ids) : null,
     timestamp,
     storeId,
   ).run();

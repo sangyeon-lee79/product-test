@@ -943,6 +943,8 @@ export interface Store {
   address_state_code: string | null;
   address_city_code: string | null;
   address_detail: string | null;
+  supported_pet_l1_ids?: string[] | null;
+  supported_pet_l2_ids?: string[] | null;
   status: string;
   operating_hours?: Record<string, { open: string; close: string; closed?: boolean }> | null;
   allow_overtime?: boolean;
