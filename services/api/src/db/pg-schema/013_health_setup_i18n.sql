@@ -17,3 +17,11 @@ ON CONFLICT (key) DO NOTHING;
 INSERT INTO i18n_translations (id, key, page, ko, en, ja, zh_cn, zh_tw, es, fr, de, pt, vi, th, id_lang, ar)
 VALUES (gen_random_uuid()::text, 'health.setup.food', 'guardian', '사료 등록', 'Food & Supplements', 'フード・サプリ登録', '食品与补充剂', '食品與補充劑', 'Alimentación', 'Alimentation', 'Futter & Ergänzungen', 'Ração e Suplementos', 'Thức ăn & Bổ sung', 'อาหารและอาหารเสริม', 'Makanan & Suplemen', 'الطعام والمكملات')
 ON CONFLICT (key) DO NOTHING;
+
+INSERT INTO i18n_translations (id, key, page, ko, en, ja, zh_cn, zh_tw, es, fr, de, pt, vi, th, id_lang, ar)
+VALUES (gen_random_uuid()::text, 'health.setup.done_title', 'guardian', '장비·사료 관리', 'Equipment & Food', '機器・フード管理', '设备与食品管理', '設備與食品管理', 'Equipo y alimentos', 'Équipement et alimentation', 'Geräte & Futter', 'Equipamentos e alimentos', 'Thiết bị & Thức ăn', 'อุปกรณ์และอาหาร', 'Peralatan & Makanan', 'المعدات والطعام')
+ON CONFLICT (key) DO NOTHING;
+
+INSERT INTO i18n_translations (id, key, page, ko, en, ja, zh_cn, zh_tw, es, fr, de, pt, vi, th, id_lang, ar)
+VALUES (gen_random_uuid()::text, 'health.setup.done_desc', 'guardian', '장비 {0}개 · 사료 {1}개 등록됨', '{0} devices · {1} feeds registered', '機器{0}件・フード{1}件登録済み', '已注册{0}个设备 · {1}个食品', '已註冊{0}個設備 · {1}個食品', '{0} equipos · {1} alimentos registrados', '{0} équipements · {1} aliments enregistrés', '{0} Geräte · {1} Futter registriert', '{0} equipamentos · {1} alimentos cadastrados', '{0} thiết bị · {1} thức ăn đã đăng ký', 'ลงทะเบียน {0} อุปกรณ์ · {1} อาหาร', '{0} peralatan · {1} makanan terdaftar', '{0} معدات · {1} طعام مسجل')
+ON CONFLICT (key) DO NOTHING;

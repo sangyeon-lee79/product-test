@@ -3909,6 +3909,15 @@ html[data-theme="dark"] .pf-card--health .pf-friend-btn--add { border-color: #F5
   background: #fff; color: #4338ca; border: 1px solid #c7d2fe;
 }
 .pf-gd-setup-btn--food:hover { background: #eef2ff; }
+.pf-gd-setup-btn--manage {
+  background: var(--surface); color: var(--text); border: 1px solid var(--border);
+}
+.pf-gd-setup-btn--manage:hover { background: var(--bg); }
+.pf-gd-setup-banner--done {
+  background: var(--surface); border-color: var(--border);
+}
+.pf-gd-setup-banner--done .pf-gd-setup-title { color: var(--text); }
+.pf-gd-setup-banner--done .pf-gd-setup-desc { color: var(--text-muted); }
 
 /* ── Setup Banner — Dark mode ── */
 html[data-theme="dark"] .pf-gd-setup-banner {
@@ -5856,6 +5865,24 @@ html[data-theme="dark"] .sp-card-header { background: linear-gradient(to right, 
   .sp-stat-card { padding: 14px 16px; }
   .sp-stat-value { font-size: 24px; }
 }
+
+/* ─── Wizard Modal ─── */
+.wiz-steps { display: flex; align-items: center; gap: 0; padding: 16px 24px; border-bottom: 1px solid var(--border); }
+.wiz-step { display: flex; align-items: center; gap: 8px; cursor: pointer; }
+.wiz-step-num { width: 28px; height: 28px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 13px; font-weight: 700; border: 2px solid var(--border); color: var(--text-muted); background: var(--surface); transition: all .15s; }
+.wiz-step.active .wiz-step-num { background: var(--primary); color: #fff; border-color: var(--primary); }
+.wiz-step.completed .wiz-step-num { background: #22c55e; color: #fff; border-color: #22c55e; }
+.wiz-step-label { font-size: 13px; color: var(--text-muted); white-space: nowrap; }
+.wiz-step.active .wiz-step-label { color: var(--text); font-weight: 600; }
+.wiz-connector { flex: 1; height: 2px; background: var(--border); margin: 0 8px; }
+.wiz-connector.done { background: #22c55e; }
+.wiz-body { min-height: 480px; padding: 20px 24px; overflow-y: auto; max-height: calc(90vh - 180px); }
+.wiz-footer { display: flex; justify-content: space-between; padding: 12px 24px; border-top: 1px solid var(--border); }
+/* Pet type chips */
+.wiz-pet-chip { display: inline-flex; align-items: center; gap: 6px; padding: 8px 14px; border-radius: 20px; border: 1px solid var(--border); cursor: pointer; font-size: 13px; background: var(--surface); transition: all .15s; color: var(--text); }
+.wiz-pet-chip:hover { border-color: var(--primary); }
+.wiz-pet-chip.selected { background: var(--primary); color: #fff; border-color: var(--primary); }
+.wiz-pet-chip .emoji { font-size: 18px; }
 
 /* ─── Responsive ─── */
 @media (max-width: 767px) {
