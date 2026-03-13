@@ -3525,21 +3525,20 @@ html[data-theme="dark"] .pf-card--health .pf-friend-btn--add { border-color: #F5
   flex-direction: column;
 }
 
-/* ── Hero Section — Warm Editorial ── */
+/* ── Hero Section — Warm Cream Editorial ── */
 .pf-gd-hero {
-  background: linear-gradient(160deg, #1a1510 0%, #241a12 40%, #1c1410 100%);
-  color: #fff;
-  padding: 36px 32px 28px;
-  border-radius: 0 0 32px 32px;
+  background: linear-gradient(135deg, #FFF5EB 0%, #FFE8D6 30%, #FDDCBE 60%, #F5C9A0 100%);
+  color: var(--charcoal);
+  padding: 40px 32px 32px;
+  border-radius: 0 0 40px 40px;
   position: relative;
   overflow: hidden;
 }
 .pf-gd-hero::before {
   content: ''; position: absolute; inset: 0;
   background:
-    radial-gradient(ellipse at 12% 45%, rgba(245,130,58,.2), transparent 50%),
-    radial-gradient(ellipse at 88% 55%, rgba(232,114,42,.08), transparent 45%),
-    radial-gradient(ellipse at 50% 120%, rgba(217,119,6,.06), transparent 60%);
+    radial-gradient(circle at 85% 20%, rgba(245,130,58,.15), transparent 40%),
+    radial-gradient(circle at 10% 80%, rgba(217,119,6,.1), transparent 50%);
   pointer-events: none;
 }
 .pf-gd-hero::after {
@@ -3565,18 +3564,18 @@ html[data-theme="dark"] .pf-card--health .pf-friend-btn--add { border-color: #F5
   to   { box-shadow: 0 0 40px rgba(245,130,58,.35), 0 0 0 1px rgba(245,130,58,.2); }
 }
 .pf-gd-avatar-inner {
-  width: 68px; height: 68px; border-radius: 50%; background: #1a1510;
+  width: 68px; height: 68px; border-radius: 50%; background: #FFF5EB;
   display: flex; align-items: center; justify-content: center;
-  font-size: 26px; font-weight: 700; color: #fff; font-family: var(--font-serif);
+  font-size: 26px; font-weight: 700; color: var(--charcoal); font-family: var(--font-serif);
   overflow: hidden;
-  box-shadow: inset 0 0 12px rgba(0,0,0,.3);
+  box-shadow: inset 0 0 8px rgba(245,130,58,.1);
 }
 .pf-gd-hero-info { flex: 1; min-width: 130px; }
 .pf-gd-hero-info h2 {
   font-family: var(--font-serif); font-size: 26px; font-weight: 700;
-  margin: 0; color: #fff; letter-spacing: -.02em; line-height: 1.15;
+  margin: 0; color: var(--charcoal); letter-spacing: -.02em; line-height: 1.15;
 }
-.pf-gd-hero-info p { font-size: 13px; color: rgba(255,255,255,.5); margin: 5px 0 0; font-weight: 400; }
+.pf-gd-hero-info p { font-size: 13px; color: var(--mid); margin: 5px 0 0; font-weight: 400; }
 .pf-gd-hero-stats { display: flex; gap: 28px; flex-shrink: 0; }
 .pf-gd-hero-stat {
   display: flex; flex-direction: column; align-items: center; gap: 3px;
@@ -3584,21 +3583,21 @@ html[data-theme="dark"] .pf-card--health .pf-friend-btn--add { border-color: #F5
 }
 .pf-gd-hero-stat:hover { transform: translateY(-1px); }
 .pf-gd-hero-stat strong {
-  font-size: 22px; font-weight: 800; color: #fff; line-height: 1;
+  font-size: 22px; font-weight: 800; color: var(--charcoal); line-height: 1;
   font-family: var(--font-serif); font-variant-numeric: tabular-nums;
 }
 .pf-gd-hero-stat span {
-  font-size: 10px; color: rgba(255,255,255,.38); text-transform: uppercase;
+  font-size: 10px; color: var(--mid); text-transform: uppercase;
   letter-spacing: .8px; font-weight: 500;
 }
 .pf-gd-hero-actions { display: flex; gap: 8px; flex-shrink: 0; }
 .pf-gd-hero-actions .btn {
   backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px);
-  background: rgba(255,255,255,.07); border: 1px solid rgba(255,255,255,.1);
-  color: rgba(255,255,255,.8); transition: all .2s var(--ease);
+  background: rgba(28,28,30,.06); border: 1px solid rgba(28,28,30,.12);
+  color: var(--charcoal); transition: all .2s var(--ease);
 }
 .pf-gd-hero-actions .btn:hover {
-  background: rgba(255,255,255,.14); border-color: rgba(255,255,255,.18); color: #fff;
+  background: rgba(28,28,30,.12); border-color: rgba(28,28,30,.2); color: var(--charcoal);
 }
 .pf-gd-hero-actions .btn-primary {
   background: linear-gradient(135deg, #F5823A 0%, #E8722A 100%);
@@ -3612,16 +3611,16 @@ html[data-theme="dark"] .pf-card--health .pf-friend-btn--add { border-color: #F5
 }
 .pf-gd-chip {
   font-size: 11px; padding: 4px 12px; border-radius: 20px;
-  background: rgba(245,130,58,.1); color: #F5A66A;
-  border: 1px solid rgba(245,130,58,.12); cursor: default;
+  background: rgba(245,130,58,.12); color: #C4541A;
+  border: 1px solid rgba(245,130,58,.2); cursor: default;
   backdrop-filter: blur(6px); font-weight: 500;
 }
 
 /* ── Pet switch (story-ring style) ── */
 .pf-gd-pet-switch {
-  display: flex; gap: 16px; padding: 16px 28px; overflow-x: auto; scrollbar-width: none;
+  display: flex; gap: 20px; padding: 18px 28px; overflow-x: auto; scrollbar-width: none;
   scroll-snap-type: x mandatory; background: var(--surface);
-  border-bottom: 1px solid var(--border);
+  border-bottom: none;
 }
 .pf-gd-pet-switch::-webkit-scrollbar { display: none; }
 .pf-gd-pet-btn {
@@ -3631,20 +3630,21 @@ html[data-theme="dark"] .pf-card--health .pf-friend-btn--add { border-color: #F5
 }
 .pf-gd-pet-btn:hover { transform: translateY(-2px); }
 .pf-gd-pet-ring {
-  width: 56px; height: 56px; border-radius: 50%;
+  width: 62px; height: 62px; border-radius: 50%;
   background: var(--soft); display: flex; align-items: center; justify-content: center;
   transition: all .3s var(--ease);
-  box-shadow: 0 2px 8px rgba(0,0,0,.05);
+  box-shadow: 0 4px 14px rgba(0,0,0,.08);
 }
 .pf-gd-pet-btn:hover .pf-gd-pet-ring {
   transform: scale(1.08); box-shadow: 0 6px 18px rgba(0,0,0,.1);
 }
 .pf-gd-pet-ring.active {
   background: conic-gradient(from 0deg, #F5823A, #E8722A, #D97706, #F59E0B, #F5823A);
-  box-shadow: 0 4px 20px rgba(245,130,58,.3);
+  box-shadow: 0 4px 20px rgba(245,130,58,.35);
+  transform: scale(1.08);
 }
 .pf-gd-pet-ring-inner {
-  width: 48px; height: 48px; border-radius: 50%; background: var(--surface);
+  width: 54px; height: 54px; border-radius: 50%; background: var(--surface);
   display: flex; align-items: center; justify-content: center;
   font-size: 16px; font-weight: 700; color: var(--text); overflow: hidden;
   transition: all .2s;
@@ -3660,21 +3660,22 @@ html[data-theme="dark"] .pf-card--health .pf-friend-btn--add { border-color: #F5
   border-color: var(--primary); color: var(--primary); background: rgba(245,130,58,.04);
 }
 .pf-gd-pet-name {
-  font-size: 11px; color: var(--text-muted); max-width: 56px;
+  font-size: 11px; color: var(--text); max-width: 62px;
   overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
-  font-weight: 500; transition: color .2s;
+  font-weight: 700; transition: color .2s;
 }
 .pf-gd-pet-btn:hover .pf-gd-pet-name { color: var(--text); }
 
-/* ── Tab bar — smooth animated underline ── */
+/* ── Tab bar — pill segment control ── */
 .pf-gd-tabs-wrap {
   position: sticky; top: 0; z-index: 10;
-  background: color-mix(in srgb, var(--surface) 92%, transparent);
+  background: color-mix(in srgb, var(--surface) 95%, transparent);
   backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px);
-  border-bottom: 1px solid var(--border); padding: 0 28px;
+  border-bottom: none; padding: 12px 28px;
 }
 .pf-gd-tabs-inner {
-  display: flex; overflow-x: auto; scrollbar-width: none; gap: 0; position: relative;
+  display: flex; overflow-x: auto; scrollbar-width: none; gap: 4px; position: relative;
+  background: var(--bg); border-radius: 14px; padding: 4px;
 }
 .pf-gd-tabs-inner::-webkit-scrollbar { display: none; }
 .pf-gd-tab-arrow {
@@ -3688,25 +3689,24 @@ html[data-theme="dark"] .pf-card--health .pf-friend-btn--add { border-color: #F5
 .pf-gd-tab-arrow:hover { color: var(--primary); border-color: var(--primary); }
 .pf-gd-tab-arrow.left { left: 0; }
 .pf-gd-tab-arrow.right { right: 0; }
-/* Tab button styling within guardian context */
+/* Tab button styling — pill segment */
 .pf-gd-tabs-inner .pf-feed-tab {
   position: relative; display: flex; align-items: center; gap: 6px;
-  padding: 14px 20px; font-size: 13px; font-weight: 600;
+  padding: 10px 16px; font-size: 13px; font-weight: 600;
   color: var(--text-muted); background: none; border: none;
-  border-bottom: 2.5px solid transparent;
+  border-bottom: none; border-radius: 10px;
   cursor: pointer; white-space: nowrap;
-  transition: color .2s var(--ease); letter-spacing: -.01em;
+  transition: all .25s var(--ease); letter-spacing: -.01em;
 }
-.pf-gd-tabs-inner .pf-feed-tab:hover { color: var(--text); }
+.pf-gd-tabs-inner .pf-feed-tab:hover { color: var(--text); background: rgba(0,0,0,.03); }
 .pf-gd-tabs-inner .pf-feed-tab.active {
-  color: var(--primary); border-bottom-color: var(--primary);
+  color: var(--primary); background: var(--surface);
+  box-shadow: 0 2px 8px rgba(0,0,0,.08);
+  border-bottom-color: transparent;
 }
 .pf-gd-tabs-inner .pf-feed-tab.active::after {
-  content: ''; position: absolute; bottom: -1px; left: 20px; right: 20px;
-  height: 2.5px; background: var(--primary);
-  border-radius: 2px 2px 0 0; animation: gm-tab-in .25s var(--ease);
+  display: none;
 }
-@keyframes gm-tab-in { from { transform: scaleX(0); } to { transform: scaleX(1); } }
 
 /* ── Content layout ── */
 .pf-gd-content { flex: 1; padding: 24px 28px; }
@@ -3717,20 +3717,21 @@ html[data-theme="dark"] .pf-card--health .pf-friend-btn--add { border-color: #F5
 .pf-gd-main { min-width: 0; display: flex; flex-direction: column; gap: 20px; }
 .pf-gd-aside { display: flex; flex-direction: column; gap: 20px; }
 
-/* ── Section cards — elevated glass panels ── */
+/* ── Section cards — elevated panels ── */
 .pf-gd-section {
-  background: var(--surface); border-radius: 20px;
-  border: 1px solid var(--border); overflow: hidden;
-  box-shadow: 0 1px 4px rgba(0,0,0,.03), 0 0 0 0 transparent;
+  background: var(--surface); border-radius: 22px;
+  border: none; overflow: hidden;
+  box-shadow: 0 4px 20px rgba(0,0,0,.05);
   transition: box-shadow .3s var(--ease), transform .3s var(--ease);
 }
 .pf-gd-section:hover {
-  box-shadow: 0 8px 32px rgba(0,0,0,.07), 0 1px 3px rgba(0,0,0,.04);
+  box-shadow: 0 8px 32px rgba(0,0,0,.08);
 }
 .pf-gd-section-header {
   display: flex; align-items: center; justify-content: space-between;
-  padding: 14px 20px; border-bottom: 1px solid var(--border);
-  font-size: 14px; font-weight: 700; color: var(--text); letter-spacing: -.01em;
+  padding: 16px 20px; border-bottom: 1px solid rgba(245,130,58,.08);
+  background: linear-gradient(to right, rgba(245,130,58,.04), transparent);
+  font-size: 15px; font-weight: 700; color: var(--text); letter-spacing: -.01em;
 }
 .pf-gd-section-body { padding: 16px 20px; }
 
@@ -3748,7 +3749,7 @@ html[data-theme="dark"] .pf-card--health .pf-friend-btn--add { border-color: #F5
 }
 .pf-gd-tool-tile::before {
   content: ''; position: absolute; inset: 0; border-radius: 16px;
-  opacity: 0; transition: opacity .25s var(--ease);
+  opacity: 1; transition: opacity .25s var(--ease);
 }
 .pf-gd-tool-tile:hover {
   border-color: var(--primary); transform: translateY(-3px);
@@ -3769,22 +3770,27 @@ html[data-theme="dark"] .pf-card--health .pf-friend-btn--add { border-color: #F5
   width: 1.5px; background: linear-gradient(to bottom, transparent, var(--border), transparent);
   margin: 8px 4px; align-self: stretch; border-radius: 1px;
 }
-/* Toolkit tile color variants */
+/* Toolkit tile color variants — always visible */
 .pf-gd-tool-tile:nth-child(1)::before { background: linear-gradient(135deg, #dbeafe 0%, #eff6ff 100%); }
+.pf-gd-tool-tile:nth-child(1) { border-color: #bfdbfe; }
+.pf-gd-tool-tile:nth-child(1) .pf-gd-tool-label { color: #1d4ed8; }
 .pf-gd-tool-tile:nth-child(1):hover { border-color: #93c5fd; }
-.pf-gd-tool-tile:nth-child(1):hover .pf-gd-tool-label { color: #1d4ed8; }
 .pf-gd-tool-tile:nth-child(2)::before { background: linear-gradient(135deg, var(--amber-light) 0%, #fffbeb 100%); }
+.pf-gd-tool-tile:nth-child(2) { border-color: #fde68a; }
+.pf-gd-tool-tile:nth-child(2) .pf-gd-tool-label { color: #b45309; }
 .pf-gd-tool-tile:nth-child(2):hover { border-color: #fbbf24; }
-.pf-gd-tool-tile:nth-child(2):hover .pf-gd-tool-label { color: #b45309; }
 .pf-gd-tool-tile:nth-child(3)::before { background: linear-gradient(135deg, #d1fae5 0%, #ecfdf5 100%); }
+.pf-gd-tool-tile:nth-child(3) { border-color: #a7f3d0; }
+.pf-gd-tool-tile:nth-child(3) .pf-gd-tool-label { color: #047857; }
 .pf-gd-tool-tile:nth-child(3):hover { border-color: #6ee7b7; }
-.pf-gd-tool-tile:nth-child(3):hover .pf-gd-tool-label { color: #047857; }
 .pf-gd-tool-tile:nth-child(4)::before { background: linear-gradient(135deg, #e0e7ff 0%, #eef2ff 100%); }
+.pf-gd-tool-tile:nth-child(4) { border-color: #c7d2fe; }
+.pf-gd-tool-tile:nth-child(4) .pf-gd-tool-label { color: #4338ca; }
 .pf-gd-tool-tile:nth-child(4):hover { border-color: #a5b4fc; }
-.pf-gd-tool-tile:nth-child(4):hover .pf-gd-tool-label { color: #4338ca; }
 .pf-gd-tool-tile:nth-child(5)::before { background: linear-gradient(135deg, #ffe4e6 0%, #fff1f2 100%); }
+.pf-gd-tool-tile:nth-child(5) { border-color: #fecdd3; }
+.pf-gd-tool-tile:nth-child(5) .pf-gd-tool-label { color: #be123c; }
 .pf-gd-tool-tile:nth-child(5):hover { border-color: #fda4af; }
-.pf-gd-tool-tile:nth-child(5):hover .pf-gd-tool-label { color: #be123c; }
 
 /* ── Timeline ── */
 .pf-gd-timeline { display: flex; flex-direction: column; gap: 2px; }
@@ -3827,22 +3833,22 @@ html[data-theme="dark"] .pf-card--health .pf-friend-btn--add { border-color: #F5
 /* ── Record Card (unified health timeline cards) ── */
 .rc-card {
   display: flex; flex-direction: column;
-  border-radius: 16px; background: var(--surface);
-  border: 1px solid var(--border); border-left: 4px solid var(--primary);
+  border-radius: 18px; background: var(--surface);
+  border: none; border-top: 3px solid var(--primary);
   margin-bottom: 10px; overflow: hidden;
   transition: all .25s var(--ease);
   animation: gm-tl-slide-in .35s var(--ease) backwards;
-  box-shadow: 0 1px 3px rgba(0,0,0,.03);
+  box-shadow: 0 4px 16px rgba(0,0,0,.05);
 }
 .rc-card:hover {
   box-shadow: 0 6px 24px rgba(0,0,0,.08);
   transform: translateY(-1px);
 }
-.rc-card[data-type="feeding"]     { border-left-color: #F5823A; }
-.rc-card[data-type="measurement"] { border-left-color: #4A7CF7; }
-.rc-card[data-type="exercise"]    { border-left-color: #4CAF7D; }
-.rc-card[data-type="weight"]      { border-left-color: #9B5DE5; }
-.rc-card[data-type="medication"]  { border-left-color: #FF4D4D; }
+.rc-card[data-type="feeding"]     { border-top-color: #F5823A; }
+.rc-card[data-type="measurement"] { border-top-color: #4A7CF7; }
+.rc-card[data-type="exercise"]    { border-top-color: #4CAF7D; }
+.rc-card[data-type="weight"]      { border-top-color: #9B5DE5; }
+.rc-card[data-type="medication"]  { border-top-color: #FF4D4D; }
 
 .rc-header {
   display: flex; align-items: center; gap: 12px;
@@ -3922,7 +3928,7 @@ html[data-theme="dark"] .pf-card--health .pf-friend-btn--add { border-color: #F5
 }
 
 /* Record Card — dark mode */
-html[data-theme="dark"] .rc-card { border-color: rgba(255,255,255,.06); }
+html[data-theme="dark"] .rc-card { box-shadow: 0 4px 16px rgba(0,0,0,.15); }
 html[data-theme="dark"] .rc-card:hover { box-shadow: 0 6px 24px rgba(0,0,0,.25); }
 html[data-theme="dark"] .rc-actions button:hover { background: rgba(255,255,255,.08); }
 html[data-theme="dark"] .rc-pill { background: rgba(255,255,255,.06); }
@@ -3931,11 +3937,11 @@ html[data-theme="dark"] .rc-card[data-type="measurement"] .rc-icon { background:
 html[data-theme="dark"] .rc-card[data-type="exercise"]    .rc-icon { background: rgba(76,175,125,.12); }
 html[data-theme="dark"] .rc-card[data-type="weight"]      .rc-icon { background: rgba(155,93,229,.12); }
 html[data-theme="dark"] .rc-card[data-type="medication"]  .rc-icon { background: rgba(255,77,77,.12); }
-html[data-theme="dark"] .rc-card[data-type="feeding"]     { border-left-color: #F5823A; }
-html[data-theme="dark"] .rc-card[data-type="measurement"] { border-left-color: #4A7CF7; }
-html[data-theme="dark"] .rc-card[data-type="exercise"]    { border-left-color: #4CAF7D; }
-html[data-theme="dark"] .rc-card[data-type="weight"]      { border-left-color: #9B5DE5; }
-html[data-theme="dark"] .rc-card[data-type="medication"]  { border-left-color: #FF4D4D; }
+html[data-theme="dark"] .rc-card[data-type="feeding"]     { border-top-color: #F5823A; }
+html[data-theme="dark"] .rc-card[data-type="measurement"] { border-top-color: #4A7CF7; }
+html[data-theme="dark"] .rc-card[data-type="exercise"]    { border-top-color: #4CAF7D; }
+html[data-theme="dark"] .rc-card[data-type="weight"]      { border-top-color: #9B5DE5; }
+html[data-theme="dark"] .rc-card[data-type="medication"]  { border-top-color: #FF4D4D; }
 
 /* Record Card — mobile responsive */
 @media (max-width: 767px) {
@@ -3975,11 +3981,11 @@ html[data-theme="dark"] .rc-card[data-type="medication"]  { border-left-color: #
 
 /* ── Compose bar ── */
 .pf-gd-compose {
-  display: flex; align-items: center; gap: 12px; padding: 14px 18px;
-  border-radius: 18px; border: 1px solid var(--border);
-  background: var(--surface); cursor: pointer;
+  display: flex; align-items: center; gap: 12px; padding: 16px 20px;
+  border-radius: 22px; border: 1.5px solid rgba(245,130,58,.15);
+  background: linear-gradient(135deg, #FFF8F0, #FFF2E5); cursor: pointer;
   transition: all .25s var(--ease);
-  box-shadow: 0 1px 3px rgba(0,0,0,.03);
+  box-shadow: 0 2px 10px rgba(245,130,58,.06);
 }
 .pf-gd-compose:hover {
   border-color: var(--primary);
@@ -3997,10 +4003,10 @@ html[data-theme="dark"] .rc-card[data-type="medication"]  { border-left-color: #
 
 /* ── SNS feed card ── */
 .pf-gd-feed-card {
-  background: var(--surface); border-radius: 18px;
-  border: 1px solid var(--border); overflow: hidden; break-inside: avoid;
+  background: var(--surface); border-radius: 20px;
+  border: none; overflow: hidden; break-inside: avoid;
   margin-bottom: 14px; transition: all .25s var(--ease);
-  box-shadow: 0 1px 3px rgba(0,0,0,.03);
+  box-shadow: 0 4px 16px rgba(0,0,0,.05);
 }
 .pf-gd-feed-card:hover {
   box-shadow: 0 6px 24px rgba(0,0,0,.07);
@@ -4060,9 +4066,9 @@ html[data-theme="dark"] .rc-card[data-type="medication"]  { border-left-color: #
 .pf-gd-health-tag:hover { background: rgba(245,130,58,.1); color: var(--text); }
 
 /* ── Gallery grid — hover zoom ── */
-.pf-gd-gallery { display: grid; grid-template-columns: repeat(3, 1fr); gap: 5px; }
+.pf-gd-gallery { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
 .pf-gd-gallery-tile {
-  aspect-ratio: 1; border-radius: 10px; overflow: hidden; position: relative; cursor: pointer;
+  aspect-ratio: 1; border-radius: 16px; overflow: hidden; position: relative; cursor: pointer;
 }
 .pf-gd-gallery-tile img {
   width: 100%; height: 100%; object-fit: cover;
@@ -4070,23 +4076,25 @@ html[data-theme="dark"] .rc-card[data-type="medication"]  { border-left-color: #
 }
 .pf-gd-gallery-tile:hover img { transform: scale(1.08); }
 .pf-gd-gallery-tile::after {
-  content: ''; position: absolute; inset: 0; border-radius: 10px;
+  content: ''; position: absolute; inset: 0; border-radius: 16px;
   background: rgba(0,0,0,0); transition: background .25s;
   pointer-events: none;
 }
-.pf-gd-gallery-tile:hover::after { background: rgba(0,0,0,.12); }
+.pf-gd-gallery-tile:hover::after { background: linear-gradient(to top, rgba(0,0,0,.3), transparent 60%); }
 
-/* ── Aside sections — floating panels ── */
+/* ── Aside sections — elevated panels ── */
 .pf-gd-aside-section {
-  background: var(--surface); border-radius: 18px;
-  border: 1px solid var(--border); overflow: hidden;
-  box-shadow: 0 1px 4px rgba(0,0,0,.03);
+  background: var(--surface); border-radius: 20px;
+  border: none; overflow: hidden;
+  box-shadow: 0 4px 20px rgba(0,0,0,.05);
   transition: box-shadow .3s var(--ease);
 }
-.pf-gd-aside-section:hover { box-shadow: 0 6px 24px rgba(0,0,0,.06); }
+.pf-gd-aside-section:hover { box-shadow: 0 8px 28px rgba(0,0,0,.08); }
 .pf-gd-aside-header {
-  font-size: 11px; font-weight: 700; color: var(--text-muted); padding: 12px 16px;
-  border-bottom: 1px solid var(--border); text-transform: uppercase; letter-spacing: .5px;
+  font-size: 11px; font-weight: 800; color: var(--primary); padding: 14px 18px;
+  border-bottom: none; text-transform: uppercase; letter-spacing: .3px;
+  background: linear-gradient(135deg, rgba(245,130,58,.08), rgba(245,130,58,.02));
+  border-radius: 20px 20px 0 0;
 }
 .pf-gd-aside-body { padding: 12px 14px; }
 .pf-gd-pet-card {
@@ -4439,45 +4447,67 @@ html[data-theme="dark"] .pf-friends-search-status--pending { background: rgba(21
 
 /* ── Dark mode overrides ── */
 html[data-theme="dark"] .pf-gd-hero {
-  background: linear-gradient(160deg, #0d0b09 0%, #161210 40%, #0f0d0a 100%);
+  background: linear-gradient(135deg, #1a1208 0%, #231810 30%, #2a1c10 60%, #1e1408 100%);
+  color: #fff;
 }
 html[data-theme="dark"] .pf-gd-hero::before {
   background:
-    radial-gradient(ellipse at 12% 45%, rgba(245,130,58,.15), transparent 50%),
-    radial-gradient(ellipse at 88% 55%, rgba(232,114,42,.06), transparent 45%);
+    radial-gradient(circle at 85% 20%, rgba(245,130,58,.18), transparent 40%),
+    radial-gradient(circle at 10% 80%, rgba(217,119,6,.12), transparent 50%);
 }
-html[data-theme="dark"] .pf-gd-section { background: var(--surface); border-color: rgba(255,255,255,.06); }
-html[data-theme="dark"] .pf-gd-section:hover { box-shadow: 0 8px 32px rgba(0,0,0,.2); }
-html[data-theme="dark"] .pf-gd-tool-tile { border-color: rgba(255,255,255,.06); }
+html[data-theme="dark"] .pf-gd-hero-info h2 { color: #fff; }
+html[data-theme="dark"] .pf-gd-hero-info p { color: rgba(255,255,255,.5); }
+html[data-theme="dark"] .pf-gd-hero-stat strong { color: #fff; }
+html[data-theme="dark"] .pf-gd-hero-stat span { color: rgba(255,255,255,.38); }
+html[data-theme="dark"] .pf-gd-avatar-inner { background: #1a1510; color: #fff; }
+html[data-theme="dark"] .pf-gd-hero-actions .btn {
+  background: rgba(255,255,255,.07); border-color: rgba(255,255,255,.1); color: rgba(255,255,255,.8);
+}
+html[data-theme="dark"] .pf-gd-hero-actions .btn:hover {
+  background: rgba(255,255,255,.14); border-color: rgba(255,255,255,.18); color: #fff;
+}
+html[data-theme="dark"] .pf-gd-chip { background: rgba(245,130,58,.15); color: #F5A66A; border-color: rgba(245,130,58,.12); }
+html[data-theme="dark"] .pf-gd-section { background: var(--surface); box-shadow: 0 4px 20px rgba(0,0,0,.15); }
+html[data-theme="dark"] .pf-gd-section:hover { box-shadow: 0 8px 32px rgba(0,0,0,.25); }
+html[data-theme="dark"] .pf-gd-section-header { background: linear-gradient(to right, rgba(245,130,58,.06), transparent); border-bottom-color: rgba(255,255,255,.06); }
+html[data-theme="dark"] .pf-gd-tool-tile { border-color: rgba(255,255,255,.08); }
 html[data-theme="dark"] .pf-gd-tool-tile:hover { box-shadow: 0 8px 28px rgba(245,130,58,.08); }
-html[data-theme="dark"] .pf-gd-tool-tile:nth-child(1)::before { background: linear-gradient(135deg, rgba(59,130,246,.1) 0%, rgba(59,130,246,.04) 100%); }
-html[data-theme="dark"] .pf-gd-tool-tile:nth-child(2)::before { background: linear-gradient(135deg, rgba(217,119,6,.1) 0%, rgba(217,119,6,.04) 100%); }
-html[data-theme="dark"] .pf-gd-tool-tile:nth-child(3)::before { background: linear-gradient(135deg, rgba(16,185,129,.1) 0%, rgba(16,185,129,.04) 100%); }
-html[data-theme="dark"] .pf-gd-tool-tile:nth-child(4)::before { background: linear-gradient(135deg, rgba(99,102,241,.1) 0%, rgba(99,102,241,.04) 100%); }
-html[data-theme="dark"] .pf-gd-tool-tile:nth-child(5)::before { background: linear-gradient(135deg, rgba(244,63,94,.1) 0%, rgba(244,63,94,.04) 100%); }
+html[data-theme="dark"] .pf-gd-tool-tile::before { opacity: 1; }
+html[data-theme="dark"] .pf-gd-tool-tile:nth-child(1)::before { background: linear-gradient(135deg, rgba(59,130,246,.12) 0%, rgba(59,130,246,.04) 100%); }
+html[data-theme="dark"] .pf-gd-tool-tile:nth-child(1) { border-color: rgba(59,130,246,.2); }
+html[data-theme="dark"] .pf-gd-tool-tile:nth-child(2)::before { background: linear-gradient(135deg, rgba(217,119,6,.12) 0%, rgba(217,119,6,.04) 100%); }
+html[data-theme="dark"] .pf-gd-tool-tile:nth-child(2) { border-color: rgba(217,119,6,.2); }
+html[data-theme="dark"] .pf-gd-tool-tile:nth-child(3)::before { background: linear-gradient(135deg, rgba(16,185,129,.12) 0%, rgba(16,185,129,.04) 100%); }
+html[data-theme="dark"] .pf-gd-tool-tile:nth-child(3) { border-color: rgba(16,185,129,.2); }
+html[data-theme="dark"] .pf-gd-tool-tile:nth-child(4)::before { background: linear-gradient(135deg, rgba(99,102,241,.12) 0%, rgba(99,102,241,.04) 100%); }
+html[data-theme="dark"] .pf-gd-tool-tile:nth-child(4) { border-color: rgba(99,102,241,.2); }
+html[data-theme="dark"] .pf-gd-tool-tile:nth-child(5)::before { background: linear-gradient(135deg, rgba(244,63,94,.12) 0%, rgba(244,63,94,.04) 100%); }
+html[data-theme="dark"] .pf-gd-tool-tile:nth-child(5) { border-color: rgba(244,63,94,.2); }
+html[data-theme="dark"] .pf-gd-tabs-inner { background: rgba(255,255,255,.04); }
+html[data-theme="dark"] .pf-gd-tabs-inner .pf-feed-tab:hover { background: rgba(255,255,255,.06); }
+html[data-theme="dark"] .pf-gd-tabs-inner .pf-feed-tab.active { background: var(--surface); box-shadow: 0 2px 8px rgba(0,0,0,.2); }
 html[data-theme="dark"] .pf-gd-tl-card:hover { background: rgba(245,130,58,.06); }
 html[data-theme="dark"] .pf-gd-tl-actions button:hover { background: rgba(255,255,255,.08); }
 html[data-theme="dark"] .pf-gd-pet-card:hover { background: rgba(245,130,58,.1); }
 html[data-theme="dark"] .pf-gd-pet-card.selected { background: rgba(245,130,58,.12); }
-html[data-theme="dark"] .pf-gd-chip { background: rgba(245,130,58,.15); border-color: rgba(245,130,58,.12); }
 html[data-theme="dark"] .pf-gd-onboard { background: linear-gradient(135deg, rgba(245,130,58,.08), rgba(217,119,6,.04)); border-color: rgba(245,130,58,.2); }
-html[data-theme="dark"] .pf-gd-compose { border-color: rgba(255,255,255,.06); }
+html[data-theme="dark"] .pf-gd-compose { background: rgba(245,130,58,.06); border-color: rgba(245,130,58,.12); }
 html[data-theme="dark"] .pf-gd-compose:hover { border-color: rgba(245,130,58,.4); box-shadow: 0 4px 16px rgba(245,130,58,.06); }
-html[data-theme="dark"] .pf-gd-feed-card { border-color: rgba(255,255,255,.06); }
+html[data-theme="dark"] .pf-gd-feed-card { box-shadow: 0 4px 16px rgba(0,0,0,.12); }
 html[data-theme="dark"] .pf-gd-feed-card:hover { box-shadow: 0 6px 24px rgba(0,0,0,.2); }
 html[data-theme="dark"] .pf-gd-feed-pet-chip { background: rgba(245,130,58,.12); color: #F5823A; }
 html[data-theme="dark"] .pf-gd-feed-action:hover { background: rgba(255,255,255,.06); color: var(--primary); }
-html[data-theme="dark"] .pf-gd-aside-section { background: var(--surface); border-color: rgba(255,255,255,.06); }
-html[data-theme="dark"] .pf-gd-aside-section:hover { box-shadow: 0 6px 24px rgba(0,0,0,.2); }
+html[data-theme="dark"] .pf-gd-aside-section { background: var(--surface); box-shadow: 0 4px 20px rgba(0,0,0,.15); }
+html[data-theme="dark"] .pf-gd-aside-section:hover { box-shadow: 0 8px 28px rgba(0,0,0,.2); }
+html[data-theme="dark"] .pf-gd-aside-header { background: linear-gradient(135deg, rgba(245,130,58,.1), rgba(245,130,58,.03)); }
 html[data-theme="dark"] .pf-gd-pet-ring { background: #2a2a2a; }
 html[data-theme="dark"] .pf-gd-health-tag { background: rgba(245,130,58,.1); border-color: rgba(245,130,58,.08); }
-html[data-theme="dark"] .pf-gd-gallery-tile:hover::after { background: rgba(0,0,0,.2); }
+html[data-theme="dark"] .pf-gd-gallery-tile:hover::after { background: linear-gradient(to top, rgba(0,0,0,.4), transparent 60%); }
 html[data-theme="dark"] .pf-gd-store-card:hover { border-color: rgba(245,130,58,.4); }
 html[data-theme="dark"] .pf-gd-tabs-wrap {
   background: color-mix(in srgb, var(--surface) 88%, transparent);
-  border-bottom-color: rgba(255,255,255,.06);
 }
-html[data-theme="dark"] .pf-gd-pet-switch { background: var(--surface); border-bottom-color: rgba(255,255,255,.06); }
+html[data-theme="dark"] .pf-gd-pet-switch { background: var(--surface); }
 
 /* ── Responsive ── */
 @media (max-width: 1024px) {
@@ -4485,7 +4515,7 @@ html[data-theme="dark"] .pf-gd-pet-switch { background: var(--surface); border-b
   .pf-gd-aside { display: none; }
 }
 @media (max-width: 767px) {
-  .pf-gd-hero { padding: 20px 16px 18px; border-radius: 0 0 20px 20px; }
+  .pf-gd-hero { padding: 24px 16px 22px; border-radius: 0 0 28px 28px; }
   .pf-gd-hero-stats { gap: 16px; }
   .pf-gd-hero-inner { gap: 14px; }
   .pf-gd-avatar-ring { width: 60px; height: 60px; }
@@ -4493,25 +4523,25 @@ html[data-theme="dark"] .pf-gd-pet-switch { background: var(--surface); border-b
   .pf-gd-hero-info h2 { font-size: 20px; }
   .pf-gd-hero-stat strong { font-size: 18px; }
   .pf-gd-content { padding: 16px 12px; }
-  .pf-gd-tabs-wrap { padding: 0 12px; }
-  .pf-gd-tabs-inner .pf-feed-tab { padding: 12px 14px; font-size: 12px; }
-  .pf-gd-gallery { grid-template-columns: repeat(3, 1fr); gap: 3px; }
-  .pf-gd-gallery-tile { border-radius: 6px; }
+  .pf-gd-tabs-wrap { padding: 8px 12px; }
+  .pf-gd-tabs-inner .pf-feed-tab { padding: 8px 12px; font-size: 12px; }
+  .pf-gd-gallery { grid-template-columns: repeat(3, 1fr); gap: 4px; }
+  .pf-gd-gallery-tile { border-radius: 10px; }
   .pf-gd-info-grid { grid-template-columns: 1fr; }
-  .pf-gd-pet-switch { padding: 12px 12px; gap: 12px; }
-  .pf-gd-pet-ring { width: 48px; height: 48px; }
-  .pf-gd-pet-ring-inner { width: 42px; height: 42px; font-size: 14px; }
-  .pf-gd-pet-ring--add { width: 48px; height: 48px; font-size: 18px; }
+  .pf-gd-pet-switch { padding: 12px 12px; gap: 14px; }
+  .pf-gd-pet-ring { width: 52px; height: 52px; }
+  .pf-gd-pet-ring-inner { width: 44px; height: 44px; font-size: 14px; }
+  .pf-gd-pet-ring--add { width: 52px; height: 52px; font-size: 18px; }
   .pf-gd-toolkit { gap: 6px; }
   .pf-gd-tool-tile { padding: 10px 12px; min-width: 64px; border-radius: 12px; }
   .pf-gd-tool-icon { font-size: 18px; }
   .pf-gd-tool-label { font-size: 10px; }
-  .pf-gd-section { border-radius: 14px; }
+  .pf-gd-section { border-radius: 16px; }
   .pf-gd-section-header { padding: 12px 14px; }
   .pf-gd-section-body { padding: 12px 14px; }
-  .pf-gd-compose { padding: 12px 14px; border-radius: 14px; }
-  .pf-gd-feed-card { border-radius: 14px; }
-  .pf-gd-aside-section { border-radius: 14px; }
+  .pf-gd-compose { padding: 12px 14px; border-radius: 16px; }
+  .pf-gd-feed-card { border-radius: 16px; }
+  .pf-gd-aside-section { border-radius: 16px; }
 }
 
 /* ─── I18n Page — Multilingual Command Center ─────────────────────────── */
