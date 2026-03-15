@@ -1,10 +1,14 @@
 import type { Env, JwtPayload } from '../types';
 import { err, now, ok } from '../types';
 import { requireAuth, requireRole } from '../middleware/auth';
+import { hasTable } from '../helpers/sqlHelpers';
 
 async function getMyProfile(env: Env, me: JwtPayload): Promise<Response> {
   const roleErr = requireRole(me, ['provider']);
   if (roleErr) return roleErr;
+  if (!await hasTable(env, 'provider_profiles')) {
+    return ok({ approval_status: 'pending', profile: null });
+  }
 
   const row = await env.DB.prepare(
     `SELECT
@@ -112,6 +116,7 @@ async function getMyProfile(env: Env, me: JwtPayload): Promise<Response> {
 async function updateMyProfile(request: Request, env: Env, me: JwtPayload): Promise<Response> {
   const roleErr = requireRole(me, ['provider']);
   if (roleErr) return roleErr;
+  if (!await hasTable(env, 'provider_profiles')) return err('provider profile feature unavailable', 503);
 
   let body: Record<string, unknown>;
   try { body = await request.json() as Record<string, unknown>; } catch { return err('Invalid JSON'); }

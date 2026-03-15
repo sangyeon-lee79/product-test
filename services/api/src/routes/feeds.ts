@@ -327,21 +327,24 @@ async function upsertAlbumFromFeed(env: Env, params: {
 async function feedFilters(request: Request, env: Env, url: URL): Promise<Response> {
   const lang = (url.searchParams.get('lang') || 'ko').trim();
   const langCol = (SUPPORTED_LANGS as readonly string[]).includes(lang) ? lang : 'ko';
+  const hasProviderProfiles = await hasTable(env, 'provider_profiles');
 
   // Business categories: distinct L1 from provider_profiles
-  const bizRows = await env.DB.prepare(
-    `SELECT DISTINCT mi.id, mi.code, mi.sort_order,
-       'master.' || mc.code || '.' || mi.code AS i18n_key,
-       COALESCE(it.${langCol}, it.ko, mi.code) AS label
-     FROM provider_profiles pp
-     JOIN master_items mi ON mi.id = pp.business_category_l1_id
-     JOIN master_categories mc ON mc.id = mi.category_id
-     LEFT JOIN i18n_translations it
-       ON it.key = 'master.' || mc.code || '.' || mi.code
-     WHERE pp.business_category_l1_id IS NOT NULL
-       AND mi.status = 'active'
-     ORDER BY mi.sort_order, mi.code`
-  ).all<{ id: string; code: string; i18n_key: string; label: string }>();
+  const bizRows = hasProviderProfiles
+    ? await env.DB.prepare(
+      `SELECT DISTINCT mi.id, mi.code, mi.sort_order,
+         'master.' || mc.code || '.' || mi.code AS i18n_key,
+         COALESCE(it.${langCol}, it.ko, mi.code) AS label
+       FROM provider_profiles pp
+       JOIN master_items mi ON mi.id = pp.business_category_l1_id
+       JOIN master_categories mc ON mc.id = mi.category_id
+       LEFT JOIN i18n_translations it
+         ON it.key = 'master.' || mc.code || '.' || mi.code
+       WHERE pp.business_category_l1_id IS NOT NULL
+         AND mi.status = 'active'
+       ORDER BY mi.sort_order, mi.code`
+    ).all<{ id: string; code: string; i18n_key: string; label: string }>()
+    : { results: [] as Array<{ id: string; code: string; i18n_key: string; label: string }> };
 
   // Pet types: distinct L1 from pets table
   const petRows = await env.DB.prepare(

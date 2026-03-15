@@ -1,7 +1,7 @@
 import type { Env, JwtPayload } from '../types';
 import { err, newId, now, ok } from '../types';
 import { requireAuth, requireRole } from '../middleware/auth';
-import { hasColumn } from '../helpers/sqlHelpers';
+import { hasColumn, hasTable } from '../helpers/sqlHelpers';
 
 type MemberFilters = {
   q?: string;
@@ -24,9 +24,10 @@ function parseJsonArray(raw: unknown): string[] {
 async function listMembers(env: Env, me: JwtPayload, url: URL): Promise<Response> {
   const roleErr = requireRole(me, ['admin']);
   if (roleErr) return roleErr;
-  const hasProfilePetTypeL1 = await hasColumn(env, 'provider_profiles', 'pet_type_l1_id');
-  const hasProfilePetTypeL2 = await hasColumn(env, 'provider_profiles', 'pet_type_l2_id');
-  const hasProfileBusinessL3 = await hasColumn(env, 'provider_profiles', 'business_category_l3_id');
+  const hasProviderProfiles = await hasTable(env, 'provider_profiles');
+  const hasProfilePetTypeL1 = hasProviderProfiles && await hasColumn(env, 'provider_profiles', 'pet_type_l1_id');
+  const hasProfilePetTypeL2 = hasProviderProfiles && await hasColumn(env, 'provider_profiles', 'pet_type_l2_id');
+  const hasProfileBusinessL3 = hasProviderProfiles && await hasColumn(env, 'provider_profiles', 'business_category_l3_id');
 
   const filters: MemberFilters = {
     q: (url.searchParams.get('q') || '').trim(),
@@ -131,7 +132,7 @@ async function listMembers(env: Env, me: JwtPayload, url: URL): Promise<Response
      FROM users u
      LEFT JOIN user_profiles up ON up.user_id = u.id
      LEFT JOIN user_account_details uad ON uad.user_id = u.id
-     LEFT JOIN provider_profiles pp ON pp.user_id = u.id
+     ${hasProviderProfiles ? 'LEFT JOIN provider_profiles pp ON pp.user_id = u.id' : ''}
      LEFT JOIN role_applications ra ON ra.id = (
        SELECT ra2.id FROM role_applications ra2
        WHERE ra2.user_id = u.id
@@ -190,6 +191,7 @@ async function listMembers(env: Env, me: JwtPayload, url: URL): Promise<Response
 async function createRoleApplication(request: Request, env: Env, me: JwtPayload): Promise<Response> {
   const roleErr = requireRole(me, ['guardian', 'provider', 'admin']);
   if (roleErr) return roleErr;
+  if (!await hasTable(env, 'provider_profiles')) return err('provider profile feature unavailable', 503);
   const hasRoleAppPetTypeL1 = await hasColumn(env, 'role_applications', 'pet_type_l1_id');
   const hasRoleAppPetTypeL2 = await hasColumn(env, 'role_applications', 'pet_type_l2_id');
   const hasRoleAppBusinessL3 = await hasColumn(env, 'role_applications', 'business_category_l3_id');
@@ -296,6 +298,7 @@ async function createRoleApplication(request: Request, env: Env, me: JwtPayload)
 async function updateMember(request: Request, env: Env, me: JwtPayload, memberId: string): Promise<Response> {
   const roleErr = requireRole(me, ['admin']);
   if (roleErr) return roleErr;
+  if (!await hasTable(env, 'provider_profiles')) return err('provider profile feature unavailable', 503);
   const hasProfilePetTypeL1 = await hasColumn(env, 'provider_profiles', 'pet_type_l1_id');
   const hasProfilePetTypeL2 = await hasColumn(env, 'provider_profiles', 'pet_type_l2_id');
   const hasProfileBusinessL3 = await hasColumn(env, 'provider_profiles', 'business_category_l3_id');
@@ -390,6 +393,7 @@ async function updateMember(request: Request, env: Env, me: JwtPayload, memberId
 async function decideRoleApplication(request: Request, env: Env, me: JwtPayload, applicationId: string): Promise<Response> {
   const roleErr = requireRole(me, ['admin']);
   if (roleErr) return roleErr;
+  if (!await hasTable(env, 'provider_profiles')) return err('provider profile feature unavailable', 503);
 
   let body: { action?: string };
   try {
@@ -447,7 +451,9 @@ async function deleteMember(env: Env, me: JwtPayload, memberId: string): Promise
   } else {
     await env.DB.prepare(`DELETE FROM user_account_details WHERE user_id = ?`).bind(memberId).run();
     await env.DB.prepare(`DELETE FROM user_profiles WHERE user_id = ?`).bind(memberId).run();
-    await env.DB.prepare(`DELETE FROM provider_profiles WHERE user_id = ?`).bind(memberId).run();
+    if (await hasTable(env, 'provider_profiles')) {
+      await env.DB.prepare(`DELETE FROM provider_profiles WHERE user_id = ?`).bind(memberId).run();
+    }
     await env.DB.prepare(`DELETE FROM role_applications WHERE user_id = ?`).bind(memberId).run();
     await env.DB.prepare(`DELETE FROM users WHERE id = ?`).bind(memberId).run();
     return ok({ action: 'deleted', member_id: memberId });
