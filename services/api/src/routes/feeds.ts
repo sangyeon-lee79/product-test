@@ -592,6 +592,7 @@ async function listFeeds(request: Request, env: Env, url: URL): Promise<Response
   const hasLegacyBookingId = await hasColumn(env, 'feeds', 'booking_id');
   const legacyBookingJoin = hasBookings && hasLegacyBookingId;
   const likeCol = await hasColumn(env, 'feed_likes', 'post_id') ? 'post_id' : 'feed_id';
+  const commentCol = await hasColumn(env, 'feed_comments', 'post_id') ? 'post_id' : 'feed_id';
   if (feedType) { where.push('f.feed_type = ?'); params.push(feedType); }
   if (businessCategoryId) {
     if (!legacyCompat.hasBusinessCategoryId) return ok({ feeds: [], filters: { feed_type: feedType || null, business_category_id: businessCategoryId || null, pet_type_id: petTypeId || null, tab } });
@@ -632,7 +633,7 @@ async function listFeeds(request: Request, env: Env, url: URL): Promise<Response
         SELECT 1 FROM feed_likes fl2 WHERE fl2.${likeCol} = f.id AND fl2.user_id = ?
       ) END as liked_by_me,
       (SELECT COUNT(*) FROM feed_likes fl WHERE fl.${likeCol} = f.id) as like_count,
-      (SELECT COUNT(*) FROM feed_comments fc WHERE fc.post_id = f.id AND fc.status = 'active') as comment_count
+      (SELECT COUNT(*) FROM feed_comments fc WHERE fc.${commentCol} = f.id AND fc.status = 'active') as comment_count
      FROM feeds f
      LEFT JOIN users u ON u.id = f.author_user_id
      LEFT JOIN pets p ON p.id = f.pet_id
