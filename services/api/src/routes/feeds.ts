@@ -329,9 +329,13 @@ async function feedFilters(request: Request, env: Env, url: URL): Promise<Respon
   const langCol = (SUPPORTED_LANGS as readonly string[]).includes(lang) ? lang : 'ko';
   const hasProviderProfiles = await hasTable(env, 'provider_profiles');
   const hasPets = await hasTable(env, 'pets');
+  const hasBizL1 = hasProviderProfiles && await hasColumn(env, 'provider_profiles', 'business_category_l1_id');
+  const hasPetTypeId = hasPets && await hasColumn(env, 'pets', 'pet_type_id');
+
+  const emptyRows = { results: [] as Array<{ id: string; code: string; i18n_key: string; label: string }> };
 
   // Business categories: distinct L1 from provider_profiles
-  const bizRows = hasProviderProfiles
+  const bizRows = hasBizL1
     ? await env.DB.prepare(
       `SELECT DISTINCT mi.id, mi.code, mi.sort_order,
          'master.' || mc.code || '.' || mi.code AS i18n_key,
@@ -345,10 +349,10 @@ async function feedFilters(request: Request, env: Env, url: URL): Promise<Respon
          AND mi.status = 'active'
        ORDER BY mi.sort_order, mi.code`
     ).all<{ id: string; code: string; i18n_key: string; label: string }>()
-    : { results: [] as Array<{ id: string; code: string; i18n_key: string; label: string }> };
+    : emptyRows;
 
   // Pet types: distinct L1 from pets table
-  const petRows = hasPets
+  const petRows = hasPetTypeId
     ? await env.DB.prepare(
       `SELECT DISTINCT mi.id, mi.code, mi.sort_order,
          'master.' || mc.code || '.' || mi.code AS i18n_key,
@@ -363,7 +367,7 @@ async function feedFilters(request: Request, env: Env, url: URL): Promise<Respon
          AND mi.status = 'active'
        ORDER BY mi.sort_order, mi.code`
     ).all<{ id: string; code: string; i18n_key: string; label: string }>()
-    : { results: [] as Array<{ id: string; code: string; i18n_key: string; label: string }> };
+    : emptyRows;
 
   return ok({
     business_categories: bizRows.results,
@@ -585,6 +589,9 @@ async function listFeeds(request: Request, env: Env, url: URL): Promise<Response
   const where: string[] = [];
   const params: (string | number)[] = [];
   const legacyCompat = await getLegacyFeedCompat(env);
+  const hasLegacyBookingId = await hasColumn(env, 'feeds', 'booking_id');
+  const legacyBookingJoin = hasBookings && hasLegacyBookingId;
+  const likeCol = await hasColumn(env, 'feed_likes', 'post_id') ? 'post_id' : 'feed_id';
   if (feedType) { where.push('f.feed_type = ?'); params.push(feedType); }
   if (businessCategoryId) {
     if (!legacyCompat.hasBusinessCategoryId) return ok({ feeds: [], filters: { feed_type: feedType || null, business_category_id: businessCategoryId || null, pet_type_id: petTypeId || null, tab } });
@@ -613,38 +620,38 @@ async function listFeeds(request: Request, env: Env, url: URL): Promise<Response
       f.*,
       u.email as author_email,
       p.name as pet_name,
-      ${legacyCompat.hasBusinessCategoryId ? 'bc.key' : 'NULL'} as business_category_key,
-      ${legacyCompat.hasPetTypeId ? 'pt.key' : 'NULL'} as pet_type_key,
+      ${legacyCompat.hasBusinessCategoryId ? 'bc.code' : 'NULL'} as business_category_key,
+      ${legacyCompat.hasPetTypeId ? 'pt.code' : 'NULL'} as pet_type_key,
       ${legacyCompat.hasBusinessCategoryId ? 'bct.ko' : 'NULL'} as business_category_ko,
       ${legacyCompat.hasPetTypeId ? 'ptt.ko' : 'NULL'} as pet_type_ko,
-      ${hasBookings ? 'bg.email' : 'NULL'} as booking_guardian_email,
-      ${hasBookings ? 'bs.email' : 'NULL'} as booking_supplier_email,
-      ${hasBookings ? 'b.guardian_id' : 'NULL'} as booking_guardian_id,
-      ${hasBookings ? 'b.supplier_id' : 'NULL'} as booking_supplier_id,
+      ${legacyBookingJoin ? 'bg.email' : 'NULL'} as booking_guardian_email,
+      ${legacyBookingJoin ? 'bs.email' : 'NULL'} as booking_supplier_email,
+      ${legacyBookingJoin ? 'b.guardian_id' : 'NULL'} as booking_guardian_id,
+      ${legacyBookingJoin ? 'b.supplier_id' : 'NULL'} as booking_supplier_id,
       CASE WHEN CAST(? AS TEXT) IS NULL THEN false ELSE EXISTS(
-        SELECT 1 FROM feed_likes fl2 WHERE fl2.feed_id = f.id AND fl2.user_id = ?
+        SELECT 1 FROM feed_likes fl2 WHERE fl2.${likeCol} = f.id AND fl2.user_id = ?
       ) END as liked_by_me,
-      (SELECT COUNT(*) FROM feed_likes fl WHERE fl.feed_id = f.id) as like_count,
+      (SELECT COUNT(*) FROM feed_likes fl WHERE fl.${likeCol} = f.id) as like_count,
       (SELECT COUNT(*) FROM feed_comments fc WHERE fc.post_id = f.id AND fc.status = 'active') as comment_count
      FROM feeds f
      LEFT JOIN users u ON u.id = f.author_user_id
      LEFT JOIN pets p ON p.id = f.pet_id
      ${legacyCompat.hasBusinessCategoryId ? 'LEFT JOIN master_items bc ON bc.id = f.business_category_id' : ''}
      ${legacyCompat.hasPetTypeId ? 'LEFT JOIN master_items pt ON pt.id = f.pet_type_id' : ''}
-     ${hasBookings ? 'LEFT JOIN bookings b ON b.id = f.booking_id' : ''}
-     ${hasBookings ? 'LEFT JOIN users bg ON bg.id = b.guardian_id' : ''}
-     ${hasBookings ? 'LEFT JOIN users bs ON bs.id = b.supplier_id' : ''}
+     ${legacyBookingJoin ? 'LEFT JOIN bookings b ON b.id = f.booking_id' : ''}
+     ${legacyBookingJoin ? 'LEFT JOIN users bg ON bg.id = b.guardian_id' : ''}
+     ${legacyBookingJoin ? 'LEFT JOIN users bs ON bs.id = b.supplier_id' : ''}
      ${legacyCompat.hasBusinessCategoryId ? 'LEFT JOIN master_categories bcc ON bcc.id = bc.category_id' : ''}
      ${legacyCompat.hasBusinessCategoryId ? `LEFT JOIN i18n_translations bct
        ON bct.key = CASE
-         WHEN bcc.key LIKE 'master.%' THEN (bcc.key || '.' || bc.key)
-         ELSE ('master.' || bcc.key || '.' || bc.key)
+         WHEN bcc.code LIKE 'master.%' THEN (bcc.code || '.' || bc.code)
+         ELSE ('master.' || bcc.code || '.' || bc.code)
        END` : ''}
      ${legacyCompat.hasPetTypeId ? 'LEFT JOIN master_categories ptc ON ptc.id = pt.category_id' : ''}
      ${legacyCompat.hasPetTypeId ? `LEFT JOIN i18n_translations ptt
        ON ptt.key = CASE
-         WHEN ptc.key LIKE 'master.%' THEN (ptc.key || '.' || pt.key)
-         ELSE ('master.' || ptc.key || '.' || pt.key)
+         WHEN ptc.code LIKE 'master.%' THEN (ptc.code || '.' || pt.code)
+         ELSE ('master.' || ptc.code || '.' || pt.code)
        END` : ''}
      ${where.length ? `WHERE ${where.join(' AND ')}` : ''}
      ORDER BY f.created_at DESC
