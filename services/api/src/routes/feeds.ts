@@ -328,6 +328,7 @@ async function feedFilters(request: Request, env: Env, url: URL): Promise<Respon
   const lang = (url.searchParams.get('lang') || 'ko').trim();
   const langCol = (SUPPORTED_LANGS as readonly string[]).includes(lang) ? lang : 'ko';
   const hasProviderProfiles = await hasTable(env, 'provider_profiles');
+  const hasPets = await hasTable(env, 'pets');
 
   // Business categories: distinct L1 from provider_profiles
   const bizRows = hasProviderProfiles
@@ -347,20 +348,22 @@ async function feedFilters(request: Request, env: Env, url: URL): Promise<Respon
     : { results: [] as Array<{ id: string; code: string; i18n_key: string; label: string }> };
 
   // Pet types: distinct L1 from pets table
-  const petRows = await env.DB.prepare(
-    `SELECT DISTINCT mi.id, mi.code, mi.sort_order,
-       'master.' || mc.code || '.' || mi.code AS i18n_key,
-       COALESCE(it.${langCol}, it.ko, mi.code) AS label
-     FROM pets p
-     JOIN master_items mi ON mi.id = p.pet_type_id
-     JOIN master_categories mc ON mc.id = mi.category_id
-     LEFT JOIN i18n_translations it
-       ON it.key = 'master.' || mc.code || '.' || mi.code
-     WHERE p.pet_type_id IS NOT NULL
-       AND p.status = 'active'
-       AND mi.status = 'active'
-     ORDER BY mi.sort_order, mi.code`
-  ).all<{ id: string; code: string; i18n_key: string; label: string }>();
+  const petRows = hasPets
+    ? await env.DB.prepare(
+      `SELECT DISTINCT mi.id, mi.code, mi.sort_order,
+         'master.' || mc.code || '.' || mi.code AS i18n_key,
+         COALESCE(it.${langCol}, it.ko, mi.code) AS label
+       FROM pets p
+       JOIN master_items mi ON mi.id = p.pet_type_id
+       JOIN master_categories mc ON mc.id = mi.category_id
+       LEFT JOIN i18n_translations it
+         ON it.key = 'master.' || mc.code || '.' || mi.code
+       WHERE p.pet_type_id IS NOT NULL
+         AND p.status = 'active'
+         AND mi.status = 'active'
+       ORDER BY mi.sort_order, mi.code`
+    ).all<{ id: string; code: string; i18n_key: string; label: string }>()
+    : { results: [] as Array<{ id: string; code: string; i18n_key: string; label: string }> };
 
   return ok({
     business_categories: bizRows.results,
@@ -521,6 +524,7 @@ async function listFeeds(request: Request, env: Env, url: URL): Promise<Response
 
   const hasFeedPosts = await hasTable(env, 'feed_posts');
   const hasBookings = await hasTable(env, 'bookings');
+  const hasFeedPostBookingId = hasFeedPosts && await hasColumn(env, 'feed_posts', 'booking_id');
   if (hasFeedPosts) {
     const where: string[] = [];
     const params: (string | number)[] = [];
@@ -547,8 +551,8 @@ async function listFeeds(request: Request, env: Env, url: URL): Promise<Response
         NULL as pet_type_ko,
         NULL as booking_guardian_email,
         NULL as booking_supplier_email,
-        ${hasBookings ? 'b.guardian_id' : 'NULL'} as booking_guardian_id,
-        ${hasBookings ? 'b.supplier_id' : 'NULL'} as booking_supplier_id,
+        ${hasBookings && hasFeedPostBookingId ? 'b.guardian_id' : 'NULL'} as booking_guardian_id,
+        ${hasBookings && hasFeedPostBookingId ? 'b.supplier_id' : 'NULL'} as booking_supplier_id,
         CASE WHEN CAST(? AS TEXT) IS NULL THEN false ELSE EXISTS(
           SELECT 1 FROM feed_likes fl2 WHERE fl2.post_id = f.id AND fl2.user_id = ?
         ) END as liked_by_me,
@@ -567,7 +571,7 @@ async function listFeeds(request: Request, env: Env, url: URL): Promise<Response
          ORDER BY fp2.sort_order ASC, fp2.id ASC
          LIMIT 1
        )
-       ${hasBookings ? 'LEFT JOIN bookings b ON b.id = f.booking_id' : ''}
+       ${hasBookings && hasFeedPostBookingId ? 'LEFT JOIN bookings b ON b.id = f.booking_id' : ''}
        ${where.length ? `WHERE ${where.join(' AND ')}` : ''}
        ORDER BY f.created_at DESC
        LIMIT ?`
