@@ -1,7 +1,7 @@
 import type { Env, JwtPayload } from '../types';
 import { ok, created, err, newId, now } from '../types';
 import { requireAuth, requireRole } from '../middleware/auth';
-import { hasColumn } from '../helpers/sqlHelpers';
+import { hasColumn, hasTable } from '../helpers/sqlHelpers';
 
 function parseJsonArray(raw: unknown): string[] {
   if (Array.isArray(raw)) return raw.filter((x) => typeof x === 'string') as string[];
@@ -264,6 +264,8 @@ async function supplierCompletionRequest(request: Request, env: Env, me: JwtPayl
 }
 
 export async function handleBookings(request: Request, env: Env, url: URL): Promise<Response> {
+  if (!await hasTable(env, 'bookings')) return err('booking feature unavailable', 503);
+
   const auth = await requireAuth(request, env);
   if (auth instanceof Response) return auth;
   const me = auth as JwtPayload;

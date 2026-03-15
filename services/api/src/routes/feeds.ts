@@ -517,6 +517,7 @@ async function listFeeds(request: Request, env: Env, url: URL): Promise<Response
   const limit = Math.min(100, Math.max(1, Number(url.searchParams.get('limit') || 30)));
 
   const hasFeedPosts = await hasTable(env, 'feed_posts');
+  const hasBookings = await hasTable(env, 'bookings');
   if (hasFeedPosts) {
     const where: string[] = [];
     const params: (string | number)[] = [];
@@ -543,8 +544,8 @@ async function listFeeds(request: Request, env: Env, url: URL): Promise<Response
         NULL as pet_type_ko,
         NULL as booking_guardian_email,
         NULL as booking_supplier_email,
-        NULL as booking_guardian_id,
-        NULL as booking_supplier_id,
+        ${hasBookings ? 'b.guardian_id' : 'NULL'} as booking_guardian_id,
+        ${hasBookings ? 'b.supplier_id' : 'NULL'} as booking_supplier_id,
         CASE WHEN CAST(? AS TEXT) IS NULL THEN false ELSE EXISTS(
           SELECT 1 FROM feed_likes fl2 WHERE fl2.post_id = f.id AND fl2.user_id = ?
         ) END as liked_by_me,
@@ -563,6 +564,7 @@ async function listFeeds(request: Request, env: Env, url: URL): Promise<Response
          ORDER BY fp2.sort_order ASC, fp2.id ASC
          LIMIT 1
        )
+       ${hasBookings ? 'LEFT JOIN bookings b ON b.id = f.booking_id' : ''}
        ${where.length ? `WHERE ${where.join(' AND ')}` : ''}
        ORDER BY f.created_at DESC
        LIMIT ?`
@@ -608,10 +610,10 @@ async function listFeeds(request: Request, env: Env, url: URL): Promise<Response
       ${legacyCompat.hasPetTypeId ? 'pt.key' : 'NULL'} as pet_type_key,
       ${legacyCompat.hasBusinessCategoryId ? 'bct.ko' : 'NULL'} as business_category_ko,
       ${legacyCompat.hasPetTypeId ? 'ptt.ko' : 'NULL'} as pet_type_ko,
-      bg.email as booking_guardian_email,
-      bs.email as booking_supplier_email,
-      b.guardian_id as booking_guardian_id,
-      b.supplier_id as booking_supplier_id,
+      ${hasBookings ? 'bg.email' : 'NULL'} as booking_guardian_email,
+      ${hasBookings ? 'bs.email' : 'NULL'} as booking_supplier_email,
+      ${hasBookings ? 'b.guardian_id' : 'NULL'} as booking_guardian_id,
+      ${hasBookings ? 'b.supplier_id' : 'NULL'} as booking_supplier_id,
       CASE WHEN CAST(? AS TEXT) IS NULL THEN false ELSE EXISTS(
         SELECT 1 FROM feed_likes fl2 WHERE fl2.feed_id = f.id AND fl2.user_id = ?
       ) END as liked_by_me,
@@ -622,9 +624,9 @@ async function listFeeds(request: Request, env: Env, url: URL): Promise<Response
      LEFT JOIN pets p ON p.id = f.pet_id
      ${legacyCompat.hasBusinessCategoryId ? 'LEFT JOIN master_items bc ON bc.id = f.business_category_id' : ''}
      ${legacyCompat.hasPetTypeId ? 'LEFT JOIN master_items pt ON pt.id = f.pet_type_id' : ''}
-     LEFT JOIN bookings b ON b.id = f.booking_id
-     LEFT JOIN users bg ON bg.id = b.guardian_id
-     LEFT JOIN users bs ON bs.id = b.supplier_id
+     ${hasBookings ? 'LEFT JOIN bookings b ON b.id = f.booking_id' : ''}
+     ${hasBookings ? 'LEFT JOIN users bg ON bg.id = b.guardian_id' : ''}
+     ${hasBookings ? 'LEFT JOIN users bs ON bs.id = b.supplier_id' : ''}
      ${legacyCompat.hasBusinessCategoryId ? 'LEFT JOIN master_categories bcc ON bcc.id = bc.category_id' : ''}
      ${legacyCompat.hasBusinessCategoryId ? `LEFT JOIN i18n_translations bct
        ON bct.key = CASE
@@ -764,6 +766,7 @@ async function shareFromCompletion(request: Request, env: Env): Promise<Response
   const completionId = String(body.completion_id || '').trim();
   const bookingId = String(body.booking_id || '').trim();
   if (!completionId && !bookingId) return err('completion_id or booking_id required');
+  if (!await hasTable(env, 'bookings')) return err('booking feature unavailable', 503);
 
   const normalized = await hasTable(env, 'feed_publish_requests');
   const completion = normalized
@@ -921,6 +924,7 @@ async function requestBookingCompletedFeed(request: Request, env: Env): Promise<
   try { body = await request.json() as Record<string, unknown>; } catch { return err('Invalid JSON'); }
   const bookingId = String(body.booking_id || '').trim();
   if (!bookingId) return err('booking_id required');
+  if (!await hasTable(env, 'bookings')) return err('booking feature unavailable', 503);
 
   const booking = await env.DB.prepare(
     `SELECT * FROM bookings WHERE id = ? AND supplier_id = ?`
@@ -1045,6 +1049,7 @@ async function approveBookingCompletedFeed(request: Request, env: Env, feedId: s
   let body: { approved?: boolean; action?: string; visibility_scope?: string };
   try { body = await request.json() as { approved?: boolean; action?: string; visibility_scope?: string }; }
   catch { return err('Invalid JSON'); }
+  if (!await hasTable(env, 'bookings')) return err('booking feature unavailable', 503);
 
   const normalized = await hasTable(env, 'feed_publish_requests');
   if (normalized) {

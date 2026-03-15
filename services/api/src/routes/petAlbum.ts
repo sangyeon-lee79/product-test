@@ -1,6 +1,7 @@
 import type { Env, JwtPayload } from '../types';
 import { created, err, newId, now, ok } from '../types';
 import { requireAuth, verifyJwt } from '../middleware/auth';
+import { hasTable } from '../helpers/sqlHelpers';
 
 type AlbumRow = Record<string, unknown>;
 
@@ -117,6 +118,7 @@ function canViewAlbum(row: AlbumRow, me: JwtPayload | null, friends: Set<string>
 async function listAlbum(request: Request, env: Env, url: URL): Promise<Response> {
   const me = await optionalAuth(request, env);
   const friends = me ? await friendSet(env, me.sub) : new Set<string>();
+  const hasBookings = await hasTable(env, 'bookings');
 
   const petId = (url.searchParams.get('pet_id') || '').trim();
   const sourceType = (url.searchParams.get('source_type') || '').trim();
@@ -162,12 +164,12 @@ async function listAlbum(request: Request, env: Env, url: URL): Promise<Response
       pam.*,
       p.guardian_user_id AS pet_guardian_id,
       u.email AS uploaded_by_email,
-      b.guardian_id AS booking_guardian_id,
-      b.supplier_id AS booking_supplier_id
+      ${hasBookings ? 'b.guardian_id' : 'NULL'} AS booking_guardian_id,
+      ${hasBookings ? 'b.supplier_id' : 'NULL'} AS booking_supplier_id
      FROM pet_album_media pam
      INNER JOIN pets p ON p.id = pam.pet_id
      LEFT JOIN users u ON u.id = pam.uploaded_by_user_id
-     LEFT JOIN bookings b ON b.id = pam.booking_id
+     ${hasBookings ? 'LEFT JOIN bookings b ON b.id = pam.booking_id' : ''}
      WHERE ${where.join(' AND ')}
      ORDER BY pam.created_at ${sort === 'oldest' ? 'ASC' : 'DESC'}, pam.id DESC
      LIMIT ?`
@@ -221,6 +223,7 @@ async function createAlbumMedia(request: Request, env: Env): Promise<Response> {
   if (me.role === 'provider') {
     if (sourceType !== 'booking_completed') return err('provider can upload booking_completed only', 403);
     if (!bookingId) return err('booking_id required for provider upload');
+    if (!await hasTable(env, 'bookings')) return err('booking feature unavailable', 503);
     const booking = await env.DB.prepare(
       'SELECT id, pet_id, supplier_id FROM bookings WHERE id = ?'
     ).bind(bookingId).first<{ id: string; pet_id: string | null; supplier_id: string }>();
@@ -416,14 +419,15 @@ async function deleteAlbumMedia(request: Request, env: Env, id: string): Promise
 async function getAlbumMedia(request: Request, env: Env, id: string): Promise<Response> {
   const me = await optionalAuth(request, env);
   const friends = me ? await friendSet(env, me.sub) : new Set<string>();
+  const hasBookings = await hasTable(env, 'bookings');
 
   const row = await env.DB.prepare(
     `SELECT pam.*, p.guardian_user_id AS pet_guardian_id, u.email AS uploaded_by_email,
-            b.guardian_id AS booking_guardian_id, b.supplier_id AS booking_supplier_id
+            ${hasBookings ? 'b.guardian_id' : 'NULL'} AS booking_guardian_id, ${hasBookings ? 'b.supplier_id' : 'NULL'} AS booking_supplier_id
      FROM pet_album_media pam
      INNER JOIN pets p ON p.id = pam.pet_id
      LEFT JOIN users u ON u.id = pam.uploaded_by_user_id
-     LEFT JOIN bookings b ON b.id = pam.booking_id
+     ${hasBookings ? 'LEFT JOIN bookings b ON b.id = pam.booking_id' : ''}
      WHERE pam.id = ?`
   ).bind(id).first<AlbumRow>();
 
