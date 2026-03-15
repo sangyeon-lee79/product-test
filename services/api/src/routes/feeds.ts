@@ -105,6 +105,144 @@ function inferAlbumStatus(feedStatus: string, publishRequestStatus: string): 'ac
   return 'hidden';
 }
 
+type LegacyFeedCompat = {
+  hasBusinessCategoryId: boolean;
+  hasPetTypeId: boolean;
+};
+
+async function getLegacyFeedCompat(env: Env): Promise<LegacyFeedCompat> {
+  const [hasBusinessCategoryId, hasPetTypeId] = await Promise.all([
+    hasColumn(env, 'feeds', 'business_category_id'),
+    hasColumn(env, 'feeds', 'pet_type_id'),
+  ]);
+  return { hasBusinessCategoryId, hasPetTypeId };
+}
+
+function legacyFeedInsertParts(
+  compat: LegacyFeedCompat,
+  values: {
+    id: string;
+    feedType: string;
+    authorUserId: string;
+    authorRole: string;
+    petId: unknown;
+    businessCategoryId: unknown;
+    petTypeId: unknown;
+    visibilityScope: string;
+    bookingId: unknown;
+    supplierId: unknown;
+    relatedServiceId: unknown;
+    caption: string | null;
+    mediaUrls: string;
+    tags: string;
+    publishRequestStatus: string;
+    isPublic: boolean;
+    status: string;
+    createdAt: string;
+    updatedAt: string;
+  },
+): { sql: string; bindings: unknown[] } {
+  const columns = [
+    'id',
+    'feed_type',
+    'author_user_id',
+    'author_role',
+    'pet_id',
+  ];
+  const bindings: unknown[] = [
+    values.id,
+    values.feedType,
+    values.authorUserId,
+    values.authorRole,
+    values.petId ?? null,
+  ];
+
+  if (compat.hasBusinessCategoryId) {
+    columns.push('business_category_id');
+    bindings.push(values.businessCategoryId ?? null);
+  }
+  if (compat.hasPetTypeId) {
+    columns.push('pet_type_id');
+    bindings.push(values.petTypeId ?? null);
+  }
+
+  columns.push(
+    'visibility_scope',
+    'booking_id',
+    'supplier_id',
+    'related_service_id',
+    'caption',
+    'media_urls',
+    'tags',
+    'publish_request_status',
+    'is_public',
+    'status',
+    'created_at',
+    'updated_at',
+  );
+  bindings.push(
+    values.visibilityScope,
+    values.bookingId ?? null,
+    values.supplierId ?? null,
+    values.relatedServiceId ?? null,
+    values.caption,
+    values.mediaUrls,
+    values.tags,
+    values.publishRequestStatus,
+    values.isPublic,
+    values.status,
+    values.createdAt,
+    values.updatedAt,
+  );
+
+  const placeholders = columns.map(() => '?').join(', ');
+  return {
+    sql: `INSERT INTO feeds (${columns.join(', ')}) VALUES (${placeholders})`,
+    bindings,
+  };
+}
+
+function legacyFeedUpdateParts(
+  compat: LegacyFeedCompat,
+  values: {
+    petId: unknown;
+    businessCategoryId: unknown;
+    petTypeId: unknown;
+    caption: string | null;
+    mediaUrls: string;
+    updatedAt: string;
+    id: string;
+  },
+): { sql: string; bindings: unknown[] } {
+  const setClauses = ['pet_id = COALESCE(?, pet_id)'];
+  const bindings: unknown[] = [values.petId ?? null];
+
+  if (compat.hasBusinessCategoryId) {
+    setClauses.push('business_category_id = COALESCE(?, business_category_id)');
+    bindings.push(values.businessCategoryId ?? null);
+  }
+  if (compat.hasPetTypeId) {
+    setClauses.push('pet_type_id = COALESCE(?, pet_type_id)');
+    bindings.push(values.petTypeId ?? null);
+  }
+
+  setClauses.push(
+    'caption = ?',
+    'media_urls = ?',
+    `publish_request_status = 'pending'`,
+    `visibility_scope = 'connected_only'`,
+    'is_public = false',
+    `status = 'hidden'`,
+    'updated_at = ?',
+  );
+  bindings.push(values.caption, values.mediaUrls, values.updatedAt, values.id);
+
+  return {
+    sql: `UPDATE feeds SET ${setClauses.join(', ')} WHERE id = ?`,
+    bindings,
+  };
+}
+
 async function upsertAlbumFromFeed(env: Env, params: {
   feedId: string;
   petId: string | null;
@@ -437,9 +575,18 @@ async function listFeeds(request: Request, env: Env, url: URL): Promise<Response
 
   const where: string[] = [];
   const params: (string | number)[] = [];
+  const legacyCompat = await getLegacyFeedCompat(env);
   if (feedType) { where.push('f.feed_type = ?'); params.push(feedType); }
-  if (businessCategoryId) { where.push('f.business_category_id = ?'); params.push(businessCategoryId); }
-  if (petTypeId) { where.push('f.pet_type_id = ?'); params.push(petTypeId); }
+  if (businessCategoryId) {
+    if (!legacyCompat.hasBusinessCategoryId) return ok({ feeds: [], filters: { feed_type: feedType || null, business_category_id: businessCategoryId || null, pet_type_id: petTypeId || null, tab } });
+    where.push('f.business_category_id = ?');
+    params.push(businessCategoryId);
+  }
+  if (petTypeId) {
+    if (!legacyCompat.hasPetTypeId) return ok({ feeds: [], filters: { feed_type: feedType || null, business_category_id: businessCategoryId || null, pet_type_id: petTypeId || null, tab } });
+    where.push('f.pet_type_id = ?');
+    params.push(petTypeId);
+  }
   if (isMineTab) {
     if (!me) return ok({ feeds: [], filters: { feed_type: feedType || null, business_category_id: businessCategoryId || null, pet_type_id: petTypeId || null, tab } });
     where.push('f.author_user_id = ?');
@@ -457,10 +604,10 @@ async function listFeeds(request: Request, env: Env, url: URL): Promise<Response
       f.*,
       u.email as author_email,
       p.name as pet_name,
-      bc.key as business_category_key,
-      pt.key as pet_type_key,
-      bct.ko as business_category_ko,
-      ptt.ko as pet_type_ko,
+      ${legacyCompat.hasBusinessCategoryId ? 'bc.key' : 'NULL'} as business_category_key,
+      ${legacyCompat.hasPetTypeId ? 'pt.key' : 'NULL'} as pet_type_key,
+      ${legacyCompat.hasBusinessCategoryId ? 'bct.ko' : 'NULL'} as business_category_ko,
+      ${legacyCompat.hasPetTypeId ? 'ptt.ko' : 'NULL'} as pet_type_ko,
       bg.email as booking_guardian_email,
       bs.email as booking_supplier_email,
       b.guardian_id as booking_guardian_id,
@@ -473,23 +620,23 @@ async function listFeeds(request: Request, env: Env, url: URL): Promise<Response
      FROM feeds f
      LEFT JOIN users u ON u.id = f.author_user_id
      LEFT JOIN pets p ON p.id = f.pet_id
-     LEFT JOIN master_items bc ON bc.id = f.business_category_id
-     LEFT JOIN master_items pt ON pt.id = f.pet_type_id
+     ${legacyCompat.hasBusinessCategoryId ? 'LEFT JOIN master_items bc ON bc.id = f.business_category_id' : ''}
+     ${legacyCompat.hasPetTypeId ? 'LEFT JOIN master_items pt ON pt.id = f.pet_type_id' : ''}
      LEFT JOIN bookings b ON b.id = f.booking_id
      LEFT JOIN users bg ON bg.id = b.guardian_id
      LEFT JOIN users bs ON bs.id = b.supplier_id
-     LEFT JOIN master_categories bcc ON bcc.id = bc.category_id
-     LEFT JOIN i18n_translations bct
+     ${legacyCompat.hasBusinessCategoryId ? 'LEFT JOIN master_categories bcc ON bcc.id = bc.category_id' : ''}
+     ${legacyCompat.hasBusinessCategoryId ? `LEFT JOIN i18n_translations bct
        ON bct.key = CASE
          WHEN bcc.key LIKE 'master.%' THEN (bcc.key || '.' || bc.key)
          ELSE ('master.' || bcc.key || '.' || bc.key)
-       END
-     LEFT JOIN master_categories ptc ON ptc.id = pt.category_id
-     LEFT JOIN i18n_translations ptt
+       END` : ''}
+     ${legacyCompat.hasPetTypeId ? 'LEFT JOIN master_categories ptc ON ptc.id = pt.category_id' : ''}
+     ${legacyCompat.hasPetTypeId ? `LEFT JOIN i18n_translations ptt
        ON ptt.key = CASE
          WHEN ptc.key LIKE 'master.%' THEN (ptc.key || '.' || pt.key)
          ELSE ('master.' || ptc.key || '.' || pt.key)
-       END
+       END` : ''}
      ${where.length ? `WHERE ${where.join(' AND ')}` : ''}
      ORDER BY f.created_at DESC
      LIMIT ?`
@@ -560,32 +707,29 @@ async function createGuardianPost(request: Request, env: Env): Promise<Response>
       ).bind(newId(), id, inferMediaType(url), url, url, index).run();
     }
   } else {
-    await env.DB.prepare(
-      `INSERT INTO feeds (
-        id, feed_type, author_user_id, author_role, pet_id, business_category_id, pet_type_id,
-        visibility_scope, booking_id, supplier_id, related_service_id,
-        caption, media_urls, tags,
-        publish_request_status, is_public, status, created_at, updated_at
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'none', ?, 'published', ?, ?)`
-    ).bind(
+    const compat = await getLegacyFeedCompat(env);
+    const legacyInsert = legacyFeedInsertParts(compat, {
       id,
       feedType,
-      me.sub,
-      me.role,
-      body.pet_id ?? null,
-      body.business_category_id ?? null,
-      body.pet_type_id ?? null,
-      visibility,
-      body.booking_id ?? null,
-      body.supplier_id ?? null,
-      body.related_service_id ?? null,
+      authorUserId: me.sub,
+      authorRole: me.role,
+      petId: body.pet_id ?? null,
+      businessCategoryId: body.business_category_id ?? null,
+      petTypeId: body.pet_type_id ?? null,
+      visibilityScope: visibility,
+      bookingId: body.booking_id ?? null,
+      supplierId: body.supplier_id ?? null,
+      relatedServiceId: body.related_service_id ?? null,
       caption,
       mediaUrls,
       tags,
-      publicVisible,
-      timestamp,
-      timestamp,
-    ).run();
+      publishRequestStatus: 'none',
+      isPublic: publicVisible,
+      status: 'published',
+      createdAt: timestamp,
+      updatedAt: timestamp,
+    });
+    await env.DB.prepare(legacyInsert.sql).bind(...legacyInsert.bindings).run();
   }
 
   await upsertAlbumFromFeed(env, {
@@ -722,29 +866,29 @@ async function shareFromCompletion(request: Request, env: Env): Promise<Response
       ).bind(newId(), id, inferMediaType(mediaUrl), mediaUrl, mediaUrl, index).run();
     }
   } else {
-    await env.DB.prepare(
-      `INSERT INTO feeds (
-        id, feed_type, author_user_id, author_role, pet_id, business_category_id, pet_type_id,
-        visibility_scope, booking_id, supplier_id, related_service_id,
-        caption, media_urls, tags, publish_request_status, is_public, status, created_at, updated_at
-      ) VALUES (?, 'guardian_post', ?, 'guardian', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'none', ?, 'published', ?, ?)`
-    ).bind(
+    const compat = await getLegacyFeedCompat(env);
+    const legacyInsert = legacyFeedInsertParts(compat, {
       id,
-      me.sub,
-      completion.pet_id ?? null,
-      body.business_category_id ?? null,
-      body.pet_type_id ?? null,
-      visibility,
-      completion.booking_id ?? null,
-      completion.supplier_id ?? null,
-      completion.service_id ?? null,
+      feedType: 'guardian_post',
+      authorUserId: me.sub,
+      authorRole: 'guardian',
+      petId: completion.pet_id ?? null,
+      businessCategoryId: body.business_category_id ?? null,
+      petTypeId: body.pet_type_id ?? null,
+      visibilityScope: visibility,
+      bookingId: completion.booking_id ?? null,
+      supplierId: completion.supplier_id ?? null,
+      relatedServiceId: completion.service_id ?? null,
       caption,
-      JSON.stringify(mediaUrls),
-      tagsJson,
-      visibility === 'public',
-      timestamp,
-      timestamp,
-    ).run();
+      mediaUrls: JSON.stringify(mediaUrls),
+      tags: tagsJson,
+      publishRequestStatus: 'none',
+      isPublic: visibility === 'public',
+      status: 'published',
+      createdAt: timestamp,
+      updatedAt: timestamp,
+    });
+    await env.DB.prepare(legacyInsert.sql).bind(...legacyInsert.bindings).run();
   }
 
   await upsertAlbumFromFeed(env, {
@@ -832,50 +976,42 @@ async function requestBookingCompletedFeed(request: Request, env: Env): Promise<
 
   if (!feed) {
     const feedId = newId();
-    await env.DB.prepare(
-      `INSERT INTO feeds (
-        id, feed_type, author_user_id, author_role, pet_id, business_category_id, pet_type_id,
-        visibility_scope, booking_id, supplier_id, related_service_id,
-        caption, media_urls, tags, publish_request_status, is_public, status, created_at, updated_at
-      ) VALUES (?, 'booking_completed', ?, 'provider', ?, ?, ?, 'connected_only', ?, ?, ?, ?, ?, '[]', 'pending', false, 'hidden', ?, ?)`
-    ).bind(
-      feedId,
-      me.sub,
-      booking.pet_id ?? null,
-      body.business_category_id ?? booking.business_category_id ?? null,
-      body.pet_type_id ?? null,
+    const compat = await getLegacyFeedCompat(env);
+    const legacyInsert = legacyFeedInsertParts(compat, {
+      id: feedId,
+      feedType: 'booking_completed',
+      authorUserId: me.sub,
+      authorRole: 'provider',
+      petId: booking.pet_id ?? null,
+      businessCategoryId: body.business_category_id ?? booking.business_category_id ?? null,
+      petTypeId: body.pet_type_id ?? null,
+      visibilityScope: 'connected_only',
       bookingId,
-      me.sub,
-      booking.service_id ?? null,
-      memo,
+      supplierId: me.sub,
+      relatedServiceId: booking.service_id ?? null,
+      caption: memo,
       mediaUrls,
-      timestamp,
-      timestamp,
-    ).run();
+      tags: '[]',
+      publishRequestStatus: 'pending',
+      isPublic: false,
+      status: 'hidden',
+      createdAt: timestamp,
+      updatedAt: timestamp,
+    });
+    await env.DB.prepare(legacyInsert.sql).bind(...legacyInsert.bindings).run();
     feed = { id: feedId };
   } else {
-    await env.DB.prepare(
-      `UPDATE feeds SET
-        pet_id = COALESCE(?, pet_id),
-        business_category_id = COALESCE(?, business_category_id),
-        pet_type_id = COALESCE(?, pet_type_id),
-        caption = ?,
-        media_urls = ?,
-        publish_request_status = 'pending',
-        visibility_scope = 'connected_only',
-        is_public = false,
-        status = 'hidden',
-        updated_at = ?
-      WHERE id = ?`
-    ).bind(
-      booking.pet_id ?? null,
-      body.business_category_id ?? booking.business_category_id ?? null,
-      body.pet_type_id ?? null,
-      memo,
+    const compat = await getLegacyFeedCompat(env);
+    const legacyUpdate = legacyFeedUpdateParts(compat, {
+      petId: booking.pet_id ?? null,
+      businessCategoryId: body.business_category_id ?? booking.business_category_id ?? null,
+      petTypeId: body.pet_type_id ?? null,
+      caption: memo,
       mediaUrls,
-      timestamp,
-      feed.id,
-    ).run();
+      updatedAt: timestamp,
+      id: feed.id,
+    });
+    await env.DB.prepare(legacyUpdate.sql).bind(...legacyUpdate.bindings).run();
   }
 
   await env.DB.prepare(`UPDATE bookings SET status = 'publish_requested', updated_at = ? WHERE id = ?`).bind(timestamp, bookingId).run();

@@ -1,6 +1,7 @@
 import type { Env, JwtPayload } from '../types';
 import { ok, created, err, newId, now } from '../types';
 import { requireAuth, requireRole } from '../middleware/auth';
+import { hasColumn } from '../helpers/sqlHelpers';
 
 function parseJsonArray(raw: unknown): string[] {
   if (Array.isArray(raw)) return raw.filter((x) => typeof x === 'string') as string[];
@@ -18,6 +19,78 @@ function inferMediaType(url: string): 'image' | 'video' {
   const value = url.toLowerCase();
   if (/(\.mp4|\.mov|\.webm|\.mkv|\.avi)(\?|$)/.test(value)) return 'video';
   return 'image';
+}
+
+async function legacyFeedCompat(env: Env): Promise<{ hasBusinessCategoryId: boolean; hasPetTypeId: boolean }> {
+  const [hasBusinessCategoryId, hasPetTypeId] = await Promise.all([
+    hasColumn(env, 'feeds', 'business_category_id'),
+    hasColumn(env, 'feeds', 'pet_type_id'),
+  ]);
+  return { hasBusinessCategoryId, hasPetTypeId };
+}
+
+function buildLegacyFeedInsert(
+  compat: { hasBusinessCategoryId: boolean; hasPetTypeId: boolean },
+  values: {
+    id: string;
+    authorUserId: string;
+    petId: unknown;
+    businessCategoryId: unknown;
+    petTypeId: unknown;
+    bookingId: string;
+    supplierId: string;
+    relatedServiceId: unknown;
+    caption: string | null;
+    mediaUrls: string;
+    createdAt: string;
+    updatedAt: string;
+  },
+): { sql: string; bindings: unknown[] } {
+  const columns = ['id', 'feed_type', 'author_user_id', 'author_role', 'pet_id'];
+  const bindings: unknown[] = [values.id, 'booking_completed', values.authorUserId, 'provider', values.petId ?? null];
+
+  if (compat.hasBusinessCategoryId) {
+    columns.push('business_category_id');
+    bindings.push(values.businessCategoryId ?? null);
+  }
+  if (compat.hasPetTypeId) {
+    columns.push('pet_type_id');
+    bindings.push(values.petTypeId ?? null);
+  }
+
+  columns.push(
+    'visibility_scope',
+    'booking_id',
+    'supplier_id',
+    'related_service_id',
+    'caption',
+    'media_urls',
+    'tags',
+    'publish_request_status',
+    'is_public',
+    'status',
+    'created_at',
+    'updated_at',
+  );
+  bindings.push(
+    'connected_only',
+    values.bookingId,
+    values.supplierId,
+    values.relatedServiceId ?? null,
+    values.caption,
+    values.mediaUrls,
+    '[]',
+    'pending',
+    0,
+    'hidden',
+    values.createdAt,
+    values.updatedAt,
+  );
+
+  return {
+    sql: `INSERT INTO feeds (${columns.join(', ')}) VALUES (${columns.map(() => '?').join(', ')})`,
+    bindings,
+  };
 }
 
 async function listBookings(env: Env, me: JwtPayload): Promise<Response> {
@@ -128,26 +201,22 @@ async function supplierCompletionRequest(request: Request, env: Env, me: JwtPayl
 
   if (!feed) {
     const feedId = newId();
-    await env.DB.prepare(
-      `INSERT INTO feeds (
-        id, feed_type, author_user_id, author_role, pet_id, business_category_id, pet_type_id,
-        visibility_scope, booking_id, supplier_id, related_service_id,
-        caption, media_urls, tags, publish_request_status, is_public, status, created_at, updated_at
-      ) VALUES (?, 'booking_completed', ?, 'provider', ?, ?, ?, 'connected_only', ?, ?, ?, ?, ?, '[]', 'pending', 0, 'hidden', ?, ?)`
-    ).bind(
-      feedId,
-      me.sub,
-      booking.pet_id ?? null,
-      body.business_category_id ?? booking.business_category_id ?? null,
-      body.pet_type_id ?? null,
+    const compat = await legacyFeedCompat(env);
+    const insert = buildLegacyFeedInsert(compat, {
+      id: feedId,
+      authorUserId: me.sub,
+      petId: booking.pet_id ?? null,
+      businessCategoryId: body.business_category_id ?? booking.business_category_id ?? null,
+      petTypeId: body.pet_type_id ?? null,
       bookingId,
-      me.sub,
-      booking.service_id ?? null,
-      memo,
+      supplierId: me.sub,
+      relatedServiceId: booking.service_id ?? null,
+      caption: memo,
       mediaUrls,
-      timestamp,
-      timestamp,
-    ).run();
+      createdAt: timestamp,
+      updatedAt: timestamp,
+    });
+    await env.DB.prepare(insert.sql).bind(...insert.bindings).run();
     feed = { id: feedId };
   }
 
